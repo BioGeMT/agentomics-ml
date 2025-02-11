@@ -5,3 +5,7 @@ dependencies:
   - python==3.10
   - pandas
   - ipykernel
+  - ipywidgets
+  - pip
+  - pip:
+    - smolagents
