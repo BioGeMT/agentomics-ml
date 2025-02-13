@@ -22,6 +22,8 @@ source activate multiagent-ml-env
 
 Create a `.env` file containing your API keys
 
+Run `python src/playground.py` to check everything works
+
 ## Guidelines and tips
 
 Whatever packages you add, add them to the environment.yaml file
