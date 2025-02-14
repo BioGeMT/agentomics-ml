@@ -1,6 +1,7 @@
 # MultiAgent-ML
 
 ## Environment setup (Docker + conda environment)
+Make sure you have Docker installed
 
 ```
 docker build -t agents_img .
@@ -16,11 +17,11 @@ docker run -d \
 
 ```
 docker exec -it agents_cont bash
-python tests/tests.py
+python tests/tests.py -v
 source activate multiagent-ml-env
 ```
 
-Create a `.env` file containing your API keys
+Create a `.env` file containing your API keys. Example content: `OPENAI_API_KEY=my-api-key-1234`
 
 Run `python src/playground.py` to check everything works
 
