@@ -2,6 +2,7 @@ import unittest
 import subprocess
 import os
 
+
 class FileOperationsTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -16,8 +17,7 @@ class FileOperationsTest(unittest.TestCase):
             with open(file_path, "w") as file:
                 file.write(content)
                 return True
-        except Exception as e:
-            print(e)
+        except:
             return False
     
     def read(self, file_path):
