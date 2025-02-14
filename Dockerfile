@@ -17,6 +17,9 @@ COPY environment.yaml .
 # Create conda environment
 RUN conda env create -f environment.yaml
 
+# Give user ownership of conda environment directory
+RUN chown -R appuser:appuser /opt/conda
+
 # Switch to non-root user
 USER appuser
 
