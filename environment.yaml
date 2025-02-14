@@ -6,6 +6,7 @@ dependencies:
   - pandas
   - ipykernel
   - ipywidgets
+  - jupyter
   - pip
   - pip:
     - smolagents
