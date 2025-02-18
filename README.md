@@ -11,6 +11,7 @@ docker build -t agents_img .
 docker run -d \
     --name agents_cont \
     -v $(pwd):/repository:ro \
+    -p 6006:6006 \
     agents_img
 ```
 
@@ -24,6 +25,8 @@ source activate multiagent-ml-env
 Create a `.env` file containing your API keys. Example content: `OPENAI_API_KEY=my-api-key-1234`
 
 Run `python src/playground.py` to check everything works
+
+Go to `http://0.0.0.0:6006/projects` to see agent logs (smolagents only).
 
 ## Guidelines and tips
 
@@ -44,6 +47,7 @@ If you want to use jupyter notebook, run the container with the following comman
 docker run -d \
     --name agents_cont \
     -v $(pwd):/repository:ro \
+    -p 6006:6006 \
     -p 8888:8888 \
     agents_img
 ```

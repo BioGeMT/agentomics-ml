@@ -20,8 +20,11 @@ RUN conda env create -f environment.yaml
 # Give user ownership of conda environment directory
 RUN chown -R appuser:appuser /opt/conda
 
+# Copy datasets into the agent workspace
+COPY datasets /workspace/datasets/
+
 # Switch to non-root user
 USER appuser
 
-# Keep container running
-CMD ["tail", "-f", "/dev/null"]
+# Run the logging server and keep the container running
+CMD ["/bin/bash", "-c", "source activate multiagent-ml-env && python -m phoenix.server.main serve & tail -f /dev/null"]
