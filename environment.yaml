@@ -17,3 +17,4 @@ dependencies:
     - arize-phoenix
     - langchain
     - langchain-community
+    - scikit-learn
