@@ -1,16 +1,32 @@
 # MultiAgent-ML
 
 ## Environment setup (Docker + conda environment)
-Make sure you have Docker installed
+- Make sure you have Docker installed
+```
+docker --version
+```
+  
+- Install plugin for rescricting the volume size
+```
+docker plugin install ashald/docker-volume-loopback
+```
 
+- Create volume with maximum storage size
+```
+docker volume create -d ashald/docker-volume-loopback:latest -o size=50G agents_volume
+```
+
+- Build docker image
 ```
 docker build -t agents_img .
 ```
+
 
 ```
 docker run -d \
     --name agents_cont \
     -v $(pwd):/repository:ro \
+    -v agents_volume:/workspace \
     -p 6006:6006 \
     agents_img
 ```
@@ -47,6 +63,7 @@ If you want to use jupyter notebook, run the container with the following comman
 docker run -d \
     --name agents_cont \
     -v $(pwd):/repository:ro \
+    -v agents_volume:/workspace \
     -p 6006:6006 \
     -p 8888:8888 \
     agents_img
