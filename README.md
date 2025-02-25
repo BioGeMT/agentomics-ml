@@ -27,7 +27,6 @@ docker run -d \
     --name agents_cont \
     -v $(pwd):/repository:ro \
     -v agents_volume:/workspace \
-    -p 6006:6006 \
     agents_img
 ```
 
@@ -42,7 +41,7 @@ Create a `.env` file containing your API keys. Example content: `OPENAI_API_KEY=
 
 Run `python src/playground.py` to check everything works
 
-Go to `http://0.0.0.0:6006/projects` to see agent logs (smolagents only).
+Go to `https://wandb.ai/ceitec-ai/BioAgents` to see agent logs.
 
 ## Guidelines and tips
 
@@ -64,7 +63,6 @@ docker run -d \
     --name agents_cont \
     -v $(pwd):/repository:ro \
     -v agents_volume:/workspace \
-    -p 6006:6006 \
     -p 8888:8888 \
     agents_img
 ```
