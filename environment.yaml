@@ -11,10 +11,7 @@ dependencies:
   - pip:
     - smolagents
     - smolagents[litellm]
-    - openinference-instrumentation-smolagents
-    - opentelemetry-exporter-otlp
-    - opentelemetry-sdk
-    - arize-phoenix
     - langchain
     - langchain-community
     - scikit-learn
+    - wandb
