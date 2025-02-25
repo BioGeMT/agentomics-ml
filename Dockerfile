@@ -27,4 +27,4 @@ COPY datasets /workspace/datasets/
 USER appuser
 
 # Run the logging server and keep the container running
-CMD ["/bin/bash", "-c", "source activate multiagent-ml-env && python -m phoenix.server.main serve & tail -f /dev/null"]
+CMD ["/bin/bash", "-c", "source activate multiagent-ml-env && tail -f /dev/null"]
