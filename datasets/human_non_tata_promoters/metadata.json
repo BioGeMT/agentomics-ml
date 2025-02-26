@@ -1,0 +1,6 @@
+{
+    "train_split": "/repository/datasets/human_non_tata_promoters/human_nontata_promoters_train.csv",
+    "test_split_with_labels": "/repository/datasets/human_non_tata_promoters/human_nontata_promoters_test.csv",
+    "test_split_no_labels": "/repository/datasets/human_non_tata_promoters/human_nontata_promoters_test.no_label.csv",
+    "dataset_knowledge":"/repository/datasets/human_non_tata_promoters/dataset_description.md"
+}
