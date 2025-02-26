@@ -27,6 +27,7 @@ bash = BashProcess(
     persistent = True, # cd will change it for the next command etc... (better for the agent)
     timeout = 60*15, #Seconds to wait for a command to finish
 )
+#TODO remove langchain dependency
 bash_langchain_tool = LangchainTool(
     name = "bash",
     description = bash_tool_desc,
