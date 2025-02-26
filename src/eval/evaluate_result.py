@@ -7,7 +7,7 @@ This script computes the following metrics:
   - ROC AUC Score (AUROC): Area under the Receiver Operating Characteristic curve.
 
 Usage:
-    python evaluate_result.py --results <results_file> --test <test_file> --output <output_file> --model-name <model_name>
+    python evaluate_result.py --results <results_file> --test <test_file> --output <output_file>
            [--pred-col <predicted_column_name>] [--class-col <true_label_column_name>]
 
 Arguments:
@@ -16,7 +16,6 @@ Arguments:
     -t, --test         Path to the test CSV file. This file must include a column containing the true binary labels.
                         Default true label column is 'class', changeable via --class-col.
     -o, --output       Path to the output file where the computed metrics will be saved.
-    -m, --model-name   The name of the model being evaluated.
     --pred-col         (Optional) Name of the prediction column in the results file (default: 'prediction').
     --class-col        (Optional) Name of the class/label column in the test file (default: 'class').
 """
@@ -26,78 +25,94 @@ import sys
 import pandas as pd
 from sklearn.metrics import average_precision_score, roc_auc_score
 
-def main():
-    # Parse the arguments
-    parser = argparse.ArgumentParser(
-        description="Evaluate model predictions using AUPRC and AUROC metrics."
-    )
-    parser.add_argument("-r", "--results",
-                        help="Path to the results CSV file (must contain prediction column).",
-                        required=True)
-    parser.add_argument("-t", "--test",
-                        help="Path to the test CSV file (must contain class column with true labels).",
-                        required=True)
-    parser.add_argument("-o", "--output",
-                        help="Path to the output file where metrics will be saved.",
-                        required=True)
-    parser.add_argument("-m", "--model-name",
-                        help="Name of the model being evaluated.",
-                        required=True)
-    parser.add_argument("--pred-col",
-                        help="Name of the prediction column in the results file (default: 'prediction').",
-                        default="prediction")
-    parser.add_argument("--class-col",
-                        help="Name of the class/label column in the test file (default: 'class').",
-                        default="class")
-
-    args = parser.parse_args()
-
+def evaluate_log_metrics(results_file, test_file, logging_fn, output_file=None, 
+                    pred_col="prediction", class_col="class"):
+    """
+    Evaluate classification metrics for a model's predictions.
+    
+    Args:
+        results_file (str): Path to the results CSV file with predictions.
+        test_file (str): Path to the test CSV file with true labels.
+        output_file (str, optional): Path to save the metrics. If None, metrics are not saved to a file.
+        pred_col (str): Name of the prediction column in the results file.
+        class_col (str): Name of the class/label column in the test file.
+        
+    Returns:
+        dict: Dictionary containing the computed metrics (AUPRC and AUROC).
+    """
     # Load the results and test files
     try:
-        results = pd.read_csv(args.results)
+        results = pd.read_csv(results_file)
     except Exception as e:
-        sys.exit(f"Error reading results file '{args.results}': {e}")
+        raise ValueError(f"Error reading results file '{results_file}': {e}")
 
     try:
-        test = pd.read_csv(args.test)
+        test = pd.read_csv(test_file)
     except Exception as e:
-        sys.exit(f"Error reading test file '{args.test}': {e}")
+        raise ValueError(f"Error reading test file '{test_file}': {e}")
 
     # Check if the required columns exist in the respective files
-    if args.pred_col not in results.columns:
-        sys.exit(f"Error: The prediction column '{args.pred_col}' was not found in the results file '{args.results}'. "
-                 f"Available columns: {results.columns.tolist()}")
-    if args.class_col not in test.columns:
-        sys.exit(f"Error: The class column '{args.class_col}' was not found in the test file '{args.test}'. "
-                 f"Available columns: {test.columns.tolist()}")
+    if pred_col not in results.columns:
+        raise ValueError(f"The prediction column '{pred_col}' was not found in the results file. "
+                        f"Available columns: {results.columns.tolist()}")
+    if class_col not in test.columns:
+        raise ValueError(f"The class column '{class_col}' was not found in the test file. "
+                        f"Available columns: {test.columns.tolist()}")
 
     # Merge the results and test files on the index
     merged = pd.merge(results, test, left_index=True, right_index=True)
 
     # Calculate metrics using the specified columns
     try:
-        auprc = average_precision_score(merged[args.class_col], merged[args.pred_col])
+        auprc = average_precision_score(merged[class_col], merged[pred_col])
     except Exception as e:
-        sys.exit(f"Error calculating AUPRC: {e}")
+        raise ValueError(f"Error calculating AUPRC: {e}")
 
     try:
-        auroc = roc_auc_score(merged[args.class_col], merged[args.pred_col])
+        auroc = roc_auc_score(merged[class_col], merged[pred_col])
     except Exception as e:
-        sys.exit(f"Error calculating AUROC: {e}")
+        raise ValueError(f"Error calculating AUROC: {e}")
 
-    # Print the computed metrics
-    print(f"Model: {args.model_name}")
-    print(f"AUPRC: {auprc}")
-    print(f"AUROC: {auroc}")
+    # Create metrics dictionary
+    metrics = {
+        "AUPRC": auprc,
+        "AUROC": auroc
+    }
 
-    # Save the results to the output file
+    # Log the metrics
+    logging_fn(metrics)
+
+    # Save the results to the output file if specified
+    if output_file:
+        try:
+            with open(output_file, "w") as f:
+                f.write(f"AUPRC: {auprc}\n")
+                f.write(f"AUROC: {auroc}\n")
+        except Exception as e:
+            raise ValueError(f"Error writing to output file '{output_file}': {e}")
+
+    return metrics
+
+def main():
+    parser = argparse.ArgumentParser(description="Evaluate classification metrics for model predictions.")
+    parser.add_argument("-r", "--results", required=True, help="Path to the results CSV file.")
+    parser.add_argument("-t", "--test", required=True, help="Path to the test CSV file.")
+    parser.add_argument("-o", "--output", required=True, help="Path to the output file.")
+    parser.add_argument("--pred-col", default="prediction", help="Name of the prediction column in the results file.")
+    parser.add_argument("--class-col", default="class", help="Name of the class column in the test file.")
+    
+    args = parser.parse_args()
+    
     try:
-        with open(args.output, "w") as f:
-            f.write(f"Model: {args.model_name}\n")
-            f.write(f"AUPRC: {auprc}\n")
-            f.write(f"AUROC: {auroc}\n")
+        evaluate_log_metrics(
+            results_file=args.results,
+            test_file=args.test,
+            output_file=args.output,
+            pred_col=args.pred_col,
+            class_col=args.class_col
+        )
     except Exception as e:
-        sys.exit(f"Error writing to output file '{args.output}': {e}")
+        sys.exit(f"Error: {e}")
 
 if __name__ == '__main__':
     main()
