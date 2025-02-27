@@ -12,6 +12,11 @@ def create_run_user(run_id):
         ["sudo", "useradd", "-d", run_dir, "-m", "-p", "1234", run_id], #TODO use --password so other agents can't switch to it
         check=True
     )
+
+    subprocess.run(
+        ["sudo", "chmod", "o-rwx", run_dir],
+        check=True
+    )
     
     # Set ownership of the run directory to the new user
     # subprocess.run(
