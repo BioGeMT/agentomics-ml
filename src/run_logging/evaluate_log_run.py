@@ -8,8 +8,9 @@ def evaluate_log_run(config):
         dataset_metadata = json.load(f)
 
     try:
-        subprocess.run(f"source activate {config['agent_id']}_env && python /workspace/inference.py --input " + 
-                    f"{dataset_metadata['test_split_no_labels']} --output /workspace/eval_predictions.csv", 
+        agent_env_name = f"/workspace/runs/{config['agent_id']}/.conda/envs/{config['agent_id']}_env"
+        subprocess.run(f"source activate {agent_env_name} && python /workspace/runs/{config['agent_id']}/inference.py --input " + 
+                    f"{dataset_metadata['test_split_no_labels']} --output /workspace/runs/{config['agent_id']}/eval_predictions.csv", 
                     shell=True, executable="/bin/bash")
     except Exception as e:
         print(e)
@@ -21,8 +22,8 @@ def evaluate_log_run(config):
         return
     
     evaluate_log_metrics(
-        results_file='/workspace/eval_predictions.csv',
+        results_file=f"/workspace/runs/{config['agent_id']}/eval_predictions.csv",
         test_file=f"{dataset_metadata['test_split_with_labels']}",
-        output_file='/workspace/metrics.txt',
+        output_file=f"/workspace/runs/{config['agent_id']}/metrics.txt",
         logging_fn=wandb.log,
     )

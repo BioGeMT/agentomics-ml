@@ -51,10 +51,11 @@ class BashProcess:
 
     def __init__(
         self,
+        agent_id,
         strip_newlines: bool = False,
         return_err_output: bool = False,
         persistent: bool = False,
-        timeout: int = 10,
+        timeout: int = 60,
     ):
         """
         Initializes with default settings
@@ -66,7 +67,7 @@ class BashProcess:
         self.timeout = timeout
         if persistent:
             self.prompt = str(uuid4())
-            self.process = self._initialize_persistent_process(self, self.prompt)
+            self.process = self._initialize_persistent_process(self, self.prompt, agent_id)
 
 
     @staticmethod
@@ -87,7 +88,7 @@ class BashProcess:
         return pexpect
 
     @staticmethod
-    def _initialize_persistent_process(self: BashProcess, prompt: str) -> pexpect.spawn:
+    def _initialize_persistent_process(self: BashProcess, prompt: str, agent_id: str) -> pexpect.spawn:
         # Start bash in a clean environment
         # Doesn't work on windows
         """
@@ -99,8 +100,10 @@ class BashProcess:
         """
         pexpect = self._lazy_import_pexpect()
         process = pexpect.spawn(
-            "bash", ["--norc", "--noprofile"], encoding="utf-8"
+            "sudo", ["-u", agent_id, "bash"], encoding="utf-8"
         )
+        process.sendline("export PATH=/opt/conda/bin:$PATH")
+
         # Set the custom prompt
         process.sendline("PS1=" + prompt)
 

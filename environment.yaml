@@ -15,3 +15,4 @@ dependencies:
     - langchain-community
     - scikit-learn
     - wandb
+    - hrid
