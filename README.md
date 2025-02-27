@@ -26,7 +26,7 @@ docker build -t agents_img .
 docker run -d \
     --name agents_cont \
     -v $(pwd):/repository:ro \
-    -v agents_volume:/workspace \
+    -v agents_volume:/workspace/runs \
     agents_img
 ```
 
