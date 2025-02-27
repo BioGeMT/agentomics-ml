@@ -5,6 +5,7 @@ from tools.bash import bash_tool
 from models import MODELS
 from run_logging.wandb import setup_logging
 from run_logging.evaluate_log_run import evaluate_log_run
+from prompts.prompts_utils import load_prompts
 
 dotenv.load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY") #Openrouter models need their OPENROUTER API key
@@ -19,6 +20,7 @@ config = {
     "dataset" : "human_non_tata_promoters",
     "tags" : ["testing"],
     "tools" : [tool.name for tool in tools],
+    "prompt" : "toolcalling_agent.yaml",
 }
 
 setup_logging(config, api_key=wandb_key)
@@ -30,14 +32,14 @@ model = LiteLLMModel(
 )
 
 agent = ToolCallingAgent(
-    tools=tools, 
-    model=model, 
+    tools=tools,
+    model=model,
     add_base_tools=False,
     max_steps=config["max_steps"],
+    prompt_templates=load_prompts(config["prompt"]),
 )
 
-#TODO add this to the system prompt
-prompt_base = f"""
+user_prompt = f"""
 You are using a linux system.
 You have access to CPU only, no GPU.
 Before you do anything, run cd /workspace (this is the only directory that is yours to work in).
@@ -53,13 +55,11 @@ The script will be taking the following named arguments:
     --output (the output file path, this file should be a one column csv file with the predictions, the column name should be 'prediction')
 
 Create a prototype model, with only few training steps, no need to optimize it for performance.
-"""
-user_prompt = """
-Look into the workspace/datasets/human_non_tata_promoters folder and create a ML classifier using files in there.
+
+Look into the workspace/datasets/{config['dataset']} folder and create a ML classifier using files in there.
 Use the ..._train.csv as training data.
 Use the ..._test.csv as testing data.
-Don't ever print the whole dataset or a big part of the dataset, it will clog up your context and prevent you from continuing your task.
-Any one script can't run for more than 15 minutes.
+Run all bash commands and python command in a way that prints the least possible amount of tokens into the console.
 
 Column descriptions:
 sequence: DNA sequence to be classified, alphabet: A, C, G, T, N
@@ -68,5 +68,5 @@ Make sure to tokenize for all characters from the alphabet.
 class: 1 if the promoter is a non-TATA promoter, 0 otherwise
 """
 
-agent.run(prompt_base + user_prompt)
+agent.run(user_prompt)
 evaluate_log_run(config)
