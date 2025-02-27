@@ -7,4 +7,5 @@ def setup_logging(config, api_key):
         project="BioAgents",
         tags=config["tags"],
         config=config,
+        name=config["agent_id"],
     )

@@ -21,16 +21,19 @@ Examples:
 - "python /workspace/numpy_test.py"
 """
 
-bash = BashProcess(
-    strip_newlines = False,
-    return_err_output = True,
-    persistent = True, # cd will change it for the next command etc... (better for the agent)
-    timeout = 60*15, #Seconds to wait for a command to finish
-)
-#TODO remove langchain dependency
-bash_langchain_tool = LangchainTool(
-    name = "bash",
-    description = bash_tool_desc,
-    func = bash.run,
-)
-bash_tool = Tool.from_langchain(bash_langchain_tool)
+def get_bash_tool(agent_id, timeout):
+    bash = BashProcess(
+        agent_id=agent_id,
+        strip_newlines = False,
+        return_err_output = True,
+        persistent = True, # cd will change it for the next command etc... (better for the agent)
+        timeout = timeout, #Seconds to wait for a command to finish
+    )
+    #TODO remove langchain dependency
+    bash_langchain_tool = LangchainTool(
+        name = "bash",
+        description = bash_tool_desc,
+        func = bash.run,
+    )
+    bash_tool = Tool.from_langchain(bash_langchain_tool)
+    return bash_tool
