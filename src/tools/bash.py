@@ -36,4 +36,5 @@ def get_bash_tool(agent_id, timeout):
         func = bash.run,
     )
     bash_tool = Tool.from_langchain(bash_langchain_tool)
+    bash_tool.args = {'timeout':timeout}
     return bash_tool

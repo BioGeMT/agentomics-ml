@@ -1,13 +1,14 @@
 import os
 import dotenv
 from smolagents import LiteLLMModel, ToolCallingAgent
+from smolagents.monitoring import LogLevel
 from tools.bash import get_bash_tool
 from utils.models import MODELS
 from utils.create_user import create_new_user_and_rundir
 from run_logging.wandb import setup_logging
 from run_logging.evaluate_log_run import evaluate_log_run
+from run_logging.memory_logging import replay
 from prompts.prompts_utils import load_prompts
-
 
 dotenv.load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY") #Openrouter models need their OPENROUTER API key
@@ -23,8 +24,10 @@ config = {
     "max_steps" : 30,
     "dataset" : "human_non_tata_promoters",
     "tags" : ["testing"],
-    "tools" : [tool.name for tool in tools],
+    "tools" : [{tool.name} for tool in tools],
+    "tools_args" : [{tool.name, str(tool.args)} for tool in tools if hasattr(tool, "args")],
     "prompt" : "toolcalling_agent.yaml",
+    "planning_interval" : None,
 }
 
 setup_logging(config, api_key=wandb_key)
@@ -41,6 +44,8 @@ agent = ToolCallingAgent(
     add_base_tools=False,
     max_steps=config["max_steps"],
     prompt_templates=load_prompts(config["prompt"]),
+    planning_interval=config["planning_interval"],
+    verbosity_level=LogLevel.DEBUG,
 )
 
 user_prompt = f"""
@@ -74,3 +79,4 @@ class: 1 if the promoter is a non-TATA promoter, 0 otherwise
 
 agent.run(user_prompt)
 evaluate_log_run(config)
+replay(agent)

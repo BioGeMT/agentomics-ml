@@ -21,9 +21,17 @@ def evaluate_log_run(config):
         wandb.log(error_metrics)
         return
     
-    evaluate_log_metrics(
-        results_file=f"/workspace/runs/{config['agent_id']}/eval_predictions.csv",
-        test_file=f"{dataset_metadata['test_split_with_labels']}",
-        output_file=f"/workspace/runs/{config['agent_id']}/metrics.txt",
-        logging_fn=wandb.log,
-    )
+    try:
+        evaluate_log_metrics(
+            results_file=f"/workspace/runs/{config['agent_id']}/eval_predictions.csv",
+            test_file=f"{dataset_metadata['test_split_with_labels']}",
+            output_file=f"/workspace/runs/{config['agent_id']}/metrics.txt",
+            logging_fn=wandb.log,
+        )
+    except Exception as e:
+        print(e)
+        error_metrics = {
+            'AUPRC': -1,
+            'AUROC': -1,
+        }
+        wandb.log(error_metrics)
