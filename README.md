@@ -21,7 +21,7 @@ docker volume create -d ashald/docker-volume-loopback:latest -o size=50G agents_
 docker build -t agents_img .
 ```
 
-
+- Run the container
 ```
 docker run -d \
     --name agents_cont \
@@ -30,10 +30,13 @@ docker run -d \
     agents_img
 ```
 
-
+- Attach console to the container
 ```
 docker exec -it agents_cont bash
 python tests/tests.py -v
+```
+- Activate the default conda environment
+```
 source activate multiagent-ml-env
 ```
 
