@@ -11,11 +11,11 @@ from run_logging.memory_logging import replay
 from prompts.prompts_utils import load_prompts
 
 dotenv.load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY") #Openrouter models need their OPENROUTER API key
+api_key = os.getenv("OPENAI_API_KEY")  # Openrouter models need their OPENROUTER API key
 wandb_key = os.getenv("WANDB_API_KEY")
 
 agent_id = create_new_user_and_rundir()
-tools = [get_bash_tool(agent_id, 60*5)]
+tools = [get_bash_tool(agent_id, 60 * 5)]
 
 config = {
     "agent_id" : agent_id,
@@ -33,8 +33,8 @@ config = {
 setup_logging(config, api_key=wandb_key)
 
 model = LiteLLMModel(
-    model_id=config['model'], 
-    api_key=api_key, 
+    model_id=config['model'],
+    api_key=api_key,
     temperature=config["temperature"],
 )
 
@@ -80,3 +80,4 @@ class: 1 if the promoter is a non-TATA promoter, 0 otherwise
 agent.run(user_prompt)
 evaluate_log_run(config)
 replay(agent)
+

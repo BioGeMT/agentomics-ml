@@ -102,6 +102,7 @@ class BashProcess:
         process = pexpect.spawn(
             "sudo", ["-u", agent_id, "bash"], encoding="utf-8"
         )
+
         process.sendline("export PATH=/opt/conda/bin:$PATH")
 
         # Set the custom prompt
