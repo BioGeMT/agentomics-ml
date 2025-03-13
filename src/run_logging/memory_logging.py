@@ -3,7 +3,7 @@ from smolagents.monitoring import LogLevel
 
 def replay(agent):
         logger = agent.logger
-        logger.console.log("######################## Replaying the agent's steps: ########################")
+        logger.console.log("#" * 25 + "Replaying the agent's steps:" + "#" * 25)
         logger.console.log(agent.memory.system_prompt.to_messages(summary_mode=False))
         log_level=LogLevel.ERROR
         for i,step in enumerate(agent.memory.steps):
@@ -20,3 +20,6 @@ def replay(agent):
                 logger.log_rule("Planning step", level=log_level)
 
             logger.console.log(step.to_messages(summary_mode=False))
+        
+        total_tokens = agent.monitor.get_total_token_counts()
+        logger.console.log(f"Final token usage: {total_tokens['input'] + total_tokens['output']:,} tokens (Input: {total_tokens['input']}, Output: {total_tokens['output']})")
