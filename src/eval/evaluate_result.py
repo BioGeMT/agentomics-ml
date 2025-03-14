@@ -82,6 +82,8 @@ def evaluate_log_metrics(results_file, test_file, logging_fn, output_file=None,
     # Log the metrics
     logging_fn(metrics)
 
+    logging_fn({"Level": 2})
+
     # Save the results to the output file if specified
     if output_file:
         try:

@@ -94,4 +94,3 @@ for _ in range(1):
     evaluate_log_run(config)
     replay(agent)
     wandb.finish()
-
