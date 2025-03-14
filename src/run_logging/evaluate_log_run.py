@@ -2,10 +2,22 @@ import wandb
 import json
 import subprocess
 from eval.evaluate_result import evaluate_log_metrics
+import os
 
 def evaluate_log_run(config):
     with open(f"/repository/datasets/{config['dataset']}/metadata.json") as f:
         dataset_metadata = json.load(f)
+
+    inference_path = f"/workspace/runs/{config['agent_id']}/inference.py"
+    if not os.path.exists(inference_path):
+        # Level 0: inference.py doesn't exist
+        wandb.log({"Level": 0})
+        error_metrics = {
+            'AUPRC': -1,
+            'AUROC': -1,
+        }
+        wandb.log(error_metrics)
+        return
 
     try:
         agent_env_name = f"/workspace/runs/{config['agent_id']}/.conda/envs/{config['agent_id']}_env"
@@ -14,6 +26,9 @@ def evaluate_log_run(config):
                     shell=True, executable="/bin/bash")
     except Exception as e:
         print(e)
+        # Level 1: inference.py exists but execution failed
+        wandb.log({"Level": 1})
+        
         error_metrics = {
             'AUPRC': -1,
             'AUROC': -1,
@@ -30,6 +45,9 @@ def evaluate_log_run(config):
         )
     except Exception as e:
         print(e)
+        # Level 1: inference.py exists and ran, but metrics calculation failed
+        wandb.log({"Level": 1})
+
         error_metrics = {
             'AUPRC': -1,
             'AUROC': -1,
