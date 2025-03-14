@@ -1,5 +1,6 @@
 import os
 import dotenv
+import wandb
 from smolagents import LiteLLMModel, ToolCallingAgent
 from smolagents.monitoring import LogLevel
 from tools.bash import BashTool
@@ -71,8 +72,6 @@ for _ in range(1):
     The script will be taking the following named arguments:
         --input (an input file path, file is of the same format as your training data (except the label column))
         --output (the output file path, this file should be a one column csv file with the predictions, the column name should be 'prediction')
-
-
     Look into the workspace/datasets/{config['dataset']} folder and create a ML classifier using files in there.
     Use the ..._train.csv as training data.
     Use the ..._test.csv as testing data.
