@@ -1,5 +1,6 @@
 from smolagents.memory import SystemPromptStep, TaskStep, ActionStep, PlanningStep
 from smolagents.monitoring import LogLevel
+import wandb
 
 def replay(agent):
         logger = agent.logger
@@ -22,4 +23,8 @@ def replay(agent):
             logger.console.log(step.to_messages(summary_mode=False))
         
         total_tokens = agent.monitor.get_total_token_counts()
-        logger.console.log(f"Final token usage: {total_tokens['input'] + total_tokens['output']:,} tokens (Input: {total_tokens['input']}, Output: {total_tokens['output']})")
+        wandb.log({
+            "total_tokens": total_tokens['input'] + total_tokens['output'],
+            "input_tokens": total_tokens['input'],
+            "output_tokens": total_tokens['output']
+        })
