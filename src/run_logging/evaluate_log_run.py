@@ -21,9 +21,25 @@ def evaluate_log_run(config):
 
     try:
         agent_env_name = f"/workspace/runs/{config['agent_id']}/.conda/envs/{config['agent_id']}_env"
-        subprocess.run(f"source activate {agent_env_name} && python /workspace/runs/{config['agent_id']}/inference.py --input " + 
+        result = subprocess.run(f"source activate {agent_env_name} && python /workspace/runs/{config['agent_id']}/inference.py --input " + 
                     f"{dataset_metadata['test_split_no_labels']} --output /workspace/runs/{config['agent_id']}/eval_predictions.csv", 
-                    shell=True, executable="/bin/bash")
+                    shell=True, executable="/bin/bash", capture_output=True, text=True)
+        
+        if result.returncode != 0:
+            print(f"Inference script error: {result.stderr}")
+
+            # Level 1: inference.py exists but execution failed
+            wandb.log({"Level": 1})
+            
+            error_metrics = {
+                'AUPRC': -1,
+                'AUROC': -1,
+            }
+
+            wandb.log(error_metrics)
+
+            return
+        
     except Exception as e:
         print(e)
         # Level 1: inference.py exists but execution failed
