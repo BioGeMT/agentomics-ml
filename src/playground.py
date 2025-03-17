@@ -3,6 +3,7 @@ import dotenv
 from smolagents import LiteLLMModel, ToolCallingAgent
 from smolagents.monitoring import LogLevel
 from tools.bash import get_bash_tool
+from tools.write_python_tool import get_write_python_tool
 from utils.models import MODELS
 from utils.create_user import create_new_user_and_rundir
 from run_logging.wandb import setup_logging
@@ -11,15 +12,18 @@ from run_logging.memory_logging import replay
 from prompts.prompts_utils import load_prompts
 
 dotenv.load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")  # Openrouter models need their OPENROUTER API key
+api_key = os.getenv("OPENROUTER_API_KEY")
 wandb_key = os.getenv("WANDB_API_KEY")
 
 agent_id = create_new_user_and_rundir()
-tools = [get_bash_tool(agent_id, 60 * 5)]
+tools = [
+    get_bash_tool(agent_id=agent_id, timeout=60 * 15),
+    get_write_python_tool(agent_id=agent_id, timeout=60 * 5, add_code_to_response=False),
+]
 
 config = {
     "agent_id" : agent_id,
-    "model" : MODELS.GPT4o,
+    "model" : MODELS.OPENROUTER_GPT4o,
     "temperature" : 1,
     "max_steps" : 30,
     "dataset" : "human_non_tata_promoters",
@@ -52,29 +56,34 @@ user_prompt = f"""
 You are using a linux system.
 You have access to CPU only, no GPU.
 You can only work in /workspace/runs/{config['agent_id']} directory.
-Create a new conda environment called {config['agent_id']}_env (run the installation in non-verbose mode). 
-Use this environment to install any packages you need (use non-verbose mode for installations).
+Create a new conda environment called {config['agent_id']}_env (run the installation in non-verbose mode with -q). 
+Use this environment to install any packages you need (use non-verbose mode for installations, run conda installations with -y option).
 Write all your python scripts in files. 
 Run all scripts in this environment.
 Your final output should be inference.py script, located in the workspace folder (/workspace/runs/{config['agent_id']}/inference.py). 
 This script will be separated from the training script and only load the already trained model and run inference.
+Make sure the model file exists before you submit your solution!
 Any path inside the inference.py script should be absolute (eg. /workspace/runs/{config['agent_id']}/model.pth).
 The script will be taking the following named arguments:
     --input (an input file path, file is of the same format as your training data (except the label column))
     --output (the output file path, this file should be a one column csv file with the predictions, the column name should be 'prediction')
 
-Create a prototype model, with only few training steps, no need to optimize it for performance.
 
 Look into the workspace/datasets/{config['dataset']} folder and create a ML classifier using files in there.
 Use the ..._train.csv as training data.
 Use the ..._test.csv as testing data.
 Run all bash commands and python command in a way that prints the least possible amount of tokens into the console.
+Create the best possible classifier that will generalize to new unseen data.
+
 
 Column descriptions:
 sequence: DNA sequence to be classified, alphabet: A, C, G, T, N
 Make sure to tokenize for all characters from the alphabet.
 
 class: 1 if the promoter is a non-TATA promoter, 0 otherwise
+
+Validate your intermediate steps created files that are needed for the final inference script to run successfully before you run your final answer.
+Also make sure the inference script exists in your folder and is runnable, it will be subsequently called and you will be evaluated based on the model's generalization performance on hidden test data.
 """
 
 agent.run(user_prompt)

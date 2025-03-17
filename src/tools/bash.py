@@ -13,8 +13,6 @@ Examples:
 - "echo 'hello world' > test.txt"
 - "conda create -n my_env python=3.8 matplotlib -c conda-forge -y"
 - "source activate my_env"
-- "echo -e 'import numpy as np\nx = np.linspace(0, 10, 100)\nprint(\'data:\',x)' > /workspace/numpy_test.py"
-    - wrap your python code in single quotes to avoid bash interpretation issues.
 - "python /workspace/numpy_test.py"
 """
 
