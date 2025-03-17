@@ -65,10 +65,14 @@ class BashProcess:
         self.prompt = ""
         self.process = None
         self.timeout = timeout
+        self.agent_id = agent_id
         if persistent:
             self.prompt = str(uuid4())
             self.process = self._initialize_persistent_process(self, self.prompt, agent_id)
 
+    def custom_reset(self):
+        self.prompt = str(uuid4())
+        self.process = self._initialize_persistent_process(self, self.prompt, self.agent_id)
 
     @staticmethod
     def _lazy_import_pexpect() -> pexpect:
@@ -190,7 +194,8 @@ class BashProcess:
         try:
             self.process.expect([self.prompt, pexpect.EOF], timeout=self.timeout)
         except pexpect.TIMEOUT:
-            return f"Timeout error while executing command {command}"
+            self.custom_reset()
+            return f"Timeout error while executing command {command}. " + "Resetting bash to it's default state."
         if self.process.after == pexpect.EOF:
             return f"Exited with error status: {self.process.exitstatus}"
         output = self.process.before
