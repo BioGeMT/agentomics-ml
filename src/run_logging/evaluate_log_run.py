@@ -35,3 +35,13 @@ def evaluate_log_run(config):
             'AUROC': -1,
         }
         wandb.log(error_metrics)
+
+
+def dry_run_evaluate_log_run(config):
+    with open(f"/repository/datasets/{config['dataset']}/metadata.json") as f:
+        dataset_metadata = json.load(f)
+
+    agent_env_name = f"/workspace/runs/{config['agent_id']}/.conda/envs/{config['agent_id']}_env"
+    return subprocess.run(f"source activate {agent_env_name} && python /workspace/runs/{config['agent_id']}/inference.py --input " + 
+                f"{dataset_metadata['train_split']} --output /dev/null", 
+                shell=True, executable="/bin/bash", capture_output=True)
