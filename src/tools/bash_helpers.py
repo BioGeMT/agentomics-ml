@@ -52,6 +52,7 @@ class BashProcess:
     def __init__(
         self,
         agent_id,
+        activate_conda=True,
         strip_newlines: bool = False,
         return_err_output: bool = False,
         persistent: bool = False,
@@ -66,13 +67,29 @@ class BashProcess:
         self.process = None
         self.timeout = timeout
         self.agent_id = agent_id
+        self.activate_conda = activate_conda
         if persistent:
             self.prompt = str(uuid4())
             self.process = self._initialize_persistent_process(self, self.prompt, agent_id)
+            if(activate_conda):
+                self.create_conda_env()
+                self.activate_conda_env()
 
     def custom_reset(self):
         self.prompt = str(uuid4())
         self.process = self._initialize_persistent_process(self, self.prompt, self.agent_id)
+        if(self.activate_conda):
+            self.activate_conda_env()
+
+    def create_conda_env(self):
+        self.run(
+            f"conda create -n {self.agent_id}_env -y"
+        )
+
+    def activate_conda_env(self):
+        self.run(
+            f"source activate {self.agent_id}_env"
+        )
 
     @staticmethod
     def _lazy_import_pexpect() -> pexpect:
