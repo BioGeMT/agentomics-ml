@@ -37,7 +37,10 @@ class WritePythonTool(Tool):
         )
         self.agent_id = agent_id
         self.add_code_to_response = add_code_to_response
-        self.args = {'timeout': timeout}
+        self.args = {
+            'timeout': timeout,
+            'add_code_to_response': add_code_to_response,
+        }
         super().__init__()
 
     def forward(self, code: str, file_path: str):
@@ -49,7 +52,3 @@ class WritePythonTool(Tool):
         if(self.add_code_to_response):
             return out_code + out_syntax
         return out_syntax
-    
-def get_write_python_tool(agent_id, timeout, add_code_to_response=False):
-    return WritePythonTool(agent_id, timeout, add_code_to_response)
-

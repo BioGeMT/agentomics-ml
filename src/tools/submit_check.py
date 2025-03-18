@@ -17,15 +17,9 @@ class SubmitCheckTool(Tool):
     }
     output_type = "string"
 
-    def __init__(self):
-        super().__init__()
-
-    def set_config(self, config):
+    def __init__(self, config):
         self.config = config
+        super().__init__()
 
     def forward(self):
         return dry_run_evaluate_log_run(self.config)
-    
-def get_submit_check_tool():
-    return SubmitCheckTool()
-

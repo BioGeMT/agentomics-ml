@@ -27,22 +27,21 @@ class BashTool(Tool):
     }
     output_type = "string"
 
-    def __init__(self, agent_id, timeout, activate_conda):
+    def __init__(self, agent_id, timeout, autoconda):
         self.bash = BashProcess(
             agent_id=agent_id,
-            activate_conda=activate_conda,
+            autoconda=autoconda,
             strip_newlines=False,
             return_err_output=True,
             persistent=True, 
             timeout=timeout
         )
-        self.args = {'timeout': timeout}
+        self.args = {
+            'timeout': timeout,
+            'autoconda': autoconda,
+        }
         # Calls the constructor of the parent to initialize the metadata
         super().__init__()
 
     def forward(self, command: str):
         return self.bash.run(command)
-
-def get_bash_tool(agent_id, timeout, activate_conda):
-    return BashTool(agent_id, timeout, activate_conda)
-
