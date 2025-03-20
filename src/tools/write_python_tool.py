@@ -6,19 +6,21 @@ A tool to write python code into a single file.
 Input must be a valid python code and name of the file.
 
 Examples:
-- "code": "import numpy as np\nx = np.linspace(0, 10, 100)\nprint('data:',x)"
-- "file_path": "/workspace/runs/myname/numpy_test.py"
+{
+    'code': "import numpy as np\nx = np.linspace(0, 10, 100)\nprint('data:',x)",
+    'file_path': '/workspace/runs/myname/numpy_test.py',
+}
 """
 
 class WritePythonTool(Tool):
     name = "write_python"
     description = python_tool_desc
     inputs = {
-        "code": {
+        'code': {
             "type": "string",
             "description": "A valid python code."
         },
-        "file_path": {
+        'file_path': {
             "type": "string",
             "description": f"A file path to write the code to."
         }
@@ -35,7 +37,10 @@ class WritePythonTool(Tool):
         )
         self.agent_id = agent_id
         self.add_code_to_response = add_code_to_response
-        self.args = {'timeout': timeout}
+        self.args = {
+            'timeout': timeout,
+            'add_code_to_response': add_code_to_response,
+        }
         super().__init__()
 
     def forward(self, code: str, file_path: str):
@@ -47,7 +52,3 @@ class WritePythonTool(Tool):
         if(self.add_code_to_response):
             return out_code + out_syntax
         return out_syntax
-    
-def get_write_python_tool(agent_id, timeout, add_code_to_response=False):
-    return WritePythonTool(agent_id, timeout, add_code_to_response)
-
