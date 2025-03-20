@@ -1,4 +1,4 @@
-# MultiAgent-ML
+# Agentomics-ML
 
 ## Environment setup (Docker + conda environment)
 - Make sure you have Docker installed
