@@ -4,7 +4,7 @@ def setup_logging(config, api_key):
     wandb.login(key=api_key)
     wandb.init(
         entity="ceitec-ai",
-        project="BioAgents",
+        project="Agentomics-ML",
         tags=config["tags"],
         config=config,
         name=config["agent_id"],
