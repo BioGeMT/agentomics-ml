@@ -8,7 +8,8 @@ Given a classification dataset, the system automatically generates:
 
 Agents run inside an isolated docker environment for security.
 
-![example](https://d3mprxcutrc9wk.cloudfront.net/w9a8z0%2Fpreview%2F65550682%2Fmain_large.gif?response-content-disposition=inline%3Bfilename%3D%22main_large.gif%22%3B&response-content-type=image%2Fgif&Expires=1742626823&Signature=VK7h--GDalPwuX7dihN9TAIkwBtWNcqZTH-CDeUkZqz2InKohC3ak-fsRoSWbzmgWFe4ZtTtMXP3PkjXadDp3xbLS-KbameoLlogyQnSNgelFWIF9NLJUpG32M7hUJb~MfI4-8zA8syMraOBbfkndMn7UUwjRDM8wnnjgVOSJQtHKP3Vxs38lvwSWHnPUMTe1dV8H2Jf8zuHih4XNUqhr95WzyQ1x8n71e~1R3e5T0rfZT3iDDIAuMf5CAI5LBONfGOsqIw21jK1A7JRJT5vY2ttuZ8625b4Fd3LEQgGN7jx2z0Xi5NfoyhOyh7oFlX9NcirNoRWKY1DC9Lh3Aa4ug__&Key-Pair-Id=APKAJT5WQLLEOADKLHBQ)
+![example](https://s6.gifyu.com/images/bz7xh.gif)
+
 
 ## Environment setup (Docker + conda environment)
 - Make sure you have Docker installed
