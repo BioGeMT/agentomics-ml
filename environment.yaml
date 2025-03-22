@@ -1,4 +1,4 @@
-name: multiagent-ml-env
+name: agentomics-env
 channels:
   - conda-forge
 dependencies:

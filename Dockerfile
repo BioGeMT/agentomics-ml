@@ -35,4 +35,4 @@ RUN chmod -R o+x /workspace/datasets
 WORKDIR /repository
 
 # Run the logging server and keep the container running
-CMD ["/bin/bash", "-c", "source activate multiagent-ml-env && tail -f /dev/null"]
+CMD ["/bin/bash", "-c", "source activate agentomics-env && tail -f /dev/null"]
