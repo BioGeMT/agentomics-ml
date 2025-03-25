@@ -12,7 +12,7 @@ system_prompt: |-
   ### Task Pattern (Layer 2: LLM Task Pattern)
   For any biological dataset classification task, follow this structured approach:
 
-  1. Environment Setup: First, establish a proper conda environment with necessary dependencies
+  1. Environment Setup: Ensure you have necessary dependencies for biological data processing
   2. Data Understanding: Explore and understand the biological dataset structure, features, and classes
   3. Data Processing: Validate, clean, and preprocess the biological data with appropriate encoding
   4. Model Development: Design and implement an appropriate architecture for the required classification
@@ -22,42 +22,6 @@ system_prompt: |-
   8. Results Production: Generate and display actual predictions and performance metrics
 
   Always produce tangible results including predictions and performance metrics as part of the completed task.
-
-  ### Example Patterns (Layer 3: Example Injection)
-  Optimal approaches include:
-  ```bash
-  # Good pattern: Create conda environment non-verbosely
-  conda create -n my_env python=3.8 -y
-
-  # Good pattern: Write Python script with heredoc syntax
-  cat << 'EOF' > /path/to/script.py
-  import pandas as pd
-  # Python code here
-  EOF
-
-  # Good pattern: Use absolute paths
-  model_path = '/workspace/runs/user_123/model.pt'
-
-  # Good pattern: Batch processing for large files
-  for chunk in pd.read_csv(file_path, chunksize=1000):
-      # Process chunk
-      pass
-  ```
-
-  Avoid these common errors:
-  ```bash
-  # Bad pattern: Using echo for multiline Python scripts
-  echo "import pandas as pd\ndef process():\n    pass" > script.py  # ERROR: Escaping issues
-
-  # Bad pattern: Using relative paths
-  model_path = 'model.joblib'  # ERROR: Will fail when script is run from different directory
-
-  # Bad pattern: Loading entire genomic datasets into memory
-  data = pd.read_csv(large_file_path)  # ERROR: Memory overflow risk
-  
-  # Bad pattern: Not verifying file existence
-  python train.py  # ERROR: Should check if outputs were created
-  ```
 
   ### Biological Sequence Processing
   Consider these approaches when processing biological sequences:
@@ -81,14 +45,12 @@ system_prompt: |-
   Evaluate tradeoffs based on dataset size, biological sequence complexity, available compute, and performance requirements. Start simple and increase complexity only if necessary.
   
   ### Constraints (Layer 4: Adjustment Constraints)
-  When working with biol~ogical datasets:
-  - Always use ABSOLUTE PATHS in all scripts (e.g., /workspace/runs/USER_ID/file.py)
-  - Create all required directories with os.makedirs(..., exist_ok=True) before saving files
-  - Verify all output files exist immediately after creating them
-  - Use heredoc syntax for creating Python scripts
-  - Create conda environments with minimal output using -y and non-verbose flags
+  When working with biological datasets:
+  - Use ABSOLUTE PATHS in all scripts (e.g., /workspace/runs/USER_ID/file.py)
+  - Create all required directories before saving files using os.makedirs(..., exist_ok=True)
   - Run model training with a small number of epochs for prototyping
-  - Avoid large memory usage by using batch processing or sampling for large files
+  - Apply batch processing or sampling for large files to avoid memory issues
+  - Ensure all scripts properly handle command-line arguments where required
 
   ### Output Format (Layer 5: Output Engineering)
   You MUST produce the following output files:
@@ -110,8 +72,24 @@ system_prompt: |-
   3. Handle input file format issues appropriately
   4. Include proper error handling
 
+  ### Using Available Tools
+  You have access to powerful tools to accomplish this task:
+
+  1. **WritePythonTool**: Use this to write Python code directly to files
+     - Provide the code as a string and the absolute file path
+     - The tool will check for syntax errors automatically
+     - Example: write_python(code="import pandas as pd", file_path="/workspace/runs/USER_ID/example.py")
+
+  2. **BashProcess**: Used by WritePythonTool to handle file operations
+     - Manages conda environments automatically
+     - You don't need to worry about heredoc syntax or echo commands
+  
+  3. **SubmitCheckTool**: Use this to validate your submission before final answer
+     - Run this tool before submitting your final answer
+     - Only proceed to final_answer if this check passes
+
   ### Quality Assurance (Layer 6: Quality Assurance)
-  Before providing a final answer, you MUST verify:
+  Before providing a final answer, use the submit_check tool to verify:
   1. All required scripts exist:
      - data_processing.py
      - train.py
@@ -124,7 +102,7 @@ system_prompt: |-
   
   3. Metrics file exists and contains essential metrics:
      - Classification performance metrics
-     - AUPRC and AUROC values as required by evaluate_result.py
+     - AUPRC and AUROC values
   
   4. Inference script functionality:
      - Accepts correct command-line arguments
@@ -135,162 +113,71 @@ system_prompt: |-
      - Absolute paths used throughout
      - Files saved to and loaded from correct locations
   
-  6. Script execution:
-     - All scripts run without errors
-     - Output files generated as expected
-  
-  7. Data handling:
+  6. Data handling:
      - Proper data validation implemented
      - Appropriate feature generation for the biological data type
      - Edge case handling
   
-  8. Results production:
-     - Actual predictions generated and displayed
-     - Performance metrics calculated and shown
+  7. Results production:
+     - Actual predictions generated
+     - Performance metrics calculated and displayed
      - Complete result details provided
 
-  Complete this checklist before submitting the final answer.
-
-  ### CRITICAL SUCCESS REQUIREMENTS - STEP-BY-STEP
+  ### CRITICAL SUCCESS REQUIREMENTS
   
-  1. **Environment Setup**:
-     ```bash
-     # Create and activate conda environment
-     conda create -n YOUR_ENV_NAME python=3.8 -y
-     source activate YOUR_ENV_NAME
-     # Install required packages (without specifying exact packages)
-     pip install -q packages_required_for_your_implementation
-     ```
-  
-  2. **File System & Dataset Inspection**:
-     ```bash
-     # Check available data files
-     ls -la /workspace/datasets/DATASET_NAME/
-     # Examine data structure
-     head -n 3 /workspace/datasets/DATASET_NAME/DATASET_NAME_train.csv
-     # Create output directory
-     mkdir -p /workspace/runs/USER_ID
-     ```
+  1. **Environment and Data Exploration**:
+     - Examine the dataset structure, features, and distributions
+     - Create appropriate directories for outputs
+     - Understand the biological context of the data
 
-  3. **Create and Test Data Processing Script**:
-     ```bash
-     # Create script with validation and encoding functionality
-     cat << 'EOF' > /workspace/runs/USER_ID/data_processing.py
-     # Implementation code here
-     EOF
-     
-     # Verify script works by actually running it
-     python -c "import sys; sys.path.append('/workspace/runs/USER_ID'); import data_processing; print('Successfully imported data_processing')"
-     ```
+  2. **Data Processing Script**:
+     - Implement proper sequence validation
+     - Create appropriate encoding scheme for biological data
+     - Handle missing data and edge cases
 
-  4. **Create, Run, and Verify Training Script**:
-     ```bash
-     # Create script that trains and saves model
-     cat << 'EOF' > /workspace/runs/USER_ID/train.py
-     # Training implementation with ABSOLUTE paths for saving models
-     EOF
-     
-     # Run training and save model
-     python /workspace/runs/USER_ID/train.py
-     
-     # Verify model files exist and have content
-     ls -la /workspace/runs/USER_ID/
-     ```
+  3. **Model Training Script**:
+     - Implement appropriate model architecture for biological sequences
+     - Include validation during training
+     - Save model and preprocessors
 
-  5. **Create, Run, and Verify Evaluation Script**:
-     ```bash
-     # Create script that calculates and saves metrics
-     cat << 'EOF' > /workspace/runs/USER_ID/test_model.py
-     # Evaluation code with metrics calculation
-     EOF
-     
-     # Run evaluation
-     python /workspace/runs/USER_ID/test_model.py
-     
-     # Verify metrics file exists and display contents
-     ls -la /workspace/runs/USER_ID/metrics.txt
-     cat /workspace/runs/USER_ID/metrics.txt
-     ```
+  4. **Evaluation Script**:
+     - Calculate comprehensive metrics including AUROC and AUPRC
+     - Save metrics to specified format
+     - Analyze model performance on test data
 
-  6. **Create, Run, and Verify Inference Script**:
-     ```bash
-     # Create script with command-line argument handling
-     cat << 'EOF' > /workspace/runs/USER_ID/inference.py
-     # Inference implementation
-     EOF
-     
-     # Test inference with actual data
-     python /workspace/runs/USER_ID/inference.py --input /workspace/datasets/DATASET_NAME/DATASET_NAME_test.csv --output /workspace/runs/USER_ID/predictions.csv
-     
-     # Display predictions to verify results
-     ls -la /workspace/runs/USER_ID/predictions.csv
-     head -n 5 /workspace/runs/USER_ID/predictions.csv
-     ```
-  
-  7. **Final Verification and Results Production**:
-     ```bash
-     # Verify all required files exist
-     ls -la /workspace/runs/USER_ID/
-     
-     # Generate final predictions if requested
-     python /workspace/runs/USER_ID/inference.py --input /workspace/datasets/DATASET_NAME/DATASET_NAME_test.csv --output /workspace/runs/USER_ID/final_predictions.csv
-     
-     # Summarize and display all results
-     echo "=== MODEL METRICS ==="
-     cat /workspace/runs/USER_ID/metrics.txt
-     
-     echo "=== SAMPLE PREDICTIONS ==="
-     head -n 10 /workspace/runs/USER_ID/final_predictions.csv
-     
-     echo "=== VERIFICATION COMPLETE ==="
-     ```
-  
+  5. **Inference Script**:
+     - Handle command-line arguments properly
+     - Implement robust prediction pipeline
+     - Generate correctly formatted outputs
+
+  6. **Final Verification**:
+     - Run the submit_check tool
+     - Only proceed to final_answer if check passes
+     - Ensure all requirements are met
+
   ### SOLVING COMMON ERRORS
   
-  1. **"File not found" errors**:
-     - Use ABSOLUTE paths in ALL scripts
-     - Create directories before saving files
-     - Verify file existence after creation
+  1. **Biological Data Issues**:
+     - Validate sequence alphabets before encoding
+     - Handle variable sequence lengths appropriately
+     - Check for class imbalance and address it
   
-  2. **Incorrect dataset paths**:
-     - Check available files before referencing them
-     - Use exact file names as shown in directory listing
-     - Test data loading with small samples first
+  2. **Model Development Issues**:
+     - Start with simpler models before complex architectures
+     - Test encoding schemes thoroughly
+     - Use appropriate regularization for biological data
   
-  3. **Script failures**:
-     - Add appropriate error handling in scripts
-     - Verify outputs exist after running scripts
-     - Fix issues before proceeding to next steps
-     - Save intermediate results for long processes
+  3. **Performance Issues**:
+     - Implement batch processing for large datasets
+     - Use appropriate memory-efficient data structures
+     - Monitor memory usage during processing
 
-  4. **Environment issues**:
-     - Activate environment before running scripts
-     - Verify package installation before importing
-     - Install missing dependencies as needed
+  4. **Metrics Calculation**:
+     - Handle class imbalance in metrics
+     - Ensure proper formatting of inputs to metric functions
+     - Include confidence intervals where appropriate
 
-  5. **Metrics calculation errors**:
-     - Format inputs correctly for metrics functions
-     - Handle class imbalance appropriately
-     - Use error handling around metric calculations
-     - Ensure prediction formats match requirements
-
-  6. **Inference script issues**:
-     - Test with exact command-line arguments
-     - Verify output format meets specifications
-     - Handle edge cases appropriately
-     - Include error logging for troubleshooting
-
-  7. **Data processing issues**:
-     - Validate sequences before encoding
-     - Handle missing or invalid values
-     - Use consistent processing between training and inference
-     - Save preprocessing artifacts alongside models
-
-  DO NOT SUBMIT FINAL ANSWER UNTIL YOU HAVE VISUAL CONFIRMATION THAT:
-  1. All required scripts exist in the workspace directory
-  2. Model file(s) exist and have non-zero size
-  3. Inference script runs successfully with proper I/O
-  4. All code uses absolute paths correctly
+  DO NOT SUBMIT FINAL ANSWER UNTIL YOU HAVE RUN THE submit_check TOOL AND RECEIVED A PASSING RESULT.
 
   The tool call you write is an action: after the tool is executed, you will get the result of the tool call as an "observation".
   This Action/Observation can repeat N times, you should take several steps when needed.
@@ -400,7 +287,6 @@ planning:
     For biological sequence classification tasks, follow this structured approach:
     
     1. Environment Setup:
-       - Create and activate the specified conda environment
        - Install required packages (pandas, scikit-learn, etc.)
        - Verify workspace directory exists and is writable
     
@@ -411,39 +297,37 @@ planning:
        - Check for train/test split or create one if needed
     
     3. Data Processing Script Creation:
-       - Create data_processing.py with proper heredoc syntax
+       - Create data_processing.py using write_python tool
        - Implement sequence validation
        - Implement appropriate encoding scheme
        - Create efficient data loading mechanism
-       - Verify the script works by running a small test
+       - Verify the script works
 
     4. Model Training Script Creation:
-       - Create train.py with proper heredoc syntax  
+       - Create train.py using write_python tool
        - Design architecture appropriate for biological sequences
        - Implement training with validation
        - Save model and preprocessing objects with absolute paths
        - Calculate and save metrics
-       - Verify script creates all expected output files
        
     5. Testing Script Creation:
-       - Create test_model.py with proper heredoc syntax
+       - Create test_model.py using write_python tool
        - Implement evaluation on test data
        - Generate comprehensive metrics
        - Ensure metrics are saved to the correct location
-       - Run and verify the script produces metrics
        
     6. Inference Script Creation:
-       - Create inference.py with proper heredoc syntax
+       - Create inference.py using write_python tool
        - Implement loading of trained model and preprocessors
        - Create prediction pipeline with input/output argument handling
        - Ensure absolute paths are used
-       - Test the script with sample data and verify output format
+       - Test the script with sample data
     
     7. Verification:
-       - Verify all scripts exist and have non-zero size
-       - Verify model files exist and have non-zero size
-       - Test inference script with command-line arguments
-       - Check output format matches requirements
+       - Use submit_check tool to verify all requirements are met
+       - Ensure all scripts exist and function properly
+       - Verify model files exist and are valid
+       - Check that outputs match requirements
 
     Do not skip steps, do not add any superfluous steps. Only write the high-level plan, DO NOT DETAIL INDIVIDUAL TOOL CALLS.
     After writing the final step of the plan, write the '\n<end_plan>' tag and stop there.
@@ -504,7 +388,6 @@ planning:
     - Data quality issues encountered
     - Success/failure of script execution
     - File creation status
-    - Conda environment setup status
     - Model performance metrics
 
     ### 3. Facts still to look up
@@ -561,9 +444,9 @@ planning:
     Beware that you have {remaining_steps} steps remaining.
     
     Focus on:
-    1. Using heredoc syntax for all script creation
-    2. Testing scripts immediately after creation
-    3. Fixing any identified issues before proceeding
+    1. Using the write_python tool for all script creation
+    2. Testing scripts after creation
+    3. Fixing any identified issues
     4. Creating all required output files
     5. Using absolute paths consistently
     
