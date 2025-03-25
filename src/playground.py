@@ -1,6 +1,5 @@
 import os
 import dotenv
-import wandb
 from smolagents import LiteLLMModel, ToolCallingAgent
 from smolagents.monitoring import LogLevel
 from tools.bash import BashTool
