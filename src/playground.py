@@ -18,7 +18,7 @@ api_key = os.getenv("OPENROUTER_API_KEY")
 wandb_key = os.getenv("WANDB_API_KEY")
 
 for _ in range(1):
-    agent_id = create_new_user_and_rundir()
+    agent_id = os.getenv("AGENT_ID")
  
     config = {
         "agent_id" : agent_id,

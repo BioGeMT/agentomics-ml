@@ -2,7 +2,7 @@
 FROM continuumio/miniconda3:latest
 
 # Install sudo for later creation of the agent user
-RUN apt-get update && apt-get install -y sudo
+RUN apt-get update && apt-get install -y sudo && apt-get install bubblewrap
 
 # Set the root password
 RUN echo 'root:1234' | chpasswd

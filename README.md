@@ -35,6 +35,7 @@ docker build -t agents_img .
 - Run the container
 ```
 docker run -d \
+    --privileged \
     --name agents_cont \
     -v $(pwd):/repository:ro \
     -v agents_volume:/workspace/runs \
@@ -53,7 +54,7 @@ source activate agentomics-env
 
 Create a `.env` file containing your API keys. Example content: `OPENAI_API_KEY=my-api-key-1234`
 
-Run `python src/playground.py` to check everything works
+Run `python src/run_agent.py` to check everything works
 
 Go to `https://wandb.ai/ceitec-ai/BioAgents` to see agent logs.
 
