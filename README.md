@@ -68,3 +68,29 @@ If they are pip packages, you have to manually add them.
 
 You can update your existing environment by running this command
 `conda env update --file environment.yaml --prune`
+
+## Proxy issues
+
+If you are using a proxy, Docker will not automatically detect it and therefore every installation command will fail.
+
+In order to set up the proxy setting, you can run the following command:
+
+`bash autoProxy.sh`
+
+This script will add the necessary configuration to the file Dockerfile. Before you run it, make sure to have at least one of the following
+environment variables with the proxy address:
+
+* http_proxy
+* https_proxy
+* HTTP_PROXY 
+* HTTPS_PROXY 
+
+You can run the following commands to check the value of these variables and check if they have been defined:
+
+```
+env | grep -i "http_proxy"
+
+env | grep -i "https_proxy"
+```
+
+The script will also create a backup of the original Dockerfile under the name of Dockerfile.bak just in case you want to revert the changes.
