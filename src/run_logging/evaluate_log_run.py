@@ -4,6 +4,17 @@ import subprocess
 from eval.evaluate_result import evaluate_log_metrics
 import os
 
+def log_inference_stage(stage, metrics=None):
+    wandb.log({"inference_stage": stage})
+
+    if stage == 0 or stage == 1:
+        wandb.log({
+            'AUPRC': -1,
+            'AUROC': -1,
+        })
+    else:
+        wandb.log(metrics)
+
 def evaluate_log_run(config):
     with open(f"/repository/datasets/{config['dataset']}/metadata.json") as f:
         dataset_metadata = json.load(f)
@@ -11,12 +22,7 @@ def evaluate_log_run(config):
     inference_path = f"/workspace/runs/{config['agent_id']}/inference.py"
     if not os.path.exists(inference_path):
         # Level 0: inference.py doesn't exist
-        wandb.log({"Level": 0})
-        error_metrics = {
-            'AUPRC': -1,
-            'AUROC': -1,
-        }
-        wandb.log(error_metrics)
+        log_inference_stage(0)
         return
 
     try:
@@ -29,27 +35,15 @@ def evaluate_log_run(config):
             print(f"Inference script error: {result.stderr}")
 
             # Level 1: inference.py exists but execution failed
-            wandb.log({"Level": 1})
-            
-            error_metrics = {
-                'AUPRC': -1,
-                'AUROC': -1,
-            }
-
-            wandb.log(error_metrics)
+            log_inference_stage(1)
 
             return
         
     except Exception as e:
         print(e)
         # Level 1: inference.py exists but execution failed
-        wandb.log({"Level": 1})
+        log_inference_stage(1)
         
-        error_metrics = {
-            'AUPRC': -1,
-            'AUROC': -1,
-        }
-        wandb.log(error_metrics)
         return
     
     try:
@@ -62,13 +56,7 @@ def evaluate_log_run(config):
     except Exception as e:
         print(e)
         # Level 1: inference.py exists and ran, but metrics calculation failed
-        wandb.log({"Level": 1})
-
-        error_metrics = {
-            'AUPRC': -1,
-            'AUROC': -1,
-        }
-        wandb.log(error_metrics)
+        log_inference_stage(1)
 
 
 def dry_run_evaluate_log_run(config):
