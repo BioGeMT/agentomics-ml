@@ -9,13 +9,15 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from prompts.prompts_utils import load_prompts
 import wandb
 from run_logging.wandb import setup_logging
-import asyncio
-import pprint
+from rich.console import Console
+from run_logging.memory_logging import print_data
 
 # logfire.configure(data_dir='/logfire/.logfire')
 dotenv.load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
 wandb_key = os.getenv("WANDB_API_KEY")
+
+console = Console() # rich console for pretty printing
 
 agent_id = create_new_user_and_rundir()
 
@@ -115,8 +117,7 @@ message_history = basic_agent.run_sync(user_prompt=user_prompt)
 
 evaluate_log_run(config)
 
-pp = pprint.PrettyPrinter(indent=2, compact=True, width=88)
-
-pp.pprint(message_history.all_messages())
+print_data(message_history.data, console=console)
+print_data(message_history.all_messages(), console=console)
 
 wandb.finish()

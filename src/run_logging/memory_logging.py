@@ -1,6 +1,7 @@
 from smolagents.memory import SystemPromptStep, TaskStep, ActionStep, PlanningStep
 from smolagents.monitoring import LogLevel
 import wandb
+from rich.pretty import pprint
 
 def replay(agent):
         logger = agent.logger
@@ -28,3 +29,6 @@ def replay(agent):
             "input_tokens": total_tokens['input'],
             "output_tokens": total_tokens['output']
         })
+
+def print_data(data, console):
+    pprint(data, console=console, indent_guides=True, expand_all=True)
