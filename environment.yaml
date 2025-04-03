@@ -16,3 +16,4 @@ dependencies:
     - scikit-learn
     - wandb
     - hrid
+    - pydantic-ai
