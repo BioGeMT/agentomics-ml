@@ -6,25 +6,41 @@ from utils.create_user import create_new_user_and_rundir
 # import logfire
 from run_logging.evaluate_log_run import evaluate_log_run
 from pydantic_ai.providers.openai import OpenAIProvider
+from prompts.prompts_utils import load_prompts
+import wandb
+from run_logging.wandb import setup_logging
+import asyncio
+import pprint
 
 # logfire.configure(data_dir='/logfire/.logfire')
 dotenv.load_dotenv()
+api_key = os.getenv("OPENAI_API_KEY")
+wandb_key = os.getenv("WANDB_API_KEY")
+
 agent_id = create_new_user_and_rundir()
+
+config = {
+    "agent_id" : agent_id,
+    "tags" : ["test_pydantic_ai"],
+    "dataset" : "human_non_tata_promoters",
+    "prompt" : "toolcalling_agent.yaml",
+}
+
+setup_logging(config, api_key=wandb_key)
+
+
 model = OpenAIModel( #Works for openrouter as well
     "gpt-4o-2024-08-06", 
     # 'deepseek/deepseek-r1','
     # "meta-llama/llama-3.3-70b-instruct",
     # base_url='https://openrouter.ai/api/v1',
     # api_key=os.getenv("OPENROUTER_API_KEY"),
-    provider=OpenAIProvider(api_key=os.getenv("OPENAI_API_KEY"))
-
+    provider=OpenAIProvider(api_key=api_key)
 )
+
 basic_agent = Agent(
     model=model, 
-    system_prompt=
-    """
-    You are a research developer assistant. Do whatever the user asks of you.
-    """,
+    system_prompt= load_prompts(config["prompt"]),
     # tools=[bash_tool],
 )
 
@@ -62,10 +78,6 @@ def _bash(command):
     """
     return bash.run(command)
 
-config = {
-    "agent_id" : agent_id,
-    "dataset" : "human_non_tata_promoters",
-}
 print(config)
 user_prompt = f"""
 You are using a linux system.
@@ -103,5 +115,8 @@ message_history = basic_agent.run_sync(user_prompt=user_prompt)
 
 evaluate_log_run(config)
 
-print(message_history.data)
-print(message_history.all_messages())
+pp = pprint.PrettyPrinter(indent=2, compact=True, width=88)
+
+pp.pprint(message_history.all_messages())
+
+wandb.finish()
