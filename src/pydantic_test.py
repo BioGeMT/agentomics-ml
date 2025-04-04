@@ -1,5 +1,6 @@
 from pydantic_ai import Agent, ModelRetry, UnexpectedModelBehavior, capture_run_messages
 from pydantic_ai.models.openai import OpenAIModel
+from pydantic import Field, BaseModel
 import dotenv
 import os
 from utils.create_user import create_new_user_and_rundir
@@ -22,6 +23,10 @@ wandb_key = os.getenv("WANDB_API_KEY")
 
 console = Console() # rich console for pretty printing
 
+class RepresentationReasoning(BaseModel):
+    representation: str = Field(description="The instructions for the coding implementation on how to represent the data before being passed to a Machine Learning model")
+    reasoning: str = Field(description="The reasoning behind your choice of representation")
+
 agent_id = create_new_user_and_rundir()
 
 config = {
@@ -43,13 +48,19 @@ model = OpenAIModel( #Works for openrouter as well
     provider=OpenAIProvider(api_key=api_key)
 )
 
+representation_agent = Agent(
+    model=model,
+    system_prompt= load_prompts(config["prompt"]),
+    result_type=RepresentationReasoning,
+)
+
 basic_agent = Agent(
     model=model, 
     system_prompt= load_prompts(config["prompt"]),
     # tools=[bash_tool],
 )
 
-timeout = 60
+timeout = 60 * 10
 from tools.bash_helpers import BashProcess
 bash = BashProcess(
     agent_id=agent_id,
@@ -105,14 +116,11 @@ def _write_python(code: str, file_path: str):
 
 @basic_agent.result_validator
 def validate_inference(ctx: RunContext, result):
-
-    raise ModelRetry("Please submit again")
     eval_output = dry_run_evaluate_log_run(config)
     if eval_output.returncode != 0:
         raise ModelRetry(str(eval_output))
     return result
 
-print(config)
 user_prompt = f"""
 You are using a linux system.
 You have access to CPU only, no GPU.
@@ -144,12 +152,14 @@ class: 1 if the promoter is a non-TATA promoter, 0 otherwise
 
 Validate your intermediate steps created files that are needed for the final inference script to run successfully before you run your final answer.
 Also make sure the inference script exists in your folder and is runnable, it will be subsequently called and you will be evaluated based on the model's generalization performance on hidden test data.
+Your first task is to choose and reason the data representation you will use. 
 """
 with capture_run_messages() as messages:
     try:
-        result = basic_agent.run_sync(user_prompt=user_prompt)
+        representation_result = representation_agent.run_sync(user_prompt=user_prompt)
+        console.log(representation_result.data)
+        result = basic_agent.run_sync(message_history=representation_result.all_messages(), user_prompt="Continue with the implementation part")
         console.log(result.all_messages())
-        console.log(result.data)
     except UnexpectedModelBehavior as e:
         console.log("Exception occured", e)
         console.log('Cause:', repr(e.__cause__))
