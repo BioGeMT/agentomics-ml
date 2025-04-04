@@ -1,4 +1,3 @@
-import wandb
 import json
 import subprocess
 from eval.evaluate_result import evaluate_log_metrics
