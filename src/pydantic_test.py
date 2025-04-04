@@ -1,4 +1,4 @@
-from pydantic_ai import Agent
+from pydantic_ai import Agent, ModelRetry, UnexpectedModelBehavior, capture_run_messages
 from pydantic_ai.models.openai import OpenAIModel
 import dotenv
 import os
@@ -11,6 +11,9 @@ import wandb
 from run_logging.wandb import setup_logging
 from rich.console import Console
 from run_logging.memory_logging import print_data
+from tools.write_python_tool import WritePythonTool
+from pydantic_ai import RunContext
+from run_logging.evaluate_log_run import dry_run_evaluate_log_run
 
 # logfire.configure(data_dir='/logfire/.logfire')
 dotenv.load_dotenv()
@@ -56,6 +59,12 @@ bash = BashProcess(
     timeout = timeout, #Seconds to wait for a command to finish
 )
 
+write_python = WritePythonTool(
+    agent_id=agent_id,
+    timeout=timeout,
+    add_code_to_response=False,
+    )
+
 @basic_agent.tool_plain
 def _bash(command):
     """
@@ -79,6 +88,29 @@ def _bash(command):
         command (str): A valid bash command.
     """
     return bash.run(command)
+
+@basic_agent.tool_plain
+def _write_python(code: str, file_path: str):
+    """
+    A tool to write python code into a single file.
+    Input must be a valid python code and name of the file.
+
+    Examples:
+    {
+        'code': "import numpy as np\nx = np.linspace(0, 10, 100)\nprint('data:',x)",
+        'file_path': '/workspace/runs/myname/numpy_test.py',
+    }
+    """
+    return write_python.forward(code, file_path)
+
+@basic_agent.result_validator
+def validate_inference(ctx: RunContext, result):
+
+    raise ModelRetry("Please submit again")
+    eval_output = dry_run_evaluate_log_run(config)
+    if eval_output.returncode != 0:
+        raise ModelRetry(str(eval_output))
+    return result
 
 print(config)
 user_prompt = f"""
@@ -113,11 +145,16 @@ class: 1 if the promoter is a non-TATA promoter, 0 otherwise
 Validate your intermediate steps created files that are needed for the final inference script to run successfully before you run your final answer.
 Also make sure the inference script exists in your folder and is runnable, it will be subsequently called and you will be evaluated based on the model's generalization performance on hidden test data.
 """
-message_history = basic_agent.run_sync(user_prompt=user_prompt)
+with capture_run_messages() as messages:
+    try:
+        result = basic_agent.run_sync(user_prompt=user_prompt)
+        console.log(result.all_messages())
+        console.log(result.data)
+    except UnexpectedModelBehavior as e:
+        console.log("Exception occured", e)
+        console.log('Cause:', repr(e.__cause__))
+        console.log("Messages: ", messages)
 
 evaluate_log_run(config)
-
-print_data(message_history.data, console=console)
-print_data(message_history.all_messages(), console=console)
 
 wandb.finish()
