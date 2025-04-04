@@ -3,17 +3,7 @@ import json
 import subprocess
 from eval.evaluate_result import evaluate_log_metrics
 import os
-
-def log_inference_stage(stage, metrics=None):
-    wandb.log({"inference_stage": stage})
-
-    if stage == 0 or stage == 1:
-        wandb.log({
-            'AUPRC': -1,
-            'AUROC': -1,
-        })
-    else:
-        wandb.log(metrics)
+from run_logging.logging_helpers import log_inference_stage_and_metrics
 
 def evaluate_log_run(config):
     with open(f"/repository/datasets/{config['dataset']}/metadata.json") as f:
@@ -22,7 +12,7 @@ def evaluate_log_run(config):
     inference_path = f"/workspace/runs/{config['agent_id']}/inference.py"
     if not os.path.exists(inference_path):
         # Level 0: inference.py doesn't exist
-        log_inference_stage(0)
+        log_inference_stage_and_metrics(0)
         return
 
     try:
@@ -35,14 +25,14 @@ def evaluate_log_run(config):
             print(f"Inference script error: {result.stderr}")
 
             # Level 1: inference.py exists but execution failed
-            log_inference_stage(1)
+            log_inference_stage_and_metrics(1)
 
             return
         
     except Exception as e:
         print(e)
         # Level 1: inference.py exists but execution failed
-        log_inference_stage(1)
+        log_inference_stage_and_metrics(1)
         
         return
     
@@ -50,13 +40,12 @@ def evaluate_log_run(config):
         evaluate_log_metrics(
             results_file=f"/workspace/runs/{config['agent_id']}/eval_predictions.csv",
             test_file=f"{dataset_metadata['test_split_with_labels']}",
-            output_file=f"/workspace/runs/{config['agent_id']}/metrics.txt",
-            logging_fn=wandb.log,
+            output_file=f"/workspace/runs/{config['agent_id']}/metrics.txt"
         )
     except Exception as e:
         print(e)
         # Level 1: inference.py exists and ran, but metrics calculation failed
-        log_inference_stage(1)
+        log_inference_stage_and_metrics(1)
 
 
 def dry_run_evaluate_log_run(config):
