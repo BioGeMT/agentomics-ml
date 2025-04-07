@@ -1,62 +1,80 @@
-import os
 import dotenv
-from smolagents import LiteLLMModel, ToolCallingAgent
-from smolagents.monitoring import LogLevel
-from tools.bash import BashTool
-from tools.write_python_tool import WritePythonTool
-from tools.submit_check import SubmitCheckTool
-from utils.models import MODELS
-from utils.create_user import create_new_user_and_rundir
-from run_logging.wandb import setup_logging
-from run_logging.evaluate_log_run import evaluate_log_run
-from run_logging.memory_logging import replay
-from prompts.prompts_utils import load_prompts
+import os
+
+from rich.console import Console
+from pydantic_ai import Agent, ModelRetry, UnexpectedModelBehavior, RunContext, UsageLimitExceeded, capture_run_messages
+from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_ai.usage import UsageLimits
 import wandb
 
+from prompts.prompts_utils import load_prompts
+from run_logging.evaluate_log_run import evaluate_log_run
+from run_logging.wandb import setup_logging
+from tools.bash import create_bash_tool
+from tools.write_python_tool import create_write_python_tool
+from run_logging.evaluate_log_run import dry_run_evaluate_log_run
+from utils.create_user import create_new_user_and_rundir
+from utils.models import MODELS
+
 dotenv.load_dotenv()
-api_key = os.getenv("OPENROUTER_API_KEY")
+api_key = os.getenv("OPENAI_API_KEY")
 wandb_key = os.getenv("WANDB_API_KEY")
+console = Console() # rich console for pretty printing
 
 for _ in range(1):
     agent_id = create_new_user_and_rundir()
- 
+
     config = {
         "agent_id" : agent_id,
-        "model" : MODELS.OPENROUTER_GPT4o,
+        "model" : MODELS.GPT4o,
         "temperature" : 1,
         "max_steps" : 30,
-        "dataset" : "human_non_tata_promoters",
+        "max_run_retries" : 1,
+        "max_validation_retries" : 5,
         "tags" : ["testing"],
+        "dataset" : "human_non_tata_promoters",
         "prompt" : "toolcalling_agent.yaml",
-        "planning_interval" : None,
     }
-    tools = [
-        BashTool(agent_id=agent_id, timeout=60 * 15, autoconda=True),
-        WritePythonTool(agent_id=agent_id, timeout=60 * 5, add_code_to_response=False),
-        SubmitCheckTool(config),
-    ]
-    config['tools'] = [{tool.name} for tool in tools]
-    config['tools_args'] = [{tool.name, str(tool.args)} for tool in tools if hasattr(tool, "args")]
 
     setup_logging(config, api_key=wandb_key)
 
-    model = LiteLLMModel(
-        model_id=config['model'],
-        api_key=api_key,
-        temperature=config["temperature"],
+    model = OpenAIModel( #Works for openrouter as well
+        config['model'], 
+        provider=OpenAIProvider(api_key=api_key)
     )
 
-    agent = ToolCallingAgent(
-        tools=tools,
-        model=model,
-        add_base_tools=False,
-        max_steps=config["max_steps"],
-        prompt_templates=load_prompts(config["prompt"]),
-        planning_interval=config["planning_interval"],
-        verbosity_level=LogLevel.DEBUG,
+    agent = Agent(
+        model=model, 
+        system_prompt= load_prompts(config["prompt"])["system_prompt"],
+        tools =[
+            create_bash_tool(
+                agent_id=config['agent_id'], 
+                timeout=60 * 15, 
+                autoconda=True,
+                max_retries=1),
+            create_write_python_tool(
+                agent_id=config['agent_id'], 
+                timeout=60 * 5, 
+                add_code_to_response=False,
+                max_retries=1),
+        ],
+        model_settings={'temperature':config['temperature']},
+        retries=config["max_run_retries"],
+        result_retries=config["max_validation_retries"],
     )
 
-    user_prompt = f"""
+    def validate_inference(ctx: RunContext, result):
+        eval_output = dry_run_evaluate_log_run(config)
+        console.log("Validating inference script")
+        console.log(eval_output)
+
+        if eval_output.returncode != 0:
+            raise ModelRetry(str(eval_output))
+        return result
+    agent.result_validator(validate_inference)
+
+    user_prompt=f"""
     You are using a linux system.
     You have access to CPU only, no GPU.
     You can only work in /workspace/runs/{config['agent_id']} directory.
@@ -73,22 +91,21 @@ for _ in range(1):
         --output (the output file path, this file should be a one column csv file with the predictions, the column name should be 'prediction')
     Look into the workspace/datasets/{config['dataset']} folder and create a ML classifier using files in there.
     Use the ..._train.csv as training data.
-    Use the ..._test.csv as testing data.
     Run all bash commands and python command in a way that prints the least possible amount of tokens into the console.
-    Create the best possible classifier that will generalize to new unseen data.
-
-
-    Column descriptions:
-    sequence: DNA sequence to be classified, alphabet: A, C, G, T, N
-    Make sure to tokenize for all characters from the alphabet.
-
-    class: 1 if the promoter is a non-TATA promoter, 0 otherwise
-
-    Validate your intermediate steps created files that are needed for the final inference script to run successfully before you run your final answer.
-    Also make sure the inference script exists in your folder and is runnable, it will be subsequently called and you will be evaluated based on the model's generalization performance on hidden test data.
+    Create the best possible classifier that will generalize to new unseen data, explore your data before building the model.
     """
 
-    agent.run(user_prompt)
+    with capture_run_messages() as messages:
+        try:
+            result = agent.run_sync(
+                user_prompt=user_prompt,
+                usage_limits=UsageLimits(request_limit=config["max_steps"]),
+            )
+            console.log(result.all_messages())
+        except (UnexpectedModelBehavior, UsageLimitExceeded) as e:
+            console.log("Exception occured", e)
+            console.log('Cause:', repr(e.__cause__))
+            console.log("Messages: ", messages)
+
     evaluate_log_run(config)
-    replay(agent)
     wandb.finish()
