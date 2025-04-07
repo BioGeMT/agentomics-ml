@@ -11,7 +11,6 @@ from prompts.prompts_utils import load_prompts
 import wandb
 from run_logging.wandb import setup_logging
 from rich.console import Console
-from run_logging.memory_logging import print_data
 from tools.write_python_tool import WritePythonTool
 from pydantic_ai import RunContext
 from run_logging.evaluate_log_run import dry_run_evaluate_log_run
