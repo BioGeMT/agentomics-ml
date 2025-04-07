@@ -7,6 +7,7 @@ dependencies:
   - ipykernel
   - ipywidgets
   - jupyter
+  - pydantic-ai==0.0.46
   - pip
   - pip:
     - smolagents
@@ -16,4 +17,3 @@ dependencies:
     - scikit-learn
     - wandb
     - hrid
-    - pydantic-ai
