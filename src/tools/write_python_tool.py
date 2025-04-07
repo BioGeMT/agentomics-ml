@@ -1,54 +1,42 @@
-from smolagents import Tool
+from pydantic_ai import Tool
 from .bash_helpers import BashProcess
 
-python_tool_desc = """
-A tool to write python code into a single file.
-Input must be a valid python code and name of the file.
+def create_write_python_tool(agent_id, timeout, add_code_to_response, max_retries):
+    bash = BashProcess(
+        agent_id=agent_id,
+        strip_newlines=False,
+        return_err_output=True,
+        persistent=True, 
+        timeout=timeout,
+    )
 
-Examples:
-{
-    'code': "import numpy as np\nx = np.linspace(0, 10, 100)\nprint('data:',x)",
-    'file_path': '/workspace/runs/myname/numpy_test.py',
-}
-"""
+    def _write_python(code: str, file_path: str):
+        """
+        A tool to write python code into a single file.
+        Input must be a valid python code and name of the file.
 
-class WritePythonTool(Tool):
-    name = "write_python"
-    description = python_tool_desc
-    inputs = {
-        'code': {
-            "type": "string",
-            "description": "A valid python code."
-        },
-        'file_path': {
-            "type": "string",
-            "description": f"A file path to write the code to."
-        }
-    }
-    output_type = "string"
+        Examples:
+        code : import numpy as np\\nx = np.linspace(0, 10, 100),
+        file_path : /workspace/runs/myname/numpy_test.py,
 
-    def __init__(self, agent_id, timeout, add_code_to_response):
-        self.bash = BashProcess(
-            agent_id=agent_id,
-            strip_newlines=False,
-            return_err_output=True,
-            persistent=True, 
-            timeout=timeout,
-        )
-        self.agent_id = agent_id
-        self.add_code_to_response = add_code_to_response
-        self.args = {
-            'timeout': timeout,
-            'add_code_to_response': add_code_to_response,
-        }
-        super().__init__()
-
-    def forward(self, code: str, file_path: str):
+        Args:
+            code: A valid python code.
+            file_path: A file path to write the code to.
+        """
         code = code.replace('"','\\"')
-        out_code =  self.bash.run(f"echo -e \"{code}\" > {file_path}")
+        out_code =  bash.run(f"echo -e \"{code}\" > {file_path}")
         #Check for syntax errors
-        out_syntax = self.bash.run(f"python -m py_compile {file_path}")
+        out_syntax = bash.run(f"python -m py_compile {file_path}")
 
-        if(self.add_code_to_response):
+        if(add_code_to_response):
             return out_code + out_syntax
         return out_syntax
+    
+    write_python_tool = Tool(
+        function=_write_python, 
+        takes_ctx=False, 
+        max_retries=max_retries,
+        # description=None, # Infered from the function docstring
+        require_parameter_descriptions=True
+    )
+    return write_python_tool
