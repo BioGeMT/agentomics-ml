@@ -1,13 +1,37 @@
+import time
 from pydantic_ai import Tool
 from .bash_helpers import BashProcess
 
+class ExclusiveBashProcess:
+    
+    def __init__(self, agent_id, autoconda, timeout):
+        self.locked = False
+
+        self.bash = BashProcess(
+            agent_id=agent_id,
+            autoconda=autoconda,
+            strip_newlines = False,
+            return_err_output = True,
+            persistent = True, # cd will change it for the next command etc... (better for the agent)
+            timeout = timeout, #Seconds to wait for a command to finish
+        )
+
+    def run(self, command: str):
+        """"
+        Run the bash unless it's already being run, wait until it's finished in that case.
+        """
+        while self.locked:
+            time.sleep(1)
+        self.locked = True
+        
+        out = self.bash.run(command)
+        self.locked = False
+        return out
+
 def create_bash_tool(agent_id, timeout, autoconda, max_retries):
-    bash = BashProcess(
+    bash = ExclusiveBashProcess(
         agent_id=agent_id,
         autoconda=autoconda,
-        strip_newlines = False,
-        return_err_output = True,
-        persistent = True, # cd will change it for the next command etc... (better for the agent)
         timeout = timeout, #Seconds to wait for a command to finish
     )
     def _bash(command: str):
@@ -28,7 +52,10 @@ def create_bash_tool(agent_id, timeout, autoconda, max_retries):
         Args:
             command: A valid bash command.
         """
-        return bash.run(command)
+        out = bash.run(command)
+        if(len(out) > 5000):
+            out = out[:5000]+"\n ... (output truncated, too long)"
+        return out
   
     bash_tool = Tool(
         function=_bash, 
