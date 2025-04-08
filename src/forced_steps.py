@@ -91,17 +91,6 @@ async def main():
         wandb.finish()
 
 async def run_architecture(agent, config):
-    class RepresentationReasoning(BaseModel):
-        representation: str = Field(
-            description="""
-            The instructions for the coding implementation on how to represent the data before being passed to a Machine Learning model
-            """
-        )
-        reasoning: str = Field(
-            description="""
-            The reasoning behind your choice of representation
-            """
-        )
     start_user_prompt=f"""
     You are using a linux system.
     You have access to CPU only, no GPU.
@@ -121,16 +110,60 @@ async def run_architecture(agent, config):
     Use the ..._train.csv as training data.
     Run all bash commands and python command in a way that prints the least possible amount of tokens into the console.
     Create the best possible classifier that will generalize to new unseen data, explore your data before building the model.
-
-    Your first task is to choose and reason the data representation you will use.
     """
+    class DataExplorationReasoning(BaseModel):
+        data_description: str = Field(
+            description="""
+            The description of the data, including descriptional statistics and insights you gathered from exploring the data. Include domain-specific features that are relevant to your task.
+            """
+        )
+    messages_data_exploration = await run_agent(
+        agent=agent, 
+        user_prompt=start_user_prompt + "Your first task is to explore the data.", 
+        max_steps=config["max_steps"],
+        result_type=DataExplorationReasoning,
+        message_history=None,
+    )
+
+    class RepresentationReasoning(BaseModel):
+        representation: str = Field(
+            description="""
+            The instructions for the coding implementation on how to represent the data before being passed to a Machine Learning model
+            """
+        )
+        reasoning: str = Field(
+            description="""
+            The reasoning behind your choice of representation
+            """
+        )
 
     messages_representation_step = await run_agent(
         agent=agent, 
-        user_prompt=start_user_prompt, 
+        user_prompt="Your next task is to choose the data representation. (Don't implement it yet)", 
         max_steps=config["max_steps"],
         result_type=RepresentationReasoning,
-        message_history=None,
+        message_history=messages_data_exploration,
+        # deps=Deps(name="bob")
+    )
+
+    class ModelArchitectureReasoning(BaseModel):
+        architecture: str = Field(
+            description="""
+            The machine learning model type and architecture you have chosen for your task.
+            """
+        )
+        reasoning: str = Field(
+            description="""
+            The reasoning behind your choice of architecture
+            """
+        )
+
+    messages_architecture_step = await run_agent(
+        agent=agent, 
+        user_prompt="Your next task is to choose the model architecture. (Don't implement it yet)", 
+        max_steps=config["max_steps"],
+        result_type=ModelArchitectureReasoning,
+        message_history=messages_representation_step,
         # deps=Deps(name="bob")
     )
 
@@ -154,7 +187,7 @@ async def run_architecture(agent, config):
         user_prompt="Continue with your task", 
         max_steps=config["max_steps"],
         result_type=FinalOutcome,
-        message_history=messages_representation_step,
+        message_history=messages_architecture_step,
     )
 
 asyncio.run(main())
