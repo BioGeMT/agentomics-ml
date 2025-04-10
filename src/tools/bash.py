@@ -1,11 +1,11 @@
-import time
+import threading
 from pydantic_ai import Tool
 from .bash_helpers import BashProcess
 
 class ExclusiveBashProcess:
     
     def __init__(self, agent_id, autoconda, timeout):
-        self.locked = False
+        self.locked = threading.Lock()
 
         self.bash = BashProcess(
             agent_id=agent_id,
@@ -20,13 +20,8 @@ class ExclusiveBashProcess:
         """"
         Run the bash unless it's already being run, wait until it's finished in that case.
         """
-        while self.locked:
-            time.sleep(1)
-        self.locked = True
-        
-        out = self.bash.run(command)
-        self.locked = False
-        return out
+        with self.locked:
+            return self.bash.run(command)
 
 def create_bash_tool(agent_id, timeout, autoconda, max_retries):
     bash = ExclusiveBashProcess(
