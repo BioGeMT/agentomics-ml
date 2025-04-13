@@ -1,0 +1,163 @@
+Run 3 generated on 20250413_142558
+Train script: /home/eddy/Documents/Agentomics-ML/datasets/competitors/1-shot_llm_agent/gpt4o/train_3.py
+Inference script: /home/eddy/Documents/Agentomics-ML/datasets/competitors/1-shot_llm_agent/gpt4o/inference_3.py
+
+Train execution on 2025-04-13 14:26:08
+Command: python /home/eddy/Documents/Agentomics-ML/datasets/competitors/1-shot_llm_agent/gpt4o/train_3.py
+Duration: 9.44 seconds
+Return code: 0
+
+STDOUT:
+Epoch 1/20
+
+[1m  1/678[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m13:26[0m 1s/step - accuracy: 0.3750 - loss: 0.7184
+[1m 85/678[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m0s[0m 601us/step - accuracy: 0.6752 - loss: 0.5823
+[1m168/678[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m0s[0m 603us/step - accuracy: 0.7090 - loss: 0.5468
+[1m260/678[0m [32m━━━━━━━[0m[37m━━━━━━━━━━━━━[0m [1m0s[0m 583us/step - accuracy: 0.7262 - loss: 0.5251
+[1m346/678[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 584us/step - accuracy: 0.7382 - loss: 0.5099
+[1m433/678[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m0s[0m 583us/step - accuracy: 0.7475 - loss: 0.4975
+[1m505/678[0m [32m━━━━━━━━━━━━━━[0m[37m━━━━━━[0m [1m0s[0m 600us/step - accuracy: 0.7537 - loss: 0.4891
+[1m588/678[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 600us/step - accuracy: 0.7599 - loss: 0.4804
+[1m665/678[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 607us/step - accuracy: 0.7650 - loss: 0.4731
+[1m678/678[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 1ms/step - accuracy: 0.7657 - loss: 0.4719  
+[1m678/678[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m2s[0m 2ms/step - accuracy: 0.7658 - loss: 0.4718 - val_accuracy: 0.8419 - val_loss: 0.3468
+Epoch 2/20
+
+[1m  1/678[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m7s[0m 11ms/step - accuracy: 0.9375 - loss: 0.2067
+[1m 59/678[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m0s[0m 864us/step - accuracy: 0.8718 - loss: 0.2959
+[1m132/678[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m0s[0m 768us/step - accuracy: 0.8675 - loss: 0.3044
+[1m215/678[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m0s[0m 704us/step - accuracy: 0.8664 - loss: 0.3093
+[1m295/678[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m0s[0m 683us/step - accuracy: 0.8658 - loss: 0.3112
+[1m393/678[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m0s[0m 641us/step - accuracy: 0.8650 - loss: 0.3128
+[1m449/678[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m0s[0m 676us/step - accuracy: 0.8647 - loss: 0.3135
+[1m509/678[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 695us/step - accuracy: 0.8644 - loss: 0.3141
+[1m588/678[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 687us/step - accuracy: 0.8642 - loss: 0.3148
+[1m669/678[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 679us/step - accuracy: 0.8639 - loss: 0.3154
+[1m678/678[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 840us/step - accuracy: 0.8639 - loss: 0.3155 - val_accuracy: 0.8605 - val_loss: 0.3213
+Epoch 3/20
+
+[1m  1/678[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m7s[0m 11ms/step - accuracy: 1.0000 - loss: 0.1012
+[1m 83/678[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m0s[0m 613us/step - accuracy: 0.8886 - loss: 0.2811
+[1m140/678[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m0s[0m 723us/step - accuracy: 0.8884 - loss: 0.2798
+[1m224/678[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m0s[0m 677us/step - accuracy: 0.8844 - loss: 0.2848
+[1m277/678[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m0s[0m 728us/step - accuracy: 0.8831 - loss: 0.2861
+[1m337/678[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m0s[0m 749us/step - accuracy: 0.8825 - loss: 0.2863
+[1m409/678[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m0s[0m 740us/step - accuracy: 0.8820 - loss: 0.2862
+[1m447/678[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m0s[0m 791us/step - accuracy: 0.8819 - loss: 0.2860
+[1m519/678[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 778us/step - accuracy: 0.8817 - loss: 0.2858
+[1m565/678[0m [32m━━━━━━━━━━━━━━━━[0m[37m━━━━[0m [1m0s[0m 805us/step - accuracy: 0.8816 - loss: 0.2857
+[1m586/678[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 863us/step - accuracy: 0.8815 - loss: 0.2858
+[1m603/678[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 923us/step - accuracy: 0.8814 - loss: 0.2858
+[1m621/678[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 981us/step - accuracy: 0.8813 - loss: 0.2859
+[1m638/678[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 1ms/step - accuracy: 0.8812 - loss: 0.2859  
+[1m664/678[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 1ms/step - accuracy: 0.8811 - loss: 0.2860
+[1m678/678[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 1ms/step - accuracy: 0.8810 - loss: 0.2861 - val_accuracy: 0.8594 - val_loss: 0.3220
+Epoch 4/20
+
+[1m  1/678[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m7s[0m 11ms/step - accuracy: 0.9062 - loss: 0.1812
+[1m 50/678[0m [32m━[0m[37m━━━━━━━━━━━━━━━━━━━[0m [1m0s[0m 1ms/step - accuracy: 0.8949 - loss: 0.2565 
+[1m 93/678[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m0s[0m 1ms/step - accuracy: 0.8962 - loss: 0.2542
+[1m131/678[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m0s[0m 1ms/step - accuracy: 0.8964 - loss: 0.2539
+[1m203/678[0m [32m━━━━━[0m[37m━━━━━━━━━━━━━━━[0m [1m0s[0m 1ms/step - accuracy: 0.8971 - loss: 0.2523
+[1m289/678[0m [32m━━━━━━━━[0m[37m━━━━━━━━━━━━[0m [1m0s[0m 877us/step - accuracy: 0.8970 - loss: 0.2511
+[1m341/678[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 894us/step - accuracy: 0.8967 - loss: 0.2512
+[1m408/678[0m [32m━━━━━━━━━━━━[0m[37m━━━━━━━━[0m [1m0s[0m 870us/step - accuracy: 0.8964 - loss: 0.2516
+[1m510/678[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 795us/step - accuracy: 0.8959 - loss: 0.2530
+[1m593/678[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 769us/step - accuracy: 0.8956 - loss: 0.2536
+[1m652/678[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 776us/step - accuracy: 0.8954 - loss: 0.2540
+[1m678/678[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 979us/step - accuracy: 0.8953 - loss: 0.2542 - val_accuracy: 0.8594 - val_loss: 0.3350
+Epoch 5/20
+
+[1m  1/678[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m7s[0m 10ms/step - accuracy: 0.9062 - loss: 0.2162
+[1m 74/678[0m [32m━━[0m[37m━━━━━━━━━━━━━━━━━━[0m [1m0s[0m 688us/step - accuracy: 0.9159 - loss: 0.2146
+[1m112/678[0m [32m━━━[0m[37m━━━━━━━━━━━━━━━━━[0m [1m0s[0m 904us/step - accuracy: 0.9140 - loss: 0.2193
+[1m137/678[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m0s[0m 1ms/step - accuracy: 0.9134 - loss: 0.2206  
+[1m159/678[0m [32m━━━━[0m[37m━━━━━━━━━━━━━━━━[0m [1m0s[0m 1ms/step - accuracy: 0.9132 - loss: 0.2214
+[1m231/678[0m [32m━━━━━━[0m[37m━━━━━━━━━━━━━━[0m [1m0s[0m 1ms/step - accuracy: 0.9126 - loss: 0.2228
+[1m328/678[0m [32m━━━━━━━━━[0m[37m━━━━━━━━━━━[0m [1m0s[0m 927us/step - accuracy: 0.9115 - loss: 0.2235
+[1m387/678[0m [32m━━━━━━━━━━━[0m[37m━━━━━━━━━[0m [1m0s[0m 915us/step - accuracy: 0.9111 - loss: 0.2237
+[1m461/678[0m [32m━━━━━━━━━━━━━[0m[37m━━━━━━━[0m [1m0s[0m 878us/step - accuracy: 0.9106 - loss: 0.2242
+[1m541/678[0m [32m━━━━━━━━━━━━━━━[0m[37m━━━━━[0m [1m0s[0m 841us/step - accuracy: 0.9098 - loss: 0.2251
+[1m603/678[0m [32m━━━━━━━━━━━━━━━━━[0m[37m━━━[0m [1m0s[0m 838us/step - accuracy: 0.9093 - loss: 0.2258
+[1m656/678[0m [32m━━━━━━━━━━━━━━━━━━━[0m[37m━[0m [1m0s[0m 848us/step - accuracy: 0.9089 - loss: 0.2264
+[1m678/678[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m1s[0m 1ms/step - accuracy: 0.9087 - loss: 0.2267 - val_accuracy: 0.8406 - val_loss: 0.3644
+
+[1m  1/170[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m16s[0m 95ms/step
+[1m153/170[0m [32m━━━━━━━━━━━━━━━━━━[0m[37m━━[0m [1m0s[0m 331us/step
+[1m170/170[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 800us/step
+[1m170/170[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 844us/step
+Validation AUC: 0.9335
+
+STDERR:
+2025-04-13 14:25:59.442665: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2025-04-13 14:25:59.448838: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:485] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+2025-04-13 14:25:59.456517: E external/local_xla/xla/stream_executor/cuda/cuda_dnn.cc:8454] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+2025-04-13 14:25:59.458753: E external/local_xla/xla/stream_executor/cuda/cuda_blas.cc:1452] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+2025-04-13 14:25:59.464348: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: SSE4.1 SSE4.2 AVX AVX2 AVX_VNNI FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+/home/eddy/miniconda3/envs/s/lib/python3.12/site-packages/keras/src/layers/convolutional/base_conv.py:107: UserWarning: Do not pass an `input_shape`/`input_dim` argument to a layer. When using Sequential models, prefer using an `Input(shape)` object as the first layer in the model instead.
+  super().__init__(activity_regularizer=activity_regularizer, **kwargs)
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1744547161.766927   47336 cuda_executor.cc:1015] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+I0000 00:00:1744547161.788142   47336 cuda_executor.cc:1015] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+I0000 00:00:1744547161.788408   47336 cuda_executor.cc:1015] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+I0000 00:00:1744547161.789155   47336 cuda_executor.cc:1015] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+I0000 00:00:1744547161.789226   47336 cuda_executor.cc:1015] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+I0000 00:00:1744547161.789276   47336 cuda_executor.cc:1015] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+I0000 00:00:1744547161.837747   47336 cuda_executor.cc:1015] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+I0000 00:00:1744547161.837842   47336 cuda_executor.cc:1015] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+I0000 00:00:1744547161.837905   47336 cuda_executor.cc:1015] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+2025-04-13 14:26:01.837956: I tensorflow/core/common_runtime/gpu/gpu_device.cc:2021] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 8854 MB memory:  -> device: 0, name: NVIDIA GeForce RTX 4070, pci bus id: 0000:01:00.0, compute capability: 8.9
+I0000 00:00:1744547162.706206   47424 service.cc:146] XLA service 0x7b337400a8b0 initialized for platform CUDA (this does not guarantee that XLA will be used). Devices:
+I0000 00:00:1744547162.706218   47424 service.cc:154]   StreamExecutor device (0): NVIDIA GeForce RTX 4070, Compute Capability 8.9
+2025-04-13 14:26:02.716257: I tensorflow/compiler/mlir/tensorflow/utils/dump_mlir_util.cc:268] disabling MLIR crash reproducer, set env var `MLIR_CRASH_REPRODUCER_DIRECTORY` to enable.
+2025-04-13 14:26:02.771504: I external/local_xla/xla/stream_executor/cuda/cuda_dnn.cc:531] Loaded cuDNN version 90100
+I0000 00:00:1744547163.518487   47424 device_compiler.h:188] Compiled cluster using XLA!  This line is logged at most once for the lifetime of the process.
+WARNING:absl:You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+
+Inference execution on 2025-04-13 14:26:11
+Command: python /home/eddy/Documents/Agentomics-ML/datasets/competitors/1-shot_llm_agent/gpt4o/inference_3.py --input /home/eddy/Documents/Agentomics-ML/datasets/human_non_tata_promoters/human_nontata_promoters_test.no_label.csv --output /home/eddy/Documents/Agentomics-ML/datasets/competitors/1-shot_llm_agent/gpt4o/predictions.csv
+Duration: 3.31 seconds
+Return code: 0
+
+STDOUT:
+
+[1m  1/283[0m [37m━━━━━━━━━━━━━━━━━━━━[0m [1m1:05[0m 231ms/step
+[1m145/283[0m [32m━━━━━━━━━━[0m[37m━━━━━━━━━━[0m [1m0s[0m 350us/step  
+[1m283/283[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 699us/step
+[1m283/283[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m0s[0m 726us/step
+Predictions saved to /home/eddy/Documents/Agentomics-ML/datasets/competitors/1-shot_llm_agent/gpt4o/predictions.csv
+
+STDERR:
+2025-04-13 14:26:08.661439: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2025-04-13 14:26:08.667498: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:485] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+2025-04-13 14:26:08.675163: E external/local_xla/xla/stream_executor/cuda/cuda_dnn.cc:8454] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+2025-04-13 14:26:08.677415: E external/local_xla/xla/stream_executor/cuda/cuda_blas.cc:1452] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+2025-04-13 14:26:08.683097: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: SSE4.1 SSE4.2 AVX AVX2 AVX_VNNI FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+I0000 00:00:1744547169.737065   48205 cuda_executor.cc:1015] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+I0000 00:00:1744547169.759350   48205 cuda_executor.cc:1015] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+I0000 00:00:1744547169.759455   48205 cuda_executor.cc:1015] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+I0000 00:00:1744547169.760700   48205 cuda_executor.cc:1015] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+I0000 00:00:1744547169.760783   48205 cuda_executor.cc:1015] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+I0000 00:00:1744547169.760829   48205 cuda_executor.cc:1015] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+I0000 00:00:1744547169.800944   48205 cuda_executor.cc:1015] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+I0000 00:00:1744547169.801168   48205 cuda_executor.cc:1015] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+I0000 00:00:1744547169.801298   48205 cuda_executor.cc:1015] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+2025-04-13 14:26:09.801401: I tensorflow/core/common_runtime/gpu/gpu_device.cc:2021] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 8851 MB memory:  -> device: 0, name: NVIDIA GeForce RTX 4070, pci bus id: 0000:01:00.0, compute capability: 8.9
+WARNING:absl:Compiled the loaded model, but the compiled metrics have yet to be built. `model.compile_metrics` will be empty until you train or evaluate the model.
+I0000 00:00:1744547170.902270   48295 service.cc:146] XLA service 0x766b8c0040b0 initialized for platform CUDA (this does not guarantee that XLA will be used). Devices:
+I0000 00:00:1744547170.902284   48295 service.cc:154]   StreamExecutor device (0): NVIDIA GeForce RTX 4070, Compute Capability 8.9
+2025-04-13 14:26:10.905323: I tensorflow/compiler/mlir/tensorflow/utils/dump_mlir_util.cc:268] disabling MLIR crash reproducer, set env var `MLIR_CRASH_REPRODUCER_DIRECTORY` to enable.
+2025-04-13 14:26:10.912823: I external/local_xla/xla/stream_executor/cuda/cuda_dnn.cc:531] Loaded cuDNN version 90100
+I0000 00:00:1744547171.097908   48295 device_compiler.h:188] Compiled cluster using XLA!  This line is logged at most once for the lifetime of the process.
+
+Evaluation execution on 2025-04-13 14:26:12
+Command: python /home/eddy/Documents/Agentomics-ML/src/eval/evaluate_result.py --results /home/eddy/Documents/Agentomics-ML/datasets/competitors/1-shot_llm_agent/gpt4o/predictions.csv --test /home/eddy/Documents/Agentomics-ML/datasets/human_non_tata_promoters/human_nontata_promoters_test.csv --output /home/eddy/Documents/Agentomics-ML/datasets/competitors/1-shot_llm_agent/gpt4o/metrics_run_3.txt
+Duration: 0.43 seconds
+Return code: 0
+
+STDOUT:
+
+STDERR:
