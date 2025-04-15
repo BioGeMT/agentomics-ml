@@ -22,7 +22,7 @@ import shutil
 
 def check_claude_code_installed():
     """
-    Check if Claude Code CLI is installed in the system.
+    Check if Claude Code CLI is installed in the system
 
     Returns:
         bool: True if Claude Code is installed, False otherwise
