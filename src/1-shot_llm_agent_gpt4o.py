@@ -251,7 +251,7 @@ def run_evaluation(results_file, test_file, output_file, dataset_name, output_di
     test_labels_file = f"/home/eddy/Documents/Agentomics-ML/datasets/{dataset_name}/human_nontata_promoters_test.csv"
 
     # Run the evaluation script
-    cmd = ["python", "/home/eddy/Documents/Agentomics-ML/src/eval/evaluate_result.py",
+    cmd = ["python", "/home/eddy/Documents/Agentomics-ML/src/eval/evaluate_result_no-logging.py",
            "--results", results_file,
            "--test", test_labels_file,
            "--output", output_file]
@@ -353,9 +353,9 @@ def main():
     prompt = f"""
 You are an expert bioinformatics ML engineer. I need you to create a machine learning model for a classification task.
 
-- Create a machine learning classifier for the dataset: {args.dataset}
-- Training file: /home/eddy/Documents/Agentomics-ML/datasets/{args.dataset}/human_nontata_promoters_train.csv
-- Test file: /home/eddy/Documents/Agentomics-ML/datasets/{args.dataset}/human_nontata_promoters_test.no_label.csv
+- Create a machine learning classifier for the dataset:
+- Training file: /home/eddy/Documents/Agentomics-ML/datasets/human_non_tata_promoters/human_nontata_promoters_train.csv
+- Test file: /home/eddy/Documents/Agentomics-ML/datasets/human_non_tata_promoters/human_nontata_promoters_test.no_label.csv
 
 DATASET INFO:
 - This dataset contains DNA sequences for classification
@@ -372,8 +372,8 @@ REQUIREMENTS:
 
 2. The inference.py script must:
    - Accept command-line arguments: 
-        --input (input file path: /home/eddy/Documents/Agentomics-ML/datasets/competitors/1-shot_llm_agent/gpt4o)
-        --output (output file path: /home/eddy/Documents/Agentomics-ML/datasets/competitors/1-shot_llm_agent/gpt4o)
+        --input
+        --output
    - Output a CSV file with a column named 'prediction'
    - Use ABSOLUTE PATHS for any file references
    - Handle input file format issues appropriately

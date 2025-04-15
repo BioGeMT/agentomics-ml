@@ -24,7 +24,7 @@ import argparse
 import sys
 import pandas as pd
 from sklearn.metrics import average_precision_score, roc_auc_score
-# from run_logging.logging_helpers import log_inference_stage_and_metrics
+from run_logging.logging_helpers import log_inference_stage_and_metrics
 
 def evaluate_log_metrics(results_file, test_file, output_file=None, 
                     pred_col="prediction", class_col="class"):
@@ -81,7 +81,7 @@ def evaluate_log_metrics(results_file, test_file, output_file=None,
     }
 
     # Log the metrics
-    # log_inference_stage_and_metrics(2, metrics=metrics)
+    log_inference_stage_and_metrics(2, metrics=metrics)
 
     # Save the results to the output file if specified
     if output_file:
