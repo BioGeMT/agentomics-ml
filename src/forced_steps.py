@@ -11,6 +11,9 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.usage import UsageLimits
 import wandb
 
+from steps.data_exploration import DataExploration
+from steps.data_representation import DataRepresentation
+from steps.model_architecture import ModelArchitecture
 from prompts.prompts_utils import load_prompts
 from run_logging.evaluate_log_run import evaluate_log_run
 from run_logging.wandb import setup_logging
@@ -49,56 +52,6 @@ async def run_agent(agent: Agent, user_prompt, max_steps, result_type, message_h
             console.log("Messages: ", messages)
             return None
 
-
-async def main():
-    for _ in range(1):
-        agent_id = create_new_user_and_rundir()
-
-        config = {
-            "agent_id" : agent_id,
-            "model" : MODELS.GPT4o,
-            "temperature" : 1,
-            "max_steps" : 30,
-            "max_run_retries" : 1,
-            "max_validation_retries" : 5,
-            "tags" : ["testing"],
-            "dataset" : "human_non_tata_promoters",
-            "prompt" : "toolcalling_agent.yaml",
-        }
-
-        setup_logging(config, api_key=wandb_key)
-
-        model = OpenAIModel( #Works for openrouter as well
-            config['model'], 
-            provider=OpenAIProvider(api_key=api_key, 
-                                    http_client=async_http_client)
-        )
-
-        agent = Agent(
-            model=model, 
-            system_prompt= load_prompts(config["prompt"])["system_prompt"],
-            tools =[
-                create_bash_tool(
-                    agent_id=config['agent_id'], 
-                    timeout=60 * 15, 
-                    autoconda=True,
-                    max_retries=1,
-                    proxy=True),
-                create_write_python_tool(
-                    agent_id=config['agent_id'], 
-                    timeout=60 * 5, 
-                    add_code_to_response=False,
-                    max_retries=1),
-            ],
-            model_settings={'temperature':config['temperature']},
-            retries=config["max_run_retries"],
-            result_retries=config["max_validation_retries"],
-        )
-
-        await run_architecture(agent, config)
-        evaluate_log_run(config)
-        wandb.finish()
-
 async def run_architecture(agent, config):
     start_user_prompt=f"""
     You are using a linux system.
@@ -119,59 +72,31 @@ async def run_architecture(agent, config):
     Use the ..._train.csv as training data.
     Run all bash commands and python command in a way that prints the least possible amount of tokens into the console.
     Create the best possible classifier that will generalize to new unseen data, explore your data before building the model.
+    Note that you can use GPU-accelerated libraries such as PyTorch.
     """
-    class DataExplorationReasoning(BaseModel):
-        data_description: str = Field(
-            description="""
-            The description of the data, including descriptional statistics and insights you gathered from exploring the data. Include domain-specific features that are relevant to your task.
-            """
-        )
+    
     messages_data_exploration = await run_agent(
         agent=agent, 
         user_prompt=start_user_prompt + "Your first task is to explore the data.", 
         max_steps=config["max_steps"],
-        result_type=DataExplorationReasoning,
+        result_type=DataExploration,
         message_history=None,
     )
-
-    class RepresentationReasoning(BaseModel):
-        representation: str = Field(
-            description="""
-            The instructions for the coding implementation on how to represent the data before being passed to a Machine Learning model
-            """
-        )
-        reasoning: str = Field(
-            description="""
-            The reasoning behind your choice of representation
-            """
-        )
 
     messages_representation_step = await run_agent(
         agent=agent, 
         user_prompt="Your next task is to choose the data representation. (Don't implement it yet)", 
         max_steps=config["max_steps"],
-        result_type=RepresentationReasoning,
+        result_type=DataRepresentation,
         message_history=messages_data_exploration,
         # deps=Deps(name="bob")
     )
-
-    class ModelArchitectureReasoning(BaseModel):
-        architecture: str = Field(
-            description="""
-            The machine learning model type and architecture you have chosen for your task.
-            """
-        )
-        reasoning: str = Field(
-            description="""
-            The reasoning behind your choice of architecture
-            """
-        )
 
     messages_architecture_step = await run_agent(
         agent=agent, 
         user_prompt="Your next task is to choose the model architecture. (Don't implement it yet)", 
         max_steps=config["max_steps"],
-        result_type=ModelArchitectureReasoning,
+        result_type=ModelArchitecture,
         message_history=messages_representation_step,
         # deps=Deps(name="bob")
     )
@@ -198,5 +123,54 @@ async def run_architecture(agent, config):
         result_type=FinalOutcome,
         message_history=messages_architecture_step,
     )
+
+async def main():
+    for _ in range(1):
+        agent_id = create_new_user_and_rundir()
+
+        config = {
+            "agent_id" : agent_id,
+            "model" : MODELS.GPT4o,
+            "temperature" : 1,
+            "max_steps" : 30,
+            "max_run_retries" : 1,
+            "max_validation_retries" : 5,
+            "tags" : ["testing"],
+            "dataset" : "human_non_tata_promoters",
+            "prompt" : "toolcalling_agent.yaml",
+        }
+
+        setup_logging(config, api_key=wandb_key)
+
+        model = OpenAIModel( #Works for openrouter as well
+            config['model'],
+            provider=OpenAIProvider(api_key=api_key,
+                                    http_client=async_http_client)
+        )
+
+        agent = Agent(
+            model=model,
+            system_prompt= load_prompts(config["prompt"])["system_prompt"],
+            tools =[
+                create_bash_tool(
+                    agent_id=config['agent_id'],
+                    timeout=60 * 15, 
+                    autoconda=True,
+                    max_retries=1,
+                    proxy=True),
+                create_write_python_tool(
+                    agent_id=config['agent_id'], 
+                    timeout=60 * 5, 
+                    add_code_to_response=False,
+                    max_retries=1),
+            ],
+            model_settings={'temperature':config['temperature']},
+            retries=config["max_run_retries"],
+            result_retries=config["max_validation_retries"],
+        )
+
+        await run_architecture(agent, config)
+        evaluate_log_run(config)
+        wandb.finish()
 
 asyncio.run(main())
