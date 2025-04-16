@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 import platform
 import re
 import subprocess
@@ -57,6 +58,7 @@ class BashProcess:
         return_err_output: bool = False,
         persistent: bool = False,
         timeout: int = 60,
+        proxy: bool = False
     ):
         """
         Initializes with default settings
@@ -68,9 +70,12 @@ class BashProcess:
         self.timeout = timeout
         self.agent_id = agent_id
         self.autoconda = autoconda
+        self.proxy = proxy
         if persistent:
             self.prompt = str(uuid4())
             self.process = self._initialize_persistent_process(self, self.prompt, agent_id)
+            if self.proxy:
+                self.proxy_setup()
             if(autoconda):
                 self.create_conda_env()
                 self.activate_conda_env()
@@ -90,6 +95,21 @@ class BashProcess:
         self.run(
             f"source activate {self.agent_id}_env"
         )
+
+    def proxy_setup(self):
+        # Add proxy configuration to the new bash environment
+        http_proxy = os.environ.get("HTTP_PROXY", "")
+        https_proxy = os.environ.get("HTTPS_PROXY", "")
+        
+        if http_proxy:
+            self.run(f"export HTTP_PROXY={http_proxy}")
+            self.run(f"export http_proxy={http_proxy}")
+            self.run(f"conda config --set proxy_servers.http {http_proxy}")
+    
+        if https_proxy:
+            self.run(f"export HTTPS_PROXY={https_proxy}")
+            self.run(f"export https_proxy={https_proxy}")
+            self.run(f"conda config --set proxy_servers.https {https_proxy}")
 
     @staticmethod
     def _lazy_import_pexpect() -> pexpect:
@@ -123,12 +143,10 @@ class BashProcess:
         process = pexpect.spawn(
             "sudo", ["-u", agent_id, "bash"], encoding="utf-8"
         )
-
         process.sendline("export PATH=/opt/conda/bin:$PATH")
 
         # Set the custom prompt
         process.sendline("PS1=" + prompt)
-
         process.expect_exact(prompt, timeout=self.timeout)
         return process
 

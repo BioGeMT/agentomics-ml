@@ -82,7 +82,8 @@ async def main():
                     agent_id=config['agent_id'], 
                     timeout=60 * 15, 
                     autoconda=True,
-                    max_retries=1),
+                    max_retries=1,
+                    proxy=True),
                 create_write_python_tool(
                     agent_id=config['agent_id'], 
                     timeout=60 * 5, 
