@@ -1,6 +1,7 @@
 import dotenv
 import os
 import asyncio
+import httpx
 
 from rich.console import Console
 from pydantic import Field, BaseModel, field_validator
@@ -22,7 +23,13 @@ from utils.models import MODELS
 dotenv.load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
 wandb_key = os.getenv("WANDB_API_KEY")
+proxy = os.getenv("HTTP_PROXY")
 console = Console() # rich console for pretty printing
+
+async_http_client = httpx.AsyncClient(
+    proxy=proxy,
+    timeout= 1 * 60
+)
 
 async def run_agent(agent: Agent, user_prompt, max_steps, result_type, message_history):
     with capture_run_messages() as messages:
@@ -63,7 +70,8 @@ async def main():
 
         model = OpenAIModel( #Works for openrouter as well
             config['model'], 
-            provider=OpenAIProvider(api_key=api_key)
+            provider=OpenAIProvider(api_key=api_key, 
+                                    http_client=async_http_client)
         )
 
         agent = Agent(
