@@ -41,6 +41,12 @@ def evaluate_log_run(config):
             test_file=f"{dataset_metadata['test_split_with_labels']}",
             output_file=f"/workspace/runs/{config['agent_id']}/metrics.txt"
         )
+
+        with open(f"/workspace/runs/{config['agent_id']}/metrics.txt", 'r') as file:
+            metrics = file.read()
+    
+        return metrics
+
     except Exception as e:
         print(e)
         # Level 1: inference.py exists and ran, but metrics calculation failed
