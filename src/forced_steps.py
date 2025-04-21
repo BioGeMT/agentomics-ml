@@ -130,7 +130,7 @@ async def main():
 
         config = {
             "agent_id" : agent_id,
-            "model" : MODELS.GPT4o,
+            "model" : MODELS.GPT4_1,
             "temperature" : 1,
             "max_steps" : 30,
             "max_run_retries" : 1,
