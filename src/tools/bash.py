@@ -4,7 +4,7 @@ from .bash_helpers import BashProcess
 
 class ExclusiveBashProcess:
     
-    def __init__(self, agent_id, autoconda, timeout, proxy):
+    def __init__(self, agent_id, autoconda, timeout, proxy, auto_torch):
         self.locked = threading.Lock()
 
         self.bash = BashProcess(
@@ -14,7 +14,8 @@ class ExclusiveBashProcess:
             return_err_output = True,
             persistent = True, # cd will change it for the next command etc... (better for the agent)
             timeout = timeout, #Seconds to wait for a command to finish
-            proxy = proxy
+            proxy = proxy,
+            auto_torch=auto_torch
         )
 
     def run(self, command: str):
@@ -24,12 +25,13 @@ class ExclusiveBashProcess:
         with self.locked:
             return self.bash.run(command)
 
-def create_bash_tool(agent_id, timeout, autoconda, max_retries, proxy = False):
+def create_bash_tool(agent_id, timeout, autoconda, max_retries, proxy = False, auto_torch=True):
     bash = ExclusiveBashProcess(
         agent_id=agent_id,
         autoconda=autoconda,
         timeout = timeout, #Seconds to wait for a command to finish
-        proxy = proxy
+        proxy = proxy,
+        auto_torch=auto_torch
     )
     def _bash(command: str):
         """

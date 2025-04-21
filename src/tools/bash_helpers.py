@@ -58,7 +58,8 @@ class BashProcess:
         return_err_output: bool = False,
         persistent: bool = False,
         timeout: int = 60,
-        proxy: bool = False
+        proxy: bool = False,
+        auto_torch: bool = False
     ):
         """
         Initializes with default settings
@@ -71,6 +72,7 @@ class BashProcess:
         self.agent_id = agent_id
         self.autoconda = autoconda
         self.proxy = proxy
+        self.auto_torch = auto_torch
         if persistent:
             self.prompt = str(uuid4())
             self.process = self._initialize_persistent_process(self, self.prompt, agent_id)
@@ -79,6 +81,8 @@ class BashProcess:
             if(autoconda):
                 self.create_conda_env()
                 self.activate_conda_env()
+            if auto_torch:
+                self.install_torch()
 
     def custom_reset(self):
         self.prompt = str(uuid4())
@@ -110,6 +114,16 @@ class BashProcess:
             self.run(f"export HTTPS_PROXY={https_proxy}")
             self.run(f"export https_proxy={https_proxy}")
             self.run(f"conda config --set proxy_servers.https {https_proxy}")
+
+    def install_torch(self):
+        self.run(
+            "pip3 install torch torchvision torchaudio"
+        )
+
+        # check if installation went well
+        self.run(
+            "python -c \"import torch; print('PyTorch installed successfully. CUDA available:', torch.cuda.is_available())\""
+        )
 
     @staticmethod
     def _lazy_import_pexpect() -> pexpect:
