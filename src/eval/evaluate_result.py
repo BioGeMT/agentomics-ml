@@ -24,7 +24,17 @@ import argparse
 import sys
 import pandas as pd
 from sklearn.metrics import average_precision_score, roc_auc_score
-from run_logging.logging_helpers import log_inference_stage_and_metrics
+import os
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+try:
+    from run_logging.logging_helpers import log_inference_stage_and_metrics
+except ImportError:
+    # Fallback function if the import still fails
+    def log_inference_stage_and_metrics(stage, metrics=None):
+        print(f"Logging stage: {stage}")
+        if metrics:
+            print(f"Metrics: {metrics}")
 
 def evaluate_log_metrics(results_file, test_file, output_file=None, 
                     pred_col="prediction", class_col="class"):
