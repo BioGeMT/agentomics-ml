@@ -12,3 +12,5 @@ class MODELS(StrEnum):
     GPT4o_mini="gpt-4o-mini-2024-07-18"
     OPENROUTER_GPT4o="openrouter/openai/gpt-4"
     OPENROUTER_SONNET_37="openrouter/anthropic/claude-3-7-sonnet-20250219"
+    GPT4_1="gpt-4.1-2025-04-14"
+    GPT4_1_mini="gpt-4.1-mini-2025-04-14"
