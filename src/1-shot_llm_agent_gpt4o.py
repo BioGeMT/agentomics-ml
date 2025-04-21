@@ -4,8 +4,6 @@ import argparse
 import dotenv
 import re
 import subprocess
-import time
-import datetime
 from openai import OpenAI
 
 
@@ -59,7 +57,7 @@ def run_evaluation(results_file, dataset_name, output_dir, run_name, base_path):
     test_labels_file = os.path.join(base_path, f"datasets/{dataset_name}/human_nontata_promoters_test.csv")
     metrics_file = os.path.join(output_dir, f"metrics_run_{run_name}.txt")
 
-    eval_script_path = os.path.join(base_path, "src/eval/evaluate_result_no-logging.py")
+    eval_script_path = os.path.join(base_path, "src/eval/evaluate_result.py")
 
     cmd = ["python", eval_script_path,
            "--results", results_file,
