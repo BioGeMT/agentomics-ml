@@ -26,13 +26,8 @@ from utils.models import MODELS
 dotenv.load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
 wandb_key = os.getenv("WANDB_API_KEY")
-proxy = os.getenv("HTTP_PROXY")
+proxy_url = os.getenv("HTTP_PROXY")
 console = Console() # rich console for pretty printing
-
-async_http_client = httpx.AsyncClient(
-    proxy=proxy,
-    timeout= 1 * 60
-)
 
 async def run_agent(agent: Agent, user_prompt, max_steps, result_type, message_history):
     with capture_run_messages() as messages:
@@ -138,7 +133,13 @@ async def main():
             "tags" : ["testing"],
             "dataset" : "human_non_tata_promoters",
             "prompt" : "toolcalling_agent.yaml",
+            "use_proxy" : False,
         }
+
+        async_http_client = httpx.AsyncClient(
+            proxy=proxy_url if config["use_proxy"] else None,
+            timeout= 1 * 60
+        )
 
         setup_logging(config, api_key=wandb_key)
 
@@ -157,7 +158,7 @@ async def main():
                     timeout=60 * 15, 
                     autoconda=True,
                     max_retries=1,
-                    proxy=True,
+                    proxy=config['use_proxy'],
                     auto_torch=True),
                 create_write_python_tool(
                     agent_id=config['agent_id'], 
