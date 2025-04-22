@@ -130,3 +130,28 @@ docker run -d \
     --env https_proxy=$https_proxy \
     agents_img
 ```
+
+## GPU settings
+
+If you need to use GPU acceleration with your container, you'll need to configure Docker to access your NVIDIA GPUs.
+
+1. Install the NVIDIA Container Toolkit:
+   ```
+   # Follow the installation guide at:
+   # https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
+   ```
+
+2. Build the Docker image as per above instructions (add proxy arguments if needed)
+
+3. Run the container with GPU access:
+   ```
+   docker run -d \
+       --name agents_cont \
+       -v $(pwd):/repository:ro \
+       -v agents_volume:/workspace/runs \
+       --gpus all \
+       --env NVIDIA_VISIBLE_DEVICES=all \
+       agents_img
+   ```
+
+   Note: If using a proxy, add the appropriate environment variables as shown in the proxy section.
