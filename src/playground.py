@@ -14,6 +14,7 @@ import wandb
 from steps.data_exploration import DataExploration
 from steps.data_representation import DataRepresentation
 from steps.model_architecture import ModelArchitecture
+from eval.final_outcome import FinalOutcome
 from prompts.prompts_utils import load_prompts
 from run_logging.evaluate_log_run import evaluate_log_run
 from run_logging.wandb import setup_logging
@@ -47,7 +48,7 @@ async def run_agent(agent: Agent, user_prompt, max_steps, result_type, message_h
             console.log("Messages: ", messages)
             return None
 
-async def run_architecture(agent, config):
+async def run_architecture(agent, validation_agent, config):
     start_user_prompt=f"""
     You are using a linux system.
     You have access to both CPU and GPU resources.
@@ -95,27 +96,12 @@ async def run_architecture(agent, config):
         message_history=messages_representation_step,
         # deps=Deps(name="bob")
     )
-
-    #We can validate like this, or with result_validator but then we'd need separate agents
-    class FinalOutcome(BaseModel):
-        path_to_inference_file: str = Field(description="Absolute path to the inference.py file")
-
-        @field_validator('path_to_inference_file')  
-        @classmethod
-        def validate_inference(cls, value):
-            eval_output = dry_run_evaluate_log_run(config)
-            console.log("Validating inference script")
-            console.log(eval_output)
-
-            if eval_output.returncode != 0:
-                raise ModelRetry(str(eval_output))
-            return value
         
     _messages = await run_agent(
-        agent=agent, 
+        agent=validation_agent, 
         user_prompt="Continue with your task", 
         max_steps=config["max_steps"],
-        result_type=FinalOutcome,
+        result_type=None,
         message_history=messages_architecture_step,
     )
 
@@ -149,10 +135,7 @@ async def main():
                                     http_client=async_http_client)
         )
 
-        agent = Agent(
-            model=model,
-            system_prompt= load_prompts(config["prompt"])["system_prompt"],
-            tools =[
+        tools =[
                 create_bash_tool(
                     agent_id=config['agent_id'],
                     timeout=60 * 15, 
@@ -165,13 +148,33 @@ async def main():
                     timeout=60 * 5, 
                     add_code_to_response=False,
                     max_retries=1),
-            ],
+            ]
+
+        agent = Agent(
+            model=model,
+            system_prompt= load_prompts(config["prompt"])["system_prompt"],
+            tools=tools,
             model_settings={'temperature':config['temperature']},
-            retries=config["max_run_retries"],
+            retries=config["max_run_retries"]
+        )
+
+        validation_agent = Agent(
+            model=model,
+            system_prompt= load_prompts(config["prompt"])["system_prompt"],
+            tools=tools,
+            model_settings={'temperature':config['temperature']},
+            result_type= FinalOutcome,
             result_retries=config["max_validation_retries"],
         )
 
-        await run_architecture(agent, config)
+        @validation_agent.result_validator
+        async def check_inference(result: FinalOutcome) -> FinalOutcome:
+            eval_out = dry_run_evaluate_log_run(config)
+            if eval_out.returncode != 0:
+                raise ModelRetry(str(eval_out))
+            return result
+
+        await run_architecture(agent, validation_agent, config)
         evaluate_log_run(config)
         wandb.finish()
 
