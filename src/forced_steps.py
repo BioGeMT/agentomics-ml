@@ -40,11 +40,11 @@ async def run_agent(agent: Agent, user_prompt, max_steps, result_type, message_h
             console.log("Exception occured", e)
             console.log('Cause:', repr(e.__cause__))
             console.log("Messages: ", messages)
-            return None
+            return e
 
 
 async def main():
-    for _ in range(1):
+    for _ in range(2):
         agent_id = create_new_user_and_rundir()
 
         config = {

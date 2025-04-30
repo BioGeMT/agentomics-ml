@@ -40,7 +40,7 @@ async def run_agent(agent: Agent, user_prompt, max_steps, result_type, message_h
             console.log("Exception occured", e)
             console.log('Cause:', repr(e.__cause__))
             console.log("Messages: ", messages)
-            return None
+            return e
 
 
 async def main():
@@ -58,7 +58,7 @@ async def main():
             "max_steps" : 30,
             "max_run_retries" : 1,
             "max_validation_retries" : 5,
-            "tags" : ["testing"],
+            "tags" : ["double_run"],
             "dataset" : "human_non_tata_promoters",
             "prompt" : "toolcalling_agent.yaml",
         }
@@ -115,17 +115,12 @@ async def main():
         else:
             base_prompt = f"""
 Here is the context from the previous run:
-[Data Exploration]
-Prompt: "Your first task is to explore the data."
-Output: {previous_run_context["data_exploration"]}
-[Data Representation]
-Prompt: "Your next task is to choose the data representation. (Don't implement it yet)"
-Output: {previous_run_context["representation"]}
-[Model Architecture]
-Prompt: "Your next task is to choose the model architecture. (Don't implement it yet)"
-Output: {previous_run_context["architecture"]}
-[Final Outcome]
-Output: {previous_run_context["final"]}
+[Previous run's context]
+{previous_run_context}
+[End of previous run's context]
+[Previous run's validation]
+{previous_validation_result}
+[End of previous run's validation]
 At the end of this prompt, you will find the validation metrics (AUPRC and AUROC).
 If the final validation step indicates a failure (non-zero return code), reattempt.
 Otherwise, use the provided AUPRC and AUROC values to refine and improve your solution.
@@ -133,24 +128,19 @@ You can inspect the previous code, /workspace/runs/{config['agent_id']}/inferenc
 If you are not able to find the script, try to generate it. If the script is available,
 improve it.
 """
-
+        
         try:
             run_context = await run_architecture(agent, config, base_prompt)
-            validation_result = evaluate_log_run(config)
+            validation_result = evaluate_log_run(config)       
         except Exception as e:
-            run_context = {
-                "data_exploration": f"Exception occurred: {e}",
-                "representation": f"Exception occurred: {e}",
-                "architecture": f"Exception occurred: {e}",
-                "final": f"Exception occurred: {e}",
-            }
-            validation_result = f"Exception occurred: {e}"
-        wandb.finish()
-
+            run_context = e
+            validation_result = e
         if run_index == 0:
             previous_run_context = run_context
             previous_validation_result = validation_result
         
+    wandb.finish()
+
 async def run_architecture(agent, config, base_prompt):
 
     class DataExplorationReasoning(BaseModel):
@@ -232,11 +222,6 @@ async def run_architecture(agent, config, base_prompt):
         message_history=messages_architecture_step,
     )
 
-    return {
-        "data_exploration": messages_data_exploration,
-        "representation": messages_representation_step,
-        "architecture": messages_architecture_step,
-        "final": _messages
-    }
+    return _messages
 
 asyncio.run(main())
