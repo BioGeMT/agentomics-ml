@@ -7,8 +7,8 @@ import re
 import subprocess
 import wandb
 
-# Add the parent directory to sys.path to import modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add the repository src directory to sys.path to import modules
+sys.path.append("/repository/src")
 
 # Import existing functions
 from run_logging.wandb import setup_logging
@@ -164,11 +164,11 @@ REQUIREMENTS:
    - Train a robust model suitable for DNA sequence classification
    - Handle encoding of DNA sequences appropriately
    - Use validation to ensure good generalization
-   - Save the trained model to: {run_dir}/model_{run_name}.h5
+   - Save the trained model to: {run_dir}/model_{run_name}.pkl using joblib or pickle
 
 3. For inference.py:
    - Accept arguments: --input and --output
-   - Load the model from: {run_dir}/model_{run_name}.h5
+   - Load the model from: {run_dir}/model_{run_name}.pkl
    - Output a CSV with column 'prediction' containing RAW PROBABILITIES (not binary classes)
    - Use pd.DataFrame({{'prediction': predictions.flatten()}}) to save predictions
    - Compute and report AUC
