@@ -39,7 +39,9 @@ def evaluate_log_run(config):
         evaluate_log_metrics(
             results_file=f"/workspace/runs/{config['agent_id']}/eval_predictions.csv",
             test_file=f"{dataset_metadata['test_split_with_labels']}",
-            output_file=f"/workspace/runs/{config['agent_id']}/metrics.txt"
+            output_file=f"/workspace/runs/{config['agent_id']}/metrics.txt",
+            label_to_scalar=dataset_metadata['label_to_scalar'],
+            class_col=dataset_metadata['class_col'],
         )
     except Exception as e:
         print(e)
