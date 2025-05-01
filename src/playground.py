@@ -84,7 +84,6 @@ async def run_architecture(agent, config):
         max_steps=config["max_steps"],
         result_type=DataRepresentation,
         message_history=messages_data_exploration,
-        # deps=Deps(name="bob")
     )
 
     messages_architecture_step = await run_agent(
@@ -93,7 +92,6 @@ async def run_architecture(agent, config):
         max_steps=config["max_steps"],
         result_type=ModelArchitecture,
         message_history=messages_representation_step,
-        # deps=Deps(name="bob")
     )
 
     #We can validate like this, or with result_validator but then we'd need separate agents
@@ -131,7 +129,7 @@ async def main():
             "max_run_retries" : 1,
             "max_validation_retries" : 5,
             "tags" : ["testing"],
-            "dataset" : "human_non_tata_promoters",
+            "dataset" : "human_nontata_promoters",
             "prompt" : "toolcalling_agent.yaml",
             "use_proxy" : False,
         }
