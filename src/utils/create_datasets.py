@@ -1,6 +1,7 @@
 from pathlib import Path
 import os
 import json
+import pandas as pd
 
 def generate_mirbench_files():
     from miRBench.dataset import download_dataset as mirbench_download_dataset
