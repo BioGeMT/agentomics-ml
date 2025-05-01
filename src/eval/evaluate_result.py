@@ -26,7 +26,7 @@ import pandas as pd
 from sklearn.metrics import average_precision_score, roc_auc_score
 from run_logging.logging_helpers import log_inference_stage_and_metrics
 
-def evaluate_log_metrics(results_file, test_file, output_file=None, 
+def evaluate_log_metrics(results_file, test_file, label_to_scalar, output_file=None, 
                     pred_col="prediction", class_col="class"):
     """
     Evaluate classification metrics for a model's predictions.
@@ -62,15 +62,17 @@ def evaluate_log_metrics(results_file, test_file, output_file=None,
 
     # Merge the results and test files on the index
     merged = pd.merge(results, test, left_index=True, right_index=True)
+    merged['class_numeric'] = merged[class_col].map(lambda x: int(label_to_scalar[x]))
+    merged['prediction_numeric'] = merged[pred_col].map(lambda x: int(label_to_scalar[x]))
 
     # Calculate metrics using the specified columns
     try:
-        auprc = average_precision_score(merged[class_col], merged[pred_col])
+        auprc = average_precision_score(merged['class_numeric'], merged['prediction_numeric'])
     except Exception as e:
         raise ValueError(f"Error calculating AUPRC: {e}")
 
     try:
-        auroc = roc_auc_score(merged[class_col], merged[pred_col])
+        auroc = roc_auc_score(merged['class_numeric'], merged['prediction_numeric'])
     except Exception as e:
         raise ValueError(f"Error calculating AUROC: {e}")
 
