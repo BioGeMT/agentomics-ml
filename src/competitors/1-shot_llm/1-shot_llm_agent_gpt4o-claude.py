@@ -95,11 +95,41 @@ def generate_and_run_scripts(client, provider, model, dataset, temperature, run_
         dataset_knowledge = f.read()
 
     dataset_to_hints = {
-        "human_nontata_promoters": """
-        - Format: CSV with columns 'sequence' (DNA sequence, 251 nucleotides long) and 'numeric_label' (0 or 1)
-        - Contains sequences of nucleotides 'A', 'G', 'T', 'C' and 'N'
-        - Classifies non-TATA promoters (numeric_label=1) vs non-promoters (numeric_label=0)
-        """
+        "human_nontata_promoters": 
+            """
+            - Format: CSV with columns 'sequence' (DNA sequence, 251 nucleotides long) and 'numeric_label' (0 or 1)
+            - Contains sequences of nucleotides 'A', 'G', 'T', 'C' and 'N'
+            """,
+        "drosophila_enhancers_stark":
+            """
+            - Format: CSV with columns 'sequence' (DNA sequence, varying lengths) and 'numeric_label' (0 or 1)
+            - Contains sequences of nucleotides 'A', 'G', 'T', 'C'
+            """,
+        "human_enhancers_cohn":
+            """
+            - Format: CSV with columns 'sequence' (DNA sequence, 500 nucleotides long) and 'numeric_label' (0 or 1)
+            - Contains sequences of nucleotides 'A', 'G', 'T', 'C'
+            """,
+        "human_enhancers_ensembl":
+            """
+            - Format: CSV with columns 'sequence' (DNA sequence, varying lengths) and 'numeric_label' (0 or 1)
+            - Contains sequences of nucleotides 'A', 'G', 'T', 'C' and 'N'
+            """,
+        "human_ensembl_regulatory":
+            """
+            - Format: CSV with columns 'sequence' (DNA sequence, varying lengths) and 'numeric_label' (0, 1, or 2),
+            - Contains sequences of nucleotides 'A', 'G', 'T', 'C' and 'N'
+            """,
+        "human_ocr_ensembl":
+            """
+            - Format: CSV with columns 'sequence' (DNA sequence, varying lengths) and 'numeric_label' (0 or 1)
+            - Contains sequences of nucleotides 'A', 'G', 'T', 'C' and 'N'
+            """,
+        "AGO2_CLASH_Hejret2023":
+            """
+            - Format: CSV with columns 'gene' (DNA sequence, 50 nucleotides long), 'noncodingRNA' (varying length) and 'numeric_label' (0 or 1)
+            - Contains sequences of nucleotides 'A', 'G', 'T', 'C'
+            """,
 
     }
     prompt = f"""
