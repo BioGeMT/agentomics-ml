@@ -7,17 +7,14 @@ import subprocess
 import wandb
 import json
 
-# Add the repository src directory to sys.path to import modules
 sys.path.append("/repository/src")
 
-# Import existing functions
 from run_logging.wandb import setup_logging
 from run_logging.logging_helpers import log_inference_stage_and_metrics
 from run_logging.evaluate_log_run import evaluate_log_metrics
 from openai import OpenAI
 from anthropic import Anthropic
 
-# Import create_user function
 sys.path.append("/repository/src/utils")
 from create_user import create_new_user_and_rundir
 
@@ -52,8 +49,8 @@ def extract_scripts(response_text):
 
 def save_scripts(train_script, inference_script, output_dir, run_name):
     os.makedirs(output_dir, exist_ok=True)
-    train_path = os.path.join(output_dir, f"train_{run_name}.py")
-    inference_path = os.path.join(output_dir, f"inference_{run_name}.py")
+    train_path = os.path.join(output_dir, f"train.py")
+    inference_path = os.path.join(output_dir, f"inference.py")
 
     with open(train_path, "w") as f:
         f.write(train_script)
@@ -73,44 +70,60 @@ def run_script(script_path, script_type, output_dir, test_csv_no_labels_path=Non
     print(f"STDERR: {process.stderr}")
     return process.returncode
 
-def run_evaluation(results_file, test_labels_file, output_dir):
+def run_evaluation(results_file, test_labels_file, output_dir, label_to_scalar, class_col):
     print(f"\nRunning evaluation...")
     metrics_file_path = os.path.join(output_dir, f"metrics.txt")
     return evaluate_log_metrics(
         results_file=results_file,
         test_file=test_labels_file,
-        output_file=metrics_file_path
+        output_file=metrics_file_path,
+        label_to_scalar=label_to_scalar,
+        class_col=class_col,
     )
 
-#TODO promoter-specific prompt!
-def generate_and_run_scripts(client, provider, model, temperature, train_csv_path,
-                             test_csv_no_labels_path, test_csv_path, run_name, max_tokens):
+def generate_and_run_scripts(client, provider, model, dataset, temperature, run_name, max_tokens):
     run_dir = os.path.join("/workspace/runs", run_name)
+    with open(f"/repository/datasets/{dataset}/metadata.json") as f:
+        dataset_metadata = json.load(f)
+    train_csv_path = dataset_metadata['train_split']
+    test_csv_no_labels_path = dataset_metadata['test_split_no_labels']
+    test_csv_path = dataset_metadata['test_split_with_labels']
+    label_to_scalar = dataset_metadata['label_to_scalar']
+    class_col = dataset_metadata['class_col']
+    dataset_knowledge_path = dataset_metadata['dataset_knowledge']
+    with open(dataset_knowledge_path) as f:
+        dataset_knowledge = f.read()
+
+    dataset_to_hints = {
+        "human_nontata_promoters": """
+        - Format: CSV with columns 'sequence' (DNA sequence, 251 nucleotides long) and 'numeric_label' (0 or 1)
+        - Contains sequences of nucleotides 'A', 'G', 'T', 'C' and 'N'
+        - Classifies non-TATA promoters (numeric_label=1) vs non-promoters (numeric_label=0)
+        """
+
+    }
     prompt = f"""
-You are an expert bioinformatics ML engineer. Create a machine learning model for DNA sequence classification.
+You are an expert bioinformatics ML engineer. Create a machine learning model sequence classification.
 
 DATASET:
 - Training file: {train_csv_path}
 - Test file: {test_csv_no_labels_path}
-- Format: CSV with columns 'sequence' (DNA sequence, 251 nucleotides long) and 'class' (0 or 1)
-- Contains sequences of nucleotides 'A', 'G', 'T', 'C' and 'N'
-- Classifies non-TATA promoters (class=1) vs non-promoters (class=0)
+{dataset_to_hints[dataset]}
+
+Dataset knowledge:
+{dataset_knowledge}
 
 REQUIREMENTS:
 1. Create TWO Python scripts: train.py and inference.py
 
 2. For train.py:
-   - Train a robust model suitable for DNA sequence classification
-   - Handle encoding of DNA sequences appropriately
-   - Use validation to ensure good generalization
+   - Train a robust model suitable for the given dataset
    - Save the trained model to: {run_dir}/model_{run_name}.pkl using joblib or pickle
 
 3. For inference.py:
    - Accept arguments: --input and --output
    - Load the model from: {run_dir}/model_{run_name}.pkl
    - Output a CSV with column 'prediction' containing RAW PROBABILITIES (not binary classes)
-   - Use pd.DataFrame({{'prediction': predictions.flatten()}}) to save predictions
-   - Compute and report AUC
 
 Provide complete code for both scripts with "# train.py" and "# inference.py" headers.
 """
@@ -131,7 +144,7 @@ Provide complete code for both scripts with "# train.py" and "# inference.py" he
 
     try:
         results_file = os.path.join(run_dir, "predictions.csv")
-        run_evaluation(results_file, test_csv_path, run_dir)
+        run_evaluation(results_file, test_csv_path, run_dir, label_to_scalar, class_col)
     except Exception as e:
         print(f"Error during evaluation: {e}")
         log_inference_stage_and_metrics(1)
@@ -145,7 +158,7 @@ def parse_args():
                         help="Model name (e.g., gpt-4o-2024-08-06, claude-3.5-sonnet-20240620)")
     parser.add_argument("--temp", type=float, required=True, help="Temperature for LLM generation")
     parser.add_argument("--max-tokens", type=int, required=True, help="Maximum tokens for LLM response")
-    parser.add_argument("--tags", nargs='+', default=["testing"], help="Tags for wandb run")
+    parser.add_argument("--tags", required=True, nargs='+', help="List of tags for wandb run")
 
     return parser.parse_args()
 
@@ -168,28 +181,18 @@ def main():
     }
 
     wandb_key = os.getenv("WANDB_API_KEY")
-    if not wandb_key:
-        raise EnvironmentError("WANDB_API_KEY must be set in your .env file")
     setup_logging(config, api_key=wandb_key)
 
     client = get_client(config['provider'])
-
-    with open(f"/repository/datasets/{config['dataset']}/metadata.json") as f:
-        dataset_metadata = json.load(f)
-    train_csv = dataset_metadata['train_split']
-    test_csv_no_labels = dataset_metadata['test_split_no_labels']
-    test_csv = dataset_metadata['test_split_with_labels']
 
     generate_and_run_scripts(
         client=client,
         provider=args.provider,
         model=args.model,
+        dataset=args.dataset,
         temperature=args.temp,
-        train_csv_path=train_csv,
-        test_csv_no_labels_path=test_csv_no_labels,
-        test_csv_path = test_csv,
         run_name=run_id,
-        max_tokens=args.max_tokens
+        max_tokens=args.max_tokens,
     )
     wandb.finish()
 
