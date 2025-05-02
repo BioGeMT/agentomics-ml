@@ -1,0 +1,16 @@
+name: oneshot-env
+channels:
+  - conda-forge
+dependencies:
+  - python==3.10
+  - pandas
+  - anthropic
+  - openai
+  - keras
+  - tensorflow
+  - pip
+  - pip:
+    - scikit-learn
+    - wandb
+    - hrid
+    - python-dotenv

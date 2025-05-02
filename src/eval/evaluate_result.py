@@ -1,25 +1,3 @@
-#!/usr/bin/env python3
-"""
-Evaluate classification metrics for a model's predictions.
-
-This script computes the following metrics:
-  - Average Precision Score (AUPRC): Area under the Precision-Recall curve.
-  - ROC AUC Score (AUROC): Area under the Receiver Operating Characteristic curve.
-
-Usage:
-    python evaluate_result.py --results <results_file> --test <test_file> --output <output_file>
-           [--pred-col <predicted_column_name>] [--class-col <true_label_column_name>]
-
-Arguments:
-    -r, --results      Path to the results CSV file. This file must include a column containing predicted probability scores.
-                        Default prediction column is 'prediction', changeable via --pred-col.
-    -t, --test         Path to the test CSV file. This file must include a column containing the true binary labels.
-                        Default true label column is 'class', changeable via --class-col.
-    -o, --output       Path to the output file where the computed metrics will be saved.
-    --pred-col         (Optional) Name of the prediction column in the results file (default: 'prediction').
-    --class-col        (Optional) Name of the class/label column in the test file (default: 'class').
-"""
-
 import argparse
 import sys
 import pandas as pd
@@ -27,68 +5,24 @@ from sklearn.metrics import average_precision_score, roc_auc_score, accuracy_sco
 from run_logging.logging_helpers import log_inference_stage_and_metrics
 
 def evaluate_log_metrics(results_file, test_file, label_to_scalar, output_file=None, 
-                    pred_col="prediction", class_col="class"):
-    """
-    Evaluate classification metrics for a model's predictions.
+                    pred_col="prediction", class_col="class", acc_threshold=0.5):
     
-    Args:
-        results_file (str): Path to the results CSV file with predictions.
-        test_file (str): Path to the test CSV file with true labels.
-        output_file (str, optional): Path to save the metrics. If None, metrics are not saved to a file.
-        pred_col (str): Name of the prediction column in the results file.
-        class_col (str): Name of the class/label column in the test file.
-        
-    Returns:
-        dict: Dictionary containing the computed metrics (AUPRC and AUROC).
-    """
-    # Load the results and test files
-    try:
-        results = pd.read_csv(results_file)
-    except Exception as e:
-        raise ValueError(f"Error reading results file '{results_file}': {e}")
+    results = pd.read_csv(results_file)
+    test = pd.read_csv(test_file)
 
-    try:
-        test = pd.read_csv(test_file)
-    except Exception as e:
-        raise ValueError(f"Error reading test file '{test_file}': {e}")
-
-    # Check if the required columns exist in the respective files
-    if pred_col not in results.columns:
-        raise ValueError(f"The prediction column '{pred_col}' was not found in the results file. "
-                        f"Available columns: {results.columns.tolist()}")
-    if class_col not in test.columns:
-        raise ValueError(f"The class column '{class_col}' was not found in the test file. "
-                        f"Available columns: {test.columns.tolist()}")
-
-    # Merge the results and test files on the index
     merged = pd.merge(results, test, left_index=True, right_index=True)
     merged['class_numeric'] = merged[class_col].map(lambda x: int(label_to_scalar[x]))
-    merged['prediction_numeric'] = merged[pred_col].map(lambda x: int(label_to_scalar[x]))
 
-    # Calculate metrics using the specified columns
-    try:
-        auprc = average_precision_score(merged['class_numeric'], merged['prediction_numeric'])
-    except Exception as e:
-        raise ValueError(f"Error calculating AUPRC: {e}")
+    auprc = average_precision_score(merged['class_numeric'], merged[pred_col])
+    auroc = roc_auc_score(merged['class_numeric'], merged[pred_col])
+    accuracy = accuracy_score(merged['class_numeric'], (merged[pred_col] >= acc_threshold).astype(int))
 
-    try:
-        auroc = roc_auc_score(merged['class_numeric'], merged['prediction_numeric'])
-    except Exception as e:
-        raise ValueError(f"Error calculating AUROC: {e}")
-    
-    try:
-        accuracy = accuracy_score(merged['class_numeric'], merged['prediction_numeric'])
-    except Exception as e:
-        raise ValueError(f"Error calculating accuracy: {e}")
-
-    # Create metrics dictionary
     metrics = {
         "AUPRC": auprc,
         "AUROC": auroc,
         "ACC": accuracy,
     }
 
-    # Log the metrics
     log_inference_stage_and_metrics(2, metrics=metrics)
 
     # Save the results to the output file if specified
