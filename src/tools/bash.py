@@ -1,14 +1,37 @@
+import threading
 from pydantic_ai import Tool
 from .bash_helpers import BashProcess
 
-def create_bash_tool(agent_id, timeout, autoconda, max_retries):
-    bash = BashProcess(
+class ExclusiveBashProcess:
+    
+    def __init__(self, agent_id, autoconda, timeout, proxy, auto_torch):
+        self.locked = threading.Lock()
+
+        self.bash = BashProcess(
+            agent_id=agent_id,
+            autoconda=autoconda,
+            strip_newlines = False,
+            return_err_output = True,
+            persistent = True, # cd will change it for the next command etc... (better for the agent)
+            timeout = timeout, #Seconds to wait for a command to finish
+            proxy = proxy,
+            auto_torch=auto_torch
+        )
+
+    def run(self, command: str):
+        """"
+        Run the bash unless it's already being run, wait until it's finished in that case.
+        """
+        with self.locked:
+            return self.bash.run(command)
+
+def create_bash_tool(agent_id, timeout, autoconda, max_retries, proxy = False, auto_torch=True):
+    bash = ExclusiveBashProcess(
         agent_id=agent_id,
         autoconda=autoconda,
-        strip_newlines = False,
-        return_err_output = True,
-        persistent = True, # cd will change it for the next command etc... (better for the agent)
         timeout = timeout, #Seconds to wait for a command to finish
+        proxy = proxy,
+        auto_torch=auto_torch
     )
     def _bash(command: str):
         """
@@ -28,7 +51,10 @@ def create_bash_tool(agent_id, timeout, autoconda, max_retries):
         Args:
             command: A valid bash command.
         """
-        return bash.run(command)
+        out = bash.run(command)
+        if(len(out) > 5000):
+            out = out[:5000]+"\n ... (output truncated, too long)"
+        return out
   
     bash_tool = Tool(
         function=_bash, 

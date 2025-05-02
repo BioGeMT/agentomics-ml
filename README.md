@@ -69,16 +69,31 @@ If they are pip packages, you have to manually add them.
 You can update your existing environment by running this command
 `conda env update --file environment.yaml --prune`
 
-## Proxy issues
+## Proxy settings
 
 If you are using a proxy, Docker will not automatically detect it and therefore every installation command will fail.
 
-In order to set up the proxy setting, you can run the following command:
+Create the systemd service directory if it doesn't exist and create or edit the proxy configuration file:
+```
+sudo mkdir -p /etc/systemd/system/docker.service.d
+sudo nano /etc/systemd/system/docker.service.d/http-proxy.conf
+```
 
-`bash autoProxy.sh`
+Add the following lines:
+```
+[Service]
+Environment="HTTP_PROXY=http://your-proxy:port"
+Environment="HTTPS_PROXY=https://your-proxy:port"
+Environment="NO_PROXY=localhost,127.0.0.1"
+```
 
-This script will add the necessary configuration to the file Dockerfile. Before you run it, make sure to have at least one of the following
-environment variables with the proxy address:
+Reload the systemd configuration and restart Docker
+```
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+```
+
+Make sure to have at least one of the following environment variables with the proxy address:
 
 * http_proxy
 * https_proxy
@@ -93,4 +108,50 @@ env | grep -i "http_proxy"
 env | grep -i "https_proxy"
 ```
 
-The script will also create a backup of the original Dockerfile under the name of Dockerfile.bak just in case you want to revert the changes.
+Build the Docker image passing the proxy build arguments:
+```
+docker build \
+  --build-arg HTTP_PROXY=$HTTP_PROXY \
+  --build-arg HTTPS_PROXY=$HTTPS_PROXY \
+  --build-arg http_proxy=$http_proxy \
+  --build-arg https_proxy=$https_proxy \
+  -t agents_img .
+```
+
+Run the container passing the proxy arguments:
+```
+docker run -d \
+    --name agents_cont \
+    -v "$(pwd)":/repository:ro \
+    -v agents_volume:/workspace/runs \
+    --env HTTP_PROXY=$HTTP_PROXY \
+    --env HTTPS_PROXY=$HTTPS_PROXY \
+    --env http_proxy=$http_proxy \
+    --env https_proxy=$https_proxy \
+    agents_img
+```
+
+## GPU settings
+
+If you need to use GPU acceleration with your container, you'll need to configure Docker to access your NVIDIA GPUs.
+
+1. Install the NVIDIA Container Toolkit:
+   ```
+   # Follow the installation guide at:
+   # https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
+   ```
+
+2. Build the Docker image as per above instructions (add proxy arguments if needed)
+
+3. Run the container with GPU access:
+   ```
+   docker run -d \
+       --name agents_cont \
+       -v $(pwd):/repository:ro \
+       -v agents_volume:/workspace/runs \
+       --gpus all \
+       --env NVIDIA_VISIBLE_DEVICES=all \
+       agents_img
+   ```
+
+   Note: If using a proxy, add the appropriate environment variables as shown in the proxy section.
