@@ -13,7 +13,7 @@ import wandb
 from prompts.prompts_utils import load_prompts
 from tools.bash import create_bash_tool
 from tools.write_python_tool import create_write_python_tool
-from run_logging.evaluate_log_run import dry_run_evaluate_log_run
+from run_logging.evaluate_log_run import evaluate_log_run
 from run_logging.wandb import setup_logging
 from utils.create_user import create_new_user_and_rundir
 from utils.models import MODELS
@@ -50,49 +50,45 @@ async def main():
 
     # Initialize a new agent environment
     agent_id = create_new_user_and_rundir()
+    config = {
+                "agent_id": agent_id,
+                "model": MODELS.GPT4o,
+                "temperature": 1,
+                "max_steps": 30,
+                "max_run_retries": 1,
+                "max_validation_retries": 5,
+                "tags": ["double_run"],
+                "dataset": "human_non_tata_promoters",
+                "prompt": "toolcalling_agent.yaml",
+            }
+    model = OpenAIModel(
+                config['model'],
+                provider=OpenAIProvider(api_key=api_key)
+            )
 
+    agent = Agent(
+        model=model,
+        system_prompt=load_prompts(config["prompt"])["system_prompt"],
+        tools=[
+            create_bash_tool(
+                agent_id=config['agent_id'],
+                timeout=60 * 15,
+                autoconda=True,
+                max_retries=1
+            ),
+            create_write_python_tool(
+                agent_id=config['agent_id'],
+                timeout=60 * 5,
+                add_code_to_response=False,
+                max_retries=1
+            ),
+        ],
+        model_settings={'temperature': config['temperature']},
+        retries=config["max_run_retries"],
+        result_retries=config["max_validation_retries"],
+    )
+    setup_logging(config, api_key=wandb_key)
     for run_index in range(2):
-        config = {
-            "agent_id": agent_id,
-            "model": MODELS.GPT4o,
-            "temperature": 1,
-            "max_steps": 30,
-            "max_run_retries": 1,
-            "max_validation_retries": 5,
-            "tags": ["double_run"],
-            "dataset": "human_non_tata_promoters",
-            "prompt": "toolcalling_agent.yaml",
-            "run_index": run_index,
-        }
-
-        setup_logging(config, api_key=wandb_key)
-
-        model = OpenAIModel(
-            config['model'],
-            provider=OpenAIProvider(api_key=api_key)
-        )
-
-        agent = Agent(
-            model=model,
-            system_prompt=load_prompts(config["prompt"])["system_prompt"],
-            tools=[
-                create_bash_tool(
-                    agent_id=config['agent_id'],
-                    timeout=60 * 15,
-                    autoconda=True,
-                    max_retries=1
-                ),
-                create_write_python_tool(
-                    agent_id=config['agent_id'],
-                    timeout=60 * 5,
-                    add_code_to_response=False,
-                    max_retries=1
-                ),
-            ],
-            model_settings={'temperature': config['temperature']},
-            retries=config["max_run_retries"],
-            result_retries=config["max_validation_retries"],
-        )
 
         # Construct the prompt, including prior context if available
         if run_index == 0:
@@ -123,7 +119,7 @@ Use the existing context to guide your refinements.
 """
 
         try:
-            run_context = await run_architecture(agent, config, base_prompt)
+            run_context = await run_architecture(agent, config, base_prompt, iteration=run_index)
         except Exception as e:
             console.log("Error during pipeline execution:", e)
             run_context = {"error": str(e), "traceback": repr(e)}
@@ -131,9 +127,10 @@ Use the existing context to guide your refinements.
         if run_index == 0:
             previous_run_context = run_context
 
+    evaluate_log_run(config)
     wandb.finish()
 
-async def run_architecture(agent: Agent, config: dict, base_prompt: str):
+async def run_architecture(agent: Agent, config: dict, base_prompt: str, iteration: int):
     """
     Run the agent through data exploration, train/validation split, representation,
     model design, and validation. Returns the final context from validation.
@@ -155,11 +152,9 @@ async def run_architecture(agent: Agent, config: dict, base_prompt: str):
         val_path: str = Field(description="Path to generated validation.csv file")
 
 
-    if config.get("run_index", 0) == 0:
+    if iteration == 0:
         split_prompt = f"""
-Split the dataset into training and validation sets:
-- Load the '*_train.csv' file.
-- Perform an 80/20 stratified train_test_split on the label.
+Split the training dataset into training and validation sets:
 - Save 'train.csv' and 'validation.csv' in /workspace/runs/{config['agent_id']}/.
 Return the absolute paths to these files.
 """
