@@ -9,6 +9,7 @@ from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.usage import UsageLimits
 import wandb
+from openai import AsyncOpenAI
 
 from steps.data_exploration import DataExploration
 from steps.data_representation import DataRepresentation
@@ -24,7 +25,7 @@ from utils.create_user import create_new_user_and_rundir
 from utils.models import MODELS
 
 dotenv.load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
+api_key = os.getenv("OPENROUTER_API_KEY")
 wandb_key = os.getenv("WANDB_API_KEY")
 proxy_url = os.getenv("HTTP_PROXY")
 console = Console() # rich console for pretty printing
@@ -124,12 +125,18 @@ async def main():
             timeout= 1 * 60
         )
 
+        # Initialize OpenAI client
+        client = AsyncOpenAI(
+            base_url='https://openrouter.ai/api/v1',
+            api_key=os.getenv('OPENROUTER_API_KEY'),
+            http_client=async_http_client,
+        )
+
         setup_logging(config, api_key=wandb_key)
 
         model = OpenAIModel( #Works for openrouter as well
             config['model'],
-            provider=OpenAIProvider(api_key=api_key,
-                                    http_client=async_http_client)
+            provider=OpenAIProvider(openai_client=client),
         )
 
         tools =[
