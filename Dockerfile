@@ -25,6 +25,9 @@ COPY datasets/ /workspace/datasets/
 # Delete all files containing "test" in the name
 RUN find /workspace/datasets -type f -name "*test*" -delete
 
+# Delete all files containing "metadata" in the name
+RUN find /workspace/datasets -type f -name "*metadata*" -delete
+
 # Make all the files read only for everyone
 RUN chmod -R o-w /workspace/datasets
 

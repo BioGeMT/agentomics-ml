@@ -172,3 +172,8 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Datasets
+.genomic_benchmarks
+.miRBench
+/datasets

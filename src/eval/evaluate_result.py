@@ -23,10 +23,10 @@ Arguments:
 import argparse
 import sys
 import pandas as pd
-from sklearn.metrics import average_precision_score, roc_auc_score
+from sklearn.metrics import average_precision_score, roc_auc_score, accuracy_score
 from run_logging.logging_helpers import log_inference_stage_and_metrics
 
-def evaluate_log_metrics(results_file, test_file, output_file=None, 
+def evaluate_log_metrics(results_file, test_file, label_to_scalar, output_file=None, 
                     pred_col="prediction", class_col="class"):
     """
     Evaluate classification metrics for a model's predictions.
@@ -62,22 +62,30 @@ def evaluate_log_metrics(results_file, test_file, output_file=None,
 
     # Merge the results and test files on the index
     merged = pd.merge(results, test, left_index=True, right_index=True)
+    merged['class_numeric'] = merged[class_col].map(lambda x: int(label_to_scalar[x]))
+    merged['prediction_numeric'] = merged[pred_col].map(lambda x: int(label_to_scalar[x]))
 
     # Calculate metrics using the specified columns
     try:
-        auprc = average_precision_score(merged[class_col], merged[pred_col])
+        auprc = average_precision_score(merged['class_numeric'], merged['prediction_numeric'])
     except Exception as e:
         raise ValueError(f"Error calculating AUPRC: {e}")
 
     try:
-        auroc = roc_auc_score(merged[class_col], merged[pred_col])
+        auroc = roc_auc_score(merged['class_numeric'], merged['prediction_numeric'])
     except Exception as e:
         raise ValueError(f"Error calculating AUROC: {e}")
+    
+    try:
+        accuracy = accuracy_score(merged['class_numeric'], merged['prediction_numeric'])
+    except Exception as e:
+        raise ValueError(f"Error calculating accuracy: {e}")
 
     # Create metrics dictionary
     metrics = {
         "AUPRC": auprc,
-        "AUROC": auroc
+        "AUROC": auroc,
+        "ACC": accuracy,
     }
 
     # Log the metrics
@@ -87,8 +95,8 @@ def evaluate_log_metrics(results_file, test_file, output_file=None,
     if output_file:
         try:
             with open(output_file, "w") as f:
-                f.write(f"AUPRC: {auprc}\n")
-                f.write(f"AUROC: {auroc}\n")
+                for key, value in metrics.items():
+                    f.write(f"{key}: {value}\n")
         except Exception as e:
             raise ValueError(f"Error writing to output file '{output_file}': {e}")
 
