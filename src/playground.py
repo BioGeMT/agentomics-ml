@@ -164,7 +164,6 @@ async def main():
 
         validation_agent = Agent(
             model=model,
-            system_prompt= load_prompts(config["prompt"])["system_prompt"],
             tools=tools,
             model_settings={'temperature':config['temperature']},
             result_type= FinalOutcome,
