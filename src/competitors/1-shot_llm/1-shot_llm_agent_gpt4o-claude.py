@@ -18,26 +18,16 @@ from anthropic import Anthropic
 sys.path.append("/repository/src/utils")
 from create_user import create_new_user_and_rundir
 
-def get_client(provider):
-    if provider == "openai":
-        return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    if provider == "openrouter":
-        return OpenAI(api_key=os.getenv("OPENROUTER_API_KEY"), base_url="https://openrouter.ai/api/v1")
-    if provider == "anthropic":
-        return Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
-def get_llm_response(client, provider, model, prompt, temperature, max_tokens):
+def get_llm_response(client, model, prompt, temperature, max_tokens):
     response_kwargs = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
         "temperature": temperature,
         "max_tokens": max_tokens
     }
-    response = (client.chat.completions.create(**response_kwargs) if provider == "openai"
-                else client.messages.create(**response_kwargs))
-
-    return (response.choices[0].message.content if provider == "openai"
-            else "".join(block.text for block in response.content))
+    response = client.chat.completions.create(**response_kwargs)
+    return (response.choices[0].message.content)
 
 def extract_scripts(response_text):
     python_blocks = re.findall(r'```python\s+(.*?)```', response_text, re.DOTALL)
@@ -81,7 +71,7 @@ def run_evaluation(results_file, test_labels_file, output_dir, label_to_scalar, 
         class_col=class_col,
     )
 
-def generate_and_run_scripts(client, provider, model, dataset, temperature, run_name, max_tokens):
+def generate_and_run_scripts(client, model, dataset, temperature, run_name, max_tokens):
     run_dir = os.path.join("/workspace/runs", run_name)
     with open(f"/repository/datasets/{dataset}/metadata.json") as f:
         dataset_metadata = json.load(f)
@@ -133,32 +123,34 @@ def generate_and_run_scripts(client, provider, model, dataset, temperature, run_
 
     }
     prompt = f"""
-You are an expert bioinformatics ML engineer. Create a machine learning model sequence classification.
+        Create the best possible classifier that will generalize to new unseen data.
+        You are using a linux system.
+        You have access to both CPU and GPU resources.
 
-DATASET:
-- Training file: {train_csv_path}
-- Test file: {test_csv_no_labels_path}
-{dataset_to_hints[dataset]}
+        DATASET:
+        - Training file: {train_csv_path}
+        - Test file: {test_csv_no_labels_path}
+        {dataset_to_hints[dataset]}
 
-Dataset knowledge:
-{dataset_knowledge}
+        Dataset knowledge:
+        {dataset_knowledge}
 
-REQUIREMENTS:
-1. Create TWO Python scripts: train.py and inference.py
+        REQUIREMENTS:
+        1. Create TWO Python scripts: train.py and inference.py
 
-2. For train.py:
-   - Train a robust model suitable for the given dataset
-   - Save the trained model to: {run_dir}/model_{run_name}.pkl using joblib or pickle
+        2. For train.py:
+        - Train a robust model suitable for the given dataset
+        - Save the trained model to: {run_dir}/model_{run_name}.pkl using joblib or pickle
 
-3. For inference.py:
-   - Accept arguments: --input and --output
-   - Load the model from: {run_dir}/model_{run_name}.pkl
-   - Output a CSV with column 'prediction' containing RAW PROBABILITIES (not binary classes)
+        3. For inference.py:
+        - Accept arguments: --input and --output
+        - Load the model from: {run_dir}/model_{run_name}.pkl
+        - Output a CSV with column 'prediction' containing a score from 0 to 1
 
-Provide complete code for both scripts with "# train.py" and "# inference.py" headers.
+        Provide complete code for both scripts with "# train.py" and "# inference.py" headers.
 """
 
-    response_content = get_llm_response(client, provider, model, prompt, temperature, max_tokens)
+    response_content = get_llm_response(client, model, prompt, temperature, max_tokens)
     train_script, inference_script = extract_scripts(response_content)
     train_path, inference_path = save_scripts(train_script, inference_script, run_dir, run_name)
 
@@ -182,8 +174,6 @@ Provide complete code for both scripts with "# train.py" and "# inference.py" he
 def parse_args():
     parser = argparse.ArgumentParser(description="Generate ML code with one-shot LLM")
     parser.add_argument("--dataset", required=True, help="Dataset name")
-    parser.add_argument("--provider", required=True, choices=["openai", "anthropic", "openrouter"],
-                        help="The API provider to use")
     parser.add_argument("--model", required=True,
                         help="Model name (e.g., gpt-4o-2024-08-06, claude-3.5-sonnet-20240620)")
     parser.add_argument("--temp", type=float, required=True, help="Temperature for LLM generation")
@@ -202,7 +192,6 @@ def main():
     config = {
         "dataset": args.dataset,
         "model": args.model,
-        "provider": args.provider,
         "temperature": args.temp,
         "max_tokens": args.max_tokens,
         "run_id": run_id,
@@ -213,11 +202,10 @@ def main():
     wandb_key = os.getenv("WANDB_API_KEY")
     setup_logging(config, api_key=wandb_key)
 
-    client = get_client(config['provider'])
+    client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=os.getenv("OPENROUTER_API_KEY"))
 
     generate_and_run_scripts(
         client=client,
-        provider=args.provider,
         model=args.model,
         dataset=args.dataset,
         temperature=args.temp,
