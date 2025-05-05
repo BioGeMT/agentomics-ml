@@ -14,7 +14,7 @@ from openai import AsyncOpenAI
 from steps.data_exploration import DataExploration
 from steps.data_representation import DataRepresentation
 from steps.model_architecture import ModelArchitecture
-from eval.final_outcome import FinalOutcome
+from steps.final_outcome import FinalOutcome
 from prompts.prompts_utils import load_prompts
 from run_logging.evaluate_log_run import evaluate_log_run
 from run_logging.wandb import setup_logging
