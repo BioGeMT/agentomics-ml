@@ -1,23 +1,22 @@
 import os
 import sys
 import argparse
-import dotenv
 import re
 import subprocess
-import wandb
 import json
+
+from openai import OpenAI
+import wandb
+import dotenv
 
 sys.path.append("/repository/src")
 
 from run_logging.wandb import setup_logging
 from run_logging.logging_helpers import log_inference_stage_and_metrics
 from run_logging.evaluate_log_run import evaluate_log_metrics
-from openai import OpenAI
-from anthropic import Anthropic
 
 sys.path.append("/repository/src/utils")
 from create_user import create_new_user_and_rundir
-
 
 def get_llm_response(client, model, prompt, temperature, max_tokens):
     response_kwargs = {
@@ -31,31 +30,50 @@ def get_llm_response(client, model, prompt, temperature, max_tokens):
 
 def extract_scripts(response_text):
     python_blocks = re.findall(r'```python\s+(.*?)```', response_text, re.DOTALL)
-    if len(python_blocks) < 2:
-        raise ValueError("Expected at least two Python code blocks in the response")
+    if len(python_blocks) != 2:
+        raise ValueError("Expected at two Python code blocks in the response")
     train_script = python_blocks[0]
     inference_script = python_blocks[1]
-    return train_script, inference_script
+    
+    yaml_blocks = re.findall(r'```yaml\s+(.*?)```', response_text, re.DOTALL)
+    if len(yaml_blocks) != 1:
+        raise ValueError("Expected one YAML code block in the response")
+    env_yaml = yaml_blocks[0]
+    
+    return train_script, inference_script, env_yaml
 
-def save_scripts(train_script, inference_script, output_dir, run_name):
+def save_scripts(train_script, inference_script, env_yaml, output_dir, run_name):
     os.makedirs(output_dir, exist_ok=True)
     train_path = os.path.join(output_dir, f"train.py")
     inference_path = os.path.join(output_dir, f"inference.py")
+    env_yaml_path = os.path.join(output_dir, f"environment.yaml")
+
+    # Ensure environment.yaml has the name set to run_name_env
+    env_name = run_name + '_env'
+    if not re.search(f'^name:\\s*{env_name}\\s*$', env_yaml, re.MULTILINE):
+        # Replace existing name line if present
+        env_yaml = re.sub(r'^name:.*$', f'name: {env_name}', env_yaml, flags=re.MULTILINE)
+        # If no name line exists, add it at the beginning
+        if not re.search(r'^name:', env_yaml, re.MULTILINE):
+            env_yaml = f"name: {env_name}\n{env_yaml}"
 
     with open(train_path, "w") as f:
         f.write(train_script)
     with open(inference_path, "w") as f:
         f.write(inference_script)
-    return train_path, inference_path
+    with open(env_yaml_path, "w") as f:
+        f.write(env_yaml)
 
-def run_script(script_path, script_type, output_dir, test_csv_no_labels_path=None):
-    cmd = ["python", script_path]
-    if script_type == 'inference' and test_csv_no_labels_path:
-        output_path = os.path.join(output_dir, "predictions.csv")
-        cmd.extend(["--input", test_csv_no_labels_path, "--output", output_path])
+    return train_path, inference_path, env_yaml_path
+
+def run_script(script_path, script_type, output_dir, run_name, test_csv_no_labels_path=None):
+    if script_type == 'inference':
+        cmd = f"source activate {run_name}_env && python {script_path} --input {test_csv_no_labels_path} --output {output_dir}/eval_predictions.csv"
+    if script_type == 'train':
+        cmd = f"source activate {run_name}_env && python {script_path}"
 
     print(f"Executing command: {' '.join(cmd)}")
-    process = subprocess.run(cmd, capture_output=True, text=True)
+    process = subprocess.run(cmd, capture_output=True, text=True, shell=True, executable="/usr/bin/bash")
     print(f"STDOUT: {process.stdout}")
     print(f"STDERR: {process.stderr}")
     return process.returncode
@@ -136,36 +154,51 @@ def generate_and_run_scripts(client, model, dataset, temperature, run_name, max_
         {dataset_knowledge}
 
         REQUIREMENTS:
-        1. Create TWO Python scripts: train.py and inference.py
+        1. Create three files:
+           - train.py
+           - inference.py
+           - environment.yaml
 
         2. For train.py:
         - Train a robust model suitable for the given dataset
-        - Save the trained model to: {run_dir}/model_{run_name}.pkl using joblib or pickle
+        - Save the trained model to: {run_dir}/model.pkl using joblib or pickle
 
         3. For inference.py:
         - Accept arguments: --input and --output
-        - Load the model from: {run_dir}/model_{run_name}.pkl
+        - Load the model from: {run_dir}/model.pkl
         - Output a CSV with column 'prediction' containing a score from 0 to 1
 
-        Provide complete code for both scripts with "# train.py" and "# inference.py" headers.
-"""
+        4. For environment.yaml:
+        - Create a conda environment file with all necessary packages
+        - Include all libraries used in both train.py and inference.py
+
+        Provide complete code for all files with headers "# train.py", "# inference.py", and "# environment.yaml".
+        """
 
     response_content = get_llm_response(client, model, prompt, temperature, max_tokens)
-    train_script, inference_script = extract_scripts(response_content)
-    train_path, inference_path = save_scripts(train_script, inference_script, run_dir, run_name)
+    train_script, inference_script, env_yaml = extract_scripts(response_content)
+    train_path, inference_path, env_yaml_path = save_scripts(train_script, inference_script, env_yaml, run_dir, run_name)
 
-    error_code = run_script(train_path, 'train', run_dir)
+    # Create conda environment
+    env_result = subprocess.run(f"conda env create -f {env_yaml_path}", shell=True, capture_output=True, text=True)
+    if env_result.returncode != 0:
+        log_inference_stage_and_metrics(0)
+        wandb.log({"conda_creation_failed": True})
+        print(f"Error creating conda environment: {env_result.stderr}")
+        return env_result.returncode
+
+    error_code = run_script(script_path=train_path, script_type='train', output_dir=run_dir, run_name=run_name)
     if error_code != 0:
         log_inference_stage_and_metrics(0)
         return
 
-    error_code = run_script(inference_path, 'inference', run_dir, test_csv_no_labels_path)
+    error_code = run_script(script_path=inference_path, script_type='inference', output_dir=run_dir, run_name=run_name, test_csv_no_labels_path=test_csv_no_labels_path)
     if error_code != 0:
         log_inference_stage_and_metrics(1)
         return
 
     try:
-        results_file = os.path.join(run_dir, "predictions.csv")
+        results_file = os.path.join(run_dir, "eval_predictions.csv")
         run_evaluation(results_file, test_csv_path, run_dir, label_to_scalar, class_col)
     except Exception as e:
         print(f"Error during evaluation: {e}")
