@@ -6,6 +6,7 @@ dependencies:
   - pandas
   - openai
   - pip
+  - scikit-learn
   - pip:
     - wandb
     - hrid
