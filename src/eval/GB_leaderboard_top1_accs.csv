@@ -1,0 +1,14 @@
+Dataset / Model,FinDNA (finetuned),GENERator,ConvNova,Gene42 (best scoring model for each ds),OmniDNA,Titans (paper by google),MxDNA,xLSTM (best for each ds),Caduceus (best for each ds),HyenaDNA,MSAMamba (model using MSA),Janus
+Mouse Enhancers,85.55,87.1,78.4,82.4 ,79.9,,80.57,78.0,79.3,85.1,82.7,80.9
+Coding vs Intergenomic,93.73,96.3,94.3,95.6,94.2,,95.28,93.4,91.5,91.3,90.0,94.0
+Human vs Worm,96.88,98.0,96.7,97.5,97.6,,97.64,96.5,97.3,96.6,98.5,96.6
+Human Enhancers Cohn,74.20,76.3,74.3,74.4,73.8,75.2,74.67,74.2,74.7,74.2,72.7,73.4
+Human Enhancers Ensembl,93.30,91.7,90.0,91.9,91.9,89.6,93.13,92.0,90.0,89.2,88.8,86.8
+Human Regulatory,93.88,92.8,87.3,96.3,89.5,89.3,94.11,87.2,87.3,93.8,94.4,93.3
+Human NonTATA Promoters,97.39,95.8,95.1,97.7,96.8,96.6,96.56,95.1,94.6,96.6,94.2,96.7
+Human OCR Ensembl,81.19,82.3,79.3,80.9,79.1,79.9,81.05,82.6,82.8,80.9,82.5,79.9
+Drosophila Enhancers Stark,,82.1,,,,,,,,,,
+"Article type (full paper, conference paper, arxiv preprint) + date", March 2025,April 2025,"ICLR poster, February 2025",March 2025,February 2025,December 2024,"NeurIPS, 2024",November 2024,June 2024,"NeurIPS, 2023","poster ICML, June 2024","poster ICML, July 2024"
+Github,yes,yes,yes,no,yes,no,yes,yes,yes,yes,yes,no
+Model availability,script for training the model on GB,"this should be the general model, they are fine-tuning on GB (this might be useful), description in suplement","maybe some combination of this script and yamls, but they will be probably updating the git and add more info",no,"pretrained models, finetuning on GB explained in readme",they might provide some code later,didn´t find any code or explanation that would look useful,"pre-trained models available here, script for running experiment on GB here","models here, evaluation on GB described in readme","explanation of running on GB in readme, some pretrained models also linked in readme","pretty messy git with no explanations, probably impossible to reproduce","the paper probably comes from thesis on MIT, but there's no code "
+Peer-reviewed,yes,no,yes,no,no,no,yes,no,no,yes,yes,yes
