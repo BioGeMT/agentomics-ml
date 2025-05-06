@@ -35,7 +35,7 @@ def extract_scripts(response_text):
     train_script = python_blocks[0]
     inference_script = python_blocks[1]
     
-    yaml_blocks = re.findall(r'```yaml\s+(.*?)```', response_text, re.DOTALL)
+    yaml_blocks = re.findall(r'```(?:yaml|yml)\s+(.*?)```', response_text, re.DOTALL)
     if len(yaml_blocks) != 1:
         raise ValueError("Expected one YAML code block in the response")
     env_yaml = yaml_blocks[0]
@@ -176,7 +176,13 @@ def generate_and_run_scripts(client, model, dataset, temperature, run_name, max_
         """
 
     response_content = get_llm_response(client, model, prompt, temperature, max_tokens)
-    train_script, inference_script, env_yaml = extract_scripts(response_content)
+    print(response_content)
+    try:
+        train_script, inference_script, env_yaml = extract_scripts(response_content)
+    except Exception as e:
+        print(e)
+        log_inference_stage_and_metrics(0)
+        return
     train_path, inference_path, env_yaml_path = save_scripts(train_script, inference_script, env_yaml, run_dir, run_name)
 
     # Create conda environment
