@@ -14,8 +14,7 @@ DATASETS=("human_nontata_promoters")
 MODELS=("openai/gpt-4.1-2025-04-14")
 
 TEMP=1.0 #Openrouter default
-MAX_TOKENS=10000
-TAGS=("testing" "oneshot")
+TAGS=("testing")
 RUNS=1
 
 for DATASET in "${DATASETS[@]}"
@@ -32,7 +31,6 @@ do
         --dataset "$DATASET" \
         --model "$MODEL" \
         --temp "$TEMP" \
-        --max-tokens "$MAX_TOKENS" \
         --tags "${TAGS[@]}" 
 
       # Capture exit status of the Python script

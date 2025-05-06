@@ -19,12 +19,11 @@ from run_logging.log_files import log_files
 sys.path.append("/repository/src/utils")
 from create_user import create_new_user_and_rundir
 
-def get_llm_response(client, model, prompt, temperature, max_tokens):
+def get_llm_response(client, model, prompt, temperature):
     response_kwargs = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
-        "temperature": temperature,
-        "max_tokens": max_tokens
+        "temperature": temperature
     }
     response = client.chat.completions.create(**response_kwargs)
     return (response.choices[0].message.content)
@@ -90,7 +89,7 @@ def run_evaluation(results_file, test_labels_file, output_dir, label_to_scalar, 
         class_col=class_col,
     )
 
-def generate_and_run_scripts(client, model, dataset, temperature, run_name, max_tokens):
+def generate_and_run_scripts(client, model, dataset, temperature, run_name):
     run_dir = os.path.join("/workspace/runs", run_name)
     with open(f"/repository/datasets/{dataset}/metadata.json") as f:
         dataset_metadata = json.load(f)
@@ -176,7 +175,7 @@ def generate_and_run_scripts(client, model, dataset, temperature, run_name, max_
         Provide complete code for all files with headers "# train.py", "# inference.py", and "# environment.yaml".
         """
 
-    response_content = get_llm_response(client, model, prompt, temperature, max_tokens)
+    response_content = get_llm_response(client, model, prompt, temperature)
     print(response_content)
     try:
         train_script, inference_script, env_yaml = extract_scripts(response_content)
@@ -218,7 +217,6 @@ def parse_args():
     parser.add_argument("--model", required=True,
                         help="Model name (e.g., gpt-4o-2024-08-06, claude-3.5-sonnet-20240620)")
     parser.add_argument("--temp", type=float, required=True, help="Temperature for LLM generation")
-    parser.add_argument("--max-tokens", type=int, required=True, help="Maximum tokens for LLM response")
     parser.add_argument("--tags", required=True, nargs='+', help="List of tags for wandb run")
 
     return parser.parse_args()
@@ -234,7 +232,6 @@ def main():
         "dataset": args.dataset,
         "model": args.model,
         "temperature": args.temp,
-        "max_tokens": args.max_tokens,
         "run_id": run_id,
         "tags": args.tags,
         "agent_id": run_id,
@@ -250,8 +247,7 @@ def main():
         model=args.model,
         dataset=args.dataset,
         temperature=args.temp,
-        run_name=run_id,
-        max_tokens=args.max_tokens,
+        run_name=run_id
     )
     wandb.finish()
 
