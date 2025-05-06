@@ -9,17 +9,19 @@ from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.usage import UsageLimits
 import wandb
+from openai import AsyncOpenAI
 
 from prompts.prompts_utils import load_prompts
 from tools.bash import create_bash_tool
 from tools.write_python_tool import create_write_python_tool
 from run_logging.evaluate_log_run import evaluate_log_run
+from run_logging.evaluate_log_run import dry_run_evaluate_log_run
 from run_logging.wandb import setup_logging
 from utils.create_user import create_new_user_and_rundir
 from utils.models import MODELS
 
 dotenv.load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
+api_key = os.getenv("OPENROUTER_API_KEY")
 wandb_key = os.getenv("WANDB_API_KEY")
 console = Console()
 
@@ -59,11 +61,19 @@ async def main():
                 "max_validation_retries": 5,
                 "tags": ["double_run"],
                 "dataset": "human_non_tata_promoters",
-                "prompt": "toolcalling_agent.yaml",
+                "prompt": "toolcalling_agent.yaml"
             }
+
+
+    # Initialize OpenAI client
+    client = AsyncOpenAI(
+        base_url='https://openrouter.ai/api/v1',
+        api_key=os.getenv('OPENROUTER_API_KEY')
+    )
+
     model = OpenAIModel(
                 config['model'],
-                provider=OpenAIProvider(api_key=api_key)
+                provider=OpenAIProvider(openai_client=client)
             )
 
     agent = Agent(
@@ -87,7 +97,8 @@ async def main():
         retries=config["max_run_retries"],
         result_retries=config["max_validation_retries"],
     )
-    setup_logging(config, api_key=wandb_key)
+
+    #setup_logging(config, api_key=wandb_key)
     for run_index in range(2):
 
         # Construct the prompt, including prior context if available
@@ -117,17 +128,19 @@ Ensure that there is an 'inference.py' script at /workspace/runs/{config['agent_
 - If the script exists, inspect its contents, describe what improvements you'd make, then implement those changes.
 Use the existing context to guide your refinements.
 """
-
+        
         try:
             run_context = await run_architecture(agent, config, base_prompt, iteration=run_index)
+            #evaluate_log_run(config)
         except Exception as e:
             console.log("Error during pipeline execution:", e)
             run_context = {"error": str(e), "traceback": repr(e)}
+            #evaluate_log_run(config)
 
         if run_index == 0:
             previous_run_context = run_context
 
-    evaluate_log_run(config)
+    #evaluate_log_run(config)
     wandb.finish()
 
 async def run_architecture(agent: Agent, config: dict, base_prompt: str, iteration: int):
@@ -192,52 +205,36 @@ Return the absolute paths to these files.
         message_history=messages_representation,
     )
 
-    class InferenceScriptReasoning(BaseModel):
-        path_to_inference: str = Field(description="Absolute path to the inference.py script")
+    class FinalOutcome(BaseModel):
+        path_to_inference_file: str = Field(description="Absolute path to the inference.py file")
 
-    inference_file = f"/workspace/runs/{config['agent_id']}/inference.py"
-    if not os.path.exists(inference_file):
-        inference_prompt = f"""
-The file '{inference_file}' was not found.
-Generate a new 'inference.py' script at this path following spec:
-- Accept --input and --output arguments
-- Load the trained model from '/workspace/runs/{config['agent_id']}/model.pth'
-- Write predictions to CSV with column 'prediction'
-"""
-    else:
-        inference_prompt = f"""
-The file '{inference_file}' exists.
-Inspect its contents, describe any improvements, then implement those changes in place.
-Follow the same input/output specs and update the script accordingly.
-"""
+        @field_validator('path_to_inference_file')  
+        @classmethod
+        async def validate_inference(cls, value):
+            console.log("Exporting conda environment to YAML")
+            bash_tool = agent._function_tools['_bash']
+            export_cmd = (
+                f"conda env export > /workspace/runs/{config['agent_id']}/{config['agent_id']}_env.yaml"
+            )
+            await bash_tool.run(None, {"command": export_cmd})
+            console.log("Environment exported successfully")
+            eval_output = dry_run_evaluate_log_run(config)
+            console.log("Validating inference script")
+            console.log(eval_output)
 
-    messages_inference = await run_agent(
-        agent=agent,
-        user_prompt=inference_prompt,
+            if eval_output.returncode != 0:
+                raise ModelRetry(str(eval_output))
+            return value
+        
+    messages = await run_agent(
+        agent=agent, 
+        user_prompt="Continue with your task", 
         max_steps=config["max_steps"],
-        result_type=InferenceScriptReasoning,
+        result_type=FinalOutcome,
         message_history=messages_architecture,
-    )
+    ) 
 
-    class ValidationReasoning(BaseModel):
-        auprc: float = Field(description="AUPRC on validation set.")
-        auroc: float = Field(description="AUROC on validation set.")
-        returncode: int = Field(description="Exit code of the inference script.")
-
-    validation_context = await run_agent(
-        agent=agent,
-        user_prompt=f"""
-Run 'inference.py' on the validation.csv file and report:
-- AUPRC
-- AUROC
-- Exit code
-""",
-        max_steps=config["max_steps"],
-        result_type=ValidationReasoning,
-        message_history=messages_inference,
-    )
-
-    return validation_context
+    return messages
 
 if __name__ == "__main__":
     asyncio.run(main())
