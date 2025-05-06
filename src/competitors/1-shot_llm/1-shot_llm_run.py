@@ -14,6 +14,7 @@ sys.path.append("/repository/src")
 from run_logging.wandb import setup_logging
 from run_logging.logging_helpers import log_inference_stage_and_metrics
 from run_logging.evaluate_log_run import evaluate_log_metrics
+from run_logging.log_files import log_files
 
 sys.path.append("/repository/src/utils")
 from create_user import create_new_user_and_rundir
@@ -184,6 +185,7 @@ def generate_and_run_scripts(client, model, dataset, temperature, run_name, max_
         log_inference_stage_and_metrics(0)
         return
     train_path, inference_path, env_yaml_path = save_scripts(train_script, inference_script, env_yaml, run_dir, run_name)
+    log_files(files=[train_path, inference_path, env_yaml_path], agent_id=run_name)
 
     # Create conda environment
     env_result = subprocess.run(f"conda env create -f {env_yaml_path}", shell=True, capture_output=True, text=True)
