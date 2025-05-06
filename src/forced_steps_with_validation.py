@@ -1,9 +1,10 @@
 import dotenv
 import os
 import asyncio
+import traceback
 
 from rich.console import Console
-from pydantic import Field, BaseModel, field_validator
+from pydantic import Field, BaseModel
 from pydantic_ai import Agent, ModelRetry, UnexpectedModelBehavior, UsageLimitExceeded, capture_run_messages
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
@@ -14,8 +15,7 @@ from openai import AsyncOpenAI
 from prompts.prompts_utils import load_prompts
 from tools.bash import create_bash_tool
 from tools.write_python_tool import create_write_python_tool
-from run_logging.evaluate_log_run import evaluate_log_run
-from run_logging.evaluate_log_run import dry_run_evaluate_log_run
+from run_logging.evaluate_log_run import evaluate_log_run, dry_run_evaluate_log_run
 from run_logging.wandb import setup_logging
 from utils.create_user import create_new_user_and_rundir
 from utils.models import MODELS
@@ -47,34 +47,30 @@ async def run_agent(agent: Agent, user_prompt: str, max_steps: int, result_type:
             return e
 
 async def main():
-    # Store the full context from the previous run
     previous_run_context = None
 
-    # Initialize a new agent environment
     agent_id = create_new_user_and_rundir()
     config = {
-                "agent_id": agent_id,
-                "model": MODELS.GPT4o,
-                "temperature": 1,
-                "max_steps": 30,
-                "max_run_retries": 1,
-                "max_validation_retries": 5,
-                "tags": ["double_run"],
-                "dataset": "human_non_tata_promoters",
-                "prompt": "toolcalling_agent.yaml"
-            }
+        "agent_id": agent_id,
+        "model": MODELS.GPT4o,
+        "temperature": 1,
+        "max_steps": 30,
+        "max_run_retries": 1,
+        "max_validation_retries": 5,
+        "tags": ["double_run"],
+        "dataset": "human_non_tata_promoters",
+        "prompt": "toolcalling_agent.yaml"
+    }
 
-
-    # Initialize OpenAI client
     client = AsyncOpenAI(
         base_url='https://openrouter.ai/api/v1',
         api_key=os.getenv('OPENROUTER_API_KEY')
     )
 
     model = OpenAIModel(
-                config['model'],
-                provider=OpenAIProvider(openai_client=client)
-            )
+        config['model'],
+        provider=OpenAIProvider(openai_client=client)
+    )
 
     agent = Agent(
         model=model,
@@ -98,10 +94,7 @@ async def main():
         result_retries=config["max_validation_retries"],
     )
 
-    #setup_logging(config, api_key=wandb_key)
     for run_index in range(2):
-
-        # Construct the prompt, including prior context if available
         if run_index == 0:
             base_prompt = f"""
 You are working on a Linux system with CPU only (no GPU).
@@ -128,26 +121,26 @@ Ensure that there is an 'inference.py' script at /workspace/runs/{config['agent_
 - If the script exists, inspect its contents, describe what improvements you'd make, then implement those changes.
 Use the existing context to guide your refinements.
 """
-        
+
         try:
             run_context = await run_architecture(agent, config, base_prompt, iteration=run_index)
-            #evaluate_log_run(config)
         except Exception as e:
             console.log("Error during pipeline execution:", e)
-            run_context = {"error": str(e), "traceback": repr(e)}
-            #evaluate_log_run(config)
+            run_context = {"error": str(e), "traceback": traceback.format_exc()}
 
         if run_index == 0:
             previous_run_context = run_context
 
-    #evaluate_log_run(config)
     wandb.finish()
 
 async def run_architecture(agent: Agent, config: dict, base_prompt: str, iteration: int):
     """
     Run the agent through data exploration, train/validation split, representation,
-    model design, and validation. Returns the final context from validation.
+    model design, and validation. After creating inference.py, export the conda environment
+    and then validate the script.
+    Returns the final context from validation.
     """
+    # 1) Data exploration
     class DataExplorationReasoning(BaseModel):
         data_description: str = Field(
             description="Description of the data, including summary statistics and domain insights."
@@ -160,10 +153,10 @@ async def run_architecture(agent: Agent, config: dict, base_prompt: str, iterati
         message_history=None,
     )
 
+    # 2) Train/validation split (only on first iteration)
     class DataSplitReasoning(BaseModel):
         train_path: str = Field(description="Path to generated train.csv file")
         val_path: str = Field(description="Path to generated validation.csv file")
-
 
     if iteration == 0:
         split_prompt = f"""
@@ -181,6 +174,7 @@ Return the absolute paths to these files.
     else:
         messages_split = messages_data_exploration
 
+    # 3) Representation reasoning
     class RepresentationReasoning(BaseModel):
         representation: str = Field(description="Instructions for how to represent the data before modeling.")
         reasoning: str = Field(description="Reasoning behind your chosen representation.")
@@ -193,6 +187,7 @@ Return the absolute paths to these files.
         message_history=messages_split,
     )
 
+    # 4) Model architecture reasoning
     class ModelArchitectureReasoning(BaseModel):
         architecture: str = Field(description="Chosen model type and architecture.")
         reasoning: str = Field(description="Reasoning behind architectural choices.")
@@ -205,34 +200,63 @@ Return the absolute paths to these files.
         message_history=messages_representation,
     )
 
+    # 5) Final script generation (sólo construcción del modelo de datos)
     class FinalOutcome(BaseModel):
         path_to_inference_file: str = Field(description="Absolute path to the inference.py file")
 
-        @field_validator('path_to_inference_file')  
-        @classmethod
-        async def validate_inference(cls, value):
-            console.log("Exporting conda environment to YAML")
-            bash_tool = agent._function_tools['_bash']
-            export_cmd = (
-                f"conda env export > /workspace/runs/{config['agent_id']}/{config['agent_id']}_env.yaml"
-            )
-            await bash_tool.run(None, {"command": export_cmd})
-            console.log("Environment exported successfully")
-            eval_output = dry_run_evaluate_log_run(config)
-            console.log("Validating inference script")
-            console.log(eval_output)
+        @staticmethod
+        def validate_inference(path: str) -> str:
+            if not os.path.isfile(path):
+                raise ModelRetry(f"Inference script not found: {path}")
+            return path
 
-            if eval_output.returncode != 0:
-                raise ModelRetry(str(eval_output))
-            return value
-        
+    # Ejecutar al agente
     messages = await run_agent(
-        agent=agent, 
-        user_prompt="Continue with your task", 
+        agent=agent,
+        user_prompt="Continue with your task",
         max_steps=config["max_steps"],
         result_type=FinalOutcome,
         message_history=messages_architecture,
-    ) 
+    )
+
+            # Exportar el entorno de conda usando subprocess async nativo
+    console.log("Exportando entorno de conda a YAML…")
+    export_cmd = (
+        f"conda env export > "
+        f"/workspace/runs/{config['agent_id']}/{config['agent_id']}_env.yaml"
+    )
+    try:
+        # Usar asyncio para ejecutar el comando sin depender de Agent tools
+        proc = await asyncio.create_subprocess_shell(
+            export_cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await proc.communicate()
+        console.log("stdout:", stdout.decode().strip())
+        if stderr:
+            console.log("stderr:", stderr.decode().strip())
+        if proc.returncode != 0:
+            raise ModelRetry(f"Conda export failed with code {proc.returncode}")
+        console.log("Entorno exportado con éxito")
+    except Exception as e:
+        console.log("Error exportando entorno de conda:", e)
+        console.log(traceback.format_exc())
+        raise
+
+    # Validar inference.py mediante dry_run mediante dry_run
+    console.log("Validando inference.py…")
+    eval_output = dry_run_evaluate_log_run(config)
+    console.log(eval_output)
+    if eval_output.returncode != 0:
+        console.log("Validation failed, retrying...")
+        raise ModelRetry(str(eval_output))
+    console.log("Validando inference.py…")
+    eval_output = dry_run_evaluate_log_run(config)
+    console.log(eval_output)
+    if eval_output.returncode != 0:
+        console.log("Validation failed, retrying...")
+        raise ModelRetry(str(eval_output))
 
     return messages
 
