@@ -64,7 +64,7 @@ touch MLAgentBench/benchmarks/dna_classification/env/train.py
 ```bash
 # Create research_problem.txt in scripts/ directory
 cat > MLAgentBench/benchmarks/dna_classification/scripts/research_problem.txt << EOF
-Build the best classifier that generates the new unseen data. End produce much be the inference data file at logs/*
+Build the best classifier that generates the new unseen data. End produce much be the inference data file
 EOF
 
 # Create required 'prepared' empty file in scripts/ directory
