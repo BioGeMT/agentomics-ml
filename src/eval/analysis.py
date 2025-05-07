@@ -122,6 +122,20 @@ def process_leaderboard(df):
     df.rename(columns={'accuracy': 'ACC_max'}, inplace=True)
     return df
 
+def add_best_tags(df):
+    for col in df.columns:
+        df[col] = df[col].astype(float)
+        best_method = df[col].idxmax()
+        non_human_has_best = df[col][~df.index.str.contains('human_SOTA')].notna().any()
+        if non_human_has_best:
+            best_nonhuman_method = df[col][~df.index.str.contains('human_SOTA')].idxmax()
+        df[col] = df[col].astype(str)
+        df.loc[best_method, col] = f"{df.loc[best_method, col]} (BEST)"
+        if non_human_has_best:
+            df.loc[best_nonhuman_method, col] = f"{df.loc[best_nonhuman_method, col]} (BEST NON-HUMAN)"
+    return df
+
+
 if __name__ == "__main__":
     # Experiment data
     sub_dfs = []
@@ -147,7 +161,13 @@ if __name__ == "__main__":
         "drosophila_enhancers_stark"
     ]
     gb_df = gb_df[gb_df['dataset'].isin(gb_datasets)]
-    gb_df = gb_df.pivot(columns="dataset", values="ACC_max", index="method")
+    gb_df_acc_max = gb_df.pivot(columns="dataset", values="ACC_max", index="method")
+
+    # Mean metrics dataframes
+    experiments_acc_mean = experiment_dfs.pivot(columns="dataset", values="ACC_mean", index="method")
+    experiments_auprc_mean = experiment_dfs.pivot(columns="dataset", values="AUPRC_mean", index="method")
+    experiments_acc_mean.to_csv('./experiments_acc_mean.csv', index=True)
+    experiments_auprc_mean.to_csv('./experiments_auprc_mean.csv', index=True)
 
     # AGO hejret and AUPRC_max dataframe
     ago_leaderboard_df = pd.DataFrame({
@@ -157,21 +177,11 @@ if __name__ == "__main__":
     })
     ago_df = pd.concat([experiment_dfs, ago_leaderboard_df], axis=0, join='inner')
     ago_df = ago_df[ago_df['dataset'].isin(['AGO2_CLASH_Hejret2023'])]
-    ago_df = ago_df.pivot(columns="dataset", values="AUPRC_max", index="method")
+    ago_df_auprc_max = ago_df.pivot(columns="dataset", values="AUPRC_max", index="method")
 
     # Combined 
-    df = pd.concat([gb_df, ago_df], axis=1, join='outer')
-    
-    # Adding BEST tags to cells for visual clarity
-    for col in df.columns:
-        df[col] = df[col].astype(float)
-        best_method = df[col].idxmax()
-        non_human_has_best = df[col][~df.index.str.contains('human_SOTA')].notna().any()
-        if non_human_has_best:
-            best_nonhuman_method = df[col][~df.index.str.contains('human_SOTA')].idxmax()
-        df[col] = df[col].astype(str)
-        df.loc[best_method, col] = f"{df.loc[best_method, col]} (BEST)"
-        if non_human_has_best:
-            df.loc[best_nonhuman_method, col] = f"{df.loc[best_nonhuman_method, col]} (BEST NON-HUMAN)"
+    max_df = pd.concat([gb_df_acc_max, ago_df_auprc_max], axis=1, join='outer')
 
-    df.to_csv('./leaderboard.csv', index=True)
+    # Adding BEST tags to cells for visual clarity
+    max_df = add_best_tags(max_df)
+    max_df.to_csv('./leaderboard_max_metric.csv', index=True)
