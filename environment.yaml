@@ -7,9 +7,6 @@ dependencies:
   - ipykernel
   - ipywidgets
   - jupyter
-  - anthropic
-  - keras
-  - tensorflow
   - pydantic-ai==0.0.46
   - pip
   - pip:
