@@ -221,6 +221,7 @@ def parse_args():
     parser.add_argument("--temp", type=float, required=True, help="Temperature for LLM generation")
     parser.add_argument("--max-tokens", type=int, required=True, help="Maximum tokens for LLM response")
     parser.add_argument("--tags", required=True, nargs='+', help="List of tags for wandb run")
+    parser.add_argument("--rollouts", type=int, required=True, nargs='+', help="Number of rollouts for MCTS")
 
     return parser.parse_args()
 
@@ -245,7 +246,7 @@ def main():
     }
     
     # - DONE - TODO write the following command in python or make a bash script for it and call it, work_dir: os.path.join("/workspace/runs", run_name)
-    # cat > data.yaml << 'EOF'
+    # cat > MetaGPT/metagpt/exp/sela/data.yaml << 'EOF'
     # datasets_dir: "/repository/datasets" # path to the datasets directory
     # work_dir: /workspace/runs/$run_id # path to the workspace directory
     # role_dir: storage/SELA # relative path to the role directory
@@ -272,6 +273,11 @@ def main():
     wandb_key = os.getenv("WANDB_API_KEY")
     setup_logging(config, api_key=wandb_key)
 
+    # TODO run the following scripts
+    # python MetaGPT/metagpt/exp/sela/data/dataset.py --save_analysis_pool --dataset $args.dataset --target_col "class"
+    # python MetaGPT/metagpt/exp/sela/data/python run_experiment.py --exp_mode mcts --task $args.dataset --rollouts $args.rollouts
+
+    # TODO we probably don't need to run the following line
     client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=os.getenv("OPENROUTER_API_KEY"))
 
     generate_and_run_scripts(
