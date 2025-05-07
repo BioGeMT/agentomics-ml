@@ -166,8 +166,14 @@ if __name__ == "__main__":
     # Mean metrics dataframes
     experiments_acc_mean = experiment_dfs.pivot(columns="dataset", values="ACC_mean", index="method")
     experiments_auprc_mean = experiment_dfs.pivot(columns="dataset", values="AUPRC_mean", index="method")
+    experiments_succ_rates = experiment_dfs.pivot(columns="dataset", values="successful_run_mean", index="method")
+    
+    # average over all datasets (columns)
+    experiments_succ_rates['ALL'] = experiments_succ_rates.mean(axis=1)
+
     experiments_acc_mean.to_csv('./experiments_acc_mean.csv', index=True)
     experiments_auprc_mean.to_csv('./experiments_auprc_mean.csv', index=True)
+    experiments_succ_rates.to_csv('./experiments_succ_rates.csv', index=True)
 
     # AGO hejret and AUPRC_max dataframe
     ago_leaderboard_df = pd.DataFrame({
