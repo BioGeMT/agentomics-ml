@@ -1,0 +1,3 @@
+[submodule "src/competitors/SELA/MetaGPT"]
+	path = src/competitors/SELA/MetaGPT
+	url = https://github.com/davidcechak/MetaGPT.git
