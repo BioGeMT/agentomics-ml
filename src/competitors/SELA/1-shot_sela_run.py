@@ -250,7 +250,7 @@ def main():
     # work_dir: /workspace/runs/$run_id # path to the workspace directory
     # role_dir: storage/SELA # relative path to the role directory
     # EOF
-    subprocess.run(["bash", "create_data_yaml.sh", os.path.join("/workspace/runs", run_id)])
+    subprocess.run(["bash", "overwrite_data_yaml.sh", os.path.join("/workspace/runs", run_id)])
     
 
     # TODO write the following command in python or make a bash script for it and call it
