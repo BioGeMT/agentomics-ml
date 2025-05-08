@@ -1,7 +1,10 @@
 import yaml
 import argparse
+from pathlib import Path
 
 def set_config(config_path, api_type, model, base_url, api_key):
+    # create all necessary thing in path if necessary
+    Path(config_path).parent.mkdir(parents=True, exist_ok=True)
     config = {
         "llm": {
             "api_type": f"{api_type}",
@@ -15,11 +18,11 @@ def set_config(config_path, api_type, model, base_url, api_key):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Set config for DI")
-    parser.add_argument("--config_path", type=str, required=True, help="Path to the config file")
-    parser.add_argument("--api_type", type=str, required=True, help="API type (e.g., openrouter)")
+    parser.add_argument("--config-path", type=str, required=True, help="Path to the config file")
+    parser.add_argument("--api-type", type=str, required=True, help="API type (e.g., openrouter)")
     parser.add_argument("--model", type=str, required=True, help="Model name (e.g., gpt-4o-2024-08-06)")
-    parser.add_argument("--base_url", type=str, required=True, help="Base URL for the API")
-    parser.add_argument("--api_key", type=str, required=True, help="API key for authentication")
+    parser.add_argument("--base-url", type=str, required=True, help="Base URL for the API")
+    parser.add_argument("--api-key", type=str, required=True, help="API key for authentication")
     
     args = parser.parse_args()
     
