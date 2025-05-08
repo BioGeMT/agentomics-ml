@@ -259,6 +259,10 @@ def main(args):
         temperature=args.temp,
         run_name=run_id
     )
+    # Remove the run directory after completion
+    del_res = subprocess.run(f"rm -rf /workspace/runs/{run_id}", shell=True, check=True)
+    assert del_res.returncode == 0, f"Error deleting run directory: {del_res.stderr}"
+    print('Run directory deleted successfully')
     wandb.finish()
 
 if __name__ == "__main__":
