@@ -69,7 +69,6 @@ async def main(args):
 
         DATASET:
         - Training file: {train_csv_path}
-        - Test file: {test_csv_no_labels_path}
 
         Dataset knowledge:
         {dataset_knowledge}

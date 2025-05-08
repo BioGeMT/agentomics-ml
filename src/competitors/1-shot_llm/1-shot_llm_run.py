@@ -94,12 +94,12 @@ def generate_and_run_scripts(client, model, dataset, temperature, run_name):
     run_dir = os.path.join("/workspace/runs", run_name)
     with open(f"/repository/datasets/{dataset}/metadata.json") as f:
         dataset_metadata = json.load(f)
-    train_csv_path = dataset_metadata['train_split']
+    train_csv_path = dataset_metadata['train_split'].replace("repository", "workspace")
+    dataset_knowledge_path = dataset_metadata['dataset_knowledge'].replace("repository", "workspace")
     test_csv_no_labels_path = dataset_metadata['test_split_no_labels']
     test_csv_path = dataset_metadata['test_split_with_labels']
     label_to_scalar = dataset_metadata['label_to_scalar']
     class_col = dataset_metadata['class_col']
-    dataset_knowledge_path = dataset_metadata['dataset_knowledge']
     with open(dataset_knowledge_path) as f:
         dataset_knowledge = f.read()
 
@@ -148,7 +148,6 @@ def generate_and_run_scripts(client, model, dataset, temperature, run_name):
 
         DATASET:
         - Training file: {train_csv_path}
-        - Test file: {test_csv_no_labels_path}
         {dataset_to_hints[dataset]}
 
         Dataset knowledge:
