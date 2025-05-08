@@ -9,8 +9,17 @@ import subprocess
 sys.path.append("/repository/src")
 from run_logging.wandb import setup_logging
 from run_logging.evaluate_log_run import evaluate_log_metrics
+from run_logging.log_files import log_files
+from run_logging.logging_helpers import log_inference_stage_and_metrics
 
 import wandb
+
+# Hack to make metagpt have configurable config path
+import pathlib
+from pathlib import Path
+pathlib.Path.home = lambda: Path('/tmp/DI')
+
+from metagpt.roles.di.data_interpreter import DataInterpreter
 
 async def main():
     dotenv.load_dotenv("/repository/.env")
@@ -38,6 +47,10 @@ async def main():
     with open(dataset_knowledge_path) as f:
         dataset_knowledge = f.read()
     
+    train_file_path = f"{run_dir}/train.py"
+    inference_path = f"{run_dir}/inference.py"
+    # env_yaml_path = f"{run_dir}/environment.yaml" #Not necessary since agent installs directly into the environment
+    # model_path = f"{run_dir}/model.pkl" #Not necessary since the agent has freedom to choose the format
     prompt = f"""
         Create the best possible classifier that will generalize to new unseen data.
         You are using a linux system.
@@ -52,45 +65,58 @@ async def main():
 
         REQUIREMENTS:
         1. Create and save three files:
-           - {run_dir}/train.py
-           - {run_dir}/inference.py
-           - {run_dir}/environment.yaml
+           - {train_file_path}
+           - {inference_path}
+           - a model file
 
-        2. For {run_dir}/train.py:
+        2. For {train_file_path}:
         - Train a robust model suitable for the given dataset
-        - Save the trained model to: {run_dir}/model.pkl using joblib or pickle
+        - Save the trained model into {run_dir} to be loaded later by the inference script
 
-        3. For {run_dir}/inference.py:
+        3. For {inference_path}:
         - Accept arguments: --input and --output
-        - Load the model from: {run_dir}/model.pkl
+        - Load the saved model
         - Output a CSV with column 'prediction' containing a score from 0 to 1
 
-        4. For {run_dir}/environment.yaml:
-        - Create a conda environment file with all necessary packages
-        - Include all libraries used in both train.py and inference.py
+        You must write all three files to the correct paths before you finish.
         """
 
-    # TODO run this in a secure shell that can't modify other stuff
-    from metagpt.roles.di.data_interpreter import DataInterpreter
     print("Running DataInterpreter...")
     role = DataInterpreter(tools=["<all>"]) #use_reflection=False by default
     await role.run(prompt)
     print("DataInterpreter finished.")
 
-    predictions_file_path = os.path.join(run_dir, "predictions.csv")
-    cmd = f"source activate {run_id}_env && python {run_dir}/inference.py --input {test_csv_no_labels_path} --output {predictions_file_path}"
-    process = subprocess.run(cmd, capture_output=True, text=True, shell=True, executable="/usr/bin/bash")
-    print(f"STDOUT: {process.stdout}")
-    print(f"STDERR: {process.stderr}")
+    try:
+        log_files(files=[train_file_path, inference_path], agent_id=run_id)
+    except Exception as e:
+        print(f"Error logging files: {e}")
+        log_inference_stage_and_metrics(0)
+        return
 
+    predictions_file_path = os.path.join(run_dir, "predictions.csv")
+    cmd = f"source /opt/conda/etc/profile.d/conda.sh && conda activate /tmp/di_env && python {run_dir}/inference.py --input {test_csv_no_labels_path} --output {predictions_file_path}"
+    try:
+        process = subprocess.run(cmd, capture_output=True, text=True, shell=True, executable="/usr/bin/bash")
+        print(f"STDOUT: {process.stdout}")
+        print(f"STDERR: {process.stderr}")
+    except Exception as e:
+        print(f"Error running inference: {e}")
+        log_inference_stage_and_metrics(1)
+        return
+        
     metrics_file_path = os.path.join(run_dir, f"metrics.txt")
-    evaluate_log_metrics(
-        results_file=predictions_file_path,
-        test_file=test_csv_path,
-        output_file=metrics_file_path,
-        label_to_scalar=label_to_scalar,
-        class_col=class_col,
-    )
+    try:
+        evaluate_log_metrics(
+            results_file=predictions_file_path,
+            test_file=test_csv_path,
+            output_file=metrics_file_path,
+            label_to_scalar=label_to_scalar,
+            class_col=class_col,
+        )
+    except Exception as e:
+        print(f"Error evaluating metrics: {e}")
+        log_inference_stage_and_metrics(1)
+        return
     wandb.finish()
 
 def parse_args():
