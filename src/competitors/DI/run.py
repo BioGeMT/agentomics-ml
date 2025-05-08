@@ -14,17 +14,17 @@ from run_logging.logging_helpers import log_inference_stage_and_metrics
 
 import wandb
 
-# Hack to make metagpt have configurable config path
-import pathlib
-from pathlib import Path
-pathlib.Path.home = lambda: Path('/tmp/DI')
-
-from metagpt.roles.di.data_interpreter import DataInterpreter
-
 async def main():
     dotenv.load_dotenv("/repository/.env")
     args = parse_args()
     run_id = args.run_id
+
+    # Hack to make metagpt have configurable config path
+    import pathlib
+    from pathlib import Path
+    pathlib.Path.home = lambda: Path(f"/workspace/runs/{run_id}")
+    from metagpt.roles.di.data_interpreter import DataInterpreter
+
     config = {
         "dataset": args.dataset,
         "model": args.model,
@@ -94,7 +94,8 @@ async def main():
         return
 
     predictions_file_path = os.path.join(run_dir, "predictions.csv")
-    cmd = f"source /opt/conda/etc/profile.d/conda.sh && conda activate /tmp/di_env && python {run_dir}/inference.py --input {test_csv_no_labels_path} --output {predictions_file_path}"
+    agent_env_path = f"{run_dir}/{run_id}_env" 
+    cmd = f"source /opt/conda/etc/profile.d/conda.sh && conda activate {agent_env_path} && python {run_dir}/inference.py --input {test_csv_no_labels_path} --output {predictions_file_path}"
     try:
         process = subprocess.run(cmd, capture_output=True, text=True, shell=True, executable="/usr/bin/bash")
         print(f"STDOUT: {process.stdout}")
