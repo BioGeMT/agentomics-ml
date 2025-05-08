@@ -2,7 +2,7 @@ import pandas as pd
 import wandb
 from dotenv import load_dotenv
 
-def get_wandb_runs_df(tags, entity='ceitec-ai', project='Agentomics-ML'):
+def get_wandb_runs_df(tags, timeout_in_seconds, entity='ceitec-ai', project='Agentomics-ML'):
     # Tags are joined with OR (one hit is enough to be included)
 
     load_dotenv()
@@ -23,9 +23,25 @@ def get_wandb_runs_df(tags, entity='ceitec-ai', project='Agentomics-ML'):
         for key, value in run.config.items():
             run_data[f"{key}"] = value
         
+        metrics_of_interest = ["AUPRC", "AUROC", "ACC", "input_tokens", "output_tokens", 
+            "total_tokens", "inference_stage", "conda_creation_failed", 
+            "timed_out","out_of_credits", "usage", "limit"]
+        
         for key, value in run.summary.items():
-            if(key in ["AUPRC", "AUROC", "ACC", "input_tokens", "output_tokens", "total_tokens", "inference_stage", "conda_creation_failed"]):
+            if(key in metrics_of_interest):
                 run_data[f"{key}"] = value
+        if('_wandb' not in run.summary.keys()):
+            print(f"Run {run.id} does not have _wandb key in summary. Skipping...")
+            continue
+        run_data['runtime'] = run.summary['_wandb']['runtime']
+        run_data['would_time_out'] = run_data['runtime'] > timeout_in_seconds
+        for flag in ['timed_out', 'out_of_credits', 'conda_creation_failed']:
+            if flag not in run_data.keys():
+                run_data[flag] = False
+        # Oneshots will not have this, others should
+        for metric in ['usage', 'limit']:
+            if metric not in run_data.keys():
+                run_data[metric] = 0
         
         runs_data.append(run_data)
     df = pd.DataFrame(runs_data)
@@ -34,9 +50,8 @@ def get_wandb_runs_df(tags, entity='ceitec-ai', project='Agentomics-ML'):
     
     return df
 
-def analyse_tag(tags, name):
-    df = get_wandb_runs_df(tags)
-    df['conda_creation_failed'] = df['conda_creation_failed'].apply(lambda x: 1 if x == 1 else 0)
+def analyse_tag(tags, name, timeout_in_seconds):
+    df = get_wandb_runs_df(tags, timeout_in_seconds=timeout_in_seconds)
     # Only successful runs
     successes_df = df[df['successful_run'] == 1].groupby(['dataset', 'model']).agg({
         'AUPRC': ['mean', 'max'],
@@ -44,6 +59,9 @@ def analyse_tag(tags, name):
         'ACC': ['mean', 'max'],
         'successful_run': ['mean'],
         'run_id': ['nunique'],
+        'runtime': ['mean'],
+        'usage': ['mean'],
+        'would_time_out': ['sum'],
         # 'metric_input_tokens': ['mean', 'max'],
         # 'metric_output_tokens': ['mean', 'max'],
         # 'metric_total_tokens': ['mean', 'max'],
@@ -51,8 +69,12 @@ def analyse_tag(tags, name):
     # All runs
     all_df = df.groupby(['dataset', 'model']).agg({
         'successful_run': ['mean'],
+        'out_of_credits': ['mean'],
+        'timed_out': ['mean'],
         'conda_creation_failed': ['mean'],
         'run_id': ['nunique'],
+        'usage': ['mean'],
+        'limit': ['mean'],
     }).reset_index()
 
     complete_df = successes_df.merge(all_df, on=['dataset', 'model'], suffixes=('_nonfails', ''), how='outer')
@@ -140,12 +162,13 @@ if __name__ == "__main__":
     # Experiment data
     sub_dfs = []
     for tag_group, name in [
-        (['andrea_run_one_shot_v3'], 'single_pass'), 
+        (['andrea_run_one_shot_v3', 'andrea_run_one_shot_v4'], 'single_pass'), 
         # (['testing', 'any']),
     ]:
-        sub_df = analyse_tag(tags=tag_group, name=name)
+        sub_df = analyse_tag(tags=tag_group, name=name, timeout_in_seconds=3600)
         sub_dfs.append(sub_df)    
     experiment_dfs = pd.concat(sub_dfs, axis=0, join='outer')
+    experiment_dfs = experiment_dfs.sort_values(by=['dataset', 'method'])
     experiment_dfs.to_csv('./experiment_dfs.csv', index=False)
 
     # Genomic benchmarks and ACC_max dataframe
