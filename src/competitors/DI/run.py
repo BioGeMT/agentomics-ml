@@ -11,6 +11,8 @@ from run_logging.wandb import setup_logging
 from run_logging.evaluate_log_run import evaluate_log_metrics
 from run_logging.log_files import log_files
 from run_logging.logging_helpers import log_inference_stage_and_metrics
+from competitors.DI.set_config import set_config
+from utils.api_keys import create_new_api_key, get_api_key_usage, delete_api_key
 
 import wandb
 
@@ -18,6 +20,14 @@ async def main():
     dotenv.load_dotenv("/repository/.env")
     args = parse_args()
     run_id = args.run_id
+    run_dir = os.path.join("/workspace/runs", run_id)
+
+    api_key_data = create_new_api_key(name=run_id, limit=args.credit_budget)
+
+    openrouter_api_key = api_key_data['key']
+    openrouter_api_key_hash = api_key_data['hash']
+
+    set_config(config_path=f"{run_dir}/.metagpt/config2.yaml", api_type='openrouter', model=args.model, base_url='https://openrouter.ai/api/v1', api_key=openrouter_api_key)
 
     # Hack to make metagpt have configurable config path
     import pathlib
@@ -82,10 +92,22 @@ async def main():
         You must write all three files to the correct paths before you finish.
         """
 
-    print("Running DataInterpreter...")
-    role = DataInterpreter(tools=["<all>"]) #use_reflection=False by default
-    await role.run(prompt)
-    print("DataInterpreter finished.")
+    try:
+        print("Running DataInterpreter...")
+        role = DataInterpreter(tools=["<all>"]) #use_reflection=False by default
+        await role.run(prompt)
+        print("DataInterpreter finished.")
+    except Exception as e:
+        print(f"Error running DataInterpreter: {e}")
+        log_inference_stage_and_metrics(0)
+        stats = get_api_key_usage(openrouter_api_key_hash)
+        if stats['usage'] >= stats['limit']:
+            wandb.log({"out_of_credits": True})
+        return
+    finally:
+        stats = get_api_key_usage(openrouter_api_key_hash)
+        wandb.log(stats)
+        delete_api_key(openrouter_api_key_hash)
 
     try:
         log_files(files=[train_file_path, inference_path], agent_id=run_id)
@@ -97,12 +119,12 @@ async def main():
     predictions_file_path = os.path.join(run_dir, "predictions.csv")
     agent_env_path = f"{run_dir}/{run_id}_env" 
     cmd = f"source /opt/conda/etc/profile.d/conda.sh && conda activate {agent_env_path} && python {run_dir}/inference.py --input {test_csv_no_labels_path} --output {predictions_file_path}"
-    try:
-        process = subprocess.run(cmd, capture_output=True, text=True, shell=True, executable="/usr/bin/bash")
-        print(f"STDOUT: {process.stdout}")
-        print(f"STDERR: {process.stderr}")
-    except Exception as e:
-        print(f"Error running inference: {e}")
+    
+    process = subprocess.run(cmd, capture_output=True, text=True, shell=True, executable="/usr/bin/bash")
+    print(f"STDOUT: {process.stdout}")
+    print(f"STDERR: {process.stderr}")
+    if process.returncode != 0:
+        print(f"Error running inference: {process.stderr}")
         log_inference_stage_and_metrics(1)
         return
         
@@ -119,6 +141,7 @@ async def main():
         print(f"Error evaluating metrics: {e}")
         log_inference_stage_and_metrics(1)
         return
+    
     wandb.finish()
 
 def parse_args():
@@ -128,6 +151,7 @@ def parse_args():
                         help="Model name (e.g., gpt-4o-2024-08-06, claude-3.5-sonnet-20240620)")
     parser.add_argument("--run_id", required=True, help="Run ID for the agent")
     parser.add_argument("--tags", required=True, nargs='+', help="List of tags for wandb run")
+    parser.add_argument("--credit-budget", type=float, default=0.0, help="Credit budget for the API key")
 
     return parser.parse_args()
 

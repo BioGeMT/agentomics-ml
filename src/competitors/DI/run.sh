@@ -7,11 +7,7 @@ MODELS=("openai/gpt-4.1-2025-04-14")
 
 TAGS=("testing")
 RUNS=1
-
-# Export the API keys
-set -a
-source /repository/.env
-set +a
+PER_RUN_CREDIT_BUDGET=10
 
 for DATASET in "${DATASETS[@]}"
 do
@@ -49,13 +45,11 @@ do
       metagpt --init-config
 
       cp /repository/src/competitors/DI/run.py "$AGENT_DIR"/DI/run.py
-      cp /repository/src/competitors/DI/set_config.py "$AGENT_DIR"/DI/set_config.py
 
-      # Give the run permission to write to the DI directory and env
+      # Give the run permission to write to the DI directory, env, and temp
       chmod -R 777 "$AGENT_DIR"/DI
       chmod -R 777 "$AGENT_ENV"
-
-      python set_config.py --config-path "$AGENT_DIR"/.metagpt/config2.yaml --api-type 'openrouter' --model "$MODEL" --base-url 'https://openrouter.ai/api/v1' --api-key "$OPENROUTER_API_KEY"
+      chmod -R 777 "/tmp"
 
       echo "Launching the python run script"
       # Run the main script as the generated user
@@ -63,7 +57,12 @@ do
         --dataset $DATASET \
         --model $MODEL \
         --tags ${TAGS[@]} \
-        --run_id $AGENT_ID"
+        --run_id $AGENT_ID \
+        --credit-budget $PER_RUN_CREDIT_BUDGET"
+
+      # Remove the conda env to free up space (optional)
+      conda deactivate
+      conda remove -p "$AGENT_ENV" --all -y
 
       # Capture exit status of the Python script
       STATUS=$?
