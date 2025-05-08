@@ -196,12 +196,14 @@ def generate_and_run_scripts(client, model, dataset, temperature, run_name):
 
     error_code = run_script(script_path=train_path, script_type='train', output_dir=run_dir, run_name=run_name)
     if error_code != 0:
+        delete_conda_env(run_name=run_name)
         log_inference_stage_and_metrics(0)
         return
 
     error_code = run_script(script_path=inference_path, script_type='inference', output_dir=run_dir, run_name=run_name, test_csv_no_labels_path=test_csv_no_labels_path)
     if error_code != 0:
         log_inference_stage_and_metrics(1)
+        delete_conda_env(run_name=run_name)
         return
 
     try:
@@ -210,6 +212,9 @@ def generate_and_run_scripts(client, model, dataset, temperature, run_name):
     except Exception as e:
         print(f"Error during evaluation: {e}")
         log_inference_stage_and_metrics(1)
+    finally:
+        delete_conda_env(run_name=run_name)
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Generate ML code with one-shot LLM")
@@ -221,6 +226,11 @@ def parse_args():
     parser.add_argument("--timeout", required=True, type=float, help="Timeout in hours for each run")
 
     return parser.parse_args()
+
+def delete_conda_env(run_name):
+    env_name = run_name + '_env'
+    env_del_result = subprocess.run(f"conda env remove -n {env_name} -y", shell=True, check=True)
+    assert env_del_result.returncode == 0, f"Error deleting conda environment: {env_del_result.stderr}"
 
 def main(args):
     dotenv.load_dotenv()
