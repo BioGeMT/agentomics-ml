@@ -55,6 +55,7 @@ async def main():
         Create the best possible classifier that will generalize to new unseen data.
         You are using a linux system.
         You have access to both CPU and GPU resources.
+        You run in a conda environment and you are allowed to install any dependencies you need.
 
         DATASET:
         - Training file: {train_csv_path}
