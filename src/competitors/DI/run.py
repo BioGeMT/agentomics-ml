@@ -85,7 +85,8 @@ async def main(args):
 
         3. For {inference_path}:
         - Accept arguments: --input and --output
-        - Load the saved model
+        - The input file will not contain labels
+        - Load any necessary files created by the training script 
         - Output a CSV with column 'prediction' containing a score from 0 to 1
 
         You must write all three files to the correct paths before you finish.
