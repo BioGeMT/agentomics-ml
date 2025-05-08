@@ -15,7 +15,8 @@ MODELS=("openai/gpt-4.1-2025-04-14")
 
 TEMP=1.0 #Openrouter default
 TAGS=("testing")
-RUNS=1
+RUNS=4
+TIME_BUDGET_IN_HOURS=1
 
 for DATASET in "${DATASETS[@]}"
 do
@@ -31,7 +32,8 @@ do
         --dataset "$DATASET" \
         --model "$MODEL" \
         --temp "$TEMP" \
-        --tags "${TAGS[@]}" 
+        --tags "${TAGS[@]}" \
+        --timeout $TIME_BUDGET_IN_HOURS
 
       # Capture exit status of the Python script
       STATUS=$?

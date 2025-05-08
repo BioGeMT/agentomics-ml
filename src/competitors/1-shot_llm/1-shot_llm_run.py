@@ -8,6 +8,7 @@ import json
 from openai import OpenAI
 import wandb
 import dotenv
+from timeout_function_decorator import timeout
 
 sys.path.append("/repository/src")
 
@@ -218,12 +219,12 @@ def parse_args():
                         help="Model name (e.g., gpt-4o-2024-08-06, claude-3.5-sonnet-20240620)")
     parser.add_argument("--temp", type=float, required=True, help="Temperature for LLM generation")
     parser.add_argument("--tags", required=True, nargs='+', help="List of tags for wandb run")
+    parser.add_argument("--timeout", required=True, type=float, help="Timeout in hours for each run")
 
     return parser.parse_args()
 
-def main():
+def main(args):
     dotenv.load_dotenv()
-    args = parse_args()
 
     run_id = create_new_user_and_rundir()
     print(f"Generated unique run ID: {run_id}")
@@ -252,4 +253,11 @@ def main():
     wandb.finish()
 
 if __name__ == "__main__":
-    main()
+    try:
+        args = parse_args()
+        timeout(60*60*args.timeout)(main)(args)
+    except TimeoutError as e:
+        log_inference_stage_and_metrics(0)
+        wandb.log({"timed_out": True})
+        print(f"Execution timed out: {e}")
+        
