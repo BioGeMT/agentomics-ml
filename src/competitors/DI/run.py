@@ -15,10 +15,10 @@ from competitors.DI.set_config import set_config
 from utils.api_keys import create_new_api_key, get_api_key_usage, delete_api_key
 
 import wandb
+from timeout_function_decorator import timeout
 
-async def main():
+async def main(args):
     dotenv.load_dotenv("/repository/.env")
-    args = parse_args()
     run_id = args.run_id
     run_dir = os.path.join("/workspace/runs", run_id)
 
@@ -48,12 +48,12 @@ async def main():
     run_dir = os.path.join("/workspace/runs", run_id)
     with open(f"/repository/datasets/{config['dataset']}/metadata.json") as f:
         dataset_metadata = json.load(f)
-    train_csv_path = dataset_metadata['train_split']
+    train_csv_path = dataset_metadata['train_split'].replace("repository", "workspace")
+    dataset_knowledge_path = dataset_metadata['dataset_knowledge'].replace("repository", "workspace")
     test_csv_no_labels_path = dataset_metadata['test_split_no_labels']
     test_csv_path = dataset_metadata['test_split_with_labels']
     label_to_scalar = dataset_metadata['label_to_scalar']
     class_col = dataset_metadata['class_col']
-    dataset_knowledge_path = dataset_metadata['dataset_knowledge']
     with open(dataset_knowledge_path) as f:
         dataset_knowledge = f.read()
     
@@ -152,8 +152,16 @@ def parse_args():
     parser.add_argument("--run_id", required=True, help="Run ID for the agent")
     parser.add_argument("--tags", required=True, nargs='+', help="List of tags for wandb run")
     parser.add_argument("--credit-budget", type=float, default=0.0, help="Credit budget for the API key")
+    parser.add_argument("--timeout", required=True, type=float, help="Timeout in hours for each run")
+
 
     return parser.parse_args()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        args = parse_args()
+        asyncio.run(timeout(60*60*args.timeout)(main)(args))
+    except TimeoutError as e:
+        log_inference_stage_and_metrics(0)
+        wandb.log({"timed_out": True})
+        print(f"Execution timed out: {e}")

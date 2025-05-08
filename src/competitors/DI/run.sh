@@ -8,6 +8,7 @@ MODELS=("openai/gpt-4.1-2025-04-14")
 TAGS=("testing")
 RUNS=1
 PER_RUN_CREDIT_BUDGET=10
+TIME_BUDGET_IN_HOURS=1
 
 for DATASET in "${DATASETS[@]}"
 do
@@ -39,6 +40,7 @@ do
       pip install hrid==0.2.4
       pip install pandas
       pip install scikit-learn
+      pip install timeout-function-decorator
       
       mkdir "$AGENT_DIR"/DI
       cd "$AGENT_DIR"/DI
@@ -58,6 +60,7 @@ do
         --model $MODEL \
         --tags ${TAGS[@]} \
         --run_id $AGENT_ID \
+        --timeout $TIME_BUDGET_IN_HOURS \
         --credit-budget $PER_RUN_CREDIT_BUDGET"
 
       # Remove the conda env to free up space (optional)
