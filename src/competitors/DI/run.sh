@@ -9,7 +9,6 @@ TAGS=("testing")
 RUNS=1
 PER_RUN_CREDIT_BUDGET=10
 TIME_BUDGET_IN_HOURS=1
-USE_PROXY=false
 
 for DATASET in "${DATASETS[@]}"
 do
@@ -55,12 +54,6 @@ do
       chmod -R 777 "/tmp"
 
       echo "Launching the python run script"
-      
-      PROXY_FLAG=""
-      if [ "$USE_PROXY" = true ]; then
-          PROXY_FLAG="--use-proxy"
-      fi
-      
       # Run the main script as the generated user
       sudo -u $AGENT_ID bash -c "source /opt/conda/etc/profile.d/conda.sh && conda activate $AGENT_ENV && python run.py \
         --dataset $DATASET \
@@ -68,8 +61,7 @@ do
         --tags ${TAGS[@]} \
         --run_id $AGENT_ID \
         --timeout $TIME_BUDGET_IN_HOURS \
-        --credit-budget $PER_RUN_CREDIT_BUDGET \
-        $PROXY_FLAG"
+        --credit-budget $PER_RUN_CREDIT_BUDGET"
 
       # Remove the conda env to free up space (optional)
       conda deactivate

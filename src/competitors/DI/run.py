@@ -22,17 +22,11 @@ async def main(args):
     run_id = args.run_id
     run_dir = os.path.join("/workspace/runs", run_id)
 
-    if(args.use_proxy):
-        proxies = {
-            "http": os.environ.get("HTTP_PROXY", ""),
-            "https": os.environ.get("HTTPS_PROXY", ""),
-        }
-    else:
-        proxies = None
-    api_key_data = create_new_api_key(name=run_id, limit=args.credit_budget, proxies=proxies)
+    api_key_data = create_new_api_key(name=run_id, limit=args.credit_budget)
 
     openrouter_api_key = api_key_data['key']
     openrouter_api_key_hash = api_key_data['hash']
+
     set_config(config_path=f"{run_dir}/.metagpt/config2.yaml", api_type='openrouter', model=args.model, base_url='https://openrouter.ai/api/v1', api_key=openrouter_api_key)
 
     # Hack to make metagpt have configurable config path
@@ -159,7 +153,7 @@ def parse_args():
     parser.add_argument("--tags", required=True, nargs='+', help="List of tags for wandb run")
     parser.add_argument("--credit-budget", type=float, default=0.0, help="Credit budget for the API key")
     parser.add_argument("--timeout", required=True, type=float, help="Timeout in hours for each run")
-    parser.add_argument("--use-proxy", action="store_true", help="Use proxy for API requests")
+
 
     return parser.parse_args()
 
