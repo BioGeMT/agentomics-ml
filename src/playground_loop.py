@@ -20,7 +20,6 @@ from run_logging.logging_helpers import log_inference_stage_and_metrics
 from run_logging.wandb import setup_logging
 from utils.create_user import create_new_user_and_rundir
 from utils.models import MODELS
-from utils.get_previous_files import get_previous_files
 from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics
 from steps.final_outcome import FinalOutcome
 from steps.data_split import DataSplit
