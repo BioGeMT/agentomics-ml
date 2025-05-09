@@ -11,8 +11,8 @@ SELA_CONDA_ENV_PATH="/tmp/sela_env"
 METAGPT_FORK_DIR="/tmp/MetaGPT_fork_sela"
 METAGPT_REPO_URL="https://github.com/davidcechak/MetaGPT.git"
 SCRIPT_SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-UTILS_FIXED_SOURCE="$SCRIPT_SOURCE_DIR/utils_fixed.py"
-DATASET_FIXED_SOURCE="$SCRIPT_SOURCE_DIR/dataset_fixed.py"
+#UTILS_FIXED_SOURCE="$SCRIPT_SOURCE_DIR/utils_fixed.py"
+#DATASET_FIXED_SOURCE="$SCRIPT_SOURCE_DIR/dataset_fixed.py"
 
 # --- 0. Clean Up Previous Environment ---
 echo_yellow "Step 0: Checking for and removing existing SELA conda environment..."
@@ -29,16 +29,16 @@ if [ ! -x "$PIP_EXEC" ]; then echo_red "ERROR: Pip not found: $PIP_EXEC"; exit 1
 
 # --- 2. MetaGPT Installation (Clone/Pull & Patch using cp) ---
 echo_green "Step 2: Handling MetaGPT fork ($METAGPT_REPO_URL)..."
-if [ -d "$METAGPT_FORK_DIR/.git" ]; then echo_yellow " Existing repo found. Pulling..."; (cd "$METAGPT_FORK_DIR" && git pull origin main || git pull); echo_green " Pull attempted."; else echo_yellow " Cloning fresh..."; if [ -d "$METAGPT_FORK_DIR" ]; then rm -rf "$METAGPT_FORK_DIR"; fi; git clone "$METAGPT_REPO_URL" "$METAGPT_FORK_DIR"; if [ $? -ne 0 ]; then echo_red "Clone failed."; exit 1; fi; echo_green " Cloned successfully."; fi
+if [ -d "$METAGPT_FORK_DIR/.git" ]; then echo_yellow " Existing repo found. Pulling..."; (cd "$METAGPT_FORK_DIR" && git fetch origin && git reset --hard origin/main); echo_green " Pull attempted."; else echo_yellow " Cloning fresh..."; if [ -d "$METAGPT_FORK_DIR" ]; then rm -rf "$METAGPT_FORK_DIR"; fi; git clone "$METAGPT_REPO_URL" "$METAGPT_FORK_DIR"; if [ $? -ne 0 ]; then echo_red "Clone failed."; exit 1; fi; echo_green " Cloned successfully."; fi
 
 # ---> Patch files using cp <---
 UTILS_TARGET_PATH="$METAGPT_FORK_DIR/metagpt/ext/sela/utils.py"
 DATASET_TARGET_PATH="$METAGPT_FORK_DIR/metagpt/ext/sela/data/dataset.py"
 
-echo_yellow "Copying corrected utils.py..."
-if [ -f "$UTILS_FIXED_SOURCE" ]; then cp "$UTILS_FIXED_SOURCE" "$UTILS_TARGET_PATH"; echo_green " Overwrote $UTILS_TARGET_PATH"; else echo_red "ERROR: $UTILS_FIXED_SOURCE not found."; exit 1; fi
-echo_yellow "Copying corrected dataset.py..."
-if [ -f "$DATASET_FIXED_SOURCE" ]; then cp "$DATASET_FIXED_SOURCE" "$DATASET_TARGET_PATH"; echo_green " Overwrote $DATASET_TARGET_PATH"; else echo_red "ERROR: $DATASET_FIXED_SOURCE not found."; exit 1; fi
+#echo_yellow "Copying corrected utils.py..."
+#if [ -f "$UTILS_FIXED_SOURCE" ]; then cp "$UTILS_FIXED_SOURCE" "$UTILS_TARGET_PATH"; echo_green " Overwrote $UTILS_TARGET_PATH"; else echo_red "ERROR: $UTILS_FIXED_SOURCE not found."; exit 1; fi
+#echo_yellow "Copying corrected dataset.py..."
+#if [ -f "$DATASET_FIXED_SOURCE" ]; then cp "$DATASET_FIXED_SOURCE" "$DATASET_TARGET_PATH"; echo_green " Overwrote $DATASET_TARGET_PATH"; else echo_red "ERROR: $DATASET_FIXED_SOURCE not found."; exit 1; fi
 # ---> End of patching using cp <---
 
 # ---> Append dataset config to datasets.yaml <---
