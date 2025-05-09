@@ -1,146 +1,81 @@
-# source /opt/conda/etc/profile.d/conda.sh
-# conda activate /tmp/sela_env
-# cd /tmp/sela
-# cp /repository/src/competitors/SELA/run_sela.py /tmp/SELA/run_sela.py
-# cp /repository/src/competitors/SELA/set_config.py /tmp/SELA/set_config.py
 
-# # DATASETS=("human_nontata_promoters" "human_enhancers_cohn" "drosophila_enhancers_stark" "human_enhancers_ensembl"  "AGO2_CLASH_Hejret2023" "human_ocr_ensembl")
-# DATASETS=("human_nontata_promoters")
+#!/bin/bash
+set -e # Exit immediately if a command exits with a non-zero status.
 
-# # MODELS=("anthropic/claude-3.7-sonnet" "openai/gpt-4.1-2025-04-14" "openai/o4-mini" "google/gemini-2.5-pro-preview-03-25" "qwen/qwen3-32b" "deepseek/deepseek-r1" "deepseek/deepseek-chat")
-# MODELS=("openai/gpt-4.1-mini")
-# # MODELS=("openai/gpt-4.1-2025-04-14")
+echo_green() { echo -e "\033[0;32m$1\033[0m"; }
+echo_yellow() { echo -e "\033[1;33m$1\033[0m"; }
+echo_red() { echo -e "\033[0;31m$1\033[0m"; }
 
-# TAGS=("testing")
-# RUNS=1
+# --- 1. Activate Conda Environment and Set Working Directory ---
+echo_green "Step 1: Activating SELA conda environment and setting working directory..."
+source /opt/conda/etc/profile.d/conda.sh
+conda activate /tmp/sela_env
+if [ $? -ne 0 ]; then echo_red "Failed to activate conda environment /tmp/sela_env. Exiting."; exit 1; fi
+echo_green "Conda environment /tmp/sela_env activated."
 
-# # Export the API keys
-# set -a
-# source /repository/.env
-# set +a
-
-# # Give the run permission to write to the /tmp/DI directory
-# # chmod -R 777 /tmp/sela
-# # chmod -R 777 /tmp/sela_env
-
-# for DATASET in "${DATASETS[@]}"
-# do
-#   echo "Current dataset: $DATASET"
-  
-#   for MODEL in "${MODELS[@]}"
-#   do
-#     echo "Running with model: $MODEL"
-    
-#     for ((i=1; i<=$RUNS; i++))
-#     do
-#       # run the python script create_user.py to get the agent id
-#       AGENT_ID=$(python /repository/src/utils/create_user.py)
-#       echo "Running with agent ID: $AGENT_ID"
-      
-#       #TODO config needs to be specific for o-series of models https://docs.deepwisdom.ai/main/en/guide/get_started/configuration/llm_api_configuration.html
-#       python set_config.py --config-path '/tmp/sela/.metagpt/config2.yaml' --api-type 'openrouter' --model "$MODEL" --base-url 'https://openrouter.ai/api/v1' --api-key "$OPENROUTER_API_KEY"
-
-#       # TODO use the agent's environment, run the same setup.sh, now all DI agents are using the same environment
-#       # TODO when this is chaned, change the run.py lines that specify environment for the inference.py run
-#       # conda create -n "$AGENT_ID"_env -y
-      
-#       #TODO set proxy things like in agentic bash if necessary
-
-#       # Run the main script as the generated user
-#       sudo -u $AGENT_ID bash -c "source /opt/conda/etc/profile.d/conda.sh && conda activate /tmp/sela_env && python run_sela.py \
-#         --dataset $DATASET \
-#         --model $MODEL \
-#         --tags ${TAGS[@]} \
-#         --run_id $AGENT_ID"
-
-#       # Capture exit status of the Python script
-#       STATUS=$?
-#       echo "Exit status: $STATUS"
-#     done
-#   done
-# done
-
-
-# conda activate /tmp/sela_env
-source activate /tmp/sela_env
 cd /tmp/sela
+if [ $? -ne 0 ]; then echo_red "Failed to change directory to /tmp/sela. Exiting."; exit 1; fi
+echo_green "Current working directory: $(pwd)" # Should be /tmp/sela
 
-# DATASETS=("human_nontata_promoters" "human_enhancers_cohn" "drosophila_enhancers_stark" "human_enhancers_ensembl"  "AGO2_CLASH_Hejret2023" "human_ocr_ensembl")
+# --- 2. Configuration ---
 DATASETS=("human_nontata_promoters")
-
-#TODO config needs to be specific for o-series of models https://docs.deepwisdom.ai/main/en/guide/get_started/configuration/llm_api_configuration.html
-# MODELS=("anthropic/claude-3.7-sonnet" "openai/gpt-4.1-2025-04-14" "openai/o4-mini" "google/gemini-2.5-pro-preview-03-25" "qwen/qwen3-32b" "deepseek/deepseek-r1" "deepseek/deepseek-chat")
-# MODELS=("openai/gpt-4.1-mini")
 MODELS=("openai/gpt-4.1-2025-04-14")
-
-TAGS=("testing")
+TAGS=("sela_final_test_v5" "promoters" "default_config_workaround") # Updated tags
 RUNS=1
 
-# Export the API keys
-set -a
-source /repository/.env
-set +a
+# --- 3. Export API Keys from .env file ---
+echo_green "Step 2: Exporting API keys..."
+ENV_FILE_PATH="/repository/Agentomics-ML/.env" # Verify this path
+if [ -f "$ENV_FILE_PATH" ]; then
+    echo "Sourcing API keys from $ENV_FILE_PATH"
+    set -a; source "$ENV_FILE_PATH"; set +a
+else echo_yellow "Warning: Environment file $ENV_FILE_PATH not found."; fi
 
-for DATASET in "${DATASETS[@]}"
-do
-  echo "Current dataset: $DATASET"
-  
-  for MODEL in "${MODELS[@]}"
-  do
-    echo "Running with model: $MODEL"
-    
-    for ((i=1; i<=$RUNS; i++))
-    do
-      # run the python script create_user.py to get the agent id
-      AGENT_ID=$(python /repository/src/utils/create_user.py)
-      AGENT_DIR=/workspace/runs/"$AGENT_ID"
-      echo $AGENT_ID
-      echo $AGENT_DIR
+# Check for essential API Key
+if [ -z "$OPENROUTER_API_KEY" ]; then echo_red "Error: OPENROUTER_API_KEY is not set."; exit 1; fi
+echo_green "OPENROUTER_API_KEY seems to be set."
+if [ -z "$WANDB_API_KEY" ]; then echo_yellow "Warning: WANDB_API_KEY is not set."; fi
 
-      echo "Running with agent ID: $AGENT_ID"
-        
-      # AGENT_ENV="$AGENT_DIR"/"$AGENT_ID"_env
-      AGENT_ENV=/tmp/sela_env
+# --- 4. Main Execution Loop ---
+echo_green "Step 3: Starting main execution loop..."
+for DATASET in "${DATASETS[@]}"; do
+  echo_green "-----------------------------------------------------"
+  echo_green "Processing Dataset: $DATASET"
+  echo_green "-----------------------------------------------------"
 
-      # conda create -p "$AGENT_ENV" python=3.9 -y
-      # source /opt/conda/etc/profile.d/conda.sh
-      # conda activate "$AGENT_ENV"
-      # pip install --upgrade metagpt #use --no-cache-dir in case of problems
-      # pip install agentops==0.4.9 #Fix metagpt env error
+  for MODEL in "${MODELS[@]}"; do
+    echo_yellow "  Running with Model: $MODEL"
+    if [ -z "$MODEL" ]; then echo_red "Error: MODEL variable empty."; exit 1; fi
 
-      # pip install wandb
-      # pip install python-dotenv
-      # pip install pyyaml
-      # pip install hrid==0.2.4
-      # pip install pandas
-      # pip install scikit-learn
-      
-      # mkdir "$AGENT_DIR"/DI
-      # cd "$AGENT_DIR"/DI
-      # metagpt --init-config
+    for ((i=1; i<=$RUNS; i++)); do
+      echo_yellow "    Run iteration: $i / $RUNS"
 
-      # cp /repository/src/competitors/DI/run.py "$AGENT_DIR"/DI/run.py
-      # cp /repository/src/competitors/DI/set_config.py "$AGENT_DIR"/DI/set_config.py
-      cp /repository/src/competitors/SELA/run.py /tmp/sela/run.py
-      cp /repository/src/competitors/SELA/set_config.py /tmp/sela/set_config.py
+      # Generate Agent ID
+      CREATE_USER_SCRIPT_PATH="/repository/Agentomics-ML/src/utils/create_user.py"
+      AGENT_ID_PREFIX="sela_run"
+      if [ -f "$CREATE_USER_SCRIPT_PATH" ]; then AGENT_ID=$(python "$CREATE_USER_SCRIPT_PATH"); if [ -z "$AGENT_ID" ]; then echo_red "create_user.py failed."; AGENT_ID="${AGENT_ID_PREFIX}_${DATASET}_${MODEL//\//_}_$(date +%s%N)_run${i}"; fi
+      else echo_yellow "Warn: create_user.py not found."; AGENT_ID="${AGENT_ID_PREFIX}_${DATASET}_${MODEL//\//_}_$(date +%s%N)_run${i}"; fi
+      echo "    Generated AGENT_ID (run_id): $AGENT_ID"
 
-      # # Give the run permission to write to the DI directory and env
-      # chmod -R 777 "$AGENT_DIR"/DI
-      # chmod -R 777 "$AGENT_ENV"
+      AGENT_RUN_DIR="/workspace/runs/$AGENT_ID"; echo "    Agent run output directory: $AGENT_RUN_DIR"
+      mkdir -p /root/.metagpt/ # Ensure default config dir exists (for workaround)
 
-      python set_config.py --config-path "$AGENT_DIR"/.metagpt/config2.yaml --api-type 'openrouter' --model "$MODEL" --base-url 'https://openrouter.ai/api/v1' --api-key "$OPENROUTER_API_KEY"
+      echo "    Configuring MetaGPT (WORKAROUND: writing to /root/.metagpt/config2.yaml)..."
+      python set_config.py --config-path "/root/.metagpt/config2.yaml" --api-type 'openrouter' --model "$MODEL" --base-url 'https://openrouter.ai/api/v1' --api-key "$OPENROUTER_API_KEY"
+      if [ $? -ne 0 ]; then echo_red "set_config.py failed."; continue; fi
+      echo "    MetaGPT configured (using default path)."
 
-      echo "Launching the python run script"
-      # Run the main script as the generated user
-      sudo -u $AGENT_ID bash -c "source /opt/conda/etc/profile.d/conda.sh && conda activate $AGENT_ENV && python run.py \
-        --dataset $DATASET \
-        --model $MODEL \
-        --tags ${TAGS[@]} \
-        --run_id $AGENT_ID"
+      echo "    Launching SELA run.py script (in $(pwd))..."
+      python run.py --dataset "$DATASET" --model "$MODEL" --tags "${TAGS[@]}" --run_id "$AGENT_ID" --rollouts "10"
+      EXIT_STATUS=$?
+      echo "    Exit status of run.py: $EXIT_STATUS"
+      if [ $EXIT_STATUS -ne 0 ]; then echo_red "    run.py FAILED."; else echo_green "    run.py COMPLETED."; fi
+      echo_yellow "    ------------------------------------"
+    done # End of runs loop
+  done # End of models loop
+done # End of datasets loop
 
-      # Capture exit status of the Python script
-      STATUS=$?
-      echo "Exit status: $STATUS"
-    done
-  done
-done
+echo_green "====================================================="
+echo_green "run.sh script finished all planned executions."
+echo_green "====================================================="
+

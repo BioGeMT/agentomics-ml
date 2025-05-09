@@ -1,34 +1,33 @@
 import asyncio
 import os
 import dotenv
-import sys
+import sys # Needed for sys.exit and sys.path
 import argparse
 import json
 import subprocess
+import traceback # For printing tracebacks on error
 
-sys.path.append("/repository/src")
-from run_logging.wandb import setup_logging
-from run_logging.evaluate_log_run import evaluate_log_metrics
-from run_logging.log_files import log_files
-from run_logging.logging_helpers import log_inference_stage_and_metrics
+# Add the 'src' directory of your Agentomics-ML project to Python's search path
+AGENTOMICS_SRC_PATH = "/repository/Agentomics-ML/src"
+if AGENTOMICS_SRC_PATH not in sys.path:
+    sys.path.insert(0, AGENTOMICS_SRC_PATH)
+
+# Now imports from the src directory should work
+try:
+    from run_logging.wandb import setup_logging
+    from run_logging.evaluate_log_run import evaluate_log_metrics
+    from run_logging.log_files import log_files
+    from run_logging.logging_helpers import log_inference_stage_and_metrics
+except ImportError as e:
+    print(f"FATAL ERROR: Could not import run_logging modules from {AGENTOMICS_SRC_PATH}: {e}")
+    print("Ensure the path is correct and run_logging exists.")
+    sys.exit(1)
 
 import wandb
 
-import MetaGPT.metagpt.ext.sela.data.dataset as sela_dataset
-from MetaGPT.metagpt.ext.sela.insights.solution_designer import SolutionDesigner
-from MetaGPT.metagpt.ext.sela.utils import DATA_CONFIG
-
-
 async def main():
-    dotenv.load_dotenv("/repository/.env")
     args = parse_args()
-    run_id = args.run_id
-
-    # Hack to make metagpt have configurable config path
-    # import pathlib
-    # from pathlib import Path
-    # pathlib.Path.home = lambda: Path(f"/workspace/runs/{run_id}")
-    # from metagpt.roles.di.data_interpreter import DataInterpreter
+    run_id = args.run_id # This is the AGENT_ID passed from run.sh
 
     config = {
         "dataset": args.dataset,
@@ -38,150 +37,239 @@ async def main():
         "agent_id": run_id,
     }
 
-    # - DONE - TODO write the following command in python or make a bash script for it and call it, work_dir: os.path.join("/workspace/runs", run_name)
-    # cat > MetaGPT/metagpt/exp/sela/data.yaml << 'EOF'
-    # datasets_dir: "/repository/datasets" # path to the datasets directory
-    # work_dir: /workspace/runs/$run_id # path to the workspace directory
-    # role_dir: storage/SELA # relative path to the role directory
-    # EOF
-    subprocess.run(["bash", "overwrite_data_yaml.sh", os.path.join("/workspace/runs", run_id)])
-    
-    # EDIT: SKIP THIS FOR NOW, THE CODE HAS BEEN UPDATED IN THE FORK
-    # to accept the dataset name as an argument
-    # TODO finish the TODO in overwrite_dataset.sh script
-    # call the overwrite_dataset.sh here with the args.dataset argument
+    current_run_output_dir = os.path.join("/workspace/runs", run_id)
+    os.makedirs(current_run_output_dir, exist_ok=True)
 
-    wandb_key = os.getenv("WANDB_API_KEY")
-    setup_logging(config, api_key=wandb_key, dir=f"/workspace/runs/{run_id}")
 
-    run_dir = os.path.join("/workspace/runs", run_id)
-    with open(f"/repository/datasets/{config['dataset']}/metadata.json") as f:
-        dataset_metadata = json.load(f)
-    train_csv_path = dataset_metadata['train_split']
-    test_csv_no_labels_path = dataset_metadata['test_split_no_labels']
-    test_csv_path = dataset_metadata['test_split_with_labels']
-    label_to_scalar = dataset_metadata['label_to_scalar']
-    class_col = dataset_metadata['class_col']
-    dataset_knowledge_path = dataset_metadata['dataset_knowledge']
-    with open(dataset_knowledge_path) as f:
-        dataset_knowledge = f.read()
-    
-    train_file_path = f"{run_dir}/train.py"
-    inference_path = f"{run_dir}/inference.py"
-    # env_yaml_path = f"{run_dir}/environment.yaml" #Not necessary since agent installs directly into the environment
-    # model_path = f"{run_dir}/model.pkl" #Not necessary since the agent has freedom to choose the format
-    prompt = f"""
-        Create the best possible classifier that will generalize to new unseen data.
-        You are using a linux system.
-        You have access to both CPU and GPU resources.
-
-        DATASET:
-        - Training file: {train_csv_path}
-        - Test file: {test_csv_no_labels_path}
-
-        Dataset knowledge:
-        {dataset_knowledge}
-
-        REQUIREMENTS:
-        1. Create and save three files:
-           - {train_file_path}
-           - {inference_path}
-           - a model file
-
-        2. For {train_file_path}:
-        - Train a robust model suitable for the given dataset
-        - Save the trained model into {run_dir} to be loaded later by the inference script
-
-        3. For {inference_path}:
-        - Accept arguments: --input and --output
-        - Load the saved model
-        - Output a CSV with column 'prediction' containing a score from 0 to 1
-
-        You must write all three files to the correct paths before you finish.
-        """
-    
-    # TODO
-    # python MetaGPT/metagpt/exp/sela/data/dataset.py --save_analysis_pool --dataset $args.dataset --target_col "class"
-    # command = [
-    #     "python", 
-    #     "MetaGPT/metagpt/exp/sela/data/dataset.py", 
-    #     "--save_analysis_pool", 
-    #     "--dataset", 
-    #     args.dataset, 
-    #     "--target_col", 
-    #     "class"
-    # ]
-    # result = subprocess.run(command, check=True, capture_output=True, text=True)
-    # print(result.stdout)
-    datasets_dir = DATA_CONFIG["datasets_dir"]
-    target_col = "class"
-    force_update = True
-    save_analysis_pool = True
-    datasets_dict = {"datasets": {}}
-    solution_designer = SolutionDesigner()
-   
-    custom_dataset = sela_dataset.ExpDataset(args.dataset, datasets_dir, target_col=target_col, force_update=force_update)
-    asyncio.run(sela_dataset.process_dataset(custom_dataset, solution_designer, save_analysis_pool, datasets_dict))
-
-    sela_dataset.save_datasets_dict_to_yaml(datasets_dict)
-
-    # TODO
-    # python MetaGPT/metagpt/exp/sela/data/python run_experiment.py --exp_mode mcts --task $args.dataset --rollouts $args.rollouts
-    # command = [
-    #     "python", 
-    #     "MetaGPT/metagpt/exp/sela/data/run_experiment.py", 
-    #     "--exp_mode", 
-    #     "mcts", 
-    #     "--task", 
-    #     args.dataset, 
-    #     "--rollouts", 
-    #     str(args.rollouts) 
-    # ]
-    # result = subprocess.run(command, check=True, capture_output=True, text=True)
-    # print(result.stdout)
-
+    # Update data.yaml using the script copied to CWD (/tmp/sela)
+    print(f"Updating data.yaml to use work_dir: {current_run_output_dir}...")
     try:
-        log_files(files=[train_file_path, inference_path], agent_id=run_id)
-    except Exception as e:
-        print(f"Error logging files: {e}")
-        log_inference_stage_and_metrics(0)
-        return
-
-    predictions_file_path = os.path.join(run_dir, "predictions.csv")
-    cmd = f"source /opt/conda/etc/profile.d/conda.sh && conda activate /tmp/di_env && python {run_dir}/inference.py --input {test_csv_no_labels_path} --output {predictions_file_path}"
-    try:
-        process = subprocess.run(cmd, capture_output=True, text=True, shell=True, executable="/usr/bin/bash")
-        print(f"STDOUT: {process.stdout}")
-        print(f"STDERR: {process.stderr}")
-    except Exception as e:
-        print(f"Error running inference: {e}")
-        log_inference_stage_and_metrics(1)
-        return
-        
-    metrics_file_path = os.path.join(run_dir, f"metrics.txt")
-    try:
-        evaluate_log_metrics(
-            results_file=predictions_file_path,
-            test_file=test_csv_path,
-            output_file=metrics_file_path,
-            label_to_scalar=label_to_scalar,
-            class_col=class_col,
+        # Ensure overwrite_data_yaml.sh uses the correct absolute path internally
+        subprocess.run(
+            ["bash", "./overwrite_data_yaml.sh", current_run_output_dir],
+            check=True, cwd=os.getcwd() # Should be /tmp/sela
         )
+        print("data.yaml updated successfully by overwrite_data_yaml.sh.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error running overwrite_data_yaml.sh: {e}\nstdout: {e.stdout}\nstderr: {e.stderr}")
+        sys.exit(f"FATAL: Failed to configure data.yaml for run {run_id}.")
+    except FileNotFoundError:
+        print(f"Error: overwrite_data_yaml.sh not found in {os.getcwd()}. Make sure set_up.sh copied it.")
+        sys.exit(f"FATAL: Missing overwrite_data_yaml.sh in {os.getcwd()}.")
+
+
+    # Setup Weights & Biases logging
+    wandb_key = os.getenv("WANDB_API_KEY")
+    if not wandb_key: print("Warning: WANDB_API_KEY not found in environment.")
+    try:
+      setup_logging(config, api_key=wandb_key, dir=current_run_output_dir)
+      print(f"W&B logging setup for run_id: {run_id}.")
     except Exception as e:
-        print(f"Error evaluating metrics: {e}")
-        log_inference_stage_and_metrics(1)
-        return
-    wandb.finish()
+      print(f"Error setting up WandB logging: {e}"); traceback.print_exc()
+      sys.exit("FATAL: WandB setup failed.")
+
+
+    # Check for dataset metadata
+    metadata_file_path = f"/repository/Agentomics-ML/datasets/{config['dataset']}/metadata.json" # Corrected path
+    print(f"Looking for dataset metadata at: {metadata_file_path}")
+    try:
+        with open(metadata_file_path) as f: dataset_metadata = json.load(f)
+        print("Dataset metadata loaded successfully.")
+    except FileNotFoundError:
+        print(f"Error: Dataset metadata file not found at {metadata_file_path}")
+        try: log_inference_stage_and_metrics(-1, message="Dataset metadata not found.")
+        except Exception: pass
+        wandb.finish(exit_code=1); sys.exit(1)
+    except json.JSONDecodeError:
+        print(f"Error: Could not decode JSON from {metadata_file_path}")
+        try: log_inference_stage_and_metrics(-1, message="Dataset metadata JSON decode error.")
+        except Exception: pass
+        wandb.finish(exit_code=1); sys.exit(1)
+
+    # Extract needed info from metadata
+    train_csv_path = dataset_metadata.get('train_split') # Path to original train data
+    test_csv_no_labels_path = dataset_metadata.get('test_split_no_labels') # Path to original test data (no labels)
+    test_csv_path = dataset_metadata.get('test_split_with_labels') # Path to original test data (with labels) for eval
+    label_to_scalar = dataset_metadata.get('label_to_scalar')
+    class_col = dataset_metadata.get('class_col')
+
+    if not all([train_csv_path, test_csv_no_labels_path, test_csv_path]):
+        print("Error: One or more essential data paths missing in metadata.json")
+        try: log_inference_stage_and_metrics(-1, message="Essential data paths missing in metadata.")
+        except Exception: pass
+        wandb.finish(exit_code=1); sys.exit(1)
+
+    # Define SELA code paths and environment for subprocesses
+    metagpt_fork_root_dir = "/tmp/MetaGPT_fork_sela"
+    sela_code_base_dir = os.path.join(metagpt_fork_root_dir, "metagpt", "ext", "sela")
+    sela_data_subdir = "data" # Subdir where dataset.py is
+
+    metagpt_config_path_for_run = os.path.join(current_run_output_dir, ".metagpt", "config2.yaml")
+    print(f"Setting METAGPT_CONFIG_PATH for SELA subprocesses: {metagpt_config_path_for_run}")
+    python_path_for_sela_scripts = f"{metagpt_fork_root_dir}:{os.environ.get('PYTHONPATH', '')}"
+    env_for_sela_scripts = { **os.environ, "PYTHONPATH": python_path_for_sela_scripts, "METAGPT_CONFIG_PATH": metagpt_config_path_for_run }
+    print(f"PYTHONPATH for SELA subprocesses: {python_path_for_sela_scripts}")
+
+
+    # --- Call SELA's dataset.py script ---
+    print(f"Invoking SELA's dataset.py for dataset: {args.dataset}...")
+    dataset_script_name = "dataset.py"
+    full_dataset_script_path = os.path.join(sela_code_base_dir, sela_data_subdir, dataset_script_name)
+    target_col_arg = class_col if class_col else "class"
+
+    command_dataset = [ "python", full_dataset_script_path, "--dataset", args.dataset, "--target_col", target_col_arg ]
+    try:
+        print(f"Executing: {' '.join(command_dataset)} in CWD: {sela_code_base_dir}") # CWD for dataset.py is sela base dir
+        result_dataset = subprocess.run(
+            command_dataset, cwd=sela_code_base_dir, check=True,
+            capture_output=True, text=True, env=env_for_sela_scripts
+        )
+        print("SELA dataset.py STDOUT:\n", result_dataset.stdout)
+        if result_dataset.stderr: print("SELA dataset.py STDERR:\n", result_dataset.stderr)
+        print("SELA dataset.py finished successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error running SELA dataset.py: {e}\nSTDOUT:\n{e.stdout}\nSTDERR:\n{e.stderr}")
+        wandb.finish(exit_code=1); sys.exit(1)
+    except FileNotFoundError:
+        print(f"Error: SELA dataset.py not found at {full_dataset_script_path}")
+        wandb.finish(exit_code=1); sys.exit(1)
+
+    # --- Call SELA's run_experiment.py script ---
+    experiment_script_name = "run_experiment.py"
+    # ---> CORRECTED PATH: run_experiment.py is directly in sela_code_base_dir <---
+    full_experiment_script_path = os.path.join(sela_code_base_dir, experiment_script_name)
+    print(f"Invoking SELA's experiment script: {full_experiment_script_path}...")
+
+    if not os.path.exists(full_experiment_script_path):
+        print(f"Error: SELA run_experiment.py not found at expected location: {full_experiment_script_path}")
+        wandb.finish(exit_code=1); sys.exit(1)
+
+    command_experiment = [ "python", full_experiment_script_path, "--exp_mode", "mcts", "--task", args.dataset, "--rollouts", str(args.rollouts) ]
+    try:
+        # run_experiment.py likely also expects to be run from the sela base dir
+        print(f"Executing: {' '.join(command_experiment)} in CWD: {sela_code_base_dir}")
+        result_experiment = subprocess.run(
+            command_experiment, cwd=sela_code_base_dir, check=True,
+            capture_output=True, text=True, env=env_for_sela_scripts
+        )
+        print("SELA run_experiment.py STDOUT:\n", result_experiment.stdout)
+        if result_experiment.stderr: print("SELA run_experiment.py STDERR:\n", result_experiment.stderr)
+        print("SELA run_experiment.py finished. Expecting generated code in output directory.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error running SELA run_experiment.py: {e}\nSTDOUT:\n{e.stdout}\nSTDERR:\n{e.stderr}")
+        wandb.finish(exit_code=1); sys.exit(1)
+    except FileNotFoundError: # Should be caught by the check above, but just in case
+        print(f"Error: SELA run_experiment.py not found at {full_experiment_script_path} during execution attempt.")
+        wandb.finish(exit_code=1); sys.exit(1)
+
+    # --- Log generated SELA agent files and run inference ---
+    # SELA (via run_experiment.py) should have saved its output in current_run_output_dir.
+    # Check for expected output files (names might vary based on SELA's implementation)
+    # Assuming it generates 'train.py' and 'inference.py' directly in current_run_output_dir
+    generated_train_script_path = os.path.join(current_run_output_dir, "train.py")
+    generated_inference_script_path = os.path.join(current_run_output_dir, "inference.py")
+
+    print(f"Checking for generated files: \n  Train script: {generated_train_script_path}\n  Inference script: {generated_inference_script_path}")
+    if not os.path.exists(generated_train_script_path) or not os.path.exists(generated_inference_script_path):
+        error_msg = f"SELA run did not generate the expected script(s) in {current_run_output_dir}."
+        print(f"Error: {error_msg}")
+        # Check contents of output dir for debugging
+        print(f"Contents of {current_run_output_dir}:")
+        try: print(os.listdir(current_run_output_dir))
+        except FileNotFoundError: print("  Directory not found.")
+        log_inference_stage_and_metrics(0, message=error_msg)
+        wandb.finish(exit_code=1); sys.exit(1)
+
+    print("Generated SELA agent files found. Logging to WandB...")
+    try:
+        log_files(files=[generated_train_script_path, generated_inference_script_path], agent_id=run_id)
+        print("Generated SELA agent files logged.")
+    except Exception as e:
+        print(f"Error during logging of generated SELA files: {e}")
+        log_inference_stage_and_metrics(0, message=f"Error logging SELA files: {str(e)}")
+        wandb.finish(exit_code=1); sys.exit(1)
+
+    # Run the generated inference script
+    predictions_output_file_path = os.path.join(current_run_output_dir, "predictions.csv")
+    conda_env_for_inference = "/tmp/sela_env"
+
+    # Use the split file saved in work_dir as input for inference
+    inference_input_path = os.path.join(current_run_output_dir, "split_test_wo_target.csv")
+    if not os.path.exists(inference_input_path):
+         # Fallback to original test path if split wasn't created? Or error out?
+         print(f"Warning: Split test file {inference_input_path} not found. Falling back to original test path {test_csv_no_labels_path}")
+         inference_input_path = test_csv_no_labels_path # Use original path if split missing
+
+    if not os.path.exists(generated_inference_script_path):
+         print(f"Error: Generated inference script {generated_inference_script_path} not found. Cannot run inference.")
+         log_inference_stage_and_metrics(1, message="Generated inference script missing.")
+         wandb.finish(exit_code=1); sys.exit(1)
+
+    cmd_inference = ( f"source /opt/conda/etc/profile.d/conda.sh && conda activate {conda_env_for_inference} && python {generated_inference_script_path} --input {inference_input_path} --output {predictions_output_file_path}" )
+    print(f"Executing generated inference script. CWD for inference: {current_run_output_dir}")
+    print(f"Command: {cmd_inference}")
+    try:
+        process_inference = subprocess.run(
+            cmd_inference, capture_output=True, text=True, shell=True,
+            executable="/bin/bash", check=True, cwd=current_run_output_dir
+        )
+        print(f"Inference script STDOUT: {process_inference.stdout}")
+        if process_inference.stderr: print(f"Inference script STDERR: {process_inference.stderr}")
+        print(f"Inference script finished. Predictions should be at {predictions_output_file_path}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error running generated inference script: {e}\nSTDOUT:\n{e.stdout}\nSTDERR:\n{e.stderr}")
+        log_inference_stage_and_metrics(1, message=f"Generated inference script failed: {str(e.stderr)[:250]}")
+        wandb.finish(exit_code=1); sys.exit(1)
+
+    # Evaluate metrics
+    metrics_output_file_path = os.path.join(current_run_output_dir, "metrics.txt")
+    # Use the ground truth split saved in work_dir for evaluation
+    evaluation_gt_path = os.path.join(current_run_output_dir, "split_test_target.csv")
+    if not os.path.exists(evaluation_gt_path):
+        print(f"Warning: Ground truth split file {evaluation_gt_path} not found. Falling back to original test path {test_csv_path}")
+        evaluation_gt_path = test_csv_path # Use original path if split missing
+
+    if not all([evaluation_gt_path, label_to_scalar, class_col]):
+        missing_items_msg = f"Missing items for metrics: gt_path={evaluation_gt_path is not None}, label_to_scalar={label_to_scalar is not None}, class_col={class_col is not None}"
+        print(f"Error: {missing_items_msg}")
+        log_inference_stage_and_metrics(1, message=missing_items_msg)
+        wandb.finish(exit_code=1); sys.exit(1)
+    if not os.path.exists(predictions_output_file_path):
+        print(f"Error: Predictions file {predictions_output_file_path} not found. Cannot evaluate metrics.")
+        log_inference_stage_and_metrics(1, message="Predictions file missing for metrics.")
+        wandb.finish(exit_code=1); sys.exit(1)
+
+    try:
+        print(f"Evaluating metrics: results={predictions_output_file_path}, ground_truth={evaluation_gt_path}")
+        # Ensure evaluate_log_metrics uses 'target' column from the split_test_target.csv
+        evaluate_log_metrics(
+            results_file=predictions_output_file_path, test_file=evaluation_gt_path,
+            output_file=metrics_output_file_path, label_to_scalar=label_to_scalar, class_col='target', # Use 'target' as column name
+        )
+        print(f"Metrics evaluated and logged. Summary in {metrics_output_file_path}")
+    except Exception as e:
+        print(f"Error during metrics evaluation: {e}")
+        traceback.print_exc()
+        log_inference_stage_and_metrics(1, message=f"Metrics evaluation failed: {str(e)}")
+        wandb.finish(exit_code=1); sys.exit(1)
+
+    print(f"Run (ID: {run_id}) for dataset {args.dataset} with model {args.model} completed successfully.")
+    wandb.finish() # Successful completion
+
 
 def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", required=True, help="Dataset name")
-    parser.add_argument("--model", required=True,
-                        help="Model name (e.g., gpt-4o-2024-08-06, claude-3.5-sonnet-20240620)")
-    parser.add_argument("--run_id", required=True, help="Run ID for the agent")
-    parser.add_argument("--tags", required=True, nargs='+', help="List of tags for wandb run")
-
+    parser = argparse.ArgumentParser(description="Run SELA agent pipeline for a given dataset and model.")
+    parser.add_argument("--dataset", required=True, help="Dataset name (must match a folder in /repository/Agentomics-ML/datasets/ and have a metadata.json)")
+    parser.add_argument("--model", required=True, help="Model name for the LLM (as used by MetaGPT config)")
+    parser.add_argument("--run_id", required=True, help="Unique Run ID for this execution (usually AGENT_ID from run.sh)")
+    parser.add_argument("--tags", required=True, nargs='+', help="List of tags for Weights & Biases run")
+    parser.add_argument("--rollouts", default="10", help="Number of rollouts for MCTS in SELA's run_experiment.py (default: 10)")
     return parser.parse_args()
 
 if __name__ == "__main__":
+    print(f"--- Starting run.py ---")
+    print(f"CWD: {os.getcwd()}")
+    print(f"Python executable: {sys.executable}")
+    print(f"---")
     asyncio.run(main())
+
