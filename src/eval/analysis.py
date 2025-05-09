@@ -168,7 +168,7 @@ if __name__ == "__main__":
         sub_df = analyse_tag(tags=tag_group, name=name, timeout_in_seconds=3600)
         sub_dfs.append(sub_df)    
     experiment_dfs = pd.concat(sub_dfs, axis=0, join='outer')
-    experiment_dfs = experiment_dfs.sort_values(by=['dataset', 'method'])
+    experiment_dfs = experiment_dfs.sort_values(by=['dataset', 'method']).round(2)
     experiment_dfs.to_csv('./experiment_dfs.csv', index=False)
 
     # Genomic benchmarks and ACC_max dataframe
@@ -213,4 +213,5 @@ if __name__ == "__main__":
 
     # Adding BEST tags to cells for visual clarity
     max_df = add_best_tags(max_df)
+    # clip the numbers to two decimals
     max_df.to_csv('./leaderboard_max_metric.csv', index=True)
