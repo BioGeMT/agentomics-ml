@@ -25,7 +25,8 @@ RUNS=1
 
 # --- 3. Export API Keys from .env file ---
 echo_green "Step 2: Exporting API keys..."
-ENV_FILE_PATH="/repository/Agentomics-ML/.env" # Verify this path
+# ENV_FILE_PATH="/repository/Agentomics-ML/.env" # Verify this path
+ENV_FILE_PATH="/repository/.env" # Verify this path
 if [ -f "$ENV_FILE_PATH" ]; then
     echo "Sourcing API keys from $ENV_FILE_PATH"
     set -a; source "$ENV_FILE_PATH"; set +a
