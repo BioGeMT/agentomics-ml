@@ -3,7 +3,7 @@ import subprocess
 
 from pydantic_ai import ModelRetry
 from eval.evaluate_result import get_metrics
-from run_logging.logging_helpers import log_inference_stage_and_metrics, log_validation_metrics
+from run_logging.logging_helpers import log_inference_stage_and_metrics, log_serial_metrics
 
 def run_inference_and_log(config, iteration, evaluation_stage):
     with open(f"/repository/datasets/{config['dataset']}/metadata.json") as f:
@@ -13,12 +13,14 @@ def run_inference_and_log(config, iteration, evaluation_stage):
     stage_to_input = {
         'dry_run': dataset_metadata['train_split'],
         'validation': run_dir + "/validation.csv",
-        'test': dataset_metadata['test_split_no_labels']
+        'test': dataset_metadata['test_split_no_labels'],
+        'train': run_dir + "/train.csv",
     }
     stage_to_output = {
         'dry_run': "/dev/null",
-        'validation': run_dir + "/eval_predictions.csv", #TODO
-        'test': run_dir + "/eval_predictions.csv"
+        'validation': run_dir + "/eval_predictions_validation.csv",
+        'test': run_dir + "/eval_predictions_test.csv",
+        'train': run_dir + "/eval_predictions_train.csv",
     }
 
     agent_env_name = f"{run_dir}/.conda/envs/{config['agent_id']}_env"
@@ -28,6 +30,10 @@ def run_inference_and_log(config, iteration, evaluation_stage):
 
     if(evaluation_stage == 'test'):
         print('RUNNING TEST EVAL')
+        if(inference_out.returncode != 0):
+            print('TEST EVAL FAIL', str(inference_out))
+            log_inference_stage_and_metrics(1)
+            raise Exception('Inference script failed:', str(inference_out))
         try:
             test_metrics = get_metrics(
                 results_file=stage_to_output[evaluation_stage],
@@ -46,32 +52,55 @@ def run_inference_and_log(config, iteration, evaluation_stage):
         print('RUNNING DRY RUN EVAL')
         if(inference_out.returncode != 0):
             print('DRY RUN EVAL FAIL', inference_out.stderr)
-            raise ModelRetry('Inference script validation failed:', str(inference_out))
+            raise ModelRetry(f'Inference script validation failed: {str(inference_out)}')
         print('DRY RUN EVAL SUCCESS')
     if(evaluation_stage == 'validation'):
         print('RUNNING VALIDATION EVAL')
         if(inference_out.returncode != 0):
             print('VALIDATION EVAL FAIL', inference_out.stderr)
-            log_validation_metrics(metrics=None, iteration=iteration)
-            return #TODO return something to add to next iteration context
+            log_serial_metrics(prefix="validation", metrics=None, iteration=iteration)
+            raise Exception('Inference script validation failed:', str(inference_out))
         try:
-            valid_metrics = get_metrics(
+            _ = get_metrics_and_serial_log(
                 results_file=stage_to_output[evaluation_stage],
                 test_file=stage_to_input[evaluation_stage],
                 output_file=f"{run_dir}/validation_metrics.txt",
                 label_to_scalar=dataset_metadata['label_to_scalar'],
                 class_col=dataset_metadata['class_col'],
+                iteration=iteration,
+                prefix="validation",
             )
         except Exception as e:
-            print('VALIDATION EVAL FAIL', e)
-            log_validation_metrics(metrics=None, iteration=iteration)
-            return #TODO return something to add to next iteration context
-        
-        log_validation_metrics(metrics={
-            f"validation/{k}": v for k, v in valid_metrics.items()
-        }, iteration=iteration)
-
-        valid_metric = valid_metrics[config["best_metric"]]
-        #TODO implement snapshoting
+            log_serial_metrics(prefix="validation", metrics=None, iteration=iteration)
+            raise e
         print('VALIDATION EVAL SUCCESS')
+    if(evaluation_stage == 'train'):
+        print('RUNNING TRAIN EVAL')
+        if(inference_out.returncode != 0):
+            print('TRAIN EVAL FAIL', inference_out.stderr)
+            raise Exception('Inference script validation failed:', str(inference_out))
+        try:
+            _ = get_metrics_and_serial_log(
+                results_file=stage_to_output[evaluation_stage],
+                test_file=stage_to_input[evaluation_stage],
+                output_file=f"{run_dir}/train_metrics.txt",
+                label_to_scalar=dataset_metadata['label_to_scalar'],
+                class_col=dataset_metadata['class_col'],
+                iteration=iteration,
+                prefix="train",
+            )
+        except Exception as e:
+            log_serial_metrics(prefix="train", metrics=None, iteration=iteration)
+            raise e
+        print('TRAIN EVAL SUCCESS')
 
+def get_metrics_and_serial_log(results_file, test_file, output_file, label_to_scalar, class_col, iteration, prefix):
+    metrics = get_metrics(
+        results_file=results_file,
+        test_file=test_file,
+        output_file=output_file,
+        label_to_scalar=label_to_scalar,
+        class_col=class_col,
+    )
+    log_serial_metrics(prefix=prefix, metrics=metrics, iteration=iteration)
+    return metrics

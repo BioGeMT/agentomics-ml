@@ -21,6 +21,7 @@ from run_logging.wandb import setup_logging
 from utils.create_user import create_new_user_and_rundir
 from utils.models import MODELS
 from utils.get_previous_files import get_previous_files
+from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics
 from steps.final_outcome import FinalOutcome
 from steps.data_split import DataSplit
 from steps.model_architecture import ModelArchitecture
@@ -141,7 +142,7 @@ async def main():
         run_inference_and_log(config, iteration=-1, evaluation_stage='dry_run') 
         return result       
     
-    past_messages = None #TODO refactor into if (iteration_index == 0)
+    feedback = None
     for run_index in range(config["iterations"]):
         if run_index == 0:
             base_prompt = f"""
@@ -167,34 +168,42 @@ async def main():
                 Note that you can use GPU-accelerated libraries such as PyTorch.
             """
         else:
-            #TODO past_messages should be passed as context into the agent, not as a user prompt part
             base_prompt = f"""
-                Here is the full context from the previous run:
-                {past_messages}
+                Here is the feedback the previous run:
+                {feedback}
                 Ensure that there is an 'inference.py' script at /workspace/runs/{config['agent_id']}/inference.py.
                 - If the previous run failed to create this script, generate it from scratch following the same input/output specs.
                 - If the script exists, inspect its contents, describe what improvements you'd make, then implement those changes.
                 Use the existing context to guide your refinements.
                 The list of files in the workspace (/workspace/runs/{config['agent_id']}/) is:
-                {get_previous_files(config['agent_id'])}
                 Change the model to a simple DecisionTreeClassifier.
             """
-        # print(tools[0].function(f"pip -q install numpy==1.26.4 pandas==2.0.3"))
 
         try:
             current_run_messages = await run_architecture(agent, validation_agent, split_dataset_agent, config, base_prompt, iteration=run_index)
-            # construct next iteration context
-            past_messages = current_run_messages
         except Exception as e:
             log_inference_stage_and_metrics(0)
             print(e)
             return
-            # Construct feedback for next iteration (add it to context/prompt)
-            # past_messages = past_messages + messagify(e)
-            # Log iteration validation performance = -1 or 0
-            # Then continue the loop
-        feedback = run_inference_and_log(config, iteration=run_index, evaluation_stage='validation') #TODO implement feedback
+        try:
+            run_inference_and_log(config, iteration=run_index, evaluation_stage='validation')
+            run_inference_and_log(config, iteration=run_index, evaluation_stage='train')
 
+            # TODO aggregate feedback over all iterations
+            if is_new_best(config['agent_id'], config['best_metric']):
+                new_metrics, best_metrics = get_new_and_best_metrics(config['agent_id'])
+                feedback = f"Your solution is better than the previous one. The new metrics are: {new_metrics}."
+                #TODO delete snapshots after run ends
+                snapshot(config['agent_id'], run_index)  # Snapshotting overrides the previous snapshot, influencing the get_new_and_best_metrics function
+            else:
+                feedback = f"Your solution is worse than the previous one. The new metrics are: {new_metrics}. The best metrics are: {best_metrics}."
+                # feedback = get_feedback() 
+
+        except Exception as e:
+            feedback = f'VALIDATION EVAL FAIL: {e}'
+        
+    #TODO revert to best model
+    #TODO log the best iteration number ?
     run_inference_and_log(config, iteration=run_index, evaluation_stage='test')
     wandb.finish()
 

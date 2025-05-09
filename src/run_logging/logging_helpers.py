@@ -10,13 +10,14 @@ def log_inference_stage_and_metrics(stage, metrics=None):
     else:
         wandb.log(metrics)
 
-def log_validation_metrics(metrics=None, iteration=None):
+def log_serial_metrics(prefix, metrics=None, iteration=None):
     if(not metrics):
         wandb.log({
-            'validation/AUPRC': -1,
-            'validation/AUROC': -1,
-            'validation/ACC': -1,
+            f'{prefix}/AUPRC': -1,
+            f'{prefix}/AUROC': -1,
+            f'{prefix}/ACC': -1,
         }, step=iteration)
     else:
+        metrics = {f"{prefix}/{k}": v for k,v in metrics.items()}
         wandb.log(metrics, step=iteration)
    

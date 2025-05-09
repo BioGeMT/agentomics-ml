@@ -13,6 +13,9 @@ RUN mkdir /workspace
 # Create runs directory
 RUN mkdir /workspace/runs
 
+# Create models/files snapshots directory
+RUN mkdir /snapshots
+
 # Copy environment.yaml file
 COPY environment.yaml .
 

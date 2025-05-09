@@ -24,7 +24,7 @@ def create_write_python_tool(agent_id, timeout, add_code_to_response, max_retrie
             file_path: A file path to write the code to.
         """
         code = code.replace('"','\\"')
-        out_code =  bash.run(f"echo -e \"{code}\" > {file_path}")
+        out_code =  bash.run(f"echo \"{code}\" > {file_path}")
         #Check for syntax errors
         out_syntax = bash.run(f"python -m py_compile {file_path}")
 

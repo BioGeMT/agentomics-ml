@@ -14,6 +14,10 @@ def create_new_user_and_rundir():
         ["sudo", "chmod", "o-rwx", run_dir],
         check=True
     )
+    subprocess.run(
+        ["sudo", "mkdir", f"/snapshots/{run_id}"],
+        check=True
+    )
     return run_id
 
 if __name__ == "__main__":
@@ -24,6 +28,3 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Error: {str(e)}", file=sys.stderr)
         sys.exit(1)
-
-
-
