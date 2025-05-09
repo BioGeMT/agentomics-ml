@@ -25,7 +25,7 @@ class ExclusiveBashProcess:
         with self.locked:
             return self.bash.run(command)
 
-def create_bash_tool(agent_id, timeout, autoconda, max_retries, proxy = False, auto_torch=True):
+def create_bash_tool(agent_id, timeout, autoconda, max_retries, proxy = False, auto_torch=True, conda_prefix=True):
     bash = ExclusiveBashProcess(
         agent_id=agent_id,
         autoconda=autoconda,
@@ -51,6 +51,11 @@ def create_bash_tool(agent_id, timeout, autoconda, max_retries, proxy = False, a
         Args:
             command: A valid bash command.
         """
+
+        if(conda_prefix):
+            env_path = env_path = f"/workspace/runs/{agent_id}/.conda/envs/{agent_id}_env"
+            command_prefix=f"source /opt/conda/etc/profile.d/conda.sh && conda activate {env_path} && "
+            command = command_prefix + command
         out = bash.run(command)
         if(len(out) > 5000):
             out = out[:5000]+"\n ... (output truncated, too long)"
