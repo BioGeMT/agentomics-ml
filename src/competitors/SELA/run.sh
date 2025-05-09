@@ -52,7 +52,8 @@ for DATASET in "${DATASETS[@]}"; do
       echo_yellow "    Run iteration: $i / $RUNS"
 
       # Generate Agent ID
-      CREATE_USER_SCRIPT_PATH="/repository/Agentomics-ML/src/utils/create_user.py"
+      # CREATE_USER_SCRIPT_PATH="/repository/Agentomics-ML/src/utils/create_user.py" 
+      CREATE_USER_SCRIPT_PATH="/repository/src/utils/create_user.py"
       AGENT_ID_PREFIX="sela_run"
       if [ -f "$CREATE_USER_SCRIPT_PATH" ]; then AGENT_ID=$(python "$CREATE_USER_SCRIPT_PATH"); if [ -z "$AGENT_ID" ]; then echo_red "create_user.py failed."; AGENT_ID="${AGENT_ID_PREFIX}_${DATASET}_${MODEL//\//_}_$(date +%s%N)_run${i}"; fi
       else echo_yellow "Warn: create_user.py not found."; AGENT_ID="${AGENT_ID_PREFIX}_${DATASET}_${MODEL//\//_}_$(date +%s%N)_run${i}"; fi

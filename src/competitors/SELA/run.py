@@ -8,7 +8,8 @@ import subprocess
 import traceback # For printing tracebacks on error
 
 # Add the 'src' directory of your Agentomics-ML project to Python's search path
-AGENTOMICS_SRC_PATH = "/repository/Agentomics-ML/src"
+# AGENTOMICS_SRC_PATH = "/repository/Agentomics-ML/src"
+AGENTOMICS_SRC_PATH = "/repository/src"
 if AGENTOMICS_SRC_PATH not in sys.path:
     sys.path.insert(0, AGENTOMICS_SRC_PATH)
 
@@ -70,7 +71,8 @@ async def main():
 
 
     # Check for dataset metadata
-    metadata_file_path = f"/repository/Agentomics-ML/datasets/{config['dataset']}/metadata.json" # Corrected path
+    # metadata_file_path = f"/repository/Agentomics-ML/datasets/{config['dataset']}/metadata.json" # Corrected path
+    metadata_file_path = f"/repository/datasets/{config['dataset']}/metadata.json" # Corrected path
     print(f"Looking for dataset metadata at: {metadata_file_path}")
     try:
         with open(metadata_file_path) as f: dataset_metadata = json.load(f)
@@ -259,7 +261,8 @@ async def main():
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run SELA agent pipeline for a given dataset and model.")
-    parser.add_argument("--dataset", required=True, help="Dataset name (must match a folder in /repository/Agentomics-ML/datasets/ and have a metadata.json)")
+    # parser.add_argument("--dataset", required=True, help="Dataset name (must match a folder in /repository/Agentomics-ML/datasets/ and have a metadata.json)")
+    parser.add_argument("--dataset", required=True, help="Dataset name (must match a folder in /repository/datasets/ and have a metadata.json)")
     parser.add_argument("--model", required=True, help="Model name for the LLM (as used by MetaGPT config)")
     parser.add_argument("--run_id", required=True, help="Unique Run ID for this execution (usually AGENT_ID from run.sh)")
     parser.add_argument("--tags", required=True, nargs='+', help="List of tags for Weights & Biases run")
