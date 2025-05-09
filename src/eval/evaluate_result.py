@@ -4,7 +4,7 @@ import pandas as pd
 from sklearn.metrics import average_precision_score, roc_auc_score, accuracy_score
 from run_logging.logging_helpers import log_inference_stage_and_metrics
 
-def evaluate_log_metrics(results_file, test_file, label_to_scalar, output_file=None, 
+def get_metrics(results_file, test_file, label_to_scalar, output_file=None, 
                     pred_col="prediction", class_col="class", acc_threshold=0.5):
     
     results = pd.read_csv(results_file)
@@ -22,8 +22,6 @@ def evaluate_log_metrics(results_file, test_file, label_to_scalar, output_file=N
         "AUROC": auroc,
         "ACC": accuracy,
     }
-
-    log_inference_stage_and_metrics(2, metrics=metrics)
 
     # Save the results to the output file if specified
     if output_file:
@@ -47,7 +45,7 @@ def main():
     args = parser.parse_args()
     
     try:
-        evaluate_log_metrics(
+        get_metrics(
             results_file=args.results,
             test_file=args.test,
             output_file=args.output,

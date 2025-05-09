@@ -80,8 +80,9 @@ class BashProcess:
                 self.proxy_setup()
             if(autoconda):
                 self.create_conda_env()
-                self.activate_conda_env()
+                # self.activate_conda_env() 
             if auto_torch:
+                raise NotImplementedError("Needs refactoring due to the new conda env handling")
                 self.install_torch()
 
     def custom_reset(self):
@@ -92,12 +93,15 @@ class BashProcess:
 
     def create_conda_env(self):
         self.run(
-            f"conda create -n {self.agent_id}_env -y"
+            f"conda create -p /workspace/runs/{self.agent_id}/.conda/envs/{self.agent_id}_env python=3.9 -y"
         )
 
     def activate_conda_env(self):
         self.run(
-            f"source activate {self.agent_id}_env"
+            f"/opt/conda/etc/profile.d/conda.sh"
+        )
+        self.run(
+            f"conda activate {self.agent_id}_env"
         )
 
     def proxy_setup(self):
