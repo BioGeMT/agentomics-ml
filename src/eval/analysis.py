@@ -162,7 +162,8 @@ if __name__ == "__main__":
     # Experiment data
     sub_dfs = []
     for tag_group, name in [
-        (['andrea_run_one_shot_v3', 'andrea_run_one_shot_v4'], 'single_pass'), 
+        (['andrea_run_one_shot_v3', 'andrea_run_one_shot_v4'], 'single_pass'),
+        (['andrea_DI_v2'], 'DI'), 
         # (['testing', 'any']),
     ]:
         sub_df = analyse_tag(tags=tag_group, name=name, timeout_in_seconds=3600)
