@@ -42,6 +42,5 @@ async def get_feedback(context, config, new_metrics, best_metrics, is_new_best) 
         result_type=None,
         message_history=context
     )
-    print(feedback)
 
-    return feedback.output
+    return feedback.data
