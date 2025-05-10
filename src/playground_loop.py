@@ -32,7 +32,7 @@ from steps.data_split import DataSplit
 from steps.model_architecture import ModelArchitecture
 from steps.data_representation import DataRepresentation
 from steps.data_exploration import DataExploration
-from feedback.feedback_agent import get_feedback
+from feedback.feedback_agent import get_feedback, aggregate_feedback
 
 dotenv.load_dotenv()
 api_key = os.getenv("OPENROUTER_API_KEY")
@@ -157,6 +157,7 @@ async def main():
         run_inference_and_log(config, iteration=-1, evaluation_stage='dry_run') 
         return result       
     
+    all_feedbacks = []
     feedback = None
     for run_index in range(config["iterations"]):
         if run_index == 0:
@@ -219,6 +220,7 @@ async def main():
             log_serial_metrics(prefix='validation', metrics=None, iteration=run_index)
             log_serial_metrics(prefix='train', metrics=None, iteration=run_index)
             new_metrics, best_metrics = get_new_and_best_metrics(config['agent_id'])
+            all_feedbacks.append(feedback)
             feedback = await get_feedback(
                 context=e.context_messages,
                 extra_info=f"{e.message} {e.exception_trace}",
@@ -226,7 +228,9 @@ async def main():
                 new_metrics=new_metrics, 
                 best_metrics=best_metrics,
                 is_new_best=False,
-                api_key=openrouter_api_key
+                api_key=openrouter_api_key,
+                aggregated_feedback=aggregate_feedback(all_feedbacks),
+                iteration=run_index
             )
             log_files(config['agent_id'], run_index)
             continue
@@ -237,24 +241,44 @@ async def main():
 
             # TODO aggregate feedback over all iterations
             # TODO we dont need feedback for the last iteration
+            all_feedbacks.append(feedback)
             if is_new_best(config['agent_id'], config['best_metric']):
                 new_metrics, best_metrics = get_new_and_best_metrics(config['agent_id'])
-                feedback = await get_feedback(current_run_messages, config, new_metrics, best_metrics, is_new_best=True, api_key=openrouter_api_key)
+                feedback = await get_feedback(
+                    context=current_run_messages, 
+                    config=config, 
+                    new_metrics=new_metrics, 
+                    best_metrics=best_metrics, 
+                    is_new_best=True, 
+                    api_key=openrouter_api_key, 
+                    iteration=run_index,
+                    aggregated_feedback=aggregate_feedback(all_feedbacks)
+                )
+
                 snapshot(config['agent_id'], run_index)  # Snapshotting overrides the previous snapshot, influencing the get_new_and_best_metrics function
             else:
-                feedback = await get_feedback(current_run_messages, config, new_metrics, best_metrics, is_new_best=False, api_key=openrouter_api_key)
+                feedback = await get_feedback(
+                    current_run_messages, 
+                    config, 
+                    new_metrics, 
+                    best_metrics, 
+                    is_new_best=False, 
+                    api_key=openrouter_api_key, 
+                    iteration=run_index,
+                    aggregated_feedback=aggregate_feedback(all_feedbacks)
+                    )
 
         except Exception as e:
             # If validation fails on last (or all) itertation, we fail on last test as well - should we catch the exception and just say we dont have anything successful?
             feedback = f'VALIDATION EVAL FAIL: {traceback.format_exc()}'
-            #TODO get feedback from the validation agent
+            #TODO call feedback agent with the exception
+            all_feedbacks.append(feedback)
             print(feedback)
         finally:
             log_files(config['agent_id'], run_index)
             stats = get_api_key_usage(openrouter_api_key_hash)
             wandb.log({f"iteration_usage": stats['usage']})
         
-    #TODO log the best iteration number ?
     stats = get_api_key_usage(openrouter_api_key_hash)
     wandb.log(stats)
     run_inference_and_log(config, iteration=run_index, evaluation_stage='test', use_best_snapshot=True)

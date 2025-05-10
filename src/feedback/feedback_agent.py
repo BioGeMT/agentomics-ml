@@ -15,7 +15,8 @@ def create_feedback_agent(model, config):
     
     return feedback_agent
 
-async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, api_key, extra_info="") -> str:
+async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, api_key, iteration, aggregated_feedback=None, extra_info="") -> str:
+    if iteration == config['iterations'] - 1 : return "Last iteration, no feedback needed"
     dotenv.load_dotenv()
     proxy_url = os.getenv('PROXY_URL')
     async_http_client = httpx.AsyncClient(
@@ -33,14 +34,18 @@ async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, 
     )
 
     agent = create_feedback_agent(model, config)
+    
     if is_new_best:
         prompt_suffix = "This is the best run so far. "
     else:
-        prompt_suffix = "This is not the best run so far. "
+        prompt_suffix = "This is not the best run so far. " 
+    
+    if aggregated_feedback:
+        prompt_suffix += f"The aggregated feedback from the previous iterations is: {aggregated_feedback}."
+    
     prompt_suffix += extra_info
     #TODO handle new or best metrics being empty dicts
-    user_prompt = f"Summarize the current state of the run and provide feedback for the next iteration. Metrics from your current run are: {new_metrics}. Metrics from the past best run are: {best_metrics}. {prompt_suffix}"
-    print('FEEDBACK AGENT PROMPT:', user_prompt)
+    user_prompt = f"Summarize the current state of the run and provide feedback for the next iteration. Metrics from your current run are: {new_metrics}. Metrics from the past best run are: {best_metrics}. {prompt_suffix}."
     feedback = await agent.run(
         user_prompt = user_prompt,
         result_type=None,
@@ -48,3 +53,19 @@ async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, 
     )
 
     return feedback.data
+
+def aggregate_feedback(feedback_list):
+    if len(feedback_list) == 1: #TODO first iteration list contains None
+        return None
+    
+    aggregated_feedback = ""
+    
+    filtered_list = [f for f in feedback_list if f is not None]
+
+    for i, feedback in enumerate(filtered_list):
+        if i == len(feedback_list) - 1: #if last feedback
+            aggregated_feedback += f"Most recent iteration: Iteration {i}:\n{feedback}\n\n"
+        else:
+            aggregated_feedback += f"Past iterations: Iteration {i}:\n{feedback}\n\n"
+    
+    return aggregated_feedback
