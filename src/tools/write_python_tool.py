@@ -1,13 +1,13 @@
 from pydantic_ai import Tool
-from .bash_helpers import BashProcess
+from .bash import ExclusiveBashProcess
 
 def create_write_python_tool(agent_id, timeout, add_code_to_response, max_retries):
-    bash = BashProcess(
+    bash = ExclusiveBashProcess(
         agent_id=agent_id,
-        strip_newlines=False,
-        return_err_output=True,
-        persistent=True, 
+        autoconda=True,
         timeout=timeout,
+        proxy = False,
+        auto_torch=False,
     )
 
     def _write_python(code: str, file_path: str):
