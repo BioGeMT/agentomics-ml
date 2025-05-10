@@ -26,6 +26,7 @@ from steps.data_split import DataSplit
 from steps.model_architecture import ModelArchitecture
 from steps.data_representation import DataRepresentation
 from steps.data_exploration import DataExploration
+from feedback.feedback_agent import get_feedback
 
 dotenv.load_dotenv()
 api_key = os.getenv("OPENROUTER_API_KEY")
@@ -60,6 +61,7 @@ async def main():
     config = {
         "agent_id": agent_id,
         "model": MODELS.GPT4_1_mini,
+        "feedback_model": MODELS.GPT4_1_mini,
         "temperature": 1,
         "max_steps": 30, #TODO rename, this is per-step limit
         "max_run_retries": 1,
@@ -191,11 +193,13 @@ async def main():
             # TODO aggregate feedback over all iterations
             if is_new_best(config['agent_id'], config['best_metric']):
                 new_metrics, best_metrics = get_new_and_best_metrics(config['agent_id'])
-                feedback = f"Your solution is better than the previous one. The new metrics are: {new_metrics}."
+                feedback = await get_feedback(current_run_messages, config, new_metrics, best_metrics, is_new_best=True)
+                #feedback = f"Your solution is better than the previous one. The new metrics are: {new_metrics}."
                 #TODO delete snapshots after run ends
                 snapshot(config['agent_id'], run_index)  # Snapshotting overrides the previous snapshot, influencing the get_new_and_best_metrics function
             else:
-                feedback = f"Your solution is worse than the previous one. The new metrics are: {new_metrics}. The best metrics are: {best_metrics}."
+                feedback = await get_feedback(current_run_messages, config, new_metrics, best_metrics, is_new_best=False)
+                #feedback = f"Your solution is worse than the previous one. The new metrics are: {new_metrics}. The best metrics are: {best_metrics}."
                 # feedback = get_feedback() 
 
         except Exception as e:
