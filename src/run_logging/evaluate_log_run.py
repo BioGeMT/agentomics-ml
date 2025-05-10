@@ -33,14 +33,13 @@ def run_inference_and_log(config, iteration, evaluation_stage):
         if(inference_out.returncode != 0):
             print('TEST EVAL FAIL', str(inference_out))
             log_inference_stage_and_metrics(1)
-            raise Exception('Inference script failed:', str(inference_out))
+            raise Exception('Inference on TEST script failed:', str(inference_out))
         try:
             test_metrics = get_metrics(
                 results_file=stage_to_output[evaluation_stage],
                 test_file=f"{dataset_metadata['test_split_with_labels']}",
                 output_file=f"{run_dir}/metrics.txt",
-                label_to_scalar=dataset_metadata['label_to_scalar'],
-                class_col=dataset_metadata['class_col'],
+                numeric_label_col=dataset_metadata['numeric_label_col'],
             )
             log_inference_stage_and_metrics(2, metrics=test_metrics)
         except Exception as e:
@@ -57,7 +56,7 @@ def run_inference_and_log(config, iteration, evaluation_stage):
     if(evaluation_stage == 'validation'):
         print('RUNNING VALIDATION EVAL')
         if(inference_out.returncode != 0):
-            print('VALIDATION EVAL FAIL', inference_out.stderr)
+            print('VALIDATION EVAL FAIL during inference:', inference_out.stderr)
             log_serial_metrics(prefix="validation", metrics=None, iteration=iteration)
             raise Exception('Inference script validation failed:', str(inference_out))
         try:
@@ -65,42 +64,42 @@ def run_inference_and_log(config, iteration, evaluation_stage):
                 results_file=stage_to_output[evaluation_stage],
                 test_file=stage_to_input[evaluation_stage],
                 output_file=f"{run_dir}/validation_metrics.txt",
-                label_to_scalar=dataset_metadata['label_to_scalar'],
-                class_col=dataset_metadata['class_col'],
+                numeric_label_col=dataset_metadata['numeric_label_col'],
                 iteration=iteration,
                 prefix="validation",
             )
         except Exception as e:
+            # add message to the exception
             log_serial_metrics(prefix="validation", metrics=None, iteration=iteration)
-            raise e
+            message = "FAIL DURING VALIDATION METRICS COMPUTATION."
+            raise type(e)(f"{message} {str(e)}").with_traceback(e.__traceback__)
         print('VALIDATION EVAL SUCCESS')
     if(evaluation_stage == 'train'):
         print('RUNNING TRAIN EVAL')
         if(inference_out.returncode != 0):
-            print('TRAIN EVAL FAIL', inference_out.stderr)
+            print('TRAIN EVAL FAIL during inference:', inference_out.stderr)
             raise Exception('Inference script validation failed:', str(inference_out))
         try:
             _ = get_metrics_and_serial_log(
                 results_file=stage_to_output[evaluation_stage],
                 test_file=stage_to_input[evaluation_stage],
                 output_file=f"{run_dir}/train_metrics.txt",
-                label_to_scalar=dataset_metadata['label_to_scalar'],
-                class_col=dataset_metadata['class_col'],
+                numeric_label_col=dataset_metadata['numeric_label_col'],
                 iteration=iteration,
                 prefix="train",
             )
         except Exception as e:
             log_serial_metrics(prefix="train", metrics=None, iteration=iteration)
-            raise e
+            message = "FAIL DURING TRAIN METRICS COMPUTATION."
+            raise type(e)(f"{message} {str(e)}").with_traceback(e.__traceback__)
         print('TRAIN EVAL SUCCESS')
 
-def get_metrics_and_serial_log(results_file, test_file, output_file, label_to_scalar, class_col, iteration, prefix):
+def get_metrics_and_serial_log(results_file, test_file, output_file, numeric_label_col, iteration, prefix):
     metrics = get_metrics(
         results_file=results_file,
         test_file=test_file,
         output_file=output_file,
-        label_to_scalar=label_to_scalar,
-        class_col=class_col,
+        numeric_label_col=numeric_label_col,
     )
     log_serial_metrics(prefix=prefix, metrics=metrics, iteration=iteration)
     return metrics
