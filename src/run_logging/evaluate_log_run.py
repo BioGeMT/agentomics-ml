@@ -6,12 +6,23 @@ from pydantic_ai import ModelRetry
 from eval.evaluate_result import get_metrics
 from run_logging.logging_helpers import log_inference_stage_and_metrics, log_serial_metrics
 
-def run_inference_and_log(config, iteration, evaluation_stage):
+def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot=False):
     with open(f"/repository/datasets/{config['dataset']}/metadata.json") as f:
         dataset_metadata = json.load(f)
-    # IF use_best (snapshot), activate different conda env and use different run_dir or inference.py file (from snapshot)
 
     run_dir = f"/workspace/runs/{config['agent_id']}"
+    snapshot_dir = f"/snapshots/{config['agent_id']}"
+    source_folder = 'snapshots' if use_best_snapshot else 'workspace'
+    if(use_best_snapshot):
+        print('USING BEST SNAPSHOT')
+    conda_path = {
+        'workspace': f"{run_dir}/.conda/envs/{config['agent_id']}_env",
+        'snapshots': f"{snapshot_dir}/.conda/envs/{config['agent_id']}_env",
+    }
+    inference_path = {
+        'workspace': f"{run_dir}/inference.py",
+        'snapshots': f"{snapshot_dir}/inference.py",
+    }
     stage_to_input = {
         'dry_run': dataset_metadata['train_split'],
         'validation': run_dir + "/validation.csv",
@@ -31,9 +42,8 @@ def run_inference_and_log(config, iteration, evaluation_stage):
         'train': f"{run_dir}/train_metrics.txt",
     }
 
-    agent_env_name = f"{run_dir}/.conda/envs/{config['agent_id']}_env"
-    command_prefix=f"source /opt/conda/etc/profile.d/conda.sh && conda activate {agent_env_name}"
-    command = f"{command_prefix} && python {run_dir}/inference.py --input {stage_to_input[evaluation_stage]} --output {stage_to_output[evaluation_stage]}"
+    command_prefix=f"source /opt/conda/etc/profile.d/conda.sh && conda activate {conda_path[source_folder]}"
+    command = f"{command_prefix} && python {inference_path[source_folder]} --input {stage_to_input[evaluation_stage]} --output {stage_to_output[evaluation_stage]}"
     inference_out = subprocess.run(command, shell=True, executable="/bin/bash", capture_output=True)
 
     if(evaluation_stage == 'test'):

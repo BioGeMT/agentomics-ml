@@ -222,11 +222,10 @@ async def main():
             stats = get_api_key_usage(openrouter_api_key_hash)
             wandb.log({f"iteration_usage": stats['usage']})
         
-    #TODO revert to best model
     #TODO log the best iteration number ?
     stats = get_api_key_usage(openrouter_api_key_hash)
     wandb.log(stats)
-    run_inference_and_log(config, iteration=run_index, evaluation_stage='test')
+    run_inference_and_log(config, iteration=run_index, evaluation_stage='test', use_best_snapshot=True)
     delete_api_key(openrouter_api_key_hash)
     wandb.finish()
 
