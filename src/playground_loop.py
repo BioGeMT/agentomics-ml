@@ -80,7 +80,8 @@ async def main():
         "llm_response_timeout": 60* 15,
         "bash_tool_timeout": 60 * 60 * 24, #This affects max training time
         "write_python_tool_timeout": 60 * 5,
-        "credit_budget": 10
+        "credit_budget": 10,
+        "max_tool_retries": 5,
     }
     setup_logging(config, api_key=wandb_key)
 
@@ -107,15 +108,15 @@ async def main():
             agent_id=config['agent_id'],
             timeout=config['bash_tool_timeout'], 
             autoconda=True,
-            max_retries=1,
+            max_retries=config['max_tool_retries'],
             proxy=config['use_proxy'],
             conda_prefix=True,
             auto_torch=False),
-        create_write_python_tool(
+        create_write_python_tool( #Tries to create the same-name conda environment
             agent_id=config['agent_id'], 
             timeout=config['write_python_tool_timeout'], 
             add_code_to_response=False,
-            max_retries=1),
+            max_retries=config['max_tool_retries'],),
     ]
 
     agent = Agent( # this is data exploration, representation, architecture reasoning agent
