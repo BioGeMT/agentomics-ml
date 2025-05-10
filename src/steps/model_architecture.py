@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 class ModelArchitecture(BaseModel):
     architecture: str = Field(
         description="""
-        The machine learning model type and architecture you have chosen for your task.
+        The machine learning model type and architecture for your task.
         """
     )
     hyperparameters: str = Field(
@@ -13,6 +13,9 @@ class ModelArchitecture(BaseModel):
     )
     reasoning: str = Field(
         description="""
-        The reasoning behind your choice of architecture and hyperparameters.
+        The reasoning behind your model architecture and hyperparameter choices.
         """
     )
+
+def get_model_architecture_prompt():
+    return "Next task: choose the model architecture and hyperparameters."

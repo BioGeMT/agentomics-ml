@@ -3,16 +3,14 @@ from pydantic import BaseModel, Field
 class DataRepresentation(BaseModel):
     representation: str = Field(
         description="""
-        The instructions for the coding implementation on how to represent the data before being passed to a Machine Learning model
-        """
-    )
-    feature_engineering: str = Field(
-        description="""
-        New features to create, including interactions, aggregations, and domain-specific transformations that might improve model performance.
+        How will the data be represented, including any transformations, encodings, normalizations, features, and label transformations.
         """
     )
     reasoning: str = Field(
         description="""
-        The reasoning behind your choice of representation
+        The reasoning behind your data representation choices.
         """
     )
+
+def get_data_representation_prompt():
+    return "Your next task: define the data representation."

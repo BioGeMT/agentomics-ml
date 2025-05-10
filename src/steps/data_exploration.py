@@ -11,9 +11,12 @@ class DataExploration(BaseModel):
         Analysis of individual features: distributions, correlations with target, and potential predictive power.
         """
     )
-
-    recommended_focus: str = Field(
+    reasoning: str = Field(
         description="""
-        Recommended areas to focus on for feature engineering and model selection based on the exploration findings.
+        The reasoning behind your data exploration choices.
         """
     )
+
+
+def get_data_exploration_prompt():
+    return "\nYour first task: explore the dataset."
