@@ -2,20 +2,21 @@ import argparse
 import sys
 import pandas as pd
 from sklearn.metrics import average_precision_score, roc_auc_score, accuracy_score
-from run_logging.logging_helpers import log_inference_stage_and_metrics
 
-def get_metrics(results_file, test_file, label_to_scalar, output_file=None, 
-                    pred_col="prediction", class_col="class", acc_threshold=0.5):
+def get_metrics(results_file, test_file, output_file=None, numeric_label_col="numeric_label", 
+                    pred_col="prediction", acc_threshold=0.5):
     
     results = pd.read_csv(results_file)
     test = pd.read_csv(test_file)
 
     merged = pd.merge(results, test, left_index=True, right_index=True)
-    merged['class_numeric'] = merged[class_col].map(lambda x: int(label_to_scalar[x]))
 
-    auprc = average_precision_score(merged['class_numeric'], merged[pred_col])
-    auroc = roc_auc_score(merged['class_numeric'], merged[pred_col])
-    accuracy = accuracy_score(merged['class_numeric'], (merged[pred_col] >= acc_threshold).astype(int))
+    merged[numeric_label_col] = merged[numeric_label_col].astype(float)
+    merged[pred_col] = merged[pred_col].astype(float)
+
+    auprc = average_precision_score(merged[numeric_label_col], merged[pred_col])
+    auroc = roc_auc_score(merged[numeric_label_col], merged[pred_col])
+    accuracy = accuracy_score(merged[numeric_label_col], (merged[pred_col] >= acc_threshold).astype(int))
 
     metrics = {
         "AUPRC": auprc,
@@ -30,17 +31,18 @@ def get_metrics(results_file, test_file, label_to_scalar, output_file=None,
                 for key, value in metrics.items():
                     f.write(f"{key}: {value}\n")
         except Exception as e:
-            raise ValueError(f"Error writing to output file '{output_file}': {e}")
+            message = f"FAIL DURING WRITING METRICS TO A FILE {output_file}."
+            raise type(e)(f"{message} {str(e)}").with_traceback(e.__traceback__)
 
     return metrics
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate classification metrics for model predictions.")
     parser.add_argument("-r", "--results", required=True, help="Path to the results CSV file.")
-    parser.add_argument("-t", "--test", required=True, help="Path to the test CSV file.")
+    parser.add_argument("-t", "--test", required=True, help="Path to the CSV file with labels.")
     parser.add_argument("-o", "--output", required=True, help="Path to the output file.")
     parser.add_argument("--pred-col", default="prediction", help="Name of the prediction column in the results file.")
-    parser.add_argument("--class-col", default="class", help="Name of the class column in the test file.")
+    parser.add_argument("--numeric-label-col", default="numeric_label", help="Name of the numeric label column in the file.")
     
     args = parser.parse_args()
     
@@ -50,7 +52,7 @@ def main():
             test_file=args.test,
             output_file=args.output,
             pred_col=args.pred_col,
-            class_col=args.class_col
+            numeric_label_col=args.numeric_label_col,
         )
     except Exception as e:
         sys.exit(f"Error: {e}")
