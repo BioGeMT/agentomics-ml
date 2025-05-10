@@ -55,8 +55,8 @@ async def run_agent(agent: Agent, user_prompt: str, max_steps: int, result_type:
                 async for node in agent_run:
                     console.log(node)
                 return agent_run.result.all_messages()
-        except UnexpectedModelBehavior as e:
-            raise e
+        # except UnexpectedModelBehavior as e: #Validation retry runout is this exception
+        #     raise e
         except Exception as e:
             raise IterationRunFailed(
                 message="Run didnt finish properly", 
@@ -197,16 +197,24 @@ async def main():
         try:
             current_run_messages = await run_architecture(agent, validation_agent, split_dataset_agent, config, base_prompt, iteration=run_index)
         except Exception as e:
-            if(isinstance(e, UnexpectedModelBehavior)):
-                stats = get_api_key_usage(openrouter_api_key_hash)
+            stats = get_api_key_usage(openrouter_api_key_hash)
+            if stats['usage'] >= stats['limit']:
                 wandb.log(stats)
-                delete_api_key(openrouter_api_key_hash)
-                if stats['usage'] >= stats['limit']:
-                    wandb.log({"out_of_credits": True})
-                print('FAIL DURING ARCHITECTURE RUN')
-                print({traceback.format_exc()})
+                wandb.log({"out_of_credits": True})
+                print('RAN OUT OF CREDITS')
                 log_files(config['agent_id'], run_index)
                 raise e #Kill the run
+            
+            # if(isinstance(e, UnexpectedModelBehavior)):
+            #     stats = get_api_key_usage(openrouter_api_key_hash)
+            #     wandb.log(stats)
+            #     delete_api_key(openrouter_api_key_hash)
+            #     if stats['usage'] >= stats['limit']:
+            #         wandb.log({"out_of_credits": True})
+            #     print('FAIL DURING ARCHITECTURE RUN')
+            #     print({traceback.format_exc()})
+            #     log_files(config['agent_id'], run_index)
+            #     raise e #Kill the run
             
             log_serial_metrics(prefix='validation', metrics=None, iteration=run_index)
             log_serial_metrics(prefix='train', metrics=None, iteration=run_index)

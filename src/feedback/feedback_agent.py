@@ -39,7 +39,7 @@ async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, 
         prompt_suffix = "This is not the best run so far. "
     prompt_suffix += extra_info
     #TODO handle new or best metrics being empty dicts
-    user_prompt = f"Summarize the current state of the run and provide feedback for the next iteration. Metrics from your current run are: {new_metrics}. Metrics from the best run are: {best_metrics}. {prompt_suffix}"
+    user_prompt = f"Summarize the current state of the run and provide feedback for the next iteration. Metrics from your current run are: {new_metrics}. Metrics from the past best run are: {best_metrics}. {prompt_suffix}"
     print('FEEDBACK AGENT PROMPT:', user_prompt)
     feedback = await agent.run(
         user_prompt = user_prompt,
