@@ -205,6 +205,7 @@ async def main():
                     wandb.log({"out_of_credits": True})
                 print('FAIL DURING ARCHITECTURE RUN')
                 print({traceback.format_exc()})
+                log_files(config['agent_id'], run_index)
                 raise e #Kill the run
             
             log_serial_metrics(prefix='validation', metrics=None, iteration=run_index)
@@ -241,6 +242,7 @@ async def main():
             #TODO get feedback from the validation agent
             print(feedback)
         finally:
+            log_files(config['agent_id'], run_index)
             stats = get_api_key_usage(openrouter_api_key_hash)
             wandb.log({f"iteration_usage": stats['usage']})
         
