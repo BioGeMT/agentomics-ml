@@ -22,6 +22,12 @@ def run_inference_and_log(config, iteration, evaluation_stage):
         'test': run_dir + "/eval_predictions_test.csv",
         'train': run_dir + "/eval_predictions_train.csv",
     }
+    stage_to_metrics_file = {
+        'dry_run': "/dev/null",
+        'validation': f"{run_dir}/validation_metrics.txt",
+        'test': f"{run_dir}/test_metrics.txt",
+        'train': f"{run_dir}/train_metrics.txt",
+    }
 
     agent_env_name = f"{run_dir}/.conda/envs/{config['agent_id']}_env"
     command_prefix=f"source /opt/conda/etc/profile.d/conda.sh && conda activate {agent_env_name}"
@@ -38,8 +44,9 @@ def run_inference_and_log(config, iteration, evaluation_stage):
             test_metrics = get_metrics(
                 results_file=stage_to_output[evaluation_stage],
                 test_file=f"{dataset_metadata['test_split_with_labels']}",
-                output_file=f"{run_dir}/metrics.txt",
+                output_file=stage_to_metrics_file[evaluation_stage],
                 numeric_label_col=dataset_metadata['numeric_label_col'],
+                delete_preds=True,
             )
             log_inference_stage_and_metrics(2, metrics=test_metrics)
         except Exception as e:
@@ -57,16 +64,17 @@ def run_inference_and_log(config, iteration, evaluation_stage):
         print('RUNNING VALIDATION EVAL')
         if(inference_out.returncode != 0):
             print('VALIDATION EVAL FAIL during inference:', inference_out.stderr)
-            log_serial_metrics(prefix="validation", metrics=None, iteration=iteration)
+            log_serial_metrics(prefix=evaluation_stage, metrics=None, iteration=iteration)
             raise Exception('Inference script validation failed:', str(inference_out))
         try:
             _ = get_metrics_and_serial_log(
                 results_file=stage_to_output[evaluation_stage],
                 test_file=stage_to_input[evaluation_stage],
-                output_file=f"{run_dir}/validation_metrics.txt",
+                output_file=stage_to_metrics_file[evaluation_stage],
                 numeric_label_col=dataset_metadata['numeric_label_col'],
                 iteration=iteration,
-                prefix="validation",
+                prefix=evaluation_stage,
+                delete_preds=True,
             )
         except Exception as e:
             # add message to the exception
@@ -83,23 +91,25 @@ def run_inference_and_log(config, iteration, evaluation_stage):
             _ = get_metrics_and_serial_log(
                 results_file=stage_to_output[evaluation_stage],
                 test_file=stage_to_input[evaluation_stage],
-                output_file=f"{run_dir}/train_metrics.txt",
+                output_file=stage_to_metrics_file[evaluation_stage],
                 numeric_label_col=dataset_metadata['numeric_label_col'],
                 iteration=iteration,
-                prefix="train",
+                prefix=evaluation_stage,
+                delete_preds=True,
             )
         except Exception as e:
-            log_serial_metrics(prefix="train", metrics=None, iteration=iteration)
+            log_serial_metrics(prefix=evaluation_stage, metrics=None, iteration=iteration)
             message = "FAIL DURING TRAIN METRICS COMPUTATION."
             raise type(e)(f"{message} {str(e)}").with_traceback(e.__traceback__)
         print('TRAIN EVAL SUCCESS')
 
-def get_metrics_and_serial_log(results_file, test_file, output_file, numeric_label_col, iteration, prefix):
+def get_metrics_and_serial_log(results_file, test_file, output_file, numeric_label_col, iteration, prefix, delete_preds):
     metrics = get_metrics(
         results_file=results_file,
         test_file=test_file,
         output_file=output_file,
         numeric_label_col=numeric_label_col,
+        delete_preds=delete_preds,
     )
     log_serial_metrics(prefix=prefix, metrics=metrics, iteration=iteration)
     return metrics

@@ -2,9 +2,10 @@ import argparse
 import sys
 import pandas as pd
 from sklearn.metrics import average_precision_score, roc_auc_score, accuracy_score
+import os
 
 def get_metrics(results_file, test_file, output_file=None, numeric_label_col="numeric_label", 
-                    pred_col="prediction", acc_threshold=0.5):
+                    pred_col="prediction", acc_threshold=0.5, delete_preds=False):
     
     results = pd.read_csv(results_file)
     test = pd.read_csv(test_file)
@@ -33,6 +34,9 @@ def get_metrics(results_file, test_file, output_file=None, numeric_label_col="nu
         except Exception as e:
             message = f"FAIL DURING WRITING METRICS TO A FILE {output_file}."
             raise type(e)(f"{message} {str(e)}").with_traceback(e.__traceback__)
+    
+    if delete_preds:
+        os.remove(results_file)
 
     return metrics
 
@@ -43,7 +47,8 @@ def main():
     parser.add_argument("-o", "--output", required=True, help="Path to the output file.")
     parser.add_argument("--pred-col", default="prediction", help="Name of the prediction column in the results file.")
     parser.add_argument("--numeric-label-col", default="numeric_label", help="Name of the numeric label column in the file.")
-    
+    parser.add_argument("--delete-preds", action="store_true", help="Delete the predictions file after evaluation.")
+
     args = parser.parse_args()
     
     try:
@@ -53,6 +58,7 @@ def main():
             output_file=args.output,
             pred_col=args.pred_col,
             numeric_label_col=args.numeric_label_col,
+            delete_preds=args.delete_preds,
         )
     except Exception as e:
         sys.exit(f"Error: {e}")
