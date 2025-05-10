@@ -21,6 +21,7 @@ from tools.write_python_tool import create_write_python_tool
 from run_logging.evaluate_log_run import run_inference_and_log
 from run_logging.logging_helpers import log_inference_stage_and_metrics
 from run_logging.wandb import setup_logging
+from run_logging.log_files import log_files
 from utils.create_user import create_new_user_and_rundir
 from utils.models import MODELS
 from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics
@@ -73,7 +74,7 @@ async def main():
         "tags": ["double_run"],
         "dataset": "human_nontata_promoters",
         "prompt": "BioPrompt_v1.yaml",
-        "use_proxy" : False,
+        "use_proxy" : True,
         "best_metric" : "ACC", #TODO rename into validation_metric
         "iterations": 2,
         "llm_response_timeout": 60* 15,
@@ -201,6 +202,7 @@ async def main():
             print('FAIL DURING ARCHITECTURE RUN')
             print({traceback.format_exc()})
             return
+        log_files(config['agent_id'], run_index)
         try:
             run_inference_and_log(config, iteration=run_index, evaluation_stage='validation')
             run_inference_and_log(config, iteration=run_index, evaluation_stage='train')
@@ -226,6 +228,7 @@ async def main():
     stats = get_api_key_usage(openrouter_api_key_hash)
     wandb.log(stats)
     run_inference_and_log(config, iteration=run_index, evaluation_stage='test', use_best_snapshot=True)
+    log_files(config['agent_id'])
     delete_api_key(openrouter_api_key_hash)
     wandb.finish()
 

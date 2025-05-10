@@ -55,9 +55,9 @@ def snapshot(agent_id, iteration, delete_old_snapshot=True):
     if delete_old_snapshot:
         delete_snapshot(agent_id)
 
-    run_dir = Path(f"/workspace/runs/{agent_id}")
-    snapshot_dir = Path(f"/snapshots/{agent_id}")
-    snapshot_dir.mkdir(parents=True, exist_ok=True)
+    run_dir = f"/workspace/runs/{agent_id}"
+    snapshot_dir = f"/snapshots/{agent_id}"
+    Path(snapshot_dir).mkdir(parents=True, exist_ok=True)
     
     files_to_skip = [
         "train.csv",
@@ -68,7 +68,8 @@ def snapshot(agent_id, iteration, delete_old_snapshot=True):
         ".cache",
     ]
     # iterate the snapshot dir for all files
-    for element in run_dir.iterdir():
+    for element in os.listdir():
+        element = Path(run_dir)/ element
         # if hidden file and not in a folder, skip it
         if re.match(r"^\..*", element.name) and element.is_file():
             continue
@@ -83,5 +84,5 @@ def snapshot(agent_id, iteration, delete_old_snapshot=True):
             # hard copy the folder into snapshot dir
             shutil.copytree(element, snapshot_dir / element.name, dirs_exist_ok=True)
     
-    with open(snapshot_dir / "iteration_number.txt", "w") as f:
+    with open(Path(snapshot_dir) / "iteration_number.txt", "w") as f:
         f.write(str(iteration))
