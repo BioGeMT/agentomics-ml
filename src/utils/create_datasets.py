@@ -28,6 +28,7 @@ def generate_mirbench_files():
         "AGO2_CLASH_Hejret2023": {1:1, 0:0},
     }
     class_col = "label"
+    numeric_label_col = "numeric_label"
     for dataset_name in dataset_names_splits.keys():
         local_dset_path = repo_path / "datasets" / dataset_name
         os.makedirs(local_dset_path, exist_ok=True)
@@ -44,6 +45,7 @@ def generate_mirbench_files():
                 "dataset_knowledge":f"{default_docker_path}/dataset_description.md",
                 "label_to_scalar": dataset_label_to_scalar[dataset_name],
                 "class_col": class_col,
+                "numeric_label_col": numeric_label_col,
             }
             f.write(json.dumps(metadata, indent=4))
 
@@ -53,10 +55,10 @@ def generate_mirbench_files():
             os.makedirs(download_path, exist_ok=True)
             mirbench_download_dataset(dataset_name, download_path=download_path/'miRBench', split=split)
             df = pd.read_csv(download_path/'miRBench', sep="\t")
-            df['numeric_label'] = df[class_col].map(dataset_label_to_scalar[dataset_name])
+            df[numeric_label_col] = df[class_col].map(dataset_label_to_scalar[dataset_name])
             df.to_csv(f"{local_dset_path}/{split}.csv", index=False)
             if(split == "test"):
-                df.drop(columns=[class_col, 'numeric_label']).to_csv(f"{local_dset_path}/{split}.no_label.csv", index=False)
+                df.drop(columns=[class_col, numeric_label_col]).to_csv(f"{local_dset_path}/{split}.no_label.csv", index=False)
 
 def generate_genomic_benchmarks_files():
     from genomic_benchmarks.loc2seq import download_dataset
@@ -85,6 +87,7 @@ def generate_genomic_benchmarks_files():
         
         local_dset_path = repo_path / "datasets" / dataset_name
         class_col = "class"
+        numeric_label_col = "numeric_label"
         os.makedirs(local_dset_path, exist_ok=True)
 
         with open(f"{local_dset_path}/dataset_description.md", "w") as f:
@@ -99,6 +102,7 @@ def generate_genomic_benchmarks_files():
                 "dataset_knowledge":f"{default_docker_path}/dataset_description.md",
                 "label_to_scalar": dataset_label_to_scalar[dataset_name],
                 "class_col": class_col,
+                "numeric_label_col": numeric_label_col,
             }
             f.write(json.dumps(metadata, indent=4))
 
@@ -110,10 +114,10 @@ def generate_genomic_benchmarks_files():
                     seq = sequence_file.read_text().strip()
                     data.append({"sequence": seq, "class": label})
             df = pd.DataFrame(data)
-            df['numeric_label'] = df[class_col].map(dataset_label_to_scalar[dataset_name])
+            df[numeric_label_col] = df[class_col].map(dataset_label_to_scalar[dataset_name])
             df.to_csv(f"{local_dset_path}/{split}.csv", index=False)
             if(split == "test"):
-                df.drop(columns=[class_col, 'numeric_label']).to_csv(f"{local_dset_path}/{split}.no_label.csv", index=False)
+                df.drop(columns=[class_col, numeric_label_col]).to_csv(f"{local_dset_path}/{split}.no_label.csv", index=False)
 
 def generate_dataset_files():
     generate_genomic_benchmarks_files()
