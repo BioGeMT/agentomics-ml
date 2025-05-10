@@ -21,17 +21,30 @@ def get_valid_and_train_metrics(base_path):
     all_metrics.update(train_metric)
     return all_metrics
 
-def get_new_and_best_metrics(agent_id):
-    new_metrics = get_valid_and_train_metrics(f"/workspace/runs/{agent_id}")
+def get_best_metrics(agent_id):
     if(not best_metrics_exists(agent_id)):
-        best_metrics = {k:-1 for k,_ in new_metrics.items()}
+        return {}
     else:
-        best_metrics = get_valid_and_train_metrics(f"/snapshots/{agent_id}")
-    return new_metrics, best_metrics
+        return get_valid_and_train_metrics(f"/snapshots/{agent_id}")
+
+def get_new_metrics(agent_id):
+    if(not new_metrics_exists(agent_id)):
+        return {}
+    else:
+        return get_valid_and_train_metrics(f"/workspace/runs/{agent_id}")
+
+def get_new_and_best_metrics(agent_id):
+    return get_new_metrics(agent_id), get_best_metrics(agent_id)
 
 def best_metrics_exists(agent_id):
     best_metrics_path = f"/snapshots/{agent_id}/validation_metrics.txt"
     if(os.path.isfile(best_metrics_path)):
+        return True
+    return False
+
+def new_metrics_exists(agent_id):
+    new_metrics_path = f"/workspace/runs/{agent_id}/validation_metrics.txt"
+    if(os.path.isfile(new_metrics_path)):
         return True
     return False
 
