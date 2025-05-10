@@ -173,7 +173,7 @@ async def main():
                 wandb.log({"out_of_credits": True})
                 print('RAN OUT OF CREDITS')
                 log_files(config['agent_id'], run_index)
-                raise e #Kill the run
+                break #Break looping and go to test evaluation of the best model
             
             log_serial_metrics(prefix='validation', metrics=None, iteration=run_index)
             log_serial_metrics(prefix='train', metrics=None, iteration=run_index)
