@@ -43,10 +43,18 @@ def is_new_best(agent_id, comparison_metric):
 
     #TODO parametrize improvement threshold
     necessary_improvement = 0
-    is_new_best = new_metrics[f'validation/{comparison_metric}'] > best_metrics[f'validation/comparison_metric'] + necessary_improvement
+    is_new_best = new_metrics[f'validation/{comparison_metric}'] > best_metrics[f'validation/{comparison_metric}'] + necessary_improvement
     return is_new_best
        
-def snapshot(agent_id, iteration):
+def delete_snapshot(agent_id):
+    snapshot_dir = Path(f"/snapshots/{agent_id}")
+    if snapshot_dir.exists():
+        shutil.rmtree(snapshot_dir)
+
+def snapshot(agent_id, iteration, delete_old_snapshot=True):
+    if delete_old_snapshot:
+        delete_snapshot(agent_id)
+
     run_dir = Path(f"/workspace/runs/{agent_id}")
     snapshot_dir = Path(f"/snapshots/{agent_id}")
     snapshot_dir.mkdir(parents=True, exist_ok=True)
@@ -73,7 +81,7 @@ def snapshot(agent_id, iteration):
             shutil.copy2(element, snapshot_dir / element.name)
         if element.is_dir():
             # hard copy the folder into snapshot dir
-            shutil.copytree(element, snapshot_dir / element.name)
+            shutil.copytree(element, snapshot_dir / element.name, dirs_exist_ok=True)
     
     with open(snapshot_dir / "iteration_number.txt", "w") as f:
         f.write(str(iteration))

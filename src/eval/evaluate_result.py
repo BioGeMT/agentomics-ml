@@ -33,7 +33,7 @@ def get_metrics(results_file, test_file, output_file=None, numeric_label_col="nu
                     f.write(f"{key}: {value}\n")
         except Exception as e:
             message = f"FAIL DURING WRITING METRICS TO A FILE {output_file}."
-            raise type(e)(f"{message} {str(e)}").with_traceback(e.__traceback__)
+            raise Exception(message) from e
     
     if delete_preds:
         os.remove(results_file)

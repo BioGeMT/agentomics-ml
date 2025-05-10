@@ -1,5 +1,6 @@
 import json
 import subprocess
+import traceback
 
 from pydantic_ai import ModelRetry
 from eval.evaluate_result import get_metrics
@@ -8,6 +9,7 @@ from run_logging.logging_helpers import log_inference_stage_and_metrics, log_ser
 def run_inference_and_log(config, iteration, evaluation_stage):
     with open(f"/repository/datasets/{config['dataset']}/metadata.json") as f:
         dataset_metadata = json.load(f)
+    # IF use_best (snapshot), activate different conda env and use different run_dir or inference.py file (from snapshot)
 
     run_dir = f"/workspace/runs/{config['agent_id']}"
     stage_to_input = {
@@ -17,13 +19,13 @@ def run_inference_and_log(config, iteration, evaluation_stage):
         'train': run_dir + "/train.csv",
     }
     stage_to_output = {
-        'dry_run': "/dev/null",
+        'dry_run': run_dir + "/eval_predictions_dry_run.csv",
         'validation': run_dir + "/eval_predictions_validation.csv",
         'test': run_dir + "/eval_predictions_test.csv",
         'train': run_dir + "/eval_predictions_train.csv",
     }
     stage_to_metrics_file = {
-        'dry_run': "/dev/null",
+        'dry_run': f"{run_dir}/dry_run_metrics.txt",
         'validation': f"{run_dir}/validation_metrics.txt",
         'test': f"{run_dir}/test_metrics.txt",
         'train': f"{run_dir}/train_metrics.txt",
@@ -50,15 +52,27 @@ def run_inference_and_log(config, iteration, evaluation_stage):
             )
             log_inference_stage_and_metrics(2, metrics=test_metrics)
         except Exception as e:
-            print('TEST EVAL FAIL', e)
+            print('TEST EVAL FAIL', {traceback.format_exc()})
             log_inference_stage_and_metrics(1)
             return
         print('TEST EVAL SUCCESS')
     if(evaluation_stage == 'dry_run'):
         print('RUNNING DRY RUN EVAL')
         if(inference_out.returncode != 0):
-            print('DRY RUN EVAL FAIL', inference_out.stderr)
+            print('DRY RUN EVAL FAIL during inference:', inference_out.stderr)
             raise ModelRetry(f'Inference script validation failed: {str(inference_out)}')
+        try:
+            _ = get_metrics(
+                results_file=stage_to_output[evaluation_stage],
+                test_file=stage_to_input[evaluation_stage],
+                output_file=stage_to_metrics_file[evaluation_stage],
+                numeric_label_col=dataset_metadata['numeric_label_col'],
+                delete_preds=True,
+            )
+        except Exception as e:
+            message = f"FAIL DURING DRY RUN METRICS COMPUTATION. {traceback.format_exc()}"
+            print(message)
+            raise ModelRetry(message)
         print('DRY RUN EVAL SUCCESS')
     if(evaluation_stage == 'validation'):
         print('RUNNING VALIDATION EVAL')
@@ -77,10 +91,9 @@ def run_inference_and_log(config, iteration, evaluation_stage):
                 delete_preds=True,
             )
         except Exception as e:
-            # add message to the exception
             log_serial_metrics(prefix="validation", metrics=None, iteration=iteration)
             message = "FAIL DURING VALIDATION METRICS COMPUTATION."
-            raise type(e)(f"{message} {str(e)}").with_traceback(e.__traceback__)
+            raise Exception(message) from e
         print('VALIDATION EVAL SUCCESS')
     if(evaluation_stage == 'train'):
         print('RUNNING TRAIN EVAL')
@@ -100,7 +113,7 @@ def run_inference_and_log(config, iteration, evaluation_stage):
         except Exception as e:
             log_serial_metrics(prefix=evaluation_stage, metrics=None, iteration=iteration)
             message = "FAIL DURING TRAIN METRICS COMPUTATION."
-            raise type(e)(f"{message} {str(e)}").with_traceback(e.__traceback__)
+            raise Exception(message) from e
         print('TRAIN EVAL SUCCESS')
 
 def get_metrics_and_serial_log(results_file, test_file, output_file, numeric_label_col, iteration, prefix, delete_preds):

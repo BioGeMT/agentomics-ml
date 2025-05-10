@@ -2,6 +2,7 @@ import dotenv
 import os
 import asyncio
 import httpx
+import traceback
 
 from rich.console import Console
 from pydantic import BaseModel
@@ -53,7 +54,7 @@ async def run_agent(agent: Agent, user_prompt: str, max_steps: int, result_type:
                     console.log(node)
                 return agent_run.result.all_messages()
         except (UnexpectedModelBehavior, UsageLimitExceeded) as e:
-            console.log("Exception occurred", e)
+            console.log("Exception occurred", {traceback.format_exc()})
             console.log('Cause:', repr(e.__cause__))
             console.log("Messages:", messages)
             return e
@@ -197,7 +198,8 @@ async def main():
             if stats['usage'] >= stats['limit']:
                 wandb.log({"out_of_credits": True})
             delete_api_key(openrouter_api_key_hash)
-            print(e)
+            print('FAIL DURING ARCHITECTURE RUN')
+            print({traceback.format_exc()})
             return
         try:
             run_inference_and_log(config, iteration=run_index, evaluation_stage='validation')
@@ -213,7 +215,9 @@ async def main():
                 feedback = await get_feedback(current_run_messages, config, new_metrics, best_metrics, is_new_best=False, api_key=openrouter_api_key)
 
         except Exception as e:
-            feedback = f'VALIDATION EVAL FAIL: {e}'
+            # If validation fails on last (or all) itertation, we fail on last test as well - should we catch the exception and just say we dont have anything successful?
+            feedback = f'VALIDATION EVAL FAIL: {traceback.format_exc()}'
+            print(feedback)
         finally:
             stats = get_api_key_usage(openrouter_api_key_hash)
             wandb.log({f"iteration_usage": stats['usage']})
