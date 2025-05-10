@@ -11,6 +11,8 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.usage import UsageLimits
 import wandb
 from openai import AsyncOpenAI
+from timeout_function_decorator import timeout
+
 
 from prompts.prompts_utils import load_prompts
 from tools.bash import create_bash_tool
@@ -21,6 +23,7 @@ from run_logging.wandb import setup_logging
 from utils.create_user import create_new_user_and_rundir
 from utils.models import MODELS
 from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics
+from utils.api_keys import create_new_api_key, get_api_key_usage, delete_api_key
 from steps.final_outcome import FinalOutcome
 from steps.data_split import DataSplit
 from steps.model_architecture import ModelArchitecture
@@ -75,8 +78,13 @@ async def main():
         "llm_response_timeout": 60* 15,
         "bash_tool_timeout": 60 * 15, #TODO this is also max-training time, increase
         "write_python_tool_timeout": 60 * 5,
+        "credit_budget": 10
     }
     setup_logging(config, api_key=wandb_key)
+
+    api_key_data = create_new_api_key(name=config["agent_id"], limit=config["credit_budget"])
+    openrouter_api_key = api_key_data['key']
+    openrouter_api_key_hash = api_key_data['hash']
 
     async_http_client = httpx.AsyncClient(
             proxy=proxy_url if config["use_proxy"] else None,
@@ -84,7 +92,7 @@ async def main():
         )
     client = AsyncOpenAI(
         base_url='https://openrouter.ai/api/v1',
-        api_key=os.getenv('OPENROUTER_API_KEY'),
+        api_key=openrouter_api_key,
         http_client=async_http_client,
     )
     model = OpenAIModel(
@@ -184,6 +192,11 @@ async def main():
             current_run_messages = await run_architecture(agent, validation_agent, split_dataset_agent, config, base_prompt, iteration=run_index)
         except Exception as e:
             log_inference_stage_and_metrics(0)
+            stats = get_api_key_usage(openrouter_api_key_hash)
+            wandb.log(stats)
+            if stats['usage'] >= stats['limit']:
+                wandb.log({"out_of_credits": True})
+            delete_api_key(openrouter_api_key_hash)
             print(e)
             return
         try:
@@ -193,21 +206,24 @@ async def main():
             # TODO aggregate feedback over all iterations
             if is_new_best(config['agent_id'], config['best_metric']):
                 new_metrics, best_metrics = get_new_and_best_metrics(config['agent_id'])
-                feedback = await get_feedback(current_run_messages, config, new_metrics, best_metrics, is_new_best=True)
-                #feedback = f"Your solution is better than the previous one. The new metrics are: {new_metrics}."
+                feedback = await get_feedback(current_run_messages, config, new_metrics, best_metrics, is_new_best=True, api_key=openrouter_api_key)
                 #TODO delete snapshots after run ends
                 snapshot(config['agent_id'], run_index)  # Snapshotting overrides the previous snapshot, influencing the get_new_and_best_metrics function
             else:
-                feedback = await get_feedback(current_run_messages, config, new_metrics, best_metrics, is_new_best=False)
-                #feedback = f"Your solution is worse than the previous one. The new metrics are: {new_metrics}. The best metrics are: {best_metrics}."
-                # feedback = get_feedback() 
+                feedback = await get_feedback(current_run_messages, config, new_metrics, best_metrics, is_new_best=False, api_key=openrouter_api_key)
 
         except Exception as e:
             feedback = f'VALIDATION EVAL FAIL: {e}'
+        finally:
+            stats = get_api_key_usage(openrouter_api_key_hash)
+            wandb.log({f"iteration_usage": stats['usage']})
         
     #TODO revert to best model
     #TODO log the best iteration number ?
+    stats = get_api_key_usage(openrouter_api_key_hash)
+    wandb.log(stats)
     run_inference_and_log(config, iteration=run_index, evaluation_stage='test')
+    delete_api_key(openrouter_api_key_hash)
     wandb.finish()
 
 async def run_architecture(agent: Agent, validation_agent: Agent, split_dataset_agent: Agent, config: dict, base_prompt: str, iteration: int):
@@ -262,4 +278,10 @@ async def run_architecture(agent: Agent, validation_agent: Agent, split_dataset_
     return _messages
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        time_budget_in_hours = 1 
+        asyncio.run(timeout(60*60*time_budget_in_hours)(main)()) #TODO parametrize timeout
+    except TimeoutError as e:
+        log_inference_stage_and_metrics(0)
+        wandb.log({"timed_out": True}) #TODO log usage until the timeout
+        wandb.finish()

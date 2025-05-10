@@ -15,7 +15,7 @@ def create_feedback_agent(model, config):
     
     return feedback_agent
 
-async def get_feedback(context, config, new_metrics, best_metrics, is_new_best) -> str:
+async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, api_key) -> str:
     dotenv.load_dotenv()
     proxy_url = os.getenv('PROXY_URL')
     async_http_client = httpx.AsyncClient(
@@ -24,7 +24,7 @@ async def get_feedback(context, config, new_metrics, best_metrics, is_new_best) 
         )
     client = AsyncOpenAI(
         base_url='https://openrouter.ai/api/v1',
-        api_key=os.getenv('OPENROUTER_API_KEY'),
+        api_key=api_key,
         http_client=async_http_client,
     )
     model = OpenAIModel(
@@ -40,7 +40,7 @@ async def get_feedback(context, config, new_metrics, best_metrics, is_new_best) 
     feedback = await agent.run(
         user_prompt = f"Summarize the current state of the run and provide feedback for the next iteration. Metrics from your current run are: {new_metrics}. Metrics from the best run are: {best_metrics}. {prompt_suffix}",
         result_type=None,
-        message_history=context
+        message_history=context #TODO remove system prompt from context?
     )
 
     return feedback.data
