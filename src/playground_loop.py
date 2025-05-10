@@ -19,11 +19,12 @@ from prompts.prompts_utils import load_prompts
 from tools.bash import create_bash_tool
 from tools.write_python_tool import create_write_python_tool
 from run_logging.evaluate_log_run import run_inference_and_log
-from run_logging.logging_helpers import log_inference_stage_and_metrics
+from run_logging.logging_helpers import log_inference_stage_and_metrics, log_serial_metrics
 from run_logging.wandb import setup_logging
 from run_logging.log_files import log_files
 from utils.create_user import create_new_user_and_rundir
 from utils.models import MODELS
+from utils.exceptions import IterationRunFailed
 from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics
 from utils.api_keys import create_new_api_key, get_api_key_usage, delete_api_key
 from steps.final_outcome import FinalOutcome
@@ -54,11 +55,14 @@ async def run_agent(agent: Agent, user_prompt: str, max_steps: int, result_type:
                 async for node in agent_run:
                     console.log(node)
                 return agent_run.result.all_messages()
-        except (UnexpectedModelBehavior, UsageLimitExceeded) as e:
-            console.log("Exception occurred", {traceback.format_exc()})
-            console.log('Cause:', repr(e.__cause__))
-            console.log("Messages:", messages)
-            return e
+        except UnexpectedModelBehavior as e:
+            raise e
+        except Exception as e:
+            raise IterationRunFailed(
+                message="Run didnt finish properly", 
+                context_messages=messages,
+                exception_trace=traceback.format_exc()
+            )
 
 async def main():
 
@@ -193,25 +197,40 @@ async def main():
         try:
             current_run_messages = await run_architecture(agent, validation_agent, split_dataset_agent, config, base_prompt, iteration=run_index)
         except Exception as e:
-            log_inference_stage_and_metrics(0)
-            stats = get_api_key_usage(openrouter_api_key_hash)
-            wandb.log(stats)
-            if stats['usage'] >= stats['limit']:
-                wandb.log({"out_of_credits": True})
-            delete_api_key(openrouter_api_key_hash)
-            print('FAIL DURING ARCHITECTURE RUN')
-            print({traceback.format_exc()})
-            return
-        log_files(config['agent_id'], run_index)
+            if(isinstance(e, UnexpectedModelBehavior)):
+                stats = get_api_key_usage(openrouter_api_key_hash)
+                wandb.log(stats)
+                delete_api_key(openrouter_api_key_hash)
+                if stats['usage'] >= stats['limit']:
+                    wandb.log({"out_of_credits": True})
+                print('FAIL DURING ARCHITECTURE RUN')
+                print({traceback.format_exc()})
+                raise e #Kill the run
+            
+            log_serial_metrics(prefix='validation', metrics=None, iteration=run_index)
+            log_serial_metrics(prefix='train', metrics=None, iteration=run_index)
+            new_metrics, best_metrics = get_new_and_best_metrics(config['agent_id'])
+            feedback = await get_feedback(
+                context=e.context_messages,
+                extra_info=f"{e.message} {e.exception_trace}",
+                config=config, 
+                new_metrics=new_metrics, 
+                best_metrics=best_metrics,
+                is_new_best=False,
+                api_key=openrouter_api_key
+            )
+            log_files(config['agent_id'], run_index)
+            continue
+
         try:
             run_inference_and_log(config, iteration=run_index, evaluation_stage='validation')
             run_inference_and_log(config, iteration=run_index, evaluation_stage='train')
 
             # TODO aggregate feedback over all iterations
+            # TODO we dont need feedback for the last iteration
             if is_new_best(config['agent_id'], config['best_metric']):
                 new_metrics, best_metrics = get_new_and_best_metrics(config['agent_id'])
                 feedback = await get_feedback(current_run_messages, config, new_metrics, best_metrics, is_new_best=True, api_key=openrouter_api_key)
-                #TODO delete snapshots after run ends
                 snapshot(config['agent_id'], run_index)  # Snapshotting overrides the previous snapshot, influencing the get_new_and_best_metrics function
             else:
                 feedback = await get_feedback(current_run_messages, config, new_metrics, best_metrics, is_new_best=False, api_key=openrouter_api_key)
@@ -219,6 +238,7 @@ async def main():
         except Exception as e:
             # If validation fails on last (or all) itertation, we fail on last test as well - should we catch the exception and just say we dont have anything successful?
             feedback = f'VALIDATION EVAL FAIL: {traceback.format_exc()}'
+            #TODO get feedback from the validation agent
             print(feedback)
         finally:
             stats = get_api_key_usage(openrouter_api_key_hash)
