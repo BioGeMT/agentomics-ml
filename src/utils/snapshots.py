@@ -57,6 +57,9 @@ def is_new_best(agent_id, comparison_metric):
     #TODO parametrize improvement threshold
     necessary_improvement = 0
     is_new_best = new_metrics[f'validation/{comparison_metric}'] > best_metrics[f'validation/{comparison_metric}'] + necessary_improvement
+    print(f"is_new_best: {is_new_best}")
+    print(f"New metrics: {new_metrics}")
+    print(f"Best metrics: {best_metrics}")
     return is_new_best
        
 def delete_snapshot(agent_id):
@@ -84,6 +87,7 @@ def snapshot(agent_id, iteration, delete_old_snapshot=True):
     for element in os.listdir(run_dir):
         element = Path(run_dir)/ element
         # if hidden file and not in a folder, skip it
+        print(f"Element: {element}")
         if re.match(r"^\..*", element.name) and element.is_file():
             continue
         if element.is_file() and element.name in files_to_skip:
@@ -92,9 +96,11 @@ def snapshot(agent_id, iteration, delete_old_snapshot=True):
             continue
         if element.is_file():
             # hard copy the file into snapshot dir
+            print(f"Snapshotting {element.name}")
             shutil.copy2(element, Path(snapshot_dir) / element.name)
         if element.is_dir():
             # hard copy the folder into snapshot dir
+            print(f"Snapshotting {element.name}")
             shutil.copytree(element, Path(snapshot_dir) / element.name, dirs_exist_ok=True)
     
     with open(Path(snapshot_dir) / "iteration_number.txt", "w") as f:
