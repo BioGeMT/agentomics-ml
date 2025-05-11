@@ -38,6 +38,7 @@ def create_bash_tool(agent_id, timeout, autoconda, max_retries, proxy = False, a
         A persistent bash. 
         Use this to execute bash commands. 
         Input should be a valid bash command.
+        Do not use sudo commands, as you don't have sudo access.
 
         Examples:
         \"ls\"

@@ -77,10 +77,10 @@ async def main(model, feedback_model, dataset, tags):
         # "prompt": "BioPrompt_v1.yaml", #TODO cleanup, not used
         "use_proxy" : True,
         "best_metric" : "ACC", #TODO rename into validation_metric
-        "iterations": 10,
+        "iterations": 5,
         "llm_response_timeout": 60* 15,
         "bash_tool_timeout": 60 * 60 * 24, #This affects max training time
-        "write_python_tool_timeout": 60 * 5,
+        "write_python_tool_timeout": 60 * 1,
         "credit_budget": 30,
         "max_tool_retries": 5,
     }
@@ -252,7 +252,6 @@ async def main(model, feedback_model, dataset, tags):
     run_inference_and_log(config, iteration=run_index, evaluation_stage='test', use_best_snapshot=True)
     log_files(config['agent_id'])
     delete_api_key(openrouter_api_key_hash)
-    wandb.finish()
     shutil.rmtree(f"/workspace/runs/{config['agent_id']}")
     shutil.rmtree(f"/snapshots/{config['agent_id']}")
 
@@ -303,11 +302,12 @@ async def run_architecture(agent: Agent, validation_agent: Agent, split_dataset_
 
 async def run_playground_loop(model, feedback_model, dataset, tags):
     try:
-        time_budget_in_hours = 1 
+        time_budget_in_hours = 5
         await timeout(60*60*time_budget_in_hours)(main)(model, feedback_model, dataset, tags) #TODO parametrize timeout
     except TimeoutError as e:
         log_inference_stage_and_metrics(0)
         wandb.log({"timed_out": True}) #TODO log usage until the timeout
+    finally:
         wandb.finish()
 
 if __name__ == "__main__":
