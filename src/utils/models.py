@@ -14,3 +14,5 @@ class MODELS(StrEnum):
     OPENROUTER_SONNET_37="openrouter/anthropic/claude-3-7-sonnet-20250219"
     GPT4_1="gpt-4.1-2025-04-14"
     GPT4_1_mini="gpt-4.1-mini-2025-04-14"
+    GEMINI_2_5="google/gemini-2.5-pro-preview-03-25"
+    GPT_O4_mini="openai/o4-mini"

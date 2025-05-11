@@ -3,6 +3,7 @@ import os
 import asyncio
 import httpx
 import traceback
+import shutil
 
 from rich.console import Console
 from pydantic import BaseModel
@@ -61,26 +62,26 @@ async def run_agent(agent: Agent, user_prompt: str, max_steps: int, message_hist
                 exception_trace=traceback.format_exc()
             )
 
-async def main():
+async def main(model, feedback_model, dataset, tags):
     agent_id = create_new_user_and_rundir()
     config = {
         "agent_id": agent_id,
-        "model": MODELS.GPT4_1_mini,
-        "feedback_model": MODELS.GPT4_1_mini,
+        "model": model,
+        "feedback_model": feedback_model,
         "temperature": 1,
-        "max_steps": 30, #TODO rename, this is per-step limit
+        "max_steps": 100, #TODO rename, this is per-step limit
         "max_run_retries": 1,
         "max_validation_retries": 5,
-        "tags": ["double_run"],
-        "dataset": "human_nontata_promoters",
+        "tags": tags,
+        "dataset": dataset,
         # "prompt": "BioPrompt_v1.yaml", #TODO cleanup, not used
         "use_proxy" : True,
         "best_metric" : "ACC", #TODO rename into validation_metric
-        "iterations": 3,
+        "iterations": 10,
         "llm_response_timeout": 60* 15,
         "bash_tool_timeout": 60 * 60 * 24, #This affects max training time
         "write_python_tool_timeout": 60 * 5,
-        "credit_budget": 10,
+        "credit_budget": 30,
         "max_tool_retries": 5,
     }
     setup_logging(config, api_key=wandb_key)
@@ -252,6 +253,9 @@ async def main():
     log_files(config['agent_id'])
     delete_api_key(openrouter_api_key_hash)
     wandb.finish()
+    shutil.rmtree(f"/workspace/runs/{config['agent_id']}")
+    shutil.rmtree(f"/snapshots/{config['agent_id']}")
+
 
 async def run_architecture(agent: Agent, validation_agent: Agent, split_dataset_agent: Agent, config: dict, base_prompt: str, iteration: int):
     messages_data_exploration = await run_agent(
@@ -297,11 +301,20 @@ async def run_architecture(agent: Agent, validation_agent: Agent, split_dataset_
 
     return _messages
 
-if __name__ == "__main__":
+async def run_playground_loop(model, feedback_model, dataset, tags):
     try:
         time_budget_in_hours = 1 
-        asyncio.run(timeout(60*60*time_budget_in_hours)(main)()) #TODO parametrize timeout
+        await timeout(60*60*time_budget_in_hours)(main)(model, feedback_model, dataset, tags) #TODO parametrize timeout
     except TimeoutError as e:
         log_inference_stage_and_metrics(0)
         wandb.log({"timed_out": True}) #TODO log usage until the timeout
         wandb.finish()
+
+if __name__ == "__main__":
+    DATASETS=["human_nontata_promoters","human_enhancers_cohn","drosophila_enhancers_stark","human_enhancers_ensembl","AGO2_CLASH_Hejret2023","human_ocr_ensembl"]
+    MODELS_TO_RUN = [MODELS.OPENROUTER_SONNET_37, MODELS.GPT_O4_mini, MODELS.GEMINI_2_5, MODELS.GPT4_1]
+    TAGS = ["agentomics_v1"]
+    for dataset in DATASETS:
+        for model in MODELS_TO_RUN:
+            FEEDBACK_MODEL=model
+            asyncio.run(run_playground_loop(model, FEEDBACK_MODEL, dataset, TAGS))
