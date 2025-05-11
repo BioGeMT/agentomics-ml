@@ -44,10 +44,23 @@ async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, 
         prompt_suffix += f"The aggregated feedback from the previous iterations is: {aggregated_feedback}."
     
     prompt_suffix += extra_info
-    #TODO handle new or best metrics being empty dicts
-    user_prompt = f"Summarize the current state of the run and provide feedback for the next iteration. Metrics from your current run are: {new_metrics}. Metrics from the past best run are: {best_metrics}. {prompt_suffix}."
+
+    feedback_prompt = f"""Summarize the current state and provide detailed feedback on how to fix errors and improve the steps executed:
+    1. Data exploration: describe the data and the features you explored.
+    2. Data representation: any transformations, encodings, normalizations, features
+    3. Model architecture: the machine learning model type and architecture for your task.
+    4. Model training: the training process, including hyperparameters and optimizers.
+
+    The current iteration returned the following metrics: {new_metrics}.
+    Metrics from the past best run are: {best_metrics}.
+
+    Provide insights on how to improve the model generalization performance.
+
+    {prompt_suffix}.
+    """
+    
     feedback = await agent.run(
-        user_prompt = user_prompt,
+        user_prompt = feedback_prompt,
         result_type=None,
         message_history=context #TODO remove system prompt from context?
     )

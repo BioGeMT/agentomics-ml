@@ -179,7 +179,7 @@ async def main():
             log_serial_metrics(prefix='validation', metrics=None, iteration=run_index)
             log_serial_metrics(prefix='train', metrics=None, iteration=run_index)
             new_metrics, best_metrics = get_new_and_best_metrics(config['agent_id'])
-            all_feedbacks.append(feedback)
+            all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far: {best_metrics}")) # append feedback from last iteration before to process it
             feedback = await get_feedback(
                 context=e.context_messages,
                 extra_info=f"{e.message} {e.exception_trace}",
@@ -199,9 +199,9 @@ async def main():
             run_inference_and_log(config, iteration=run_index, evaluation_stage='train')
             run_inference_and_log(config, iteration=run_index, evaluation_stage='stealth_test')
 
-            all_feedbacks.append(feedback)
+            new_metrics, best_metrics = get_new_and_best_metrics(config['agent_id'])
+            all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far: {best_metrics}"))
             if is_new_best(config['agent_id'], config['best_metric']):
-                new_metrics, best_metrics = get_new_and_best_metrics(config['agent_id'])
                 feedback = await get_feedback(
                     context=current_run_messages, 
                     config=config, 
@@ -227,10 +227,19 @@ async def main():
                     )
 
         except Exception as e:
-            # If validation fails on last (or all) itertation, we fail on last test as well - should we catch the exception and just say we dont have anything successful?
-            feedback = f'VALIDATION EVAL FAIL: {traceback.format_exc()}'
-            #TODO call feedback agent with the exception
-            all_feedbacks.append(feedback)
+            new_metrics, best_metrics = get_new_and_best_metrics(config['agent_id'])
+            all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far after the feedback incorporation: {best_metrics}"))
+            feedback = await get_feedback(
+                    current_run_messages, 
+                    config, 
+                    new_metrics, 
+                    best_metrics, 
+                    is_new_best=False, 
+                    api_key=openrouter_api_key, 
+                    iteration=run_index,
+                    aggregated_feedback=aggregate_feedback(all_feedbacks),
+                    extra_info=f"Inference failed: {traceback.format_exc()}",
+                    )
             print(feedback)
         finally:
             log_files(config['agent_id'], run_index)
