@@ -45,7 +45,9 @@ async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, 
     
     prompt_suffix += extra_info
 
-    feedback_prompt = f"""Summarize the current state and provide detailed feedback on how to fix errors and improve the steps executed:
+    feedback_prompt = f"""
+    Last message: {str(context[-1])}
+    Summarize the current state and provide detailed feedback on how to fix errors and improve the steps executed:
     1. Data exploration: describe the data and the features you explored.
     2. Data representation: any transformations, encodings, normalizations, features
     3. Model architecture: the machine learning model type and architecture for your task.
@@ -62,7 +64,7 @@ async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, 
     feedback = await agent.run(
         user_prompt = feedback_prompt,
         result_type=None,
-        message_history=context #TODO remove system prompt from context?
+        message_history=context[:-1] #TODO remove system prompt from context?
     )
 
     return feedback.data
