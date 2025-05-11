@@ -94,7 +94,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
         try:
             _ = get_metrics(
                 results_file=stage_to_output[evaluation_stage],
-                test_file=stage_to_input[evaluation_stage],
+                test_file=dataset_metadata['train_split'],
                 output_file=stage_to_metrics_file[evaluation_stage],
                 numeric_label_col=dataset_metadata['numeric_label_col'],
                 delete_preds=True,
