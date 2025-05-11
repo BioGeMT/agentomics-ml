@@ -40,6 +40,7 @@ def generate_mirbench_files():
             default_docker_path = f'/repository/datasets/{dataset_name}'
             metadata = {
                 "train_split": f"{default_docker_path}/train.csv",
+                "train_split_no_labels": f"{default_docker_path}/train.no_label.csv",
                 "test_split_with_labels": f"{default_docker_path}/test.csv",
                 "test_split_no_labels": f"{default_docker_path}/test.no_label.csv",
                 "dataset_knowledge":f"{default_docker_path}/dataset_description.md",
@@ -57,8 +58,7 @@ def generate_mirbench_files():
             df = pd.read_csv(download_path/'miRBench', sep="\t")
             df[numeric_label_col] = df[class_col].map(dataset_label_to_scalar[dataset_name])
             df.to_csv(f"{local_dset_path}/{split}.csv", index=False)
-            if(split == "test"):
-                df.drop(columns=[class_col, numeric_label_col]).to_csv(f"{local_dset_path}/{split}.no_label.csv", index=False)
+            df.drop(columns=[class_col, numeric_label_col]).to_csv(f"{local_dset_path}/{split}.no_label.csv", index=False)
 
 def generate_genomic_benchmarks_files():
     from genomic_benchmarks.loc2seq import download_dataset
@@ -97,6 +97,7 @@ def generate_genomic_benchmarks_files():
             default_docker_path = f'/repository/datasets/{dataset_name}'
             metadata = {
                 "train_split": f"{default_docker_path}/train.csv",
+                "train_split_no_labels": f"{default_docker_path}/train.no_label.csv",
                 "test_split_with_labels": f"{default_docker_path}/test.csv",
                 "test_split_no_labels": f"{default_docker_path}/test.no_label.csv",
                 "dataset_knowledge":f"{default_docker_path}/dataset_description.md",
@@ -116,8 +117,7 @@ def generate_genomic_benchmarks_files():
             df = pd.DataFrame(data)
             df[numeric_label_col] = df[class_col].map(dataset_label_to_scalar[dataset_name])
             df.to_csv(f"{local_dset_path}/{split}.csv", index=False)
-            if(split == "test"):
-                df.drop(columns=[class_col, numeric_label_col]).to_csv(f"{local_dset_path}/{split}.no_label.csv", index=False)
+            df.drop(columns=[class_col, numeric_label_col]).to_csv(f"{local_dset_path}/{split}.no_label.csv", index=False)
 
 def generate_dataset_files():
     generate_genomic_benchmarks_files()

@@ -24,7 +24,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
         'snapshots': f"{snapshot_dir}/inference.py",
     }
     stage_to_input = {
-        'dry_run': dataset_metadata['train_split'],
+        'dry_run': dataset_metadata['train_split_no_labels'],
         'validation': run_dir + "/validation.csv",
         'test': dataset_metadata['test_split_no_labels'],
         'train': run_dir + "/train.csv",
