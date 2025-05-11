@@ -197,6 +197,7 @@ async def main():
         try:
             run_inference_and_log(config, iteration=run_index, evaluation_stage='validation')
             run_inference_and_log(config, iteration=run_index, evaluation_stage='train')
+            run_inference_and_log(config, iteration=run_index, evaluation_stage='stealth_test')
 
             all_feedbacks.append(feedback)
             if is_new_best(config['agent_id'], config['best_metric']):
