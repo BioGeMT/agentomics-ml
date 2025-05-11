@@ -33,6 +33,7 @@ from steps.data_split import DataSplit, get_data_split_prompt
 from steps.model_architecture import ModelArchitecture, get_model_architecture_prompt
 from steps.data_representation import DataRepresentation, get_data_representation_prompt
 from steps.data_exploration import DataExploration, get_data_exploration_prompt
+from steps.model_training import ModelTraining, get_model_training_prompt
 from feedback.feedback_agent import get_feedback, aggregate_feedback
 
 dotenv.load_dotenv()
@@ -137,6 +138,14 @@ async def main(model, feedback_model, dataset, tags):
         result_retries=config["max_validation_retries"],
     )
 
+    training_agent = Agent(
+        model=model,
+        tools=tools,
+        model_settings={'temperature': config['temperature']},
+        result_type=ModelTraining,
+        result_retries=config["max_validation_retries"],
+    )
+
     validation_agent = Agent(
         model=model,
         tools=tools,
@@ -148,6 +157,14 @@ async def main(model, feedback_model, dataset, tags):
     def validate_split_dataset(result: DataSplit) -> DataSplit:
         if not os.path.exists(result.train_path) or not os.path.exists(result.val_path):
             raise ModelRetry("Split dataset files do not exist.")
+        return result
+    
+    @training_agent.result_validator
+    def validate_training(result: ModelTraining) -> ModelTraining:
+        if not os.path.exists(result.path_to_train_file):
+            raise ModelRetry("Train file does not exist.")
+        if not os.path.exists(result.path_to_model_file):
+            raise ModelRetry("Model file does not exist.")
         return result
 
     @validation_agent.result_validator
@@ -167,7 +184,7 @@ async def main(model, feedback_model, dataset, tags):
         else:
             base_prompt = get_iteration_prompt(config, run_index, feedback)
         try:
-            current_run_messages = await run_architecture(agent, validation_agent, split_dataset_agent, config, base_prompt, iteration=run_index)
+            current_run_messages = await run_architecture(agent, validation_agent, split_dataset_agent, training_agent, config, base_prompt, iteration=run_index)
         except Exception as e:
             stats = get_api_key_usage(openrouter_api_key_hash)
             if stats['usage'] >= stats['limit']:
@@ -256,7 +273,7 @@ async def main(model, feedback_model, dataset, tags):
     shutil.rmtree(f"/snapshots/{config['agent_id']}")
 
 
-async def run_architecture(agent: Agent, validation_agent: Agent, split_dataset_agent: Agent, config: dict, base_prompt: str, iteration: int):
+async def run_architecture(agent: Agent, validation_agent: Agent, split_dataset_agent: Agent, training_agent: Agent, config: dict, base_prompt: str, iteration: int):
     messages_data_exploration = await run_agent(
         agent=agent,
         user_prompt=base_prompt + get_data_exploration_prompt(),
@@ -291,11 +308,18 @@ async def run_architecture(agent: Agent, validation_agent: Agent, split_dataset_
         message_history=messages_representation,
     )
 
+    messages_training = await run_agent(
+        agent=training_agent, 
+        user_prompt=get_model_training_prompt(), 
+        max_steps=config["max_steps"],
+        message_history=messages_architecture,
+    )
+
     _messages = await run_agent(
         agent=validation_agent, 
         user_prompt=get_final_outcome_prompt(), 
         max_steps=config["max_steps"],
-        message_history=messages_architecture,
+        message_history=messages_training,
     )
 
     return _messages
