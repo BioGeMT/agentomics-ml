@@ -80,7 +80,7 @@ async def main(model, feedback_model, dataset, tags):
         "best_metric" : "ACC", #TODO rename into validation_metric
         "iterations": 5,
         "llm_response_timeout": 60* 15,
-        "bash_tool_timeout": 60 * 60 * 24, #This affects max training time
+        "bash_tool_timeout": 60 * 60 * 5, #This affects max training time
         "write_python_tool_timeout": 60 * 1,
         "credit_budget": 30,
         "max_tool_retries": 5,
