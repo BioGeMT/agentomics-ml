@@ -171,8 +171,6 @@ async def main(model, feedback_model, dataset, tags):
     async def validate_inference(result: FinalOutcome) -> FinalOutcome:
         if not os.path.exists(result.path_to_inference_file):
             raise ModelRetry("Inference file does not exist.")
-        if not os.path.exists(result.path_to_train_file):
-            raise ModelRetry("Train file does not exist.")
         run_inference_and_log(config, iteration=-1, evaluation_stage='dry_run') 
         return result       
     
