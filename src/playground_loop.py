@@ -19,6 +19,7 @@ from timeout_function_decorator import timeout
 from prompts.prompts_utils import get_iteration_prompt, get_user_prompt, get_system_prompt
 from tools.bash import create_bash_tool
 from tools.write_python_tool import create_write_python_tool
+from tools.run_python_tool import create_run_python_tool
 from run_logging.evaluate_log_run import run_inference_and_log
 from run_logging.logging_helpers import log_inference_stage_and_metrics, log_serial_metrics
 from run_logging.wandb import setup_logging
@@ -80,8 +81,9 @@ async def main(model, feedback_model, dataset, tags):
         "best_metric" : "ACC", #TODO rename into validation_metric
         "iterations": 5,
         "llm_response_timeout": 60* 15,
-        "bash_tool_timeout": 60 * 60 * 5, #This affects max training time
+        "bash_tool_timeout": 60 * 5, 
         "write_python_tool_timeout": 60 * 1,
+        "run_python_tool_timeout": 60 * 60 * 6, #This affects max training time
         "credit_budget": 30,
         "max_tool_retries": 5,
     }
@@ -118,6 +120,11 @@ async def main(model, feedback_model, dataset, tags):
             agent_id=config['agent_id'], 
             timeout=config['write_python_tool_timeout'], 
             add_code_to_response=False,
+            max_retries=config['max_tool_retries'],),
+        create_run_python_tool(
+            agent_id=config['agent_id'],
+            timeout=config['run_python_tool_timeout'],
+            proxy=config['use_proxy'],
             max_retries=config['max_tool_retries'],),
     ]
 
