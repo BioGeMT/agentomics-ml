@@ -101,7 +101,7 @@ def snapshot(agent_id, iteration, delete_old_snapshot=True):
         if element.is_dir():
             # hard copy the folder into snapshot dir
             print(f"Snapshotting {element.name}")
-            shutil.copytree(element, Path(snapshot_dir) / element.name, dirs_exist_ok=True)
+            shutil.copytree(element, Path(snapshot_dir) / element.name, dirs_exist_ok=True, symlinks=True)
     
     with open(Path(snapshot_dir) / "iteration_number.txt", "w") as f:
         f.write(str(iteration))

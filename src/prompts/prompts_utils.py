@@ -19,7 +19,6 @@ def get_system_prompt(config):
     
     return f"""
     Your goal is to create a robust classifier that will generalize to new unseen data. Use tools and follow instructions to reach this goal.
-    Create a Tree based model using the provided dataset.
     You are using a linux system.
     You have access to both CPU and GPU resources. Use them efficiently to train models.
     You are provided with your own already activated environment
