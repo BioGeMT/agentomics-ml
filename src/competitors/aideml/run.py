@@ -6,7 +6,7 @@ import argparse
 import subprocess
 from pathlib import Path
 
-sys.path.append("/repository/src")  # Original line from snippet
+sys.path.append("/repository/src")  
 from run_logging.wandb import setup_logging
 from run_logging.log_files import log_files
 
@@ -25,8 +25,7 @@ def parse_args():
     )
     parser.add_argument("--run_id", required=True, help="Run ID for the agent (AGENT_ID from run2.sh)")
     parser.add_argument("--tags", required=True, nargs="+", help="Wandb tags")
-    # --eval argument is parsed but will NOT be passed to AIDE in this version
-    parser.add_argument("--eval", default=None, help="Value for eval_strategy – CURRENTLY NOT PASSED TO AIDE")
+    parser.add_argument("--eval", default=None, help="Value for eval_strategy – CURRENTLY NOT PASSED TO AIDE") #this is passed from .sh
     return parser.parse_args()
 
 
@@ -47,7 +46,7 @@ async def main():
         "run_id": run_id,
         "tags": args.tags,
         "agent_id": run_id,
-        "aide_eval_strategy_arg_value_intended": args.eval,  # Log what was intended
+        "aide_eval_strategy_arg_value_intended": args.eval,  
     }
     wandb_key = os.getenv("WANDB_API_KEY")
 
@@ -66,12 +65,10 @@ async def main():
 
     aide_cmd_list = [
         "aide",
-        "agent",
         f"data_dir='{data_dir_name}'",
         f"desc_file='{desc_file_name}'",
         f"log_dir='{str(aide_internal_logs_path)}'",
-        f"agent.code.model='{args.model}'",
-        "agent={}",  # Kept from previous attempt to fix 'agent not Optional'
+        f"agent.code.model='{args.model}'"
     ]
 
     if args.eval:
