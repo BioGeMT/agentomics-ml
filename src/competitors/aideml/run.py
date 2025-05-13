@@ -25,7 +25,7 @@ def parse_args():
     )
     parser.add_argument("--run_id", required=True, help="Run ID for the agent (AGENT_ID from run2.sh)")
     parser.add_argument("--tags", required=True, nargs="+", help="Wandb tags")
-    parser.add_argument("--eval", default=None, help="Value for eval_strategy – CURRENTLY NOT PASSED TO AIDE") #this is passed from .sh
+    parser.add_argument("--eval", default=None, help="Value for eval_strategy") #this is passed from .sh
     return parser.parse_args()
 
 
