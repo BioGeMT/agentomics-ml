@@ -64,7 +64,7 @@ async def run_agent(agent: Agent, user_prompt: str, max_steps: int, message_hist
                 exception_trace=traceback.format_exc()
             )
 
-async def main(model, feedback_model, dataset, tags):
+async def main(model, feedback_model, dataset, tags, best_metric):
     agent_id = create_new_user_and_rundir()
     config = {
         "agent_id": agent_id,
@@ -78,7 +78,7 @@ async def main(model, feedback_model, dataset, tags):
         "dataset": dataset,
         # "prompt": "BioPrompt_v1.yaml", #TODO cleanup, not used
         "use_proxy" : True,
-        "best_metric" : "ACC", #TODO rename into validation_metric
+        "best_metric" : best_metric, #TODO rename into validation_metric
         "iterations": 5,
         "llm_response_timeout": 60* 15,
         "bash_tool_timeout": 60 * 5, 
@@ -335,10 +335,10 @@ async def run_architecture(agent: Agent, validation_agent: Agent, split_dataset_
 
     return _messages
 
-async def run_playground_loop(model, feedback_model, dataset, tags):
+async def run_playground_loop(model, feedback_model, dataset, tags, best_metric):
     try:
         time_budget_in_hours = 5
-        await timeout(60*60*time_budget_in_hours)(main)(model, feedback_model, dataset, tags) #TODO parametrize timeout
+        await timeout(60*60*time_budget_in_hours)(main)(model, feedback_model, dataset, tags, best_metric) #TODO parametrize timeout
     except TimeoutError as e:
         log_inference_stage_and_metrics(0)
         wandb.log({"timed_out": True}) #TODO log usage until the timeout
@@ -346,10 +346,18 @@ async def run_playground_loop(model, feedback_model, dataset, tags):
         wandb.finish()
 
 if __name__ == "__main__":
+    best_metrics = {
+        "human_nontata_promoters": "ACC",
+        "human_enhancers_cohn": "ACC",
+        "drosophila_enhancers_stark": "ACC",
+        "human_enhancers_ensembl": "ACC",
+        "human_ocr_ensembl": "ACC",
+        "AGO2_CLASH_Hejret2023": "AUPRC",
+    }
     DATASETS=["human_nontata_promoters","human_enhancers_cohn","drosophila_enhancers_stark","human_enhancers_ensembl","AGO2_CLASH_Hejret2023","human_ocr_ensembl"]
     MODELS_TO_RUN = [MODELS.OPENROUTER_SONNET_37, MODELS.GPT_O4_mini, MODELS.GEMINI_2_5, MODELS.GPT4_1]
     TAGS = ["agentomics_v1"]
     for dataset in DATASETS:
         for model in MODELS_TO_RUN:
             FEEDBACK_MODEL=model
-            asyncio.run(run_playground_loop(model, FEEDBACK_MODEL, dataset, TAGS))
+            asyncio.run(run_playground_loop(model, FEEDBACK_MODEL, dataset, TAGS, best_metrics[dataset]))
