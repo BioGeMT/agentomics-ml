@@ -3,15 +3,13 @@
  ATTENTION!: For you final solution, you MUST make the script to be able to take argparse arguments --input (for new unseen data csv) and --output (for predictions file). 
         
         You are using a linux system.
-        You have access to CPU.
+        You have access to both CPU and GPU.
         You run in a conda environment and you are allowed to install any dependencies you need.
 
         DATASET:
-        - Training file: train.csv
-        - Test file: test.no_labels.csv
+        - Training file: input/train.csv
 
-        Dataset knowledge:
-        dataset_description.md
+        Dataset knowledge: input/dataset_description.md
 
         REQUIREMENTS:
         - 1 trained model file.
