@@ -1,0 +1,18 @@
+ Create the best possible classifier model and inference script that is able to load the trained model and do inference on new data. 
+ 
+ ATTENTION!: For you final solution, you MUST make the script to be able to take argparse arguments --input (for new unseen data csv) and --output (for predictions file). 
+        
+        You are using a linux system.
+        You have access to CPU.
+        You run in a conda environment and you are allowed to install any dependencies you need.
+
+        DATASET:
+        - Training file: train.csv
+        - Test file: test.no_labels.csv
+
+        Dataset knowledge:
+        dataset_description.md
+
+        REQUIREMENTS:
+        - 1 trained model file.
+        - 1 script that is able to load the trained model and do inference on new data that is be able to take argparse arguments --input (for new unseen data csv) and --output (for predictions file).
