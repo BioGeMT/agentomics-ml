@@ -271,7 +271,13 @@ async def main(model, feedback_model, dataset, tags):
         
     stats = get_api_key_usage(openrouter_api_key_hash)
     wandb.log(stats)
-    run_inference_and_log(config, iteration=run_index, evaluation_stage='test', use_best_snapshot=True)
+    
+    try:
+        run_inference_and_log(config, iteration=run_index, evaluation_stage='test', use_best_snapshot=True)
+    except Exception as e:
+        print('FINAL TEST EVAL FAIL', str(e))
+        log_inference_stage_and_metrics(1)
+    
     log_files(config['agent_id'])
     delete_api_key(openrouter_api_key_hash)
     shutil.rmtree(f"/workspace/runs/{config['agent_id']}")
