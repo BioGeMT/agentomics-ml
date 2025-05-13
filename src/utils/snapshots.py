@@ -97,11 +97,31 @@ def snapshot(agent_id, iteration, delete_old_snapshot=True):
         if element.is_file():
             # hard copy the file into snapshot dir
             print(f"Snapshotting {element.name}")
-            shutil.copy2(element, Path(snapshot_dir) / element.name)
+            absolute_dest = Path(snapshot_dir) / element.name
+            shutil.copy2(element, absolute_dest)
+            replace_workspace_path_with_snapshots(agent_id, absolute_path_snapshot_file=absolute_dest)
         if element.is_dir():
             # hard copy the folder into snapshot dir
             print(f"Snapshotting {element.name}")
             shutil.copytree(element, Path(snapshot_dir) / element.name, dirs_exist_ok=True, symlinks=True)
-    
+            # if dir is not hidden, replace the workspace path in all files
+            if(not re.match(r"^\..*", element.name)):
+                for root, _, files in os.walk(Path(snapshot_dir) / element.name):
+                    for file_name in files:
+                        absolute_file_path = Path(root) / file_name
+                        replace_workspace_path_with_snapshots(agent_id, absolute_path_snapshot_file=absolute_file_path)
+        
     with open(Path(snapshot_dir) / "iteration_number.txt", "w") as f:
         f.write(str(iteration))
+
+def replace_workspace_path_with_snapshots(agent_id, absolute_path_snapshot_file):
+    # Replaces hard-coded paths in the files to point to the snapshot dir
+    workspace_string = f"/workspace/runs/{agent_id}"
+    snapshot_string = f"/snapshots/{agent_id}"
+    with open(absolute_path_snapshot_file, "r") as f:
+        old_content = f.read()
+    new_content = old_content.replace(workspace_string, snapshot_string)
+    if(old_content != new_content):
+        print(f"Replaced {workspace_string} with {snapshot_string} in {absolute_path_snapshot_file}")
+        with open(absolute_path_snapshot_file, "w") as f:
+            f.write(new_content)
