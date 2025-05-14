@@ -1,16 +1,17 @@
- Create the best possible classifier model and inference script that is able to load the trained model and do inference on new data. 
- 
- ATTENTION!: For you final solution, you MUST make the script to be able to take argparse arguments --input (for new unseen data csv) and --output (for predictions file). 
-        
-        You are using a linux system.
-        You have access to both CPU and GPU.
-        You run in a conda environment and you are allowed to install any dependencies you need.
+Create the best possible classifier that will generalize to new unseen data.
+You are using a linux system.
+You have access to both CPU and GPU resources.
 
-        DATASET:
-        - Training file: input/train.csv
+DATASET:
+- Training file: input/train.csv
 
-        Dataset knowledge: input/dataset_description.md
+Dataset knowledge:
+input/dataset_description.md
 
-        REQUIREMENTS:
-        - 1 trained model file.
-        - 1 script that is able to load the trained model and do inference on new data that is be able to take argparse arguments --input (for new unseen data csv) and --output (for predictions file).
+REQUIREMENTS:
+Your final file answer must:
+
+- Accept arguments: --input and --output
+- The input file will not contain labels
+- Load any necessary files created by the training 
+- Output a CSV with column 'prediction' containing a score from 0 to 1
