@@ -20,6 +20,15 @@ def analyse_df(df):
     return complete_df
 
 
+def squash_max_rows(df, prefix, new_col_name):
+        methods = df.index[df.index.str.startswith(prefix)]
+        methods_df = df.loc[methods]
+        methods_df = methods_df.max(axis=0).to_frame().T
+        methods_df.index = [new_col_name]
+        df = df.drop(methods)
+        df = pd.concat([df, methods_df], axis=0, join='outer', ignore_index=False)
+        return df
+
 if __name__ == "__main__":
     zeroshot_df = pd.read_csv("zeroshot_runs.csv")
     di_df = pd.read_csv("DI_runs.csv")
@@ -48,6 +57,12 @@ if __name__ == "__main__":
     max_and_sota_df = pd.concat([max_metrics_df, sota_df_agg], axis=0, join='outer', ignore_index=False)
     max_and_sota_df.to_csv("max_and_sota_df.csv", index=True)
 
+    # take all methods that start with DI and zero_shot and make them into one row with max of all
+    max_and_sota_df_small = squash_max_rows(max_and_sota_df, "DI", "DI (max of all models)")
+    max_and_sota_df_small = squash_max_rows(max_and_sota_df_small, "zero_shot", "zero_shot (max of all models)")
+
+    max_and_sota_df_small.to_csv("max_and_sota_df_small.csv", index=True) 
+
     # MEAN metrics
     experiments_acc_mean = experiments_df.pivot(columns="dataset", values="ACC_mean", index="method")
     experiments_auprc_mean = experiments_df.pivot(columns="dataset", values="AUPRC_mean", index="method")
@@ -58,6 +73,12 @@ if __name__ == "__main__":
     # SUCCESS RATES
     experiments_succ_rates = experiments_df.pivot(columns="dataset", values="successful_run_mean", index="method")
     experiments_succ_rates.to_csv("experiments_succ_rates.csv", index=True)
+
+    succ_df_small = squash_max_rows(experiments_succ_rates, "DI", "DI (max of all models)")
+    succ_df_small = squash_max_rows(succ_df_small, "zero_shot", "zero_shot (max of all models)")
+
+    succ_df_small = succ_df_small.mean(axis=1).to_frame()
+    succ_df_small.to_csv("succ_df_small.csv", index=True)
 
     
     

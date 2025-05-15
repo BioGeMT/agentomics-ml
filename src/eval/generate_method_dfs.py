@@ -1,6 +1,7 @@
 import pandas as pd
 import wandb
 from dotenv import load_dotenv
+import numpy as np
 
 def generate_noniterative_runs(tags, path, method, drop_na, entity='ceitec-ai', project='Agentomics-ML'):
     load_dotenv()
@@ -51,6 +52,7 @@ def generate_iterative_runs(tags, path, method, entity='ceitec-ai', project='Age
         filters={"tags": {"$in": tags}}
     )
     runs_data = []
+    runs_iteration_data = []
     for run in runs:
         run_data = {
             "run_id": run.id,
@@ -59,6 +61,7 @@ def generate_iterative_runs(tags, path, method, entity='ceitec-ai', project='Age
             "created_at": run.created_at,
             "state": run.state,
         }
+
         for key, value in run.config.items():
             run_data[f"{key}"] = value
         for key, value in run.summary.items():
@@ -86,6 +89,11 @@ def generate_iterative_runs(tags, path, method, entity='ceitec-ai', project='Age
 
                 #TODO compute max of 0th iterations (5 runs) -> compare to average best metric over 5 iterations to estimate how much feedback helps
                 run_data[f'{metric}_gain_on_zeroth'] = test_val - test_val_zeroth
+
+                splits = ['validation', 'stealth_test', 'train']
+                for split in splits:
+                    for i, value in enumerate(history_data[f'{split}/{metric}']):
+                        run_data[f'{i}:{split}/{metric}'] = value
 
         runs_data.append(run_data)
 
