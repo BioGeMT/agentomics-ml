@@ -5,6 +5,7 @@ import httpx
 from openai import AsyncOpenAI
 import dotenv
 import os
+import time
 
 def create_feedback_agent(model, config):
     feedback_agent = Agent(
@@ -15,7 +16,7 @@ def create_feedback_agent(model, config):
     
     return feedback_agent
 
-async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, api_key, iteration, aggregated_feedback=None, extra_info="") -> str:
+def get_feedback(context, config, new_metrics, best_metrics, is_new_best, api_key, iteration, aggregated_feedback=None, extra_info="") -> str:
     if iteration == config['iterations'] - 1 : return "Last iteration, no feedback needed"
     dotenv.load_dotenv()
     proxy_url = os.getenv('PROXY_URL')
@@ -60,12 +61,12 @@ async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, 
     {prompt_suffix}.
     """
     
-    feedback = await agent.run(
+    feedback = agent.run_sync(
         user_prompt = feedback_prompt,
         result_type=None,
         message_history=context #TODO remove system prompt from context?
     )
-
+    time.sleep(3)
     return feedback.data
 
 def aggregate_feedback(feedback_list):
