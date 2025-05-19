@@ -1,6 +1,6 @@
 import wandb
 
-def setup_logging(config, api_key, dir="/tmp/wandb"):
+def setup_logging(config, api_key, dir="/home/jovyan/Vlasta/tmp/wandb"):
     wandb.login(key=api_key)
     wandb.init(
         dir=dir,

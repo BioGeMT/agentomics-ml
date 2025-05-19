@@ -54,7 +54,7 @@ def create_bash_tool(agent_id, timeout, autoconda, max_retries, proxy = False, a
         """
 
         if(conda_prefix):
-            env_path = env_path = f"/workspace/runs/{agent_id}/.conda/envs/{agent_id}_env"
+            env_path = env_path = f"/home/jovyan/Vlasta/workspace/runs/{agent_id}/.conda/envs/{agent_id}_env"
             command_prefix=f"source /opt/conda/etc/profile.d/conda.sh && conda activate {env_path} && "
             command = command_prefix + command
         out = bash.run(command)

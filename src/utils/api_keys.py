@@ -2,7 +2,7 @@ import requests
 import dotenv
 import os
 
-dotenv.load_dotenv("/repository/.env")
+dotenv.load_dotenv("/home/jovyan/Vlasta/Agentomics-ML/.env")
 
 PROVISIONING_API_KEY = os.getenv("PROVISIONING_OPENROUTER_API_KEY")
 BASE_URL = "https://openrouter.ai/api/v1/keys"

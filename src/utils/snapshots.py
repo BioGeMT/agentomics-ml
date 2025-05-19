@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import time
 
 def get_metrics_from_file(file_path):
     metrics = {}
@@ -25,31 +26,32 @@ def get_best_metrics(agent_id):
     if(not best_metrics_exists(agent_id)):
         return {}
     else:
-        return get_valid_and_train_metrics(f"/snapshots/{agent_id}")
+        return get_valid_and_train_metrics(f"/home/jovyan/Vlasta/snapshots/{agent_id}")
 
 def get_new_metrics(agent_id):
     if(not new_metrics_exists(agent_id)):
         return {}
     else:
-        return get_valid_and_train_metrics(f"/workspace/runs/{agent_id}")
+        return get_valid_and_train_metrics(f"/home/jovyan/Vlasta/workspace/runs/{agent_id}")
 
 def get_new_and_best_metrics(agent_id):
     return get_new_metrics(agent_id), get_best_metrics(agent_id)
 
 def best_metrics_exists(agent_id):
-    best_metrics_path = f"/snapshots/{agent_id}/validation_metrics.txt"
+    best_metrics_path = f"/home/jovyan/Vlasta/snapshots/{agent_id}/validation_metrics.txt"
     if(os.path.isfile(best_metrics_path)):
         return True
     return False
 
 def new_metrics_exists(agent_id):
-    new_metrics_path = f"/workspace/runs/{agent_id}/validation_metrics.txt"
+    new_metrics_path = f"/home/jovyan/Vlasta/workspace/runs/{agent_id}/validation_metrics.txt"
     if(os.path.isfile(new_metrics_path)):
         return True
     return False
 
 def is_new_best(agent_id, comparison_metric):
     if(not best_metrics_exists(agent_id)):
+        print('NEW BEST')
         return True
     
     new_metrics, best_metrics = get_new_and_best_metrics(agent_id)
@@ -63,16 +65,17 @@ def is_new_best(agent_id, comparison_metric):
     return is_new_best
        
 def delete_snapshot(agent_id):
-    snapshot_dir = Path(f"/snapshots/{agent_id}")
+    snapshot_dir = Path(f"/home/jovyan/Vlasta/snapshots/{agent_id}")
     if snapshot_dir.exists():
         shutil.rmtree(snapshot_dir)
 
 def snapshot(agent_id, iteration, delete_old_snapshot=True):
     if delete_old_snapshot:
-        delete_snapshot(agent_id)
+        print("SKIPPING SNAPHOT DELETION")
+        # delete_snapshot(agent_id)
 
-    run_dir = f"/workspace/runs/{agent_id}"
-    snapshot_dir = f"/snapshots/{agent_id}"
+    run_dir = f"/home/jovyan/Vlasta/workspace/runs/{agent_id}"
+    snapshot_dir = f"/home/jovyan/Vlasta/snapshots/{agent_id}"
     Path(snapshot_dir).mkdir(parents=True, exist_ok=True)
     
     files_to_skip = [
@@ -83,8 +86,18 @@ def snapshot(agent_id, iteration, delete_old_snapshot=True):
         "__pycache__",
         ".cache",
     ]
+
+    
+    
+    print('COPYING METRICS')
+    shutil.copy2(f"{run_dir}/validation_metrics.txt", f"{snapshot_dir}/validation_metrics.txt")
+    shutil.copy2(f"{run_dir}/train_metrics.txt", f"{snapshot_dir}/train_metrics.txt")
+    print('DONE')
+    time.sleep(5)
+    
     # iterate the snapshot dir for all files
     for element in os.listdir(run_dir):
+        time.sleep(1)
         element = Path(run_dir)/ element
         # if hidden file and not in a folder, skip it
         print(f"Element: {element}")
@@ -100,24 +113,24 @@ def snapshot(agent_id, iteration, delete_old_snapshot=True):
             absolute_dest = Path(snapshot_dir) / element.name
             shutil.copy2(element, absolute_dest)
             replace_workspace_path_with_snapshots(agent_id, absolute_path_snapshot_file=absolute_dest)
-        if element.is_dir():
-            # hard copy the folder into snapshot dir
-            print(f"Snapshotting {element.name}")
-            shutil.copytree(element, Path(snapshot_dir) / element.name, dirs_exist_ok=True, symlinks=True)
-            # if dir is not hidden, replace the workspace path in all files
-            if(not re.match(r"^\..*", element.name)):
-                for root, _, files in os.walk(Path(snapshot_dir) / element.name):
-                    for file_name in files:
-                        absolute_file_path = Path(root) / file_name
-                        replace_workspace_path_with_snapshots(agent_id, absolute_path_snapshot_file=absolute_file_path)
+        # if element.is_dir():
+        #     # hard copy the folder into snapshot dir
+        #     print(f"Snapshotting {element.name}")
+        #     shutil.copytree(element, Path(snapshot_dir) / element.name, dirs_exist_ok=True, symlinks=True)
+        #     # if dir is not hidden, replace the workspace path in all files
+        #     if(not re.match(r"^\..*", element.name)):
+        #         for root, _, files in os.walk(Path(snapshot_dir) / element.name):
+        #             for file_name in files:
+        #                 absolute_file_path = Path(root) / file_name
+        #                 replace_workspace_path_with_snapshots(agent_id, absolute_path_snapshot_file=absolute_file_path)
         
     with open(Path(snapshot_dir) / "iteration_number.txt", "w") as f:
         f.write(str(iteration))
 
 def replace_workspace_path_with_snapshots(agent_id, absolute_path_snapshot_file):
     # Replaces hard-coded paths in the files to point to the snapshot dir
-    workspace_string = f"/workspace/runs/{agent_id}"
-    snapshot_string = f"/snapshots/{agent_id}"
+    workspace_string = f"/home/jovyan/Vlasta/workspace/runs/{agent_id}"
+    snapshot_string = f"/home/jovyan/Vlasta/snapshots/{agent_id}"
     with open(absolute_path_snapshot_file, "r") as f:
         old_content = f.read()
     new_content = old_content.replace(workspace_string, snapshot_string)

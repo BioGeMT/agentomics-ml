@@ -10,7 +10,7 @@ def load_prompts(name):
     return prompt_templates
 
 def get_system_prompt(config):
-    with open(f"/repository/datasets/{config['dataset']}/metadata.json") as f:
+    with open(f"/home/jovyan/Vlasta/Agentomics-ML/datasets/{config['dataset']}/metadata.json") as f:
         dataset_metadata = json.load(f)
     train_csv_path = dataset_metadata['train_split'].replace("repository", "workspace")
     dataset_knowledge_path = dataset_metadata['dataset_knowledge'].replace("repository", "workspace")
@@ -25,7 +25,7 @@ def get_system_prompt(config):
     Use this environment to install any packages you need (use non-verbose mode for installations, run conda installations with -y option).
     Don't delete this environment.
     Write all your python scripts in files.
-    You can create files only in /workspace/runs/{config['agent_id']} directory.
+    You can create files only in /home/jovyan/Vlasta/workspace/runs/{config['agent_id']} directory.
     Run all commands in a way that prints the least amount of tokens into the console.
     Always call tools with the right arguments, specifying each argument as separate key-value pair. 
     

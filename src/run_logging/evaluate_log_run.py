@@ -7,11 +7,11 @@ from eval.evaluate_result import get_metrics
 from run_logging.logging_helpers import log_inference_stage_and_metrics, log_serial_metrics
 
 def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot=False):
-    with open(f"/repository/datasets/{config['dataset']}/metadata.json") as f:
+    with open(f"/home/jovyan/Vlasta/Agentomics-ML/datasets/{config['dataset']}/metadata.json") as f:
         dataset_metadata = json.load(f)
 
-    run_dir = f"/workspace/runs/{config['agent_id']}"
-    snapshot_dir = f"/snapshots/{config['agent_id']}"
+    run_dir = f"/home/jovyan/Vlasta/workspace/runs/{config['agent_id']}"
+    snapshot_dir = f"/home/jovyan/Vlasta/snapshots/{config['agent_id']}"
     source_folder = 'snapshots' if use_best_snapshot else 'workspace'
     if(use_best_snapshot):
         print('USING BEST SNAPSHOT')
@@ -46,7 +46,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
     }
 
     command_prefix=f"source /opt/conda/etc/profile.d/conda.sh && conda activate {conda_path[source_folder]}"
-    command = f"{command_prefix} && python {inference_path[source_folder]} --input {stage_to_input[evaluation_stage]} --output {stage_to_output[evaluation_stage]}"
+    command = f"export PATH=/opt/conda/bin:$PATH && {command_prefix} && python {inference_path[source_folder]} --input {stage_to_input[evaluation_stage]} --output {stage_to_output[evaluation_stage]}"
     inference_out = subprocess.run(command, shell=True, executable="/bin/bash", capture_output=True)
     if(evaluation_stage == 'stealth_test'):
         print('RUNNING STEALTH TEST EVAL')

@@ -5,6 +5,8 @@ import httpx
 import traceback
 import shutil
 
+import nest_asyncio
+nest_asyncio.apply()
 from rich.console import Console
 from pydantic import BaseModel
 from pydantic_ai import Agent, ModelRetry, capture_run_messages
@@ -340,9 +342,9 @@ if __name__ == "__main__":
         "human_ocr_ensembl": "ACC",
         "AGO2_CLASH_Hejret2023": "AUPRC",
     }
-    DATASETS=["human_nontata_promoters","human_enhancers_cohn","drosophila_enhancers_stark","human_enhancers_ensembl","AGO2_CLASH_Hejret2023","human_ocr_ensembl"]
-    MODELS_TO_RUN = [MODELS.OPENROUTER_SONNET_37, MODELS.GPT_O4_mini, MODELS.GEMINI_2_5, MODELS.GPT4_1]
-    TAGS = ["agentomics_v1"]
+    DATASETS=["human_nontata_promoters", "human_enhancers_cohn","drosophila_enhancers_stark","human_enhancers_ensembl","AGO2_CLASH_Hejret2023","human_ocr_ensembl"]
+    MODELS_TO_RUN = [MODELS.GPT4_1]
+    TAGS = ["agentomics_einfra_v1"]
     for dataset in DATASETS:
         for model in MODELS_TO_RUN:
             FEEDBACK_MODEL=model

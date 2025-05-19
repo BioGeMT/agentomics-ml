@@ -15,7 +15,7 @@ Agents run inside an isolated docker environment for security.
 
 - Download datasets locally so they can be mounted into the container
 ```
-conda create -n agentomics_temp_env --yes python && conda activate agentomics_temp_env && pip install genomic-benchmarks miRBench && python setup.py && conda deactivate && conda remove -n agentomics_temp_env --all --yes
+conda create -n agentomics_temp_env --yes python && source activate agentomics_temp_env && pip install genomic-benchmarks miRBench && python setup.py && conda deactivate && conda remove -n agentomics_temp_env --all --yes
 ```
 
 

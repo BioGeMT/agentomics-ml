@@ -93,7 +93,7 @@ class BashProcess:
 
     def create_conda_env(self):
         self.run(
-            f"conda create -p /workspace/runs/{self.agent_id}/.conda/envs/{self.agent_id}_env python=3.9 -y"
+            f"conda create -p /home/jovyan/Vlasta/workspace/runs/{self.agent_id}/.conda/envs/{self.agent_id}_env python=3.9 -y"
         )
 
     def activate_conda_env(self):
@@ -158,8 +158,11 @@ class BashProcess:
             Prompt(str): the bash command to execute
         """
         pexpect = self._lazy_import_pexpect()
+        # process = pexpect.spawn(
+        #     "sudo", ["-u", agent_id, "bash"], encoding="utf-8"
+        # )
         process = pexpect.spawn(
-            "sudo", ["-u", agent_id, "bash"], encoding="utf-8"
+            ["bash"], encoding="utf-8"
         )
         process.sendline("export PATH=/opt/conda/bin:$PATH")
 

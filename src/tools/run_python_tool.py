@@ -27,7 +27,7 @@ def create_run_python_tool(agent_id, timeout, max_retries, proxy, conda_prefix=T
         
         #TODO allow to accept arguments + validate they don't break the bash (requiring input etc)
         if(conda_prefix):
-            env_path = env_path = f"/workspace/runs/{agent_id}/.conda/envs/{agent_id}_env"
+            env_path = env_path = f"/home/jovyan/Vlasta/workspace/runs/{agent_id}/.conda/envs/{agent_id}_env"
             command_prefix=f"source /opt/conda/etc/profile.d/conda.sh && conda activate {env_path} && "
             command = command_prefix + f"python {python_file_path}"
         out = bash.run(command)
