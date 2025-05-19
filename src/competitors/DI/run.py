@@ -8,7 +8,7 @@ import subprocess
 
 sys.path.append("/repository/src")
 from run_logging.wandb import setup_logging
-from run_logging.evaluate_log_run import evaluate_log_metrics
+from eval.evaluate_result import get_metrics
 from run_logging.log_files import log_files
 from run_logging.logging_helpers import log_inference_stage_and_metrics
 from competitors.DI.set_config import set_config
@@ -128,9 +128,9 @@ async def main(args):
         log_inference_stage_and_metrics(1)
         return
         
-    metrics_file_path = os.path.join(run_dir, f"metrics.txt")
+    metrics_file_path = os.path.join(run_dir, f"test_metrics.txt")
     try:
-        evaluate_log_metrics(
+        get_metrics(
             results_file=predictions_file_path,
             test_file=test_csv_path,
             output_file=metrics_file_path,

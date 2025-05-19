@@ -14,7 +14,7 @@ sys.path.append("/repository/src")
 
 from run_logging.wandb import setup_logging
 from run_logging.logging_helpers import log_inference_stage_and_metrics
-from run_logging.evaluate_log_run import evaluate_log_metrics
+from eval.evaluate_result import get_metrics
 from run_logging.log_files import log_files
 
 sys.path.append("/repository/src/utils")
@@ -81,8 +81,8 @@ def run_script(script_path, script_type, output_dir, run_name, test_csv_no_label
 
 def run_evaluation(results_file, test_labels_file, output_dir, label_to_scalar, class_col):
     print(f"\nRunning evaluation...")
-    metrics_file_path = os.path.join(output_dir, f"metrics.txt")
-    return evaluate_log_metrics(
+    metrics_file_path = os.path.join(output_dir, f"test_metrics.txt")
+    return get_metrics(
         results_file=results_file,
         test_file=test_labels_file,
         output_file=metrics_file_path,
