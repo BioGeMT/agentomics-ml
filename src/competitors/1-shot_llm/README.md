@@ -36,11 +36,12 @@ All configurable aspects are listed below:
    - The prompt template in `1-shot_llm_run.py` can be modified to customize instructions for the LLM
    - You can adjust requirements and specific instructions for how the model should be trained and used
         ```python
-     }
-    prompt = f"""
-        Create the best possible classifier that will generalize to new unseen data.
-        ..."""
+            }
+            prompt = f"""
+                Create the best possible classifier that will generalize to new unseen data.
+                ..."""
      ```
+     
 ## File Structure
 
 - `1-shot_llm_run.py` - Main Python script that handles LLM code generation and execution
