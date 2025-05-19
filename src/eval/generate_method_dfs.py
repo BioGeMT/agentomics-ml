@@ -3,7 +3,8 @@ import wandb
 from dotenv import load_dotenv
 import numpy as np
 
-def generate_noniterative_runs(tags, path, method, drop_na, entity='ceitec-ai', project='Agentomics-ML'):
+
+def generate_aide_runs(tags, path, method, drop_na, entity='ceitec-ai', project='Agentomics-ML'):
     load_dotenv()
     api = wandb.Api(timeout=120)
     runs = api.runs(
@@ -18,6 +19,9 @@ def generate_noniterative_runs(tags, path, method, drop_na, entity='ceitec-ai', 
             "tags": run.tags,
             "created_at": run.created_at,
             "state": run.state, #necessary?
+            "model": "gpt-4.1-2025-04-14",
+            'duration': -1,
+
         }
         for key, value in run.config.items():
             run_data[f"{key}"] = value
@@ -38,8 +42,55 @@ def generate_noniterative_runs(tags, path, method, drop_na, entity='ceitec-ai', 
         'agent_id',
         'state',
         'inference_stage',
+        'aide_eval_strategy_arg_value_intended',
     ]
     df = df.drop(columns=cols_to_drop)
+    df['method'] = method + ":" + df['model']
+    df.to_csv(path, index=False)
+    return df
+
+def generate_noniterative_runs(tags, path, method, drop_na, entity='ceitec-ai', project='Agentomics-ML'):
+    load_dotenv()
+    api = wandb.Api(timeout=120)
+    runs = api.runs(
+        f"{entity}/{project}",
+        filters={"tags": {"$in": tags}},
+    )
+    runs_data = []
+    for run in runs:
+        if('_runtime' not in run.summary.keys()):
+            continue
+        run_data = {
+            "run_id": run.id,
+            "run_name": run.name,
+            "tags": run.tags,
+            "created_at": run.created_at,
+            "state": run.state, #necessary?
+            'duration': run.summary['_runtime'],
+        }
+        for key, value in run.config.items():
+            run_data[f"{key}"] = value
+        for key, value in run.summary.items():
+            if(key in ["AUPRC", "AUROC", "ACC", "inference_stage"]):
+                run_data[f"{key}"] = value
+        runs_data.append(run_data)
+
+    df = pd.DataFrame(runs_data)
+    if(drop_na): # drops killed
+        df = df.dropna().reset_index(drop=True)
+
+    df['successful_run'] = df['inference_stage'].apply(lambda x: True if x == 2 else False)
+    cols_to_drop = [ 
+        'run_id', 
+        'tags', 
+        'agent_id',
+        'state',
+        'inference_stage',
+    ]
+    df = df.drop(columns=cols_to_drop)
+    df = df[df['model'] != 'google/gemini-2.5-pro-preview-03-25']
+    print(f"Found {len(df)} runs matching the specified tags {tags}")
+    
     df['method'] = method + ":" + df['model']
     df.to_csv(path, index=False)
     return df
@@ -52,14 +103,16 @@ def generate_iterative_runs(tags, path, method, entity='ceitec-ai', project='Age
         filters={"tags": {"$in": tags}}
     )
     runs_data = []
-    runs_iteration_data = []
     for run in runs:
+        if('_runtime' not in run.summary.keys()):
+            continue
         run_data = {
             "run_id": run.id,
             "run_name": run.name,
             "tags": run.tags,
             "created_at": run.created_at,
             "state": run.state,
+            'duration': run.summary['_runtime'],
         }
 
         for key, value in run.config.items():
@@ -113,6 +166,17 @@ def generate_iterative_runs(tags, path, method, entity='ceitec-ai', project='Age
     df = df.drop(columns=cols_to_drop)
     df['method'] = method + ":" + df['model']
     df = df[df['model'] == 'GPT4_1']
+    # keep only 5 oldest runs for each dataset
+    time_picked_dfs = []
+    for dataset in df['dataset'].unique():
+        dataset_df = df[df['dataset'] == dataset]
+        dataset_df = dataset_df.sort_values(by='created_at', ascending=True)
+        dataset_df = dataset_df.head(5)
+        time_picked_dfs.append(dataset_df)
+
+    df = pd.concat(time_picked_dfs, ignore_index=True)
+
+
     df.to_csv(path, index=False)
     print(f"Found {len(df)} runs matching the specified tags {tags}")
     return df
@@ -156,6 +220,15 @@ def transform_gb_leaderboard_to_long_format(path):
                 'peer_reviewed': model_metadata[model]['peer_reviewed']
             })
     
+    transformed_data.append({
+        'dataset': 'Drosophila Enhancers Stark',
+        'method': 'Genomic benchmarks',
+        'accuracy': 58.6,
+        'article_type_date': '',
+        'github': 'yes',
+        'model_availability': '',
+        'peer_reviewed': 'yes',
+    })
     transformed_df = pd.DataFrame(transformed_data)
     transformed_df.to_csv(path, index=False)
     return transformed_df
@@ -176,14 +249,17 @@ def process_leaderboard(leaderboard_path, save_path):
         "Drosophila Enhancers Stark":"drosophila_enhancers_stark",
     }
     df['dataset'] = df['dataset'].replace(old_name_to_new_name)
+    
+
     used_datasets = [
         "human_enhancers_cohn",
         "human_enhancers_ensembl",
         "human_nontata_promoters",
         "human_ocr_ensembl",
-        "drosophila_enhancers_stark" #Missing
+        "drosophila_enhancers_stark"
     ]
     df = df[df['dataset'].isin(used_datasets)]
+    
 
     df = df[['dataset', 'method', 'accuracy']]
     df.rename(columns={'accuracy': 'ACC_max'}, inplace=True)
@@ -202,21 +278,27 @@ def process_leaderboard(leaderboard_path, save_path):
 
 if __name__ == "__main__":
     _ = generate_noniterative_runs(
-        tags=['andrea_run_one_shot_v3', 'andrea_run_one_shot_v4'], 
+        tags=['andrea_run_one_shot_v3', 'andrea_run_one_shot_v4', 'oneshot_recover_v1'], 
         path="zeroshot_runs.csv",
         method="zero_shot",
         drop_na=True,
     )
     _ = generate_noniterative_runs(
-        tags=['andrea_DI_v2'], 
+        tags=['andrea_DI_v2', 'DI_recover_v1'], 
         path="DI_runs.csv",
         method="DI",
         drop_na=True,
     )
     _ = generate_iterative_runs(
-        tags=['agentomics_v10', 'agentomics_v11'], 
+        tags=['agentomics_v10', 'agentomics_v11', 'agentomics_einfra_v1'], 
         path="Agentomics_runs.csv",
         method="Agentomics",
+    )
+    _ = generate_aide_runs(
+        tags=['vlasta_aide_v3'], 
+        path="AIDE_runs.csv",
+        method="AIDE",
+        drop_na=True,
     )
     transform_gb_leaderboard_to_long_format('./gb_leaderboard_long_format.csv')
     process_leaderboard('./gb_leaderboard_long_format.csv', './SOTA_leaderboard.csv')
