@@ -66,7 +66,8 @@ do
       # Remove the conda env to free up space (optional)
       conda deactivate
       conda remove -p "$AGENT_ENV" --all -y
-
+      # Remove the agent directory to free up space (optional)
+      rm -rf $AGENT_DIR
       # Capture exit status of the Python script
       STATUS=$?
       echo "Exit status: $STATUS"
