@@ -99,19 +99,22 @@ def snapshot(agent_id, iteration, delete_old_snapshot=True):
             print(f"Snapshotting {element.name}")
             absolute_dest = Path(snapshot_dir) / element.name
             shutil.copy2(element, absolute_dest)
-            replace_workspace_path_with_snapshots(agent_id, absolute_path_snapshot_file=absolute_dest)
+            if element.name.endswith(".py"):
+                replace_workspace_path_with_snapshots(agent_id, absolute_path_snapshot_file=absolute_dest)
         if element.is_dir():
             # hard copy the folder into snapshot dir
             print(f"Snapshotting {element.name}")
             shutil.copytree(element, Path(snapshot_dir) / element.name, dirs_exist_ok=True, symlinks=True)
-            # if dir is not hidden, replace the workspace path in all files
+            # if dir is not hidden, replace the workspace path in python files
             if(not re.match(r"^\..*", element.name)):
                 for root, _, files in os.walk(Path(snapshot_dir) / element.name):
                     for file_name in files:
-                        absolute_file_path = Path(root) / file_name
-                        replace_workspace_path_with_snapshots(agent_id, absolute_path_snapshot_file=absolute_file_path)
+                        if element.name.endswith(".py"):
+                            absolute_file_path = Path(root) / file_name
+                            replace_workspace_path_with_snapshots(agent_id, absolute_path_snapshot_file=absolute_file_path)
         
     with open(Path(snapshot_dir) / "iteration_number.txt", "w") as f:
+        print(f"Snapshotting iteration number")
         f.write(str(iteration))
 
 def replace_workspace_path_with_snapshots(agent_id, absolute_path_snapshot_file):

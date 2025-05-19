@@ -3,7 +3,6 @@ import os
 import asyncio
 import httpx
 import traceback
-import shutil
 
 from rich.console import Console
 from pydantic import BaseModel
@@ -42,17 +41,17 @@ wandb_key = os.getenv("WANDB_API_KEY")
 proxy_url = os.getenv("HTTP_PROXY")
 console = Console()
 
-def run_agent(agent: Agent, user_prompt: str, max_steps: int, message_history: list | None, result_type: BaseModel = None):
-    result = agent.run_sync(
+async def run_agent(agent: Agent, user_prompt: str, max_steps: int, message_history: list | None, output_type: BaseModel = None):
+    result = await agent.run(
         user_prompt=user_prompt,
         usage_limits=UsageLimits(request_limit=max_steps),
-        result_type=result_type,
+        output_type=output_type,
         message_history=message_history,
     )
     console.log(result.new_messages())
     return result.all_messages()
 
-def main(model, feedback_model, dataset, tags, best_metric):
+async def main(model, feedback_model, dataset, tags, best_metric):
     agent_id = create_new_user_and_rundir()
     config = {
         "agent_id": agent_id,
@@ -82,12 +81,12 @@ def main(model, feedback_model, dataset, tags, best_metric):
     openrouter_api_key_hash = api_key_data['hash']
 
     async_http_client = httpx.AsyncClient(
-            proxy=proxy_url if config["use_proxy"] else None,
-            timeout= config["llm_response_timeout"],
-        )
+        proxy=proxy_url if config["use_proxy"] else None,
+        timeout= config["llm_response_timeout"],
+    )
     client = AsyncOpenAI(
         base_url='https://openrouter.ai/api/v1',
-        api_key=openrouter_api_key,
+        api_key=api_key,
         http_client=async_http_client,
     )
     model = OpenAIModel(
@@ -129,7 +128,7 @@ def main(model, feedback_model, dataset, tags, best_metric):
         model=model,
         tools=tools,
         model_settings={'temperature': config['temperature']},
-        result_type=DataSplit,
+        output_type=DataSplit,
         result_retries=config["max_validation_retries"],
     )
 
@@ -137,7 +136,7 @@ def main(model, feedback_model, dataset, tags, best_metric):
         model=model,
         tools=tools,
         model_settings={'temperature': config['temperature']},
-        result_type=ModelTraining,
+        output_type=ModelTraining,
         result_retries=config["max_validation_retries"],
     )
 
@@ -145,25 +144,25 @@ def main(model, feedback_model, dataset, tags, best_metric):
         model=model,
         tools=tools,
         model_settings={'temperature':config['temperature']},
-        result_type= FinalOutcome,
+        output_type= FinalOutcome,
         result_retries=config["max_validation_retries"],
     )
-    @split_dataset_agent.result_validator
-    def validate_split_dataset(result: DataSplit) -> DataSplit:
+    @split_dataset_agent.output_validator
+    async def validate_split_dataset(result: DataSplit) -> DataSplit:
         if not os.path.exists(result.train_path) or not os.path.exists(result.val_path):
             raise ModelRetry("Split dataset files do not exist.")
         return result
     
-    @training_agent.result_validator
-    def validate_training(result: ModelTraining) -> ModelTraining:
+    @training_agent.output_validator
+    async def validate_training(result: ModelTraining) -> ModelTraining:
         if not os.path.exists(result.path_to_train_file):
             raise ModelRetry("Train file does not exist.")
         if not os.path.exists(result.path_to_model_file):
             raise ModelRetry("Model file does not exist.")
         return result
 
-    @validation_agent.result_validator
-    def validate_inference(result: FinalOutcome) -> FinalOutcome:
+    @validation_agent.output_validator
+    async def validate_inference(result: FinalOutcome) -> FinalOutcome:
         if not os.path.exists(result.path_to_inference_file):
             raise ModelRetry("Inference file does not exist.")
         run_inference_and_log(config, iteration=-1, evaluation_stage='dry_run') 
@@ -177,21 +176,21 @@ def main(model, feedback_model, dataset, tags, best_metric):
         else:
             base_prompt = get_iteration_prompt(config, run_index, feedback)
         try:
-            current_run_messages = run_architecture(agent, validation_agent, split_dataset_agent, training_agent, config, base_prompt, iteration=run_index)
+            current_run_messages = await run_architecture(agent, validation_agent, split_dataset_agent, training_agent, config, base_prompt, iteration=run_index)
         except Exception as e:
             stats = get_api_key_usage(openrouter_api_key_hash)
             if stats['usage'] >= stats['limit']:
                 wandb.log(stats)
                 wandb.log({"out_of_credits": True})
                 print('RAN OUT OF CREDITS')
-                log_files(config['agent_id'], run_index)
+                log_files(config['agent_id'], iteration=run_index)
                 break #Break looping and go to test evaluation of the best model
             
             log_serial_metrics(prefix='validation', metrics=None, iteration=run_index)
             log_serial_metrics(prefix='train', metrics=None, iteration=run_index)
             new_metrics, best_metrics = get_new_and_best_metrics(config['agent_id'])
             all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far: {best_metrics}")) # append feedback from last iteration before to process it
-            feedback = get_feedback(
+            feedback = await get_feedback(
                 context=e.context_messages,
                 extra_info=f"{e.message} {e.exception_trace}",
                 config=config, 
@@ -202,7 +201,7 @@ def main(model, feedback_model, dataset, tags, best_metric):
                 aggregated_feedback=aggregate_feedback(all_feedbacks),
                 iteration=run_index
             )
-            log_files(config['agent_id'], run_index)
+            log_files(config['agent_id'], iteration=run_index)
             continue
 
         try:
@@ -213,7 +212,7 @@ def main(model, feedback_model, dataset, tags, best_metric):
             new_metrics, best_metrics = get_new_and_best_metrics(config['agent_id'])
             all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far: {best_metrics}"))
             if is_new_best(config['agent_id'], config['best_metric']):
-                feedback = get_feedback(
+                feedback = await get_feedback(
                     context=current_run_messages, 
                     config=config, 
                     new_metrics=new_metrics, 
@@ -226,7 +225,7 @@ def main(model, feedback_model, dataset, tags, best_metric):
 
                 snapshot(config['agent_id'], run_index)  # Snapshotting overrides the previous snapshot, influencing the get_new_and_best_metrics function
             else:
-                feedback = get_feedback(
+                feedback =await get_feedback(
                     current_run_messages, 
                     config, 
                     new_metrics, 
@@ -240,7 +239,7 @@ def main(model, feedback_model, dataset, tags, best_metric):
         except Exception as e:
             new_metrics, best_metrics = get_new_and_best_metrics(config['agent_id'])
             all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far after the feedback incorporation: {best_metrics}"))
-            feedback = get_feedback(
+            feedback = await get_feedback(
                     current_run_messages, 
                     config, 
                     new_metrics, 
@@ -253,7 +252,7 @@ def main(model, feedback_model, dataset, tags, best_metric):
                     )
             print(feedback)
         finally:
-            log_files(config['agent_id'], run_index)
+            log_files(config['agent_id'], iteration=run_index)
             stats = get_api_key_usage(openrouter_api_key_hash)
             wandb.log({f"iteration_usage": stats['usage']})
         
@@ -268,19 +267,20 @@ def main(model, feedback_model, dataset, tags, best_metric):
     
     log_files(config['agent_id'])
     delete_api_key(openrouter_api_key_hash)
+    wandb.finish()
 
 
-def run_architecture(agent: Agent, validation_agent: Agent, split_dataset_agent: Agent, training_agent: Agent, config: dict, base_prompt: str, iteration: int):
-    messages_data_exploration = run_agent(
+async def run_architecture(agent: Agent, validation_agent: Agent, split_dataset_agent: Agent, training_agent: Agent, config: dict, base_prompt: str, iteration: int):
+    messages_data_exploration = await run_agent(
         agent=agent,
         user_prompt=base_prompt + get_data_exploration_prompt(),
         max_steps=config["max_steps"],
-        result_type=DataExploration, # this is overriding the result_type
+        output_type=DataExploration, # this is overriding the output_type
         message_history=None,
     )
 
     if iteration == 0:
-        messages_split = run_agent(
+        messages_split = await run_agent(
             agent=split_dataset_agent,
             user_prompt=get_data_split_prompt(config),
             max_steps=config["max_steps"],
@@ -289,30 +289,30 @@ def run_architecture(agent: Agent, validation_agent: Agent, split_dataset_agent:
     else:
         messages_split = messages_data_exploration
 
-    messages_representation = run_agent(
+    messages_representation = await run_agent(
         agent=agent,
         user_prompt=get_data_representation_prompt(),
         max_steps=config["max_steps"],
-        result_type=DataRepresentation, # this is overriding the result_type
+        output_type=DataRepresentation, # this is overriding the output_type
         message_history=messages_split,
     )
 
-    messages_architecture = run_agent(
+    messages_architecture = await run_agent(
         agent=agent,
         user_prompt=get_model_architecture_prompt(),
         max_steps=config["max_steps"],
-        result_type=ModelArchitecture, # this is overriding the result_type
+        output_type=ModelArchitecture, # this is overriding the output_type
         message_history=messages_representation,
     )
 
-    messages_training = run_agent(
+    messages_training = await run_agent(
         agent=training_agent, 
         user_prompt=get_model_training_prompt(), 
         max_steps=config["max_steps"],
         message_history=messages_architecture,
     )
 
-    _messages = run_agent(
+    _messages = await run_agent(
         agent=validation_agent, 
         user_prompt=get_final_outcome_prompt(), 
         max_steps=config["max_steps"],
@@ -321,17 +321,8 @@ def run_architecture(agent: Agent, validation_agent: Agent, split_dataset_agent:
 
     return _messages
 
-def run_playground_loop(model, feedback_model, dataset, tags, best_metric):
-    try:
-        time_budget_in_hours = 5
-        timeout(60*60*time_budget_in_hours)(main)(model, feedback_model, dataset, tags, best_metric) #TODO parametrize timeout
-    except TimeoutError as e:
-        log_inference_stage_and_metrics(0)
-        wandb.log({"timed_out": True}) #TODO log usage until the timeout
-    finally:
-        wandb.finish()
 
-if __name__ == "__main__":
+async def run_experiments():
     best_metrics = {
         "human_nontata_promoters": "ACC",
         "human_enhancers_cohn": "ACC",
@@ -340,10 +331,14 @@ if __name__ == "__main__":
         "human_ocr_ensembl": "ACC",
         "AGO2_CLASH_Hejret2023": "AUPRC",
     }
-    DATASETS=["human_nontata_promoters","human_enhancers_cohn","drosophila_enhancers_stark","human_enhancers_ensembl","AGO2_CLASH_Hejret2023","human_ocr_ensembl"]
-    MODELS_TO_RUN = [MODELS.OPENROUTER_SONNET_37, MODELS.GPT_O4_mini, MODELS.GEMINI_2_5, MODELS.GPT4_1]
-    TAGS = ["agentomics_v1"]
+    DATASETS=["human_nontata_promoters"]#,"human_enhancers_cohn","drosophila_enhancers_stark","human_enhancers_ensembl","AGO2_CLASH_Hejret2023","human_ocr_ensembl"]
+    MODELS_TO_RUN = [MODELS.GPT4_1]
+    TAGS = ["test"]
     for dataset in DATASETS:
         for model in MODELS_TO_RUN:
             FEEDBACK_MODEL=model
-            run_playground_loop(model, FEEDBACK_MODEL, dataset, TAGS, best_metrics[dataset])
+            await main(model, FEEDBACK_MODEL, dataset, TAGS, best_metrics[dataset])
+
+
+if __name__ == "__main__":
+    asyncio.run(run_experiments())

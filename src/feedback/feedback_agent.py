@@ -16,14 +16,14 @@ def create_feedback_agent(model, config):
     
     return feedback_agent
 
-def get_feedback(context, config, new_metrics, best_metrics, is_new_best, api_key, iteration, aggregated_feedback=None, extra_info="") -> str:
+async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, api_key, iteration, aggregated_feedback=None, extra_info="") -> str:
     if iteration == config['iterations'] - 1 : return "Last iteration, no feedback needed"
     dotenv.load_dotenv()
     proxy_url = os.getenv('PROXY_URL')
     async_http_client = httpx.AsyncClient(
-            proxy=proxy_url if config["use_proxy"] else None,
-            timeout= config["llm_response_timeout"],
-        )
+        proxy=proxy_url if config["use_proxy"] else None,
+        timeout= config["llm_response_timeout"],
+    )
     client = AsyncOpenAI(
         base_url='https://openrouter.ai/api/v1',
         api_key=api_key,
@@ -61,9 +61,9 @@ def get_feedback(context, config, new_metrics, best_metrics, is_new_best, api_ke
     {prompt_suffix}.
     """
     
-    feedback = agent.run_sync(
+    feedback = await agent.run(
         user_prompt = feedback_prompt,
-        result_type=None,
+        output_type=None,
         message_history=context #TODO remove system prompt from context?
     )
     time.sleep(3)
