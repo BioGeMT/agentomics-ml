@@ -1,0 +1,17 @@
+method,AGO2_CLASH_Hejret2023,drosophila_enhancers_stark,human_enhancers_cohn,human_enhancers_ensembl,human_nontata_promoters,human_ocr_ensembl
+AIDE:gpt-4.1-2025-04-14,,,,,-1.0,-1.0
+Agentomics:GPT4_1,6110.0876314232,9362.9638871564,9077.6068798872,22461.214439763,3738.588503147,32645.760852348398
+Agentomics:GPT4_1_no_feedback,-1.0,-1.0,-1.0,-1.0,-1.0,-1.0
+DI:anthropic/claude-3.7-sonnet,,,1112.264503909,,1010.093866313,
+DI:deepseek/deepseek-chat,,,,,190.708377166,
+DI:deepseek/deepseek-r1,,,,,,
+DI:meta-llama/llama-4-maverick,,302.833811293,,258.151041538,261.86296055266666,
+DI:openai/gpt-4.1-2025-04-14,,,760.606972352,256.376677116,710.252867542,
+DI:qwen/qwen3-32b,,,,,,
+zero_shot:anthropic/claude-3.7-sonnet,,349.938372464,146.288777676,1211.228726012,2495.711524636,
+zero_shot:deepseek/deepseek-chat,,117.61261714,109.10201859,143.7816196,106.70041535249999,143.21703013639998
+zero_shot:deepseek/deepseek-r1,,332.7625954075,317.212946641,272.9469126895,430.641695406,315.896664092
+zero_shot:meta-llama/llama-4-maverick,,76.665020656,,,,356.706585998
+zero_shot:openai/gpt-4.1-2025-04-14,,165.493393272,,,,
+zero_shot:openai/o4-mini,,90.36345785559999,53.5784711155,139.66038566325,58.928805917666665,263.31837242800003
+zero_shot:qwen/qwen3-32b,,,,217.449413638,,365.937793728

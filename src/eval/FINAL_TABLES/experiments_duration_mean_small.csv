@@ -1,0 +1,6 @@
+,AGO2_CLASH_Hejret2023,drosophila_enhancers_stark,human_enhancers_cohn,human_enhancers_ensembl,human_nontata_promoters,human_ocr_ensembl
+AIDE:gpt-4.1-2025-04-14,,,,,-1.0,-1.0
+Agentomics:GPT4_1,6110.0876314232,9362.9638871564,9077.6068798872,22461.214439763,3738.588503147,32645.760852348398
+Agentomics:GPT4_1_no_feedback,-1.0,-1.0,-1.0,-1.0,-1.0,-1.0
+DI (mean of all models),,302.833811293,936.4357381305,257.263859327,543.2295178934166,
+zero_shot (mean of all models),,188.80590946585002,156.54555350562498,397.01341152055,772.9956103280416,289.01528927647996

@@ -1,0 +1,6 @@
+,all_datasets_mean
+AIDE:gpt-4.1-2025-04-14,0.10000000000000002
+Agentomics:GPT4_1,0.9333333333333332
+Agentomics:GPT4_1_no_feedback,0.9333333333333332
+DI (mean of all models),0.07222222222222223
+zero_shot (mean of all models),0.20952380952380953

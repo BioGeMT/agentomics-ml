@@ -1,0 +1,17 @@
+method,AGO2_CLASH_Hejret2023,drosophila_enhancers_stark,human_enhancers_cohn,human_enhancers_ensembl,human_nontata_promoters,human_ocr_ensembl
+AIDE:gpt-4.1-2025-04-14,0.0,0.0,0.0,0.0,0.4,0.2
+Agentomics:GPT4_1,1.0,1.0,1.0,1.0,0.6,1.0
+Agentomics:GPT4_1_no_feedback,1.0,1.0,1.0,1.0,0.6,1.0
+DI:anthropic/claude-3.7-sonnet,0.0,0.0,0.2,0.0,0.2,0.0
+DI:deepseek/deepseek-chat,0.0,0.0,0.0,0.0,0.2,0.0
+DI:deepseek/deepseek-r1,0.0,0.0,0.0,0.0,0.0,0.0
+DI:meta-llama/llama-4-maverick,0.0,0.2,0.0,0.2,0.6,0.0
+DI:openai/gpt-4.1-2025-04-14,0.0,0.0,0.2,0.4,0.4,0.0
+DI:qwen/qwen3-32b,0.0,0.0,0.0,0.0,0.0,0.0
+zero_shot:anthropic/claude-3.7-sonnet,0.0,0.2,0.2,0.2,0.2,0.0
+zero_shot:deepseek/deepseek-chat,0.0,0.2,0.2,0.4,0.4,1.0
+zero_shot:deepseek/deepseek-r1,0.0,0.4,0.2,0.4,0.2,0.2
+zero_shot:meta-llama/llama-4-maverick,0.0,0.2,0.0,0.0,0.0,0.2
+zero_shot:openai/gpt-4.1-2025-04-14,0.0,0.2,0.0,0.0,0.0,0.0
+zero_shot:openai/o4-mini,0.0,1.0,0.4,0.8,0.6,0.6
+zero_shot:qwen/qwen3-32b,0.0,0.0,0.0,0.2,0.0,0.2

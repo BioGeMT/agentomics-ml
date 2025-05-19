@@ -1,0 +1,7 @@
+dataset,method,ACC_max,AUPRC_max
+drosophila_enhancers_stark,Genomic benchmarks,0.586,
+human_enhancers_cohn,MxDNA,0.7467,
+human_enhancers_ensembl,FinDNA (finetuned),0.9329999999999999,
+human_nontata_promoters,FinDNA (finetuned),0.9739,
+human_ocr_ensembl,MSAMamba (model using MSA),0.825,
+AGO2_CLASH_Hejret2023,miRBench,,0.86
