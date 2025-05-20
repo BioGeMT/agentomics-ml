@@ -340,7 +340,7 @@ async def run_experiments():
         "human_ocr_ensembl": "ACC",
         "AGO2_CLASH_Hejret2023": "AUPRC",
     }
-    DATASETS=["human_nontata_promoters"]#,"human_enhancers_cohn","drosophila_enhancers_stark","human_enhancers_ensembl","AGO2_CLASH_Hejret2023","human_ocr_ensembl"]
+    DATASETS=["human_nontata_promoters","human_enhancers_cohn","drosophila_enhancers_stark","human_enhancers_ensembl","AGO2_CLASH_Hejret2023","human_ocr_ensembl"]
     MODELS_TO_RUN = [MODELS.GPT4_1]
     TAGS = ["test"]
     for dataset in DATASETS:
