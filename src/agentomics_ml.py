@@ -35,7 +35,6 @@ from steps.model_training import ModelTraining, get_model_training_prompt
 from feedback.feedback_agent import get_feedback, aggregate_feedback
 
 dotenv.load_dotenv()
-api_key = os.getenv("OPENROUTER_API_KEY")
 wandb_key = os.getenv("WANDB_API_KEY")
 proxy_url = os.getenv("HTTP_PROXY")
 console = Console()
@@ -67,14 +66,13 @@ async def main(model, feedback_model, dataset, tags, best_metric):
         "model": model,
         "feedback_model": feedback_model,
         "temperature": 1,
-        "max_steps": 100, #TODO rename, this is per-step limit
+        "max_steps": 100, 
         "max_run_retries": 1,
         "max_validation_retries": 5,
         "tags": tags,
         "dataset": dataset,
-        # "prompt": "BioPrompt_v1.yaml", #TODO cleanup, not used
         "use_proxy" : True,
-        "best_metric" : best_metric, #TODO rename into validation_metric
+        "best_metric" : best_metric, 
         "iterations": 5,
         "llm_response_timeout": 60* 15,
         "bash_tool_timeout": 60 * 5, 
@@ -95,7 +93,7 @@ async def main(model, feedback_model, dataset, tags, best_metric):
     )
     client = AsyncOpenAI(
         base_url='https://openrouter.ai/api/v1',
-        api_key=api_key,
+        api_key=openrouter_api_key,
         http_client=async_http_client,
     )
     model = OpenAIModel(
@@ -340,13 +338,15 @@ async def run_experiments():
         "human_ocr_ensembl": "ACC",
         "AGO2_CLASH_Hejret2023": "AUPRC",
     }
-    DATASETS=["human_nontata_promoters","human_enhancers_cohn","drosophila_enhancers_stark","human_enhancers_ensembl","AGO2_CLASH_Hejret2023","human_ocr_ensembl"]
+    DATASETS=["human_nontata_promoters" ,"human_enhancers_cohn","drosophila_enhancers_stark","human_enhancers_ensembl","AGO2_CLASH_Hejret2023","human_ocr_ensembl"]
     MODELS_TO_RUN = [MODELS.GPT4_1]
     TAGS = ["test"]
+    RUNS = 5
     for dataset in DATASETS:
         for model in MODELS_TO_RUN:
             FEEDBACK_MODEL=model
-            await main(model, FEEDBACK_MODEL, dataset, TAGS, best_metrics[dataset])
+            for _ in range(RUNS):
+                await main(model, FEEDBACK_MODEL, dataset, TAGS, best_metrics[dataset])
 
 
 if __name__ == "__main__":

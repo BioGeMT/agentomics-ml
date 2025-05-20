@@ -5,6 +5,7 @@ dependencies:
   - python==3.10
   - pandas
   - pydantic-ai==0.2.4
+  - openai
   - pip
   - pip:
     - langchain
@@ -12,3 +13,5 @@ dependencies:
     - scikit-learn
     - wandb
     - hrid
+    - rich
+    - pexpect

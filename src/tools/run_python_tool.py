@@ -25,7 +25,6 @@ def create_run_python_tool(agent_id, timeout, max_retries, proxy, conda_prefix=T
         if not Path(python_file_path).is_file():
             return "python_file_path is not a valid python file path"
         
-        #TODO allow to accept arguments + validate they don't break the bash (requiring input etc)
         if(conda_prefix):
             env_path = env_path = f"/workspace/runs/{agent_id}/.conda/envs/{agent_id}_env"
             command_prefix=f"source /opt/conda/etc/profile.d/conda.sh && conda activate {env_path} && "

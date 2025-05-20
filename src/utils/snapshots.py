@@ -54,7 +54,6 @@ def is_new_best(agent_id, comparison_metric):
     
     new_metrics, best_metrics = get_new_and_best_metrics(agent_id)
 
-    #TODO parametrize improvement threshold
     necessary_improvement = 0
     is_new_best = new_metrics[f'validation/{comparison_metric}'] > best_metrics[f'validation/{comparison_metric}'] + necessary_improvement
     print(f"is_new_best: {is_new_best}")

@@ -45,8 +45,12 @@ docker run -d \
 docker exec -it agents_cont bash
 ```
 
-Create a `.env` file containing your API keys. You need to add a provisioning openrouter API key. Each run will create its own API key with a credit limit and delete it after the run is finished.
+Create a `.env` file containing your API key. You need to add a provisioning openrouter API key. Each run will create its own API key with a credit limit and delete it after the run is finished.
+
 Example content: `PROVISIONING_OPENROUTER_API_KEY=my-api-key-1234`
+
+### Optional - Wandb logging
+If you want to visualize runs on WANDB (agent trace, metrics, ...) add your `WANDB_API_KEY` to the `.env` file and add your entity to `src/run_logging/wandb.py` file.
 
 
 ## Reproduce Agentomics runs
@@ -58,8 +62,9 @@ source activate agentomics-env
 - Run the full training script
 `python src/agentomics_ml.py`
 
-- Best models and metrics will be saved in the `/snapshots` folder
-
+- Best models, files, and metrics will be saved in the `/snapshots` folder
+- Train and validation set metric are reported with prefix (e.g. train/ACC)
+- Test set metrics are reported without any prefix (e.g. ACC)
 
 ## Reproduce zeroshot/DI/AIDE runs
 
@@ -68,6 +73,24 @@ source activate agentomics-env
 ## Prompts
 Can be found in `src/prompts/ALL_PROMPTS.md`
 
+## Results and analysis
+All single runs results can be found in `src/eval/FINAL_TABLES` 
+Agentomics runs: `Agentomics_runs.csv`
+AIDE runs: `AIDE_runs.csv`
+Data Interpreter runs: `DI_runs.csv`
+zero shot runs: `zeroshot_runs.csv`
+
+All aggregated files and statistics can also be found in the `src/eval/FINAL_TABLES` folder.
+The main results table (best out of 5 runs metrics) is the `max_metrics_and_sota_df.csv`
+
+To re-run the analysis and re-generate results tables:
+(Run all these command from outside of docker)
+`cd` into `src/eval` 
+```
+conda env create -f environment.yaml
+conda activate analysis-env
+python analysis.py
+```
 
 ## Proxy settings
 

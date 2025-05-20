@@ -46,7 +46,9 @@ async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, 
     
     prompt_suffix += extra_info
 
+
     feedback_prompt = f"""
+    {str(context)}
     Summarize the current state and provide detailed feedback on how to fix errors and improve the steps executed:
     1. Data exploration: describe the data and the features you explored.
     2. Data representation: any transformations, encodings, normalizations, features
@@ -60,17 +62,17 @@ async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, 
 
     {prompt_suffix}.
     """
-    
+    print("CONSTRUCTING FEEDBACK")
     feedback = await agent.run(
         user_prompt = feedback_prompt,
         output_type=None,
-        message_history=context #TODO remove system prompt from context?
+        message_history=None,
     )
     time.sleep(3)
     return feedback.data
 
 def aggregate_feedback(feedback_list):
-    if len(feedback_list) == 1: #TODO first iteration list contains None
+    if len(feedback_list) == 1: #first iteration list contains None
         return None
     
     aggregated_feedback = ""
