@@ -5,6 +5,8 @@ dependencies:
   - python==3.10
   - pandas
   - scikit-learn
+  - cxx-compiler
+  - libxcrypt
   - openai
   - pip:
     - hrid

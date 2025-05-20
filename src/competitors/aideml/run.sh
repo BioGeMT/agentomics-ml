@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
-
-DATASETS=("human_nontata_promoters")            
+DATASETS=("human_nontata_promoters" "human_enhancers_cohn" "drosophila_enhancers_stark" "human_enhancers_ensembl"  "AGO2_CLASH_Hejret2023" "human_ocr_ensembl")
 MODELS=("openai/gpt-4.1-2025-04-14")
 TAGS=("testing")
-RUNS=1
+RUNS=5
 
 ENV_NAME="aideml-env"     # pre-created conda environment
 
