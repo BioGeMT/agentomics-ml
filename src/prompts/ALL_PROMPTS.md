@@ -34,7 +34,7 @@
     
 
    
-### 1-shot user prompt:
+### 0-shot user prompt:
 
         Create the best possible classifier that will generalize to new unseen data.
         You are using a linux system.

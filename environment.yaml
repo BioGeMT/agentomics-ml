@@ -4,17 +4,11 @@ channels:
 dependencies:
   - python==3.10
   - pandas
-  - ipykernel
-  - ipywidgets
-  - jupyter
   - pydantic-ai==0.2.4
   - pip
   - pip:
-    - smolagents
-    - smolagents[litellm]
     - langchain
     - langchain-community
     - scikit-learn
     - wandb
     - hrid
-    - timeout-function-decorator

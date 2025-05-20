@@ -12,8 +12,6 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.usage import UsageLimits
 import wandb
 from openai import AsyncOpenAI
-from timeout_function_decorator import timeout
-
 
 from prompts.prompts_utils import get_iteration_prompt, get_user_prompt, get_system_prompt
 from tools.bash import create_bash_tool
