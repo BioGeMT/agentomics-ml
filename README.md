@@ -75,10 +75,10 @@ Can be found in `src/prompts/ALL_PROMPTS.md`
 
 ## Results and analysis
 All single runs results can be found in `src/eval/FINAL_TABLES` 
-Agentomics runs: `Agentomics_runs.csv`
-AIDE runs: `AIDE_runs.csv`
-Data Interpreter runs: `DI_runs.csv`
-zero shot runs: `zeroshot_runs.csv`
+- Agentomics runs: `Agentomics_runs.csv`
+- AIDE runs: `AIDE_runs.csv`
+- Data Interpreter runs: `DI_runs.csv`
+- zero shot runs: `zeroshot_runs.csv`
 
 All aggregated files and statistics can also be found in the `src/eval/FINAL_TABLES` folder.
 The main results table (best out of 5 runs metrics) is the `max_metrics_and_sota_df.csv`
