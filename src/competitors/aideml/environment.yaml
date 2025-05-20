@@ -1,0 +1,14 @@
+name: aideml-env
+channels:
+  - conda-forge
+dependencies:
+  - python==3.10
+  - pandas
+  - scikit-learn
+  - openai
+  - pip:
+    - hrid
+    - wandb
+    - aideml
+    - python-dotenv
+
