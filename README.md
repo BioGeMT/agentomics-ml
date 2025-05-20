@@ -8,9 +8,6 @@ Given a classification dataset, the system automatically generates:
 
 Agents run inside an isolated docker environment for security.
 
-![example](https://s6.gifyu.com/images/bz7xh.gif)
-
-
 ## Environment setup (Datasets + Docker + conda environment)
 
 - Download datasets locally so they can be mounted into the container
@@ -23,15 +20,10 @@ conda create -n agentomics_temp_env --yes python && conda activate agentomics_te
 ```
 docker --version
 ```
-  
-- Install plugin for rescricting the volume size
-```
-docker plugin install ashald/docker-volume-loopback
-```
 
-- Create volume with maximum storage size
+- Create volume
 ```
-docker volume create -d ashald/docker-volume-loopback:latest -o size=50G agents_volume
+docker volume create agents_volume
 ```
 
 - Build docker image
@@ -51,30 +43,31 @@ docker run -d \
 - Attach console to the container
 ```
 docker exec -it agents_cont bash
-python tests/tests.py -v
 ```
+
+Create a `.env` file containing your API keys. You need to add a provisioning openrouter API key. Each run will create its own API key with a credit limit and delete it after the run is finished.
+Example content: `PROVISIONING_OPENROUTER_API_KEY=my-api-key-1234`
+
+
+## Reproduce Agentomics runs
 - Activate the default conda environment
 ```
 source activate agentomics-env
 ```
 
-Create a `.env` file containing your API keys. Example content: `OPENAI_API_KEY=my-api-key-1234`
+- Run the full training script
+`python src/agentomics_ml.py`
 
-Run `python src/playground.py` to check everything works
+- Best models and metrics will be saved in the `/snapshots` folder
 
-Go to `https://wandb.ai/ceitec-ai/BioAgents` to see agent logs.
 
-## Guidelines and tips
+## Reproduce zeroshot/DI/AIDE runs
 
-Whatever packages you add, add them to the environment.yaml file
+- Go into `src/competitors` and follow the corresponding README.md 
 
-If they are conda packages, you can just re-run
-`conda env export --from-history > environment.yaml`
+## Prompts
+Can be found in `src/prompts/ALL_PROMPTS.md`
 
-If they are pip packages, you have to manually add them.
-
-You can update your existing environment by running this command
-`conda env update --file environment.yaml --prune`
 
 ## Proxy settings
 
