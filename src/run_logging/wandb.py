@@ -4,7 +4,7 @@ def setup_logging(config, api_key, dir="/tmp/wandb"):
     wandb.login(key=api_key)
     wandb.init(
         dir=dir,
-        entity="ceitec-ai",
+        entity="TODO", #TODO
         project="Agentomics-ML",
         tags=config["tags"],
         config=config,
