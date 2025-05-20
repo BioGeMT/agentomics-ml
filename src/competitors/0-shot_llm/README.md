@@ -1,8 +1,6 @@
-## Setup and Configuration
+## Setup to run 0-shots
 
-### Environment Setup
-
-1. Create the conda environment using the provided YAML file:
+1. Create a conda environment using the provided YAML file:
 
 ```bash
 conda env create -f environment.yaml
@@ -14,49 +12,26 @@ conda env create -f environment.yaml
 conda activate oneshot-env
 ```
 
-### Configuration
+3. Create a `.env` file in the repository root 
 
-All configurable aspects are listed below:
+- Add a basic openrouter key:
+```
+OPENROUTER_API_KEY=your_openrouter_api_key
+```
+- Add your `WANDB_API_KEY` and add your entity to `src/run_logging/wandb.py` file
 
-1. **Environment Variables**:
-   - Create a `.env` file in the repository root with:
-     ```
-     OPENROUTER_API_KEY=your_openrouter_api_key
-     ```
 
-2. **Shell Script Variables** (`run_llm_agent.sh`):
-   - `DATASETS`: List of datasets to process (e.g., "human_nontata_promoters", "human_enhancers_cohn")
-   - `MODELS`: List of models to use via OpenRouter (e.g., "anthropic/claude-3.7-sonnet", "openai/gpt-4.1-2025-04-14")
-   - `TEMP`: Temperature setting for LLM generation
-   - `TAGS`: Tags for experiment tracking
-   - `RUNS`: Number of runs to execute for each model-dataset combination
-   - `TIME_BUDGET_IN_HOURS`: Timeout in hours for each run
+4. Execute the workflow:
+```bash
+bash run_llm_agent.sh
+```
 
-3. **Code Generation Prompt**:
-   - The prompt template in `1-shot_llm_run.py` can be modified to customize instructions for the LLM
-   - You can adjust requirements and specific instructions for how the model should be trained and used
-        ```python
-            }
-            prompt = f"""
-                Create the best possible classifier that will generalize to new unseen data.
-                ..."""
-     ```
-     
+
 ## File Structure
 
 - `1-shot_llm_run.py` - Main Python script that handles LLM code generation and execution
 - `run_llm_agent.sh` - Shell script that orchestrates the workflow (customizable)
 - `environment.yaml` - Conda environment specification
 
-## Running the Agent
-
-1. Activate the environment if not already activated:
-   ```bash
-   conda activate oneshot-env
-   ```
-
-2. Execute with a single command:
-   ```bash
-   bash run_llm_agent.sh
-   ```
-
+## Outputs
+Resulting files are located in `/workflow`

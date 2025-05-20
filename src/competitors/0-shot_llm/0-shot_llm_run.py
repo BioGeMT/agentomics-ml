@@ -217,7 +217,7 @@ def generate_and_run_scripts(client, model, dataset, temperature, run_name):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Generate ML code with one-shot LLM")
+    parser = argparse.ArgumentParser(description="Generate ML code with zero-shot LLM")
     parser.add_argument("--dataset", required=True, help="Dataset name")
     parser.add_argument("--model", required=True,
                         help="Model name (e.g., gpt-4o-2024-08-06, claude-3.5-sonnet-20240620)")
