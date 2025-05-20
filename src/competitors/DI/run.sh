@@ -1,14 +1,11 @@
-# DATASETS=("human_nontata_promoters" "human_enhancers_cohn" "drosophila_enhancers_stark" "human_enhancers_ensembl"  "AGO2_CLASH_Hejret2023" "human_ocr_ensembl")
-DATASETS=("human_nontata_promoters")
-
-#TODO config needs to be specific for o-series of models https://docs.deepwisdom.ai/main/en/guide/get_started/configuration/llm_api_configuration.html
-# MODELS=("anthropic/claude-3.7-sonnet" "openai/gpt-4.1-2025-04-14" "openai/o4-mini" "google/gemini-2.5-pro-preview-03-25" "qwen/qwen3-32b" "deepseek/deepseek-r1" "deepseek/deepseek-chat")
-MODELS=("openai/gpt-4.1-2025-04-14")
+DATASETS=("human_nontata_promoters" "human_enhancers_cohn" "drosophila_enhancers_stark" "human_enhancers_ensembl"  "AGO2_CLASH_Hejret2023" "human_ocr_ensembl")
+MODELS=("anthropic/claude-3.7-sonnet" "openai/gpt-4.1-2025-04-14" "qwen/qwen3-32b" "deepseek/deepseek-r1" "deepseek/deepseek-chat" "meta-llama/llama-4-maverick")
 
 TAGS=("testing")
-RUNS=1
-PER_RUN_CREDIT_BUDGET=10
-TIME_BUDGET_IN_HOURS=1
+RUNS=5
+
+PER_RUN_CREDIT_BUDGET=30
+TIME_BUDGET_IN_HOURS=24
 
 for DATASET in "${DATASETS[@]}"
 do
