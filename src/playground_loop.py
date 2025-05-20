@@ -26,6 +26,7 @@ from run_logging.log_files import log_files
 from utils.create_user import create_new_user_and_rundir
 from utils.models import MODELS
 from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics
+from utils.exceptions import IterationRunFailed
 from utils.api_keys import create_new_api_key, get_api_key_usage, delete_api_key
 from steps.final_outcome import FinalOutcome, get_final_outcome_prompt
 from steps.data_split import DataSplit, get_data_split_prompt
@@ -42,14 +43,24 @@ proxy_url = os.getenv("HTTP_PROXY")
 console = Console()
 
 async def run_agent(agent: Agent, user_prompt: str, max_steps: int, message_history: list | None, output_type: BaseModel = None):
-    result = await agent.run(
-        user_prompt=user_prompt,
-        usage_limits=UsageLimits(request_limit=max_steps),
-        output_type=output_type,
-        message_history=message_history,
-    )
-    console.log(result.new_messages())
-    return result.all_messages()
+    with capture_run_messages() as messages:
+        try:
+            result = await agent.run(
+                user_prompt=user_prompt,
+                usage_limits=UsageLimits(request_limit=max_steps),
+                output_type=output_type,
+                message_history=message_history,
+            )
+            console.log(result.new_messages())
+            return result.all_messages()
+        except Exception as e:
+            trace = traceback.format_exc()
+            print('Agent run failed', trace)
+            raise IterationRunFailed(
+                message="Run didnt finish properly", 
+                context_messages=messages,
+                exception_trace=trace,
+            )
 
 async def main(model, feedback_model, dataset, tags, best_metric):
     agent_id = create_new_user_and_rundir()
