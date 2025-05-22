@@ -83,6 +83,27 @@ All single runs results can be found in `src/eval/FINAL_TABLES`
 All aggregated files and statistics can also be found in the `src/eval/FINAL_TABLES` folder.
 The main results table (best out of 5 runs metrics) is the `max_metrics_and_sota_df.csv`
 
+| Method                              | AGO2  | DE    | HEC   | HEE   | NTP   | OCRE  |
+|-------------------------------------|-------|-------|-------|-------|-------|--------|
+| Agentomics-ML: gpt-4.1 (no feedback)| 0.724 | 0.716 | 0.716 | 0.864 | 0.897 | 0.786  |
+| Agentomics-ML: gpt4_1               | **0.778** | **0.736** | **0.743** | **0.885** | **0.925** | **0.816** |
+| AIDE: gpt-4.1                        | N/A   | N/A   | N/A   | 0.920 | 0.758 | N/A    |
+| DI: claude-3.7-sonnet               | N/A   | N/A   | 0.724 | N/A   | 0.839 | N/A    |
+| DI: deepseek-chat                   | N/A   | N/A   | N/A   | 0.871 | N/A   | N/A    |
+| DI: deepseek-r1                     | N/A   | N/A   | N/A   | N/A   | N/A   | N/A    |
+| DI: llama-4-maverick                | N/A   | 0.500 | N/A   | 0.738 | 0.874 | N/A    |
+| DI: gpt4.1                          | N/A   | N/A   | 0.500 | 0.752 | 0.873 | N/A    |
+| DI: qwen3-32b                       | N/A   | N/A   | N/A   | N/A   | N/A   | N/A    |
+| zero_shot: claude-3.7-sonnet        | N/A   | 0.650 | 0.728 | 0.864 | 0.901 | N/A    |
+| zero_shot: deepseek-chat            | N/A   | 0.680 | 0.681 | 0.811 | 0.897 | 0.666  |
+| zero_shot: deepseek-r1              | N/A   | 0.700 | 0.621 | 0.568 | 0.874 | 0.458  |
+| zero_shot: llama-4-maverick         | N/A   | 0.661 | N/A   | N/A   | N/A   | 0.651  |
+| zero_shot: gpt-4.1                  | N/A   | 0.703 | N/A   | N/A   | N/A   | N/A    |
+| zero_shot: o4-mini                  | N/A   | 0.708 | 0.728 | 0.848 | 0.885 | 0.506  |
+| zero_shot: qwen3-32b                | N/A   | N/A   | N/A   | 0.850 | N/A   | 0.662  |
+| **Human SOTA**                      | **0.860** | **0.586** | **0.747** | **0.933** | **0.974** | **0.825** |
+
+
 To re-run the analysis and re-generate results tables:
 (Run all these command from outside of docker)
 `cd` into `src/eval` 
