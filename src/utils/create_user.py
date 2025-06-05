@@ -1,11 +1,10 @@
-import os
 import subprocess
 import sys
 from hrid import HRID
 
-def create_new_user_and_rundir():
+def create_new_user_and_rundir(config):
     run_id = "_".join(HRID().generate().replace("-", "_").replace(" ","_").split("_")[:-1])[:32]
-    run_dir = os.path.join("/workspace/runs", run_id)
+    run_dir = config['workspace_dir'] / run_id
     subprocess.run(
         ["sudo", "useradd", "-d", run_dir, "-m", "-p", "1234", run_id],
         check=True
@@ -15,7 +14,7 @@ def create_new_user_and_rundir():
         check=True
     )
     subprocess.run(
-        ["sudo", "mkdir", f"/snapshots/{run_id}"],
+        ["sudo", "mkdir", config['snapshot_dir'] / run_id],
         check=True
     )
     return run_id

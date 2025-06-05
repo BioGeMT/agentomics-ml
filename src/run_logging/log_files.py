@@ -1,13 +1,13 @@
 import wandb
 from pathlib import Path
 
-def log_files(agent_id, files=None, iteration=None):
-    print(f"Logging files for agent {agent_id} with iteration {iteration}")
-    dir_path = f"/workspace/runs/{agent_id}" if iteration is not None else f"/snapshots/{agent_id}" 
+def log_files(config, files=None, iteration=None):
+    print(f"Logging files for agent {config['agent_id']} with iteration {iteration}")
+    dir_path = config['workspace_dir'] / config['agent_id'] if iteration is not None else config['snapshot_dir'] / config['agent_id']
     if(not files):
         files = get_python_files(dir_path)
 
-    artifact_path = f"{agent_id}_iteration_{iteration}" if iteration is not None else agent_id
+    artifact_path = f"{config['agent_id']}_iteration_{iteration}" if iteration is not None else config['agent_id']
     artifact = wandb.Artifact(name=artifact_path,type='code')
     for file in files:
         artifact.add_file(file)

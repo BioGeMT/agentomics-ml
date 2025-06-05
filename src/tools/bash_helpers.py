@@ -53,6 +53,7 @@ class BashProcess:
     def __init__(
         self,
         agent_id,
+        workspace_dir,
         autoconda=True,
         strip_newlines: bool = False,
         return_err_output: bool = False,
@@ -70,6 +71,7 @@ class BashProcess:
         self.process = None
         self.timeout = timeout
         self.agent_id = agent_id
+        self.workspace_dir = workspace_dir
         self.autoconda = autoconda
         self.proxy = proxy
         self.auto_torch = auto_torch
@@ -92,8 +94,9 @@ class BashProcess:
             self.activate_conda_env()
 
     def create_conda_env(self):
+        conda_env_path = self.workspace_dir / self.agent_id / ".conda" / "envs" / f"{self.agent_id}_env"
         self.run(
-            f"conda create -p /workspace/runs/{self.agent_id}/.conda/envs/{self.agent_id}_env python=3.9 -y"
+            f"conda create -p {conda_env_path} python=3.9 -y"
         )
 
     def activate_conda_env(self):

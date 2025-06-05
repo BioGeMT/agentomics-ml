@@ -2,9 +2,10 @@ from pydantic_ai import Tool
 from pathlib import Path
 from .bash import ExclusiveBashProcess
 
-def create_run_python_tool(agent_id, timeout, max_retries, proxy, conda_prefix=True):
+def create_run_python_tool(agent_id, workspace_dir, timeout, max_retries, proxy, conda_prefix=True):
     bash = ExclusiveBashProcess(
         agent_id=agent_id,
+        workspace_dir=workspace_dir,
         autoconda=False,
         timeout=timeout,
         proxy = proxy,
@@ -27,7 +28,7 @@ def create_run_python_tool(agent_id, timeout, max_retries, proxy, conda_prefix=T
         
         #TODO allow to accept arguments + validate they don't break the bash (requiring input etc)
         if(conda_prefix):
-            env_path = env_path = f"/workspace/runs/{agent_id}/.conda/envs/{agent_id}_env"
+            env_path = workspace_dir / agent_id / ".conda" / "envs" / f"{agent_id}_env"
             command_prefix=f"source /opt/conda/etc/profile.d/conda.sh && conda activate {env_path} && "
             command = command_prefix + f"python {python_file_path}"
         out = bash.run(command)

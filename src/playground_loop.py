@@ -3,6 +3,7 @@ import os
 import asyncio
 import httpx
 import traceback
+from pathlib import Path
 
 from rich.console import Console
 from pydantic import BaseModel
@@ -63,9 +64,7 @@ async def run_agent(agent: Agent, user_prompt: str, max_steps: int, message_hist
             )
 
 async def main(model, feedback_model, dataset, tags, best_metric):
-    agent_id = create_new_user_and_rundir()
     config = {
-        "agent_id": agent_id,
         "model": model,
         "feedback_model": feedback_model,
         "temperature": 1,
@@ -73,7 +72,6 @@ async def main(model, feedback_model, dataset, tags, best_metric):
         "max_run_retries": 1,
         "max_validation_retries": 5,
         "tags": tags,
-        "dataset": dataset,
         # "prompt": "BioPrompt_v1.yaml", #TODO cleanup, not used
         "use_proxy" : True,
         "best_metric" : best_metric, #TODO rename into validation_metric
@@ -83,7 +81,14 @@ async def main(model, feedback_model, dataset, tags, best_metric):
         "run_python_tool_timeout": 60 * 60 * 6, #This affects max training time
         "credit_budget": 30,
         "max_tool_retries": 5,
+        "workspace_dir": Path("/workspace/runs"),
+        "snapshot_dir": Path("/snapshots"),
+        "dataset_dir": Path(f"/repository/datasets/{dataset}"),
     }
+
+    agent_id = create_new_user_and_rundir(config)
+    config["agent_id"] = agent_id
+
     setup_logging(config, api_key=wandb_key)
 
     api_key_data = create_new_api_key(name=config["agent_id"], limit=config["credit_budget"])
@@ -107,6 +112,7 @@ async def main(model, feedback_model, dataset, tags, best_metric):
     tools =[
         create_bash_tool(
             agent_id=config['agent_id'],
+            workspace_dir=config['workspace_dir'],
             timeout=config['bash_tool_timeout'], 
             autoconda=True,
             max_retries=config['max_tool_retries'],
@@ -115,9 +121,13 @@ async def main(model, feedback_model, dataset, tags, best_metric):
             auto_torch=False),
         create_write_python_tool( 
             agent_id=config['agent_id'], 
+            workspace_dir=config['workspace_dir'],
+            timeout=config['write_python_tool_timeout'], 
+            add_code_to_response=False,
             max_retries=config['max_tool_retries'],),
         create_run_python_tool( #Tries to create the same-name conda environment
             agent_id=config['agent_id'],
+            workspace_dir=config['workspace_dir'],
             timeout=config['run_python_tool_timeout'],
             proxy=config['use_proxy'],
             max_retries=config['max_tool_retries'],),
@@ -191,12 +201,12 @@ async def main(model, feedback_model, dataset, tags, best_metric):
                 wandb.log(stats)
                 wandb.log({"out_of_credits": True})
                 print('RAN OUT OF CREDITS')
-                log_files(config['agent_id'], iteration=run_index)
+                log_files(config, iteration=run_index)
                 break #Break looping and go to test evaluation of the best model
             
             log_serial_metrics(prefix='validation', metrics=None, iteration=run_index)
             log_serial_metrics(prefix='train', metrics=None, iteration=run_index)
-            new_metrics, best_metrics = get_new_and_best_metrics(config['agent_id'])
+            new_metrics, best_metrics = get_new_and_best_metrics(config)
             all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far: {best_metrics}")) # append feedback from last iteration before to process it
             feedback = await get_feedback(
                 context=e.context_messages,
@@ -209,7 +219,7 @@ async def main(model, feedback_model, dataset, tags, best_metric):
                 aggregated_feedback=aggregate_feedback(all_feedbacks),
                 iteration=run_index
             )
-            log_files(config['agent_id'], iteration=run_index)
+            log_files(config, iteration=run_index)
             continue
 
         try:
@@ -217,9 +227,9 @@ async def main(model, feedback_model, dataset, tags, best_metric):
             run_inference_and_log(config, iteration=run_index, evaluation_stage='train')
             run_inference_and_log(config, iteration=run_index, evaluation_stage='stealth_test')
 
-            new_metrics, best_metrics = get_new_and_best_metrics(config['agent_id'])
+            new_metrics, best_metrics = get_new_and_best_metrics(config)
             all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far: {best_metrics}"))
-            if is_new_best(config['agent_id'], config['best_metric']):
+            if is_new_best(config):
                 feedback = await get_feedback(
                     context=current_run_messages, 
                     config=config, 
@@ -231,7 +241,7 @@ async def main(model, feedback_model, dataset, tags, best_metric):
                     aggregated_feedback=aggregate_feedback(all_feedbacks)
                 )
 
-                snapshot(config['agent_id'], run_index)  # Snapshotting overrides the previous snapshot, influencing the get_new_and_best_metrics function
+                snapshot(config, run_index)  # Snapshotting overrides the previous snapshot, influencing the get_new_and_best_metrics function
             else:
                 feedback =await get_feedback(
                     current_run_messages, 
@@ -245,7 +255,7 @@ async def main(model, feedback_model, dataset, tags, best_metric):
                     )
 
         except Exception as e:
-            new_metrics, best_metrics = get_new_and_best_metrics(config['agent_id'])
+            new_metrics, best_metrics = get_new_and_best_metrics(config)
             all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far after the feedback incorporation: {best_metrics}"))
             feedback = await get_feedback(
                     current_run_messages, 
@@ -260,7 +270,7 @@ async def main(model, feedback_model, dataset, tags, best_metric):
                     )
             print(feedback)
         finally:
-            log_files(config['agent_id'], iteration=run_index)
+            log_files(config, iteration=run_index)
             stats = get_api_key_usage(openrouter_api_key_hash)
             wandb.log({f"iteration_usage": stats['usage']})
         
@@ -273,7 +283,7 @@ async def main(model, feedback_model, dataset, tags, best_metric):
         print('FINAL TEST EVAL FAIL', str(e))
         log_inference_stage_and_metrics(1)
     
-    log_files(config['agent_id'])
+    log_files(config)
     delete_api_key(openrouter_api_key_hash)
     wandb.finish()
 
