@@ -80,7 +80,6 @@ async def main(model, feedback_model, dataset, tags, best_metric):
         "iterations": 5,
         "llm_response_timeout": 60* 15,
         "bash_tool_timeout": 60 * 5, 
-        "write_python_tool_timeout": 60 * 1,
         "run_python_tool_timeout": 60 * 60 * 6, #This affects max training time
         "credit_budget": 30,
         "max_tool_retries": 5,
@@ -114,12 +113,10 @@ async def main(model, feedback_model, dataset, tags, best_metric):
             proxy=config['use_proxy'],
             conda_prefix=True,
             auto_torch=False),
-        create_write_python_tool( #Tries to create the same-name conda environment
+        create_write_python_tool( 
             agent_id=config['agent_id'], 
-            timeout=config['write_python_tool_timeout'], 
-            add_code_to_response=False,
             max_retries=config['max_tool_retries'],),
-        create_run_python_tool(
+        create_run_python_tool( #Tries to create the same-name conda environment
             agent_id=config['agent_id'],
             timeout=config['run_python_tool_timeout'],
             proxy=config['use_proxy'],
