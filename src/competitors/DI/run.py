@@ -110,7 +110,7 @@ async def main(args):
         delete_api_key(openrouter_api_key_hash)
 
     try:
-        log_files(files=[train_file_path, inference_path], agent_id=run_id)
+        log_files(files=[train_file_path, inference_path], config=config)
     except Exception as e:
         print(f"Error logging files: {e}")
         log_inference_stage_and_metrics(0)

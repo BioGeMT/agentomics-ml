@@ -7,42 +7,42 @@ from eval.evaluate_result import get_metrics
 from run_logging.logging_helpers import log_inference_stage_and_metrics, log_serial_metrics
 
 def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot=False):
-    with open(f"/repository/datasets/{config['dataset']}/metadata.json") as f:
+    with open(config['dataset_dir'] / "metadata.json") as f:
         dataset_metadata = json.load(f)
 
-    run_dir = f"/workspace/runs/{config['agent_id']}"
-    snapshot_dir = f"/snapshots/{config['agent_id']}"
+    run_dir = config['workspace_dir'] / config['agent_id']
+    snapshot_dir = config['snapshot_dir'] / config['agent_id']
     source_folder = 'snapshots' if use_best_snapshot else 'workspace'
     if(use_best_snapshot):
         print('USING BEST SNAPSHOT')
     conda_path = {
-        'workspace': f"{run_dir}/.conda/envs/{config['agent_id']}_env",
-        'snapshots': f"{snapshot_dir}/.conda/envs/{config['agent_id']}_env",
+        'workspace': run_dir / ".conda" / "envs" / f"{config['agent_id']}_env",
+        'snapshots': snapshot_dir / ".conda"/ "envs" / f"{config['agent_id']}_env",
     }
     inference_path = {
-        'workspace': f"{run_dir}/inference.py",
-        'snapshots': f"{snapshot_dir}/inference.py",
+        'workspace': run_dir / "inference.py",
+        'snapshots': snapshot_dir / "inference.py",
     }
     stage_to_input = {
         'dry_run': dataset_metadata['train_split_no_labels'],
-        'validation': run_dir + "/validation.csv",
+        'validation': run_dir / "validation.csv",
         'test': dataset_metadata['test_split_no_labels'],
-        'train': run_dir + "/train.csv",
+        'train': run_dir / "train.csv",
         'stealth_test': dataset_metadata['test_split_no_labels'],
     }
     stage_to_output = {
-        'dry_run': run_dir + "/eval_predictions_dry_run.csv",
-        'validation': run_dir + "/eval_predictions_validation.csv",
-        'test': run_dir + "/eval_predictions_test.csv",
-        'train': run_dir + "/eval_predictions_train.csv",
-        'stealth_test': snapshot_dir + "/eval_predictions_stealth_test.csv",
+        'dry_run': run_dir / "eval_predictions_dry_run.csv",
+        'validation': run_dir / "eval_predictions_validation.csv",
+        'test': run_dir / "eval_predictions_test.csv",
+        'train': run_dir / "eval_predictions_train.csv",
+        'stealth_test': snapshot_dir / "eval_predictions_stealth_test.csv",
     }
     stage_to_metrics_file = {
-        'dry_run': f"{run_dir}/dry_run_metrics.txt",
-        'validation': f"{run_dir}/validation_metrics.txt",
-        'test': f"{run_dir}/test_metrics.txt",
-        'train': f"{run_dir}/train_metrics.txt",
-        'stealth_test': f"{snapshot_dir}/stealth_test_metrics.txt",
+        'dry_run': run_dir / "dry_run_metrics.txt",
+        'validation': run_dir / "validation_metrics.txt",
+        'test': run_dir / "test_metrics.txt",
+        'train': run_dir / "train_metrics.txt",
+        'stealth_test': snapshot_dir / "stealth_test_metrics.txt",
     }
 
     command_prefix=f"source /opt/conda/etc/profile.d/conda.sh && conda activate {conda_path[source_folder]}"

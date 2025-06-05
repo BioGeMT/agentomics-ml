@@ -90,7 +90,7 @@ def run_evaluation(results_file, test_labels_file, output_dir, label_to_scalar, 
         class_col=class_col,
     )
 
-def generate_and_run_scripts(client, model, dataset, temperature, run_name):
+def generate_and_run_scripts(client, model, dataset, temperature, run_name, config):
     run_dir = os.path.join("/workspace/runs", run_name)
     with open(f"/repository/datasets/{dataset}/metadata.json") as f:
         dataset_metadata = json.load(f)
@@ -184,7 +184,7 @@ def generate_and_run_scripts(client, model, dataset, temperature, run_name):
         log_inference_stage_and_metrics(0)
         return
     train_path, inference_path, env_yaml_path = save_scripts(train_script, inference_script, env_yaml, run_dir, run_name)
-    log_files(files=[train_path, inference_path, env_yaml_path], agent_id=run_name)
+    log_files(files=[train_path, inference_path, env_yaml_path], config=config)
 
     # Create conda environment
     env_result = subprocess.run(f"conda env create -f {env_yaml_path}", shell=True, capture_output=True, text=True)
@@ -257,7 +257,8 @@ def main(args):
         model=args.model,
         dataset=args.dataset,
         temperature=args.temp,
-        run_name=run_id
+        run_name=run_id,
+        config=config,
     )
     # Remove the run directory after completion
     del_res = subprocess.run(f"rm -rf /workspace/runs/{run_id}", shell=True, check=True)

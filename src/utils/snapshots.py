@@ -1,5 +1,3 @@
-import os
-from pathlib import Path
 import re
 import shutil
 
@@ -12,8 +10,8 @@ def get_metrics_from_file(file_path):
     return metrics
 
 def get_valid_and_train_metrics(base_path):
-    val_metrics = get_metrics_from_file(f"{base_path}/validation_metrics.txt")
-    train_metric = get_metrics_from_file(f"{base_path}/train_metrics.txt")
+    val_metrics = get_metrics_from_file(base_path / "validation_metrics.txt")
+    train_metric = get_metrics_from_file(base_path / "train_metrics.txt")
     all_metrics = {}
     val_metrics = {f"validation/{k}": v for k, v in val_metrics.items()}
     train_metric = {f"train/{k}": v for k, v in train_metric.items()}
@@ -21,60 +19,60 @@ def get_valid_and_train_metrics(base_path):
     all_metrics.update(train_metric)
     return all_metrics
 
-def get_best_metrics(agent_id):
-    if(not best_metrics_exists(agent_id)):
+def get_best_metrics(config):
+    if(not best_metrics_exists(config)):
         return {}
     else:
-        return get_valid_and_train_metrics(f"/snapshots/{agent_id}")
+        return get_valid_and_train_metrics(config['snapshot_dir'] / config['agent_id'])
 
-def get_new_metrics(agent_id):
-    if(not new_metrics_exists(agent_id)):
+def get_new_metrics(config):
+    if(not new_metrics_exists(config)):
         return {}
     else:
-        return get_valid_and_train_metrics(f"/workspace/runs/{agent_id}")
+        return get_valid_and_train_metrics(config['workspace_dir'] / config['agent_id'])
 
-def get_new_and_best_metrics(agent_id):
-    return get_new_metrics(agent_id), get_best_metrics(agent_id)
+def get_new_and_best_metrics(config):
+    return get_new_metrics(config), get_best_metrics(config)
 
-def best_metrics_exists(agent_id):
-    best_metrics_path = f"/snapshots/{agent_id}/validation_metrics.txt"
-    if(os.path.isfile(best_metrics_path)):
+def best_metrics_exists(config):
+    best_metrics_path = config['snapshot_dir'] / config['agent_id'] / "validation_metrics.txt"
+    if(best_metrics_path.is_file()):
         return True
     return False
 
-def new_metrics_exists(agent_id):
-    new_metrics_path = f"/workspace/runs/{agent_id}/validation_metrics.txt"
-    if(os.path.isfile(new_metrics_path)):
+def new_metrics_exists(config):
+    new_metrics_path = config['workspace_dir'] / config['agent_id'] / "validation_metrics.txt"
+    if(new_metrics_path.is_file()):
         return True
     return False
 
-def is_new_best(agent_id, comparison_metric):
-    if(not best_metrics_exists(agent_id)):
+def is_new_best(config):
+    if(not best_metrics_exists(config)):
         return True
     
-    new_metrics, best_metrics = get_new_and_best_metrics(agent_id)
+    new_metrics, best_metrics = get_new_and_best_metrics(config)
 
     #TODO parametrize improvement threshold
     necessary_improvement = 0
-    is_new_best = new_metrics[f'validation/{comparison_metric}'] > best_metrics[f'validation/{comparison_metric}'] + necessary_improvement
+    is_new_best = new_metrics[f"validation/{config['best_metric']}"] > best_metrics[f"validation/{config['best_metric']}"] + necessary_improvement
     print(f"is_new_best: {is_new_best}")
     print(f"New metrics: {new_metrics}")
     print(f"Best metrics: {best_metrics}")
     return is_new_best
        
-def delete_snapshot(agent_id):
-    snapshot_dir = Path(f"/snapshots/{agent_id}")
+def delete_snapshot(snapshot_dir):
     if snapshot_dir.exists():
         shutil.rmtree(snapshot_dir)
 
-def snapshot(agent_id, iteration, delete_old_snapshot=True):
-    if delete_old_snapshot:
-        delete_snapshot(agent_id)
+def snapshot(config, iteration, delete_old_snapshot=True):
+    run_dir = config['workspace_dir'] / config['agent_id']
+    snapshot_dir = config['snapshot_dir'] / config['agent_id']
 
-    run_dir = f"/workspace/runs/{agent_id}"
-    snapshot_dir = f"/snapshots/{agent_id}"
-    Path(snapshot_dir).mkdir(parents=True, exist_ok=True)
-    
+    if delete_old_snapshot:
+        delete_snapshot(snapshot_dir)
+
+    snapshot_dir.mkdir(parents=True, exist_ok=True)
+
     files_to_skip = [
         "train.csv",
         "validation.csv",
@@ -84,8 +82,7 @@ def snapshot(agent_id, iteration, delete_old_snapshot=True):
         ".cache",
     ]
     # iterate the snapshot dir for all files
-    for element in os.listdir(run_dir):
-        element = Path(run_dir)/ element
+    for element in run_dir.iterdir():
         # if hidden file and not in a folder, skip it
         print(f"Element: {element}")
         if re.match(r"^\..*", element.name) and element.is_file():
@@ -97,34 +94,29 @@ def snapshot(agent_id, iteration, delete_old_snapshot=True):
         if element.is_file():
             # hard copy the file into snapshot dir
             print(f"Snapshotting {element.name}")
-            absolute_dest = Path(snapshot_dir) / element.name
+            absolute_dest = snapshot_dir / element.name
             shutil.copy2(element, absolute_dest)
             if element.name.endswith(".py"):
-                replace_workspace_path_with_snapshots(agent_id, absolute_path_snapshot_file=absolute_dest)
+                replace_workspace_path_with_snapshots(run_dir, snapshot_dir, absolute_path_snapshot_file=absolute_dest)
         if element.is_dir():
             # hard copy the folder into snapshot dir
             print(f"Snapshotting {element.name}")
-            shutil.copytree(element, Path(snapshot_dir) / element.name, dirs_exist_ok=True, symlinks=True)
+            shutil.copytree(element, snapshot_dir / element.name, dirs_exist_ok=True, symlinks=True)
             # if dir is not hidden, replace the workspace path in python files
             if(not re.match(r"^\..*", element.name)):
-                for root, _, files in os.walk(Path(snapshot_dir) / element.name):
-                    for file_name in files:
-                        if element.name.endswith(".py"):
-                            absolute_file_path = Path(root) / file_name
-                            replace_workspace_path_with_snapshots(agent_id, absolute_path_snapshot_file=absolute_file_path)
+                for file_path in (snapshot_dir / element.name).rglob('*.py'):
+                    replace_workspace_path_with_snapshots(run_dir, snapshot_dir, absolute_path_snapshot_file=file_path)
         
-    with open(Path(snapshot_dir) / "iteration_number.txt", "w") as f:
+    with open(snapshot_dir / "iteration_number.txt", "w") as f:
         print(f"Snapshotting iteration number")
         f.write(str(iteration))
 
-def replace_workspace_path_with_snapshots(agent_id, absolute_path_snapshot_file):
+def replace_workspace_path_with_snapshots(workspace_dir, snapshot_dir, absolute_path_snapshot_file):
     # Replaces hard-coded paths in the files to point to the snapshot dir
-    workspace_string = f"/workspace/runs/{agent_id}"
-    snapshot_string = f"/snapshots/{agent_id}"
     with open(absolute_path_snapshot_file, "r") as f:
         old_content = f.read()
-    new_content = old_content.replace(workspace_string, snapshot_string)
+    new_content = old_content.replace(str(workspace_dir), str(snapshot_dir))
     if(old_content != new_content):
-        print(f"Replaced {workspace_string} with {snapshot_string} in {absolute_path_snapshot_file}")
+        print(f"Replaced {workspace_dir} with {snapshot_dir} in {absolute_path_snapshot_file}")
         with open(absolute_path_snapshot_file, "w") as f:
             f.write(new_content)
