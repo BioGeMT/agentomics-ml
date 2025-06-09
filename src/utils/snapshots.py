@@ -23,25 +23,25 @@ def get_best_metrics(config):
     if(not best_metrics_exists(config)):
         return {}
     else:
-        return get_valid_and_train_metrics(config['snapshot_dir'] / config['agent_id'])
+        return get_valid_and_train_metrics(config.snapshot_dir / config.agent_id)
 
 def get_new_metrics(config):
     if(not new_metrics_exists(config)):
         return {}
     else:
-        return get_valid_and_train_metrics(config['workspace_dir'] / config['agent_id'])
+        return get_valid_and_train_metrics(config.workspace_dir / config.agent_id)
 
 def get_new_and_best_metrics(config):
     return get_new_metrics(config), get_best_metrics(config)
 
 def best_metrics_exists(config):
-    best_metrics_path = config['snapshot_dir'] / config['agent_id'] / "validation_metrics.txt"
+    best_metrics_path = config.snapshot_dir / config.agent_id / "validation_metrics.txt"
     if(best_metrics_path.is_file()):
         return True
     return False
 
 def new_metrics_exists(config):
-    new_metrics_path = config['workspace_dir'] / config['agent_id'] / "validation_metrics.txt"
+    new_metrics_path = config.workspace_dir / config.agent_id / "validation_metrics.txt"
     if(new_metrics_path.is_file()):
         return True
     return False
@@ -54,7 +54,7 @@ def is_new_best(config):
 
     #TODO parametrize improvement threshold
     necessary_improvement = 0
-    is_new_best = new_metrics[f"validation/{config['best_metric']}"] > best_metrics[f"validation/{config['best_metric']}"] + necessary_improvement
+    is_new_best = new_metrics[f"validation/{config.best_metric}"] > best_metrics[f"validation/{config.best_metric}"] + necessary_improvement
     print(f"is_new_best: {is_new_best}")
     print(f"New metrics: {new_metrics}")
     print(f"Best metrics: {best_metrics}")
@@ -65,8 +65,8 @@ def delete_snapshot(snapshot_dir):
         shutil.rmtree(snapshot_dir)
 
 def snapshot(config, iteration, delete_old_snapshot=True):
-    run_dir = config['workspace_dir'] / config['agent_id']
-    snapshot_dir = config['snapshot_dir'] / config['agent_id']
+    run_dir = config.workspace_dir / config.agent_id
+    snapshot_dir = config.snapshot_dir / config.agent_id
 
     if delete_old_snapshot:
         delete_snapshot(snapshot_dir)

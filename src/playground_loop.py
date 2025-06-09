@@ -25,6 +25,7 @@ from run_logging.logging_helpers import log_inference_stage_and_metrics, log_ser
 from run_logging.wandb import setup_logging
 from run_logging.log_files import log_files
 from utils.create_user import create_new_user_and_rundir
+from utils.config import Config, make_config
 from utils.models import MODELS
 from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics
 from utils.exceptions import IterationRunFailed
@@ -64,40 +65,24 @@ async def run_agent(agent: Agent, user_prompt: str, max_steps: int, message_hist
             )
 
 async def main(model, feedback_model, dataset, tags, best_metric):
-    config = {
-        "model": model,
-        "feedback_model": feedback_model,
-        "temperature": 1,
-        "max_steps": 100, #TODO rename, this is per-step limit
-        "max_run_retries": 1,
-        "max_validation_retries": 5,
-        "tags": tags,
-        # "prompt": "BioPrompt_v1.yaml", #TODO cleanup, not used
-        "use_proxy" : True,
-        "best_metric" : best_metric, #TODO rename into validation_metric
-        "iterations": 5,
-        "llm_response_timeout": 60* 15,
-        "bash_tool_timeout": 60 * 5, 
-        "run_python_tool_timeout": 60 * 60 * 6, #This affects max training time
-        "credit_budget": 30,
-        "max_tool_retries": 5,
-        "workspace_dir": Path("/workspace/runs"),
-        "snapshot_dir": Path("/snapshots"),
-        "dataset_dir": Path(f"/repository/datasets/{dataset}"),
-    }
+    config = make_config(model=model, 
+                         feedback_model=feedback_model, 
+                         dataset=dataset, 
+                         tags=tags, 
+                         best_metric=best_metric)
 
     agent_id = create_new_user_and_rundir(config)
-    config["agent_id"] = agent_id
+    config.agent_id = agent_id
 
     setup_logging(config, api_key=wandb_key)
 
-    api_key_data = create_new_api_key(name=config["agent_id"], limit=config["credit_budget"])
+    api_key_data = create_new_api_key(name=config.agent_id, limit=config.credit_budget)
     openrouter_api_key = api_key_data['key']
     openrouter_api_key_hash = api_key_data['hash']
 
     async_http_client = httpx.AsyncClient(
-        proxy=proxy_url if config["use_proxy"] else None,
-        timeout= config["llm_response_timeout"],
+        proxy=proxy_url if config.use_proxy else None,
+        timeout= config.llm_response_timeout,
     )
     client = AsyncOpenAI(
         base_url='https://openrouter.ai/api/v1',
@@ -105,65 +90,65 @@ async def main(model, feedback_model, dataset, tags, best_metric):
         http_client=async_http_client,
     )
     model = OpenAIModel(
-        config['model'],
+        config.model,
         provider=OpenAIProvider(openai_client=client)
     )
 
     tools =[
         create_bash_tool(
-            agent_id=config['agent_id'],
-            workspace_dir=config['workspace_dir'],
-            timeout=config['bash_tool_timeout'], 
+            agent_id=config.agent_id,
+            workspace_dir=config.workspace_dir,
+            timeout=config.bash_tool_timeout, 
             autoconda=True,
-            max_retries=config['max_tool_retries'],
-            proxy=config['use_proxy'],
+            max_retries=config.max_tool_retries,
+            proxy=config.use_proxy,
             conda_prefix=True,
             auto_torch=False),
-        create_write_python_tool( 
-            agent_id=config['agent_id'], 
-            workspace_dir=config['workspace_dir'],
-            timeout=config['write_python_tool_timeout'], 
+        create_write_python_tool( #Tries to create the same-name conda environment
+            agent_id=config.agent_id, 
+            workspace_dir=config.workspace_dir,
+            timeout=config.write_python_tool_timeout, 
             add_code_to_response=False,
-            max_retries=config['max_tool_retries'],),
-        create_run_python_tool( #Tries to create the same-name conda environment
-            agent_id=config['agent_id'],
-            workspace_dir=config['workspace_dir'],
-            timeout=config['run_python_tool_timeout'],
-            proxy=config['use_proxy'],
-            max_retries=config['max_tool_retries'],),
+            max_retries=config.max_tool_retries),
+        create_run_python_tool(
+            agent_id=config.agent_id,
+            workspace_dir=config.workspace_dir,
+            timeout=config.run_python_tool_timeout,
+            proxy=config.use_proxy,
+            max_retries=config.max_tool_retries),
     ]
 
     agent = Agent( # this is data exploration, representation, architecture reasoning agent
         model=model,
         system_prompt=get_system_prompt(config),
         tools=tools,
-        model_settings={'temperature': config['temperature']},
-        retries=config["max_run_retries"],
-        result_retries=config["max_validation_retries"],
+        model_settings={'temperature': config.temperature},
+        retries=config.max_run_retries,
+        result_retries=config.max_validation_retries,
     )
 
     split_dataset_agent = Agent(
         model=model,
         tools=tools,
-        model_settings={'temperature': config['temperature']},
+        model_settings={'temperature': config.temperature},
         output_type=DataSplit,
-        result_retries=config["max_validation_retries"],
+        result_retries=config.max_validation_retries,
     )
 
     training_agent = Agent(
         model=model,
         tools=tools,
-        model_settings={'temperature': config['temperature']},
+        model_settings={'temperature': config.temperature},
         output_type=ModelTraining,
-        result_retries=config["max_validation_retries"],
+        result_retries=config.max_validation_retries,
     )
 
     validation_agent = Agent(
         model=model,
         tools=tools,
-        model_settings={'temperature':config['temperature']},
+        model_settings={'temperature':config.temperature},
         output_type= FinalOutcome,
-        result_retries=config["max_validation_retries"],
+        result_retries=config.max_validation_retries,
     )
     @split_dataset_agent.output_validator
     async def validate_split_dataset(result: DataSplit) -> DataSplit:
@@ -188,7 +173,7 @@ async def main(model, feedback_model, dataset, tags, best_metric):
     
     all_feedbacks = []
     feedback = None
-    for run_index in range(config["iterations"]):
+    for run_index in range(config.iterations):
         if run_index == 0:
             base_prompt = get_user_prompt(config)
         else:
@@ -288,11 +273,11 @@ async def main(model, feedback_model, dataset, tags, best_metric):
     wandb.finish()
 
 
-async def run_architecture(agent: Agent, validation_agent: Agent, split_dataset_agent: Agent, training_agent: Agent, config: dict, base_prompt: str, iteration: int):
+async def run_architecture(agent: Agent, validation_agent: Agent, split_dataset_agent: Agent, training_agent: Agent, config: Config, base_prompt: str, iteration: int):
     messages_data_exploration = await run_agent(
         agent=agent,
         user_prompt=base_prompt + get_data_exploration_prompt(),
-        max_steps=config["max_steps"],
+        max_steps=config.max_steps,
         output_type=DataExploration, # this is overriding the output_type
         message_history=None,
     )
@@ -301,7 +286,7 @@ async def run_architecture(agent: Agent, validation_agent: Agent, split_dataset_
         messages_split = await run_agent(
             agent=split_dataset_agent,
             user_prompt=get_data_split_prompt(config),
-            max_steps=config["max_steps"],
+            max_steps=config.max_steps,
             message_history=messages_data_exploration,
         )
     else:
@@ -310,7 +295,7 @@ async def run_architecture(agent: Agent, validation_agent: Agent, split_dataset_
     messages_representation = await run_agent(
         agent=agent,
         user_prompt=get_data_representation_prompt(),
-        max_steps=config["max_steps"],
+        max_steps=config.max_steps,
         output_type=DataRepresentation, # this is overriding the output_type
         message_history=messages_split,
     )
@@ -318,7 +303,7 @@ async def run_architecture(agent: Agent, validation_agent: Agent, split_dataset_
     messages_architecture = await run_agent(
         agent=agent,
         user_prompt=get_model_architecture_prompt(),
-        max_steps=config["max_steps"],
+        max_steps=config.max_steps,
         output_type=ModelArchitecture, # this is overriding the output_type
         message_history=messages_representation,
     )
@@ -326,14 +311,14 @@ async def run_architecture(agent: Agent, validation_agent: Agent, split_dataset_
     messages_training = await run_agent(
         agent=training_agent, 
         user_prompt=get_model_training_prompt(), 
-        max_steps=config["max_steps"],
+        max_steps=config.max_steps,
         message_history=messages_architecture,
     )
 
     _messages = await run_agent(
         agent=validation_agent, 
         user_prompt=get_final_outcome_prompt(), 
-        max_steps=config["max_steps"],
+        max_steps=config.max_steps,
         message_history=messages_training,
     )
 
