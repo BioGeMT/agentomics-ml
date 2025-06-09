@@ -7,17 +7,17 @@ from eval.evaluate_result import get_metrics
 from run_logging.logging_helpers import log_inference_stage_and_metrics, log_serial_metrics
 
 def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot=False):
-    with open(config['dataset_dir'] / "metadata.json") as f:
+    with open(config.dataset_dir / "metadata.json") as f:
         dataset_metadata = json.load(f)
 
-    run_dir = config['workspace_dir'] / config['agent_id']
-    snapshot_dir = config['snapshot_dir'] / config['agent_id']
+    run_dir = config.workspace_dir / config.agent_id
+    snapshot_dir = config.snapshot_dir / config.agent_id
     source_folder = 'snapshots' if use_best_snapshot else 'workspace'
     if(use_best_snapshot):
         print('USING BEST SNAPSHOT')
     conda_path = {
-        'workspace': run_dir / ".conda" / "envs" / f"{config['agent_id']}_env",
-        'snapshots': snapshot_dir / ".conda"/ "envs" / f"{config['agent_id']}_env",
+        'workspace': run_dir / ".conda" / "envs" / f"{config.agent_id}_env",
+        'snapshots': snapshot_dir / ".conda"/ "envs" / f"{config.agent_id}_env",
     }
     inference_path = {
         'workspace': run_dir / "inference.py",

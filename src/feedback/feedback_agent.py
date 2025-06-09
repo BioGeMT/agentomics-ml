@@ -10,19 +10,19 @@ import time
 def create_feedback_agent(model, config):
     feedback_agent = Agent(
         model=model,
-        model_settings={'temperature': config['temperature']},
-        result_retries=config["max_validation_retries"]
-    )   
+        model_settings={'temperature': config.temperature},
+        result_retries=config.max_validation_retries
+    )
     
     return feedback_agent
 
 async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, api_key, iteration, aggregated_feedback=None, extra_info="") -> str:
-    if iteration == config['iterations'] - 1 : return "Last iteration, no feedback needed"
+    if iteration == config.iterations - 1 : return "Last iteration, no feedback needed"
     dotenv.load_dotenv()
     proxy_url = os.getenv('PROXY_URL')
     async_http_client = httpx.AsyncClient(
-        proxy=proxy_url if config["use_proxy"] else None,
-        timeout= config["llm_response_timeout"],
+        proxy=proxy_url if config.use_proxy else None,
+        timeout= config.llm_response_timeout,
     )
     client = AsyncOpenAI(
         base_url='https://openrouter.ai/api/v1',
@@ -30,7 +30,7 @@ async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, 
         http_client=async_http_client,
     )
     model = OpenAIModel(
-        config['feedback_model'],
+        config.feedback_model,
         provider=OpenAIProvider(openai_client=client)
     )
 
