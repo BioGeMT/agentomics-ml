@@ -17,9 +17,7 @@ from timeout_function_decorator import timeout
 
 
 from prompts.prompts_utils import get_iteration_prompt, get_user_prompt, get_system_prompt
-from tools.bash import create_bash_tool
-from tools.write_python_tool import create_write_python_tool
-from tools.run_python_tool import create_run_python_tool
+from tools.setup_tools import create_tools
 from run_logging.evaluate_log_run import run_inference_and_log
 from run_logging.logging_helpers import log_inference_stage_and_metrics, log_serial_metrics
 from run_logging.wandb import setup_logging
@@ -94,32 +92,7 @@ async def main(model, feedback_model, dataset, tags, best_metric):
         provider=OpenAIProvider(openai_client=client)
     )
 
-    tools =[
-        create_bash_tool(
-            agent_id=config.agent_id,
-            workspace_dir=config.workspace_dir,
-            run_mode=config.run_mode,
-            timeout=config.bash_tool_timeout, 
-            autoconda=True,
-            max_retries=config.max_tool_retries,
-            proxy=config.use_proxy,
-            conda_prefix=True,
-            auto_torch=False),
-        create_write_python_tool( #Tries to create the same-name conda environment
-            agent_id=config.agent_id, 
-            workspace_dir=config.workspace_dir,
-            run_mode=config.run_mode,
-            timeout=config.write_python_tool_timeout, 
-            add_code_to_response=False,
-            max_retries=config.max_tool_retries),
-        create_run_python_tool(
-            agent_id=config.agent_id,
-            workspace_dir=config.workspace_dir,
-            run_mode=config.run_mode,
-            timeout=config.run_python_tool_timeout,
-            proxy=config.use_proxy,
-            max_retries=config.max_tool_retries),
-    ]
+    tools = create_tools(config)
 
     agent = Agent( # this is data exploration, representation, architecture reasoning agent
         model=model,
