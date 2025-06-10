@@ -5,18 +5,24 @@ from hrid import HRID
 def create_new_user_and_rundir(config):
     run_id = "_".join(HRID().generate().replace("-", "_").replace(" ","_").split("_")[:-1])[:32]
     run_dir = config.workspace_dir / run_id
-    subprocess.run(
+
+    if config.run_mode == "docker":
+        subprocess.run(
         ["sudo", "useradd", "-d", run_dir, "-m", "-p", "1234", run_id],
         check=True
-    )
-    subprocess.run(
-        ["sudo", "chmod", "o-rwx", run_dir],
-        check=True
-    )
-    subprocess.run(
-        ["sudo", "mkdir", config.snapshot_dir / run_id],
-        check=True
-    )
+        )   
+        subprocess.run(
+            ["sudo", "chmod", "o-rwx", run_dir],
+            check=True
+        )
+    else:
+        run_dir.mkdir(parents=True, exist_ok=True)
+    
+    snapshot_dir = config.snapshot_dir / run_id
+    if config.run_mode == 'docker':
+        subprocess.run(["sudo", "mkdir", snapshot_dir], check=True)
+    else:
+        snapshot_dir.mkdir(parents=True, exist_ok=True)
     return run_id
 
 if __name__ == "__main__":

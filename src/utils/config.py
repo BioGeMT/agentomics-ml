@@ -14,6 +14,7 @@ class Config:
     agent_id: Optional[str] = None # assigned after user creation
 
     # static defaults
+    run_mode: str = "docker"
     temperature: float = 1.0
     max_steps: int = 100 #TODO rename, this is per-step limit
     max_run_retries: int = 1
