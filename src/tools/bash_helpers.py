@@ -54,6 +54,7 @@ class BashProcess:
         self,
         agent_id,
         workspace_dir,
+        run_mode,
         autoconda=True,
         strip_newlines: bool = False,
         return_err_output: bool = False,
@@ -72,6 +73,7 @@ class BashProcess:
         self.timeout = timeout
         self.agent_id = agent_id
         self.workspace_dir = workspace_dir
+        self.run_mode = run_mode
         self.autoconda = autoconda
         self.proxy = proxy
         self.auto_torch = auto_torch
@@ -161,10 +163,13 @@ class BashProcess:
             Prompt(str): the bash command to execute
         """
         pexpect = self._lazy_import_pexpect()
-        process = pexpect.spawn(
-            "sudo", ["-u", agent_id, "bash"], encoding="utf-8"
-        )
-        process.sendline("export PATH=/opt/conda/bin:$PATH")
+
+        if self.run_mode == "docker":
+            process = pexpect.spawn("sudo", ["-u", agent_id, "bash"], encoding="utf-8")
+        else:
+            process = pexpect.spawn("bash", encoding="utf-8")
+        
+        process.sendline(f"export PATH=/opt/conda/bin:$PATH")
 
         # Set the custom prompt
         process.sendline("PS1=" + prompt)
