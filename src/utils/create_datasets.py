@@ -37,13 +37,12 @@ def generate_mirbench_files():
             f.write(dataset_desrciption[dataset_name])
 
         with open(f"{local_dset_path}/metadata.json", "w") as f:
-            default_docker_path = f'/repository/datasets/{dataset_name}'
             metadata = {
-                "train_split": f"{default_docker_path}/train.csv",
-                "train_split_no_labels": f"{default_docker_path}/train.no_label.csv",
-                "test_split_with_labels": f"{default_docker_path}/test.csv",
-                "test_split_no_labels": f"{default_docker_path}/test.no_label.csv",
-                "dataset_knowledge":f"{default_docker_path}/dataset_description.md",
+                "train_split": "train.csv",
+                "train_split_no_labels": "train.no_label.csv",
+                "test_split_with_labels": "test.csv",
+                "test_split_no_labels": "test.no_label.csv",
+                "dataset_knowledge": "dataset_description.md",
                 "label_to_scalar": dataset_label_to_scalar[dataset_name],
                 "class_col": class_col,
                 "numeric_label_col": numeric_label_col,
@@ -94,13 +93,12 @@ def generate_genomic_benchmarks_files():
             f.write(dataset_description[dataset_name])
 
         with open(f"{local_dset_path}/metadata.json", "w") as f:
-            default_docker_path = f'/repository/datasets/{dataset_name}'
             metadata = {
-                "train_split": f"{default_docker_path}/train.csv",
-                "train_split_no_labels": f"{default_docker_path}/train.no_label.csv",
-                "test_split_with_labels": f"{default_docker_path}/test.csv",
-                "test_split_no_labels": f"{default_docker_path}/test.no_label.csv",
-                "dataset_knowledge":f"{default_docker_path}/dataset_description.md",
+                "train_split": "train.csv",
+                "train_split_no_labels": "train.no_label.csv",
+                "test_split_with_labels": "test.csv",
+                "test_split_no_labels": "test.no_label.csv",
+                "dataset_knowledge": "dataset_description.md",
                 "label_to_scalar": dataset_label_to_scalar[dataset_name],
                 "class_col": class_col,
                 "numeric_label_col": numeric_label_col,

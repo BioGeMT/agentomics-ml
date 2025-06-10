@@ -12,8 +12,14 @@ def load_prompts(name):
 def get_system_prompt(config):
     with open(config.dataset_dir / "metadata.json") as f:
         dataset_metadata = json.load(f)
-    train_csv_path = dataset_metadata['train_split'].replace("repository", "workspace")
-    dataset_knowledge_path = dataset_metadata['dataset_knowledge'].replace("repository", "workspace")
+    
+    if config.run_mode == "docker":
+        train_csv_path = str(config.dataset_dir / dataset_metadata['train_split']).replace("repository", "workspace")
+        dataset_knowledge_path = str(config.dataset_dir / dataset_metadata['dataset_knowledge']).replace("repository", "workspace")
+    else:
+        train_csv_path = config.dataset_dir / dataset_metadata['train_split']
+        dataset_knowledge_path = config.dataset_dir / dataset_metadata['dataset_knowledge']
+    
     with open(dataset_knowledge_path) as f:
         dataset_knowledge = f.read()
     
