@@ -4,12 +4,13 @@ from .bash_helpers import BashProcess
 
 class ExclusiveBashProcess:
     
-    def __init__(self, agent_id, workspace_dir, autoconda, timeout, proxy, auto_torch):
+    def __init__(self, agent_id, workspace_dir, run_mode, autoconda, timeout, proxy, auto_torch):
         self.locked = threading.Lock()
 
         self.bash = BashProcess(
             agent_id=agent_id,
             workspace_dir=workspace_dir,
+            run_mode = run_mode,
             autoconda=autoconda,
             strip_newlines = False,
             return_err_output = True,
@@ -26,10 +27,11 @@ class ExclusiveBashProcess:
         with self.locked:
             return self.bash.run(command)
 
-def create_bash_tool(agent_id, workspace_dir, timeout, autoconda, max_retries, proxy = False, auto_torch=True, conda_prefix=True):
+def create_bash_tool(agent_id, workspace_dir, run_mode, timeout, autoconda, max_retries, proxy = False, auto_torch=True, conda_prefix=True):
     bash = ExclusiveBashProcess(
         agent_id=agent_id,
         workspace_dir=workspace_dir,
+        run_mode=run_mode,
         autoconda=autoconda,
         timeout = timeout, #Seconds to wait for a command to finish
         proxy = proxy,
