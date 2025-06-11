@@ -20,7 +20,7 @@ class Config:
     max_run_retries: int = 1
     max_validation_retries: int = 5
     use_proxy: bool = True
-    iterations: int = 2
+    iterations: int = 5
     llm_response_timeout: int = 60 * 15
     bash_tool_timeout: int = 60 * 5
     write_python_tool_timeout: int = 60 * 1

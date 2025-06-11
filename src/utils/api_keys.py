@@ -1,8 +1,9 @@
 import requests
 import dotenv
 import os
+from pathlib import Path
 
-dotenv.load_dotenv("/repository/.env")
+dotenv.load_dotenv(Path(__file__).parents[2] / ".env") # load env in the root of the project
 
 PROVISIONING_API_KEY = os.getenv("PROVISIONING_OPENROUTER_API_KEY")
 BASE_URL = "https://openrouter.ai/api/v1/keys"
