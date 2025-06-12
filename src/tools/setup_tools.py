@@ -15,7 +15,8 @@ def create_tools(config):
                 ),
             create_write_python_tool( #Tries to create the same-name conda environment
                 agent_id=config.agent_id, 
-                max_retries=config.max_tool_retries),
+                max_retries=config.max_tool_retries,
+                workspace_dir=config.workspace_dir),
             create_run_python_tool(
                 agent_id=config.agent_id,
                 workspace_dir=config.workspace_dir,
