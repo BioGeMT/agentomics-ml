@@ -45,8 +45,8 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
         'stealth_test': snapshot_dir / "stealth_test_metrics.txt",
     }
 
-    command_prefix=f"source /opt/conda/etc/profile.d/conda.sh && conda activate {conda_path[source_folder]}"
-    command = f"{command_prefix} && python {inference_path[source_folder]} --input {stage_to_input[evaluation_stage]} --output {stage_to_output[evaluation_stage]}"
+    command_prefix=f"conda run -p {conda_path[source_folder]} --no-capture-output"
+    command = f"{command_prefix} python {inference_path[source_folder]} --input {stage_to_input[evaluation_stage]} --output {stage_to_output[evaluation_stage]}"
     inference_out = subprocess.run(command, shell=True, executable="/bin/bash", capture_output=True)
     if(evaluation_stage == 'stealth_test'):
         print('RUNNING STEALTH TEST EVAL')
