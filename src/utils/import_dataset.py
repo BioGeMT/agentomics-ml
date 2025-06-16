@@ -6,13 +6,13 @@ from pathlib import Path
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Import dataset")
-    parser.add_argument('--train', required=True, type=Path, help='Path to training file')
-    parser.add_argument('--test', type=Path, help='Path to test file')
-    parser.add_argument('--class', required=True, help='Class column name')
-    parser.add_argument('--description', required=True, type=Path, help='Path to dataset description file')
-    parser.add_argument('--name', required=True, help='Dataset name (folder name under datasets/)')
-    parser.add_argument('--positive-class', help='For binary classification: which class is positive (1)')
-    parser.add_argument('--negative-class', help='For binary classification: which class is negative (0)')
+    parser.add_argument('--train', required=True, type=Path)
+    parser.add_argument('--test', type=Path)
+    parser.add_argument('--class', required=True)
+    parser.add_argument('--description', required=True, type=Path)
+    parser.add_argument('--name', required=True)
+    parser.add_argument('--positive-class')
+    parser.add_argument('--negative-class')
     return parser.parse_args()
 
 def main():
