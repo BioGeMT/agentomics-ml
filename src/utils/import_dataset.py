@@ -8,7 +8,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Import dataset")
     parser.add_argument('--train', required=True, type=Path)
     parser.add_argument('--test', type=Path)
-    parser.add_argument('--class', required=True)
+    parser.add_argument('--class-col', required=True, dest='class')
     parser.add_argument('--description', required=True, type=Path)
     parser.add_argument('--name', required=True)
     parser.add_argument('--positive-class')
@@ -21,7 +21,7 @@ def main():
     train = pd.read_csv(args.train)
     test = pd.read_csv(args.test) if args.test else None
     
-    label_col = getattr(args, 'class')
+    label_col = args.class
     
     all_labels = train[label_col].dropna()
     if test is not None:
