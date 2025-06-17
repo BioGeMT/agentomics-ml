@@ -13,11 +13,12 @@ def parse_args():
     parser.add_argument('--name', required=True)
     parser.add_argument('--positive-class')
     parser.add_argument('--negative-class')
+    parser.add_argument('--output-dir', type=Path, default=Path('datasets'))
     return parser.parse_args()
 
 def prepare_dataset(train, test=None, class_col=None, description=None, name=None, 
-                   positive_class=None, negative_class=None):
-    
+                   positive_class=None, negative_class=None, output_dir=Path('datasets')):
+   
     train_df = pd.read_csv(train)
     test_df = pd.read_csv(test) if test else None
     
@@ -42,7 +43,7 @@ def prepare_dataset(train, test=None, class_col=None, description=None, name=Non
         dataframes.append(('test', test_df))
     
     dataset_name = name
-    out_dir = Path('datasets') / dataset_name
+    out_dir = output_dir / dataset_name
     out_dir.mkdir(parents=True, exist_ok=True)
     
     for split_name, df in dataframes:
@@ -79,5 +80,6 @@ if __name__ == '__main__':
         description=args.description,
         name=args.name,
         positive_class=args.positive_class,
-        negative_class=args.negative_class
+        negative_class=args.negative_class,
+        output_dir=args.output_dir
     )
