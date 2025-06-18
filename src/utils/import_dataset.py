@@ -58,15 +58,12 @@ def prepare_dataset(train, test, class_col, description, name,
     description_content = description.read_text()
     (out_dir / 'dataset_description.md').write_text(description_content)
     
-    # we now use /repository/datasets for metadata paths if using default output_dir (datasets/), otherwise use actual output_dir
-    metadata_base_path = "/repository/datasets" if output_dir == Path('datasets') else str(output_dir)
-    
     meta = {
-        'train_split': f"{metadata_base_path}/{dataset_name}/train.csv",
-        'train_split_no_labels': f"{metadata_base_path}/{dataset_name}/train.no_label.csv",
-        'test_split_with_labels': f"{metadata_base_path}/{dataset_name}/test.csv",
-        'test_split_no_labels': f"{metadata_base_path}/{dataset_name}/test.no_label.csv",
-        'dataset_knowledge': f"{metadata_base_path}/{dataset_name}/dataset_description.md",
+        'train_split': f"{output_dir}/{dataset_name}/train.csv",
+        'train_split_no_labels': f"{output_dir}/{dataset_name}/train.no_label.csv",
+        'test_split_with_labels': f"{output_dir}/{dataset_name}/test.csv",
+        'test_split_no_labels': f"{output_dir}/{dataset_name}/test.no_label.csv",
+        'dataset_knowledge': f"{output_dir}/{dataset_name}/dataset_description.md",
         'label_to_scalar': label_map,
         'class_col': label_col,
         'numeric_label_col': 'numeric_label'
