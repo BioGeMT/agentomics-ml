@@ -13,7 +13,7 @@ def get_system_prompt(config):
     with open(config.dataset_dir / "metadata.json") as f:
         dataset_metadata = json.load(f)
     
-    if config.run_mode == "docker":
+    if config.root_privileges:
         train_csv_path = str(config.dataset_dir / dataset_metadata['train_split']).replace("repository", "workspace")
         dataset_knowledge_path = str(config.dataset_dir / dataset_metadata['dataset_knowledge']).replace("repository", "workspace")
     else:

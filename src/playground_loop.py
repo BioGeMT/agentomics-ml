@@ -62,12 +62,15 @@ async def run_agent(agent: Agent, user_prompt: str, max_steps: int, message_hist
                 exception_trace=trace,
             )
 
-async def main(model, feedback_model, dataset, tags, best_metric):
+async def main(model, feedback_model, dataset, tags, best_metric, root_privileges, worspace_dir, dataset_dir):
     config = make_config(model=model, 
                          feedback_model=feedback_model, 
                          dataset=dataset, 
                          tags=tags, 
-                         best_metric=best_metric)
+                         best_metric=best_metric,
+                         root_privileges=root_privileges,
+                         workspace_dir=worspace_dir,
+                         dataset_dir=dataset_dir)
 
     agent_id = create_new_user_and_rundir(config)
     config.agent_id = agent_id
@@ -313,10 +316,13 @@ async def run_experiments():
     DATASETS=["human_nontata_promoters"]#,"human_enhancers_cohn","drosophila_enhancers_stark","human_enhancers_ensembl","AGO2_CLASH_Hejret2023","human_ocr_ensembl"]
     MODELS_TO_RUN = [MODELS.GPT4_1]
     TAGS = ["test"]
+    ROOT_PRIVILEGES = True
+    WORKSPACE_DIR = Path("/workspace/runs")
+    DATASETS_DIR = Path("/repository/datasets")
     for dataset in DATASETS:
         for model in MODELS_TO_RUN:
             FEEDBACK_MODEL=model
-            await main(model, FEEDBACK_MODEL, dataset, TAGS, best_metrics[dataset])
+            await main(model, FEEDBACK_MODEL, dataset, TAGS, best_metrics[dataset], ROOT_PRIVILEGES, WORKSPACE_DIR, DATASETS_DIR)
 
 
 if __name__ == "__main__":

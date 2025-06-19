@@ -6,11 +6,10 @@ import shlex
 from pydantic_ai import Tool
 
 class BashProcess:
-    def __init__(self, agent_id, workspace_dir, run_mode, autoconda=True, timeout=60, proxy=False):
+    def __init__(self, agent_id, workspace_dir, autoconda=True, timeout=60, proxy=False):
         self.locked = threading.Lock()
         self.agent_id = agent_id
         self.workspace_dir = workspace_dir
-        self.run_mode = run_mode
         self.autoconda = autoconda
         self.timeout = timeout
         self.proxy = proxy
@@ -63,11 +62,10 @@ class BashProcess:
             output = output[:5000]+"\n ... (output truncated, too long)"
         return output.strip()
 
-def create_bash_tool(agent_id, workspace_dir, run_mode, timeout, max_retries, autoconda=True, proxy=False):
+def create_bash_tool(agent_id, workspace_dir, timeout, max_retries, autoconda=True, proxy=False):
         bash = BashProcess(
             agent_id=agent_id,
             workspace_dir=workspace_dir,
-            run_mode=run_mode,
             autoconda=autoconda,
             timeout=timeout,
             proxy=proxy
