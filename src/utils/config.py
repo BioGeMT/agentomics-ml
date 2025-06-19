@@ -11,10 +11,12 @@ class Config:
     tags: List[str]
     best_metric: str #TODO rename into validation_metric
     dataset_dir: Path
+    workspace_dir: Path
+    snapshot_dir: Path
+    root_privileges: bool
     agent_id: Optional[str] = None # assigned after user creation
 
     # static defaults
-    run_mode: str = "docker"
     temperature: float = 1.0
     max_steps: int = 100 #TODO rename, this is per-step limit
     max_run_retries: int = 1
@@ -28,16 +30,15 @@ class Config:
     credit_budget: int = 30
     max_tool_retries: int = 5
 
-    # static paths
-    workspace_dir: Path = Path("/workspace/runs")
-    snapshot_dir: Path = Path("/snapshots")
-
 def make_config(
     model: str,
     feedback_model: str,
     dataset: str,
     tags: List[str],
-    best_metric: str
+    best_metric: str,
+    root_privileges: bool,
+    workspace_dir: Path,
+    dataset_dir: Path
 ) -> Config:
     return Config(
         model=model,
@@ -45,5 +46,8 @@ def make_config(
         dataset=dataset,
         tags=tags,
         best_metric=best_metric,
-        dataset_dir = Path("/repository/datasets") / dataset
+        root_privileges=root_privileges,
+        workspace_dir=workspace_dir,
+        dataset_dir = dataset_dir / dataset,
+        snapshot_dir= workspace_dir / "snapshots"
     )
