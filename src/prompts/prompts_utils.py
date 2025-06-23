@@ -9,12 +9,9 @@ def load_prompts(name):
         prompt_templates = yaml.safe_load(file)
     return prompt_templates
 
-def get_system_prompt(config):
-    with open(config.dataset_dir / "metadata.json") as f:
-        dataset_metadata = json.load(f)
-    
-    train_csv_path = config.agent_dataset_dir / dataset_metadata['train_split']
-    dataset_knowledge_path = config.agent_dataset_dir / dataset_metadata['dataset_knowledge']
+def get_system_prompt(config):    
+    train_csv_path = config.agent_dataset_dir / "train.csv"
+    dataset_knowledge_path = config.agent_dataset_dir / "dataset_description.md"
     
     with open(dataset_knowledge_path) as f:
         dataset_knowledge = f.read()

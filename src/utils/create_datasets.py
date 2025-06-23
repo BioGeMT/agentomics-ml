@@ -38,11 +38,6 @@ def generate_mirbench_files():
 
         with open(f"{local_dset_path}/metadata.json", "w") as f:
             metadata = {
-                "train_split": "train.csv",
-                "train_split_no_labels": "train.no_label.csv",
-                "test_split_with_labels": "test.csv",
-                "test_split_no_labels": "test.no_label.csv",
-                "dataset_knowledge": "dataset_description.md",
                 "label_to_scalar": dataset_label_to_scalar[dataset_name],
                 "class_col": class_col,
                 "numeric_label_col": numeric_label_col,
@@ -94,11 +89,6 @@ def generate_genomic_benchmarks_files():
 
         with open(f"{local_dset_path}/metadata.json", "w") as f:
             metadata = {
-                "train_split": "train.csv",
-                "train_split_no_labels": "train.no_label.csv",
-                "test_split_with_labels": "test.csv",
-                "test_split_no_labels": "test.no_label.csv",
-                "dataset_knowledge": "dataset_description.md",
                 "label_to_scalar": dataset_label_to_scalar[dataset_name],
                 "class_col": class_col,
                 "numeric_label_col": numeric_label_col,

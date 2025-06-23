@@ -24,11 +24,11 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
         'snapshots': snapshot_dir / "inference.py",
     }
     stage_to_input = {
-        'dry_run': config.dataset_dir / dataset_metadata['train_split_no_labels'],
+        'dry_run': config.dataset_dir / "train.no_label.csv",
         'validation': run_dir / "validation.csv",
-        'test': config.dataset_dir / dataset_metadata['test_split_no_labels'],
+        'test': config.dataset_dir / "test.no_label.csv",
         'train': run_dir / "train.csv",
-        'stealth_test': config.dataset_dir / dataset_metadata['test_split_no_labels'],
+        'stealth_test': config.dataset_dir / "test.no_label.csv",
     }
     stage_to_output = {
         'dry_run': run_dir / "eval_predictions_dry_run.csv",
@@ -53,7 +53,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
         try:
             _ = get_metrics_and_serial_log(
                 results_file=stage_to_output[evaluation_stage],
-                test_file=config.dataset_dir / dataset_metadata['test_split_with_labels'],
+                test_file=config.dataset_dir / "test.csv",
                 output_file=None,
                 numeric_label_col=dataset_metadata['numeric_label_col'],
                 iteration=iteration,
@@ -75,7 +75,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
         try:
             test_metrics = get_metrics(
                 results_file=stage_to_output[evaluation_stage],
-                test_file=config.dataset_dir / dataset_metadata['test_split_with_labels'],
+                test_file=config.dataset_dir / "test.csv",
                 output_file=stage_to_metrics_file[evaluation_stage],
                 numeric_label_col=dataset_metadata['numeric_label_col'],
                 delete_preds=True,
@@ -94,7 +94,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
         try:
             _ = get_metrics(
                 results_file=stage_to_output[evaluation_stage],
-                test_file=config.dataset_dir / dataset_metadata['train_split'],
+                test_file=config.dataset_dir / "train.csv",
                 output_file=stage_to_metrics_file[evaluation_stage],
                 numeric_label_col=dataset_metadata['numeric_label_col'],
                 delete_preds=True,

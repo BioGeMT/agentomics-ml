@@ -59,11 +59,6 @@ def prepare_dataset(train, test, class_col, description, name,
     (out_dir / 'dataset_description.md').write_text(description_content)
     
     meta = {
-        'train_split': f"{output_dir}/{dataset_name}/train.csv",
-        'train_split_no_labels': f"{output_dir}/{dataset_name}/train.no_label.csv",
-        'test_split_with_labels': f"{output_dir}/{dataset_name}/test.csv",
-        'test_split_no_labels': f"{output_dir}/{dataset_name}/test.no_label.csv",
-        'dataset_knowledge': f"{output_dir}/{dataset_name}/dataset_description.md",
         'label_to_scalar': label_map,
         'class_col': label_col,
         'numeric_label_col': 'numeric_label'
