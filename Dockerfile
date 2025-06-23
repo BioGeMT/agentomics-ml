@@ -13,29 +13,11 @@ RUN mkdir /workspace
 # Create runs directory
 RUN mkdir /workspace/runs
 
-# Create models/files snapshots directory
-RUN mkdir /snapshots
-
 # Copy environment.yaml file
 COPY environment.yaml .
 
 # Create conda environment
 RUN conda env create -f environment.yaml
-
-# Copy datasets into the agent workspace
-COPY datasets/ /workspace/datasets/
-
-# Delete all files containing "test" in the name
-RUN find /workspace/datasets -type f -name "*test*" -delete
-
-# Delete all files containing "metadata" in the name
-RUN find /workspace/datasets -type f -name "*metadata*" -delete
-
-# Make all the files read only for everyone
-RUN chmod -R o-w /workspace/datasets
-
-# Make datasets folder accessible
-RUN chmod -R o+x /workspace/datasets
 
 # Set working directory
 WORKDIR /repository

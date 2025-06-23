@@ -71,6 +71,27 @@ def prepare_dataset(train, test, class_col, description, name,
     
     (out_dir / 'metadata.json').write_text(json.dumps(meta, indent=4))
 
+def setup_agent_datasets(dataset_dir, dataset_agent_dir):
+    dataset_agent_dir.mkdir(parents=True, exist_ok=True)
+
+    target_files = ['dataset_description.md', 'train.csv', 'train.no_label.csv']
+
+    for dataset in dataset_dir.iterdir():
+        if dataset.is_dir():
+            agent_subfolder = dataset_agent_dir / dataset.name
+            agent_subfolder.mkdir(exist_ok=True)
+
+            for file in target_files:
+                source_file = dataset / file
+
+                target_file = dataset_agent_dir / dataset.name / file
+
+                if source_file.exists():
+                    if target_file.exists() or target_file.is_symlink():
+                            target_file.unlink()
+
+                    target_file.symlink_to(source_file)
+
 if __name__ == '__main__':
     args = parse_args()
     prepare_dataset(

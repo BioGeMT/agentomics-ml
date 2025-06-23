@@ -23,6 +23,7 @@ from run_logging.logging_helpers import log_inference_stage_and_metrics, log_ser
 from run_logging.wandb import setup_logging
 from run_logging.log_files import log_files
 from utils.create_user import create_new_user_and_rundir
+from utils.import_dataset import setup_agent_datasets
 from utils.config import Config, make_config
 from utils.models import MODELS
 from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics
@@ -62,7 +63,7 @@ async def run_agent(agent: Agent, user_prompt: str, max_steps: int, message_hist
                 exception_trace=trace,
             )
 
-async def main(model, feedback_model, dataset, tags, best_metric, root_privileges, worspace_dir, dataset_dir):
+async def main(model, feedback_model, dataset, tags, best_metric, root_privileges, worspace_dir, dataset_dir, agent_dataset_dir):
     config = make_config(model=model, 
                          feedback_model=feedback_model, 
                          dataset=dataset, 
@@ -70,7 +71,8 @@ async def main(model, feedback_model, dataset, tags, best_metric, root_privilege
                          best_metric=best_metric,
                          root_privileges=root_privileges,
                          workspace_dir=worspace_dir,
-                         dataset_dir=dataset_dir)
+                         dataset_dir=dataset_dir,
+                         agent_dataset_dir=agent_dataset_dir)
 
     agent_id = create_new_user_and_rundir(config)
     config.agent_id = agent_id
@@ -319,10 +321,13 @@ async def run_experiments():
     ROOT_PRIVILEGES = True
     WORKSPACE_DIR = Path("/workspace/runs")
     DATASETS_DIR = Path("/repository/datasets")
+    AGENT_DATASETS_DIR = Path("/workspace/datasets")
+    setup_agent_datasets(DATASETS_DIR, AGENT_DATASETS_DIR)
+
     for dataset in DATASETS:
         for model in MODELS_TO_RUN:
             FEEDBACK_MODEL=model
-            await main(model, FEEDBACK_MODEL, dataset, TAGS, best_metrics[dataset], ROOT_PRIVILEGES, WORKSPACE_DIR, DATASETS_DIR)
+            await main(model, FEEDBACK_MODEL, dataset, TAGS, best_metrics[dataset], ROOT_PRIVILEGES, WORKSPACE_DIR, DATASETS_DIR, AGENT_DATASETS_DIR)
 
 
 if __name__ == "__main__":

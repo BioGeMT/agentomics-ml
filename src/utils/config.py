@@ -11,6 +11,7 @@ class Config:
     tags: List[str]
     best_metric: str #TODO rename into validation_metric
     dataset_dir: Path
+    agent_dataset_dir: Path
     workspace_dir: Path
     snapshot_dir: Path
     root_privileges: bool
@@ -38,7 +39,8 @@ def make_config(
     best_metric: str,
     root_privileges: bool,
     workspace_dir: Path,
-    dataset_dir: Path
+    dataset_dir: Path,
+    agent_dataset_dir: Path
 ) -> Config:
     return Config(
         model=model,
@@ -48,6 +50,7 @@ def make_config(
         best_metric=best_metric,
         root_privileges=root_privileges,
         workspace_dir=workspace_dir,
-        dataset_dir = dataset_dir / dataset,
+        dataset_dir=dataset_dir / dataset,
+        agent_dataset_dir=agent_dataset_dir / dataset,
         snapshot_dir= workspace_dir / "snapshots"
     )
