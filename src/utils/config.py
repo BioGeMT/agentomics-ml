@@ -28,7 +28,7 @@ class Config:
     bash_tool_timeout: int = 60 * 5
     write_python_tool_timeout: int = 60 * 1
     run_python_tool_timeout: int = 60 * 60 * 6 #This affects max training time
-    credit_budget: int = 30
+    credit_budget: int = 30 # Only applies when using a provisioning openrouter key
     max_tool_retries: int = 5
 
 def make_config(
