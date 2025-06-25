@@ -2,79 +2,120 @@
 
 Agentomics-ML is an autonomous agentic system for development of machine learning models for omics data.
 
-Given a classification dataset, the system automatically generates:
-- A trained model file, loaded by the inference script.
-- An inference script, allowing immediate predictions on new data.
+Given a classification dataset, the system automatically generates a trained model and an inference script, allowing immediate predictions on new data.
 
-Agents run inside an isolated docker environment for security.
-
-![example](https://s6.gifyu.com/images/bz7xh.gif)
-
-
-## Environment setup (Datasets + Docker + conda environment)
-
-- Download datasets locally so they can be mounted into the container
+Learn more in our [arXiv pre-print](https://arxiv.org/abs/2506.05542) 
+## Download
 ```
-conda create -n agentomics_temp_env --yes python && conda activate agentomics_temp_env && pip install genomic-benchmarks miRBench && python setup.py && conda deactivate && conda remove -n agentomics_temp_env --all --yes
+git clone https://github.com/BioGeMT/Agentomics-ML.git
+cd Agentomics-ML
 ```
 
+## Environment setup (Docker + conda environment)
+NOTE: We provide a docker container for running Agentomics-ML securely. If your machine doesn't allow you to create a new docker container, it's possible to run in an already existing docker container (e.g. colab). If you do, we advise to run in a disposable container and setup proper permissions (e.g. only mounting files read-only, not storing valuable files) since agents will be able to run arbitrary bash commands in this container (for example rm -rf /*).
+If you run in your own docker container, create environment by running `conda env create -f environment.yaml`, activate it, and proceed to the <b>Prepare your API keys</b> step.
 
-- Make sure you have Docker installed
+### Make sure you have Docker installed
 ```
 docker --version
 ```
   
-- Install plugin for rescricting the volume size
+<!-- - Install plugin for rescricting the volume size
 ```
 docker plugin install ashald/docker-volume-loopback
+``` -->
+
+### Create volume (this will store all agent-generated files)
+```
+docker volume create agentomics_volume
 ```
 
-- Create volume with maximum storage size
+<!-- - Create volume with maximum storage size
 ```
 docker volume create -d ashald/docker-volume-loopback:latest -o size=50G agents_volume
+``` -->
+
+### Build docker image
+```
+docker build -t agentomics_img .
 ```
 
-- Build docker image
-```
-docker build -t agents_img .
-```
-
-- Run the container
+### Run the container
+We recommend running the container with access to your GPUs, scroll down to the `GPU settings` section to see how to install the Nvidia container toolkit if you haven't yet.
 ```
 docker run -d \
-    --name agents_cont \
+    --name agentomics_cont \
     -v $(pwd):/repository:ro \
-    -v agents_volume:/workspace/runs \
-    agents_img
+    -v agentomics_volume:/workspace/runs \
+    --gpus all \ #add only if you use GPUs
+    --env NVIDIA_VISIBLE_DEVICES=all \ #add only if you use GPUs
+    agentomics_img
 ```
 
-- Attach console to the container
+This mounts the repository directory in read-only mode for security
+
+### Attach console to the container
 ```
-docker exec -it agents_cont bash
-python tests/tests.py -v
+docker exec -it agentomics_cont bash
 ```
-- Activate the default conda environment
+### Activate the default conda environment
 ```
 source activate agentomics-env
 ```
 
-Create a `.env` file containing your API keys. Example content: `OPENAI_API_KEY=my-api-key-1234`
+## Prepare your API keys
+Create a `.env` file in the Agentomics-ML folder containing your API keys. Example content: `OPENROUTER_API_KEY=my-api-key-1234`
 
-Run `python src/playground.py` to check everything works
+You will need to add an `OPENROUTER_API_KEY` (https://openrouter.ai)
 
-Go to `https://wandb.ai/ceitec-ai/BioAgents` to see agent logs.
+Optionally, to enable logging your runs you can add a `WANDB_API_KEY` (https://wandb.ai)
 
-## Guidelines and tips
+## Prepare your dataset
+### Add your files
+Create a folder for your dataset in the `datasets` folder and add your files. Follow the `datasets/sample_dataset` structure. For easiest use follow these rules:
+- Name your files exactly `train.csv`, `test.csv` and `dataset_description.md` 
+- In your csv files, provide a columns called `class` that will contain labels. Those can be both strings and integers. 
 
-Whatever packages you add, add them to the environment.yaml file
+Possible customizations:
+<!-- - providing `test.csv` is optional. Without it, test-set metrics will not be provided to the user at the end of the run. TODO implement -->
+- providing `dataset_description.md` is optional. Without it, the agent will be slightly limited but functional.
 
-If they are conda packages, you can just re-run
-`conda env export --from-history > environment.yaml`
 
-If they are pip packages, you have to manually add them.
+### Preprocess your files 
+To generate necessary metadata and files, run this command. Replace `sample_dataset` with the name of your dataset folder.
+```
+python src/utils/prepare_dataset.py --dataset-dir datasets/sample_dataset 
+```
 
-You can update your existing environment by running this command
-`conda env update --file environment.yaml --prune`
+
+This will create `prepared_datasets` folder as a sibling folder to Agentomics-ML.
+
+If you're running in your own Docker container with permission restrictions, you can customize the path of this folder by passing `--output-dir <your/path/prepared_datasets>`
+
+If your label column has a different name than `class`, or you want to specify your own label mapping for binary datasets, run `python src/utils/prepare_dataset.py --help` for more info. 
+
+
+## Run the agent
+Run this command, replace `sample_dataset` with the name of your dataset folder. This can take up to few hours.
+```
+python src/run_agent.py --dataset-name sample_dataset
+```
+
+This will output all files and metrics from the run into the `workspace` directory, which is created as a sibling directory to the Agemtomics-ML folder. See the `workspace/runs/snapshots` directory for best-run files.
+
+If you've changed the `--output-dir` in the `Preprocess your files`  step, you need to pass the same path to the `--prepared-datasets-dir` argument to this script. Run `--help` to see more customization options
+
+
+
+If you want to modify any agent-specific details like LLM teperature or timeouts, change them in the `src/utils/config.py` file
+
+If you've initialized a wandb api key, you can also see the whole agent trace and metric progression in your wandb project. You can also track the agent progress in your console and by inspecting files in its `workspace` directory.
+
+
+
+
+# Extras
+
 
 ## Proxy settings
 
@@ -162,3 +203,15 @@ If you need to use GPU acceleration with your container, you'll need to configur
    ```
 
    Note: If using a proxy, add the appropriate environment variables as shown in the proxy section.
+
+## Developer guidelines and tips
+
+Whatever packages you add, add them to the environment.yaml file
+
+If they are conda packages, you can just re-run
+`conda env export --from-history > environment.yaml`
+
+If they are pip packages, you have to manually add them.
+
+You can update your existing environment by running this command
+`conda env update --file environment.yaml --prune`
