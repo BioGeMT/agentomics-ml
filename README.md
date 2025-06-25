@@ -103,6 +103,8 @@ python src/run_agent.py --dataset-name sample_dataset
 
 This will output all files and metrics from the run into the `workspace` directory, which is created as a sibling directory to the Agemtomics-ML folder. See the `workspace/runs/snapshots` directory for best-run files.
 
+If you're using your own docker container and don't have sudo permissions, pass the `--no-root-privileges` flag to the `run_agent.py` script to enable the agent to run. This will cause the agent to have access to files outside of its own workspace (like other agent runs).
+
 If you've changed the `--output-dir` in the `Preprocess your files`  step, you need to pass the same path to the `--prepared-datasets-dir` argument to this script. Run `--help` to see more customization options
 
 
