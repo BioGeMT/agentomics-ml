@@ -54,8 +54,11 @@ def prepare_dataset(train, test, class_col, description, name,
         print("INFO: No dataset description provided.")
         (out_dir / 'dataset_description.md').write_text("No dataset description available.")
     
+    #  numpy types to native python types for JSON 
+    json_safe_label_map = {str(k): int(v) for k, v in label_map.items()}
+    
     meta = {
-        'label_to_scalar': label_map,
+        'label_to_scalar': json_safe_label_map,
         'class_col': label_col,
         'numeric_label_col': 'numeric_label'
     }
