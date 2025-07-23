@@ -26,6 +26,7 @@ from utils.dataset_utils import setup_agent_datasets
 from utils.config import Config, make_config
 from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics
 from utils.exceptions import IterationRunFailed
+from utils.printing_utils import pretty_print_node
 from steps.final_outcome import FinalOutcome, get_final_outcome_prompt
 from steps.data_split import DataSplit, get_data_split_prompt
 from steps.model_architecture import ModelArchitecture, get_model_architecture_prompt
@@ -33,6 +34,7 @@ from steps.data_representation import DataRepresentation, get_data_representatio
 from steps.data_exploration import DataExploration, get_data_exploration_prompt
 from steps.model_training import ModelTraining, get_model_training_prompt
 from feedback.feedback_agent import get_feedback, aggregate_feedback
+
 
 dotenv.load_dotenv()
 api_key = os.getenv("OPENROUTER_API_KEY")
@@ -55,14 +57,15 @@ def parse_args():
 async def run_agent(agent: Agent, user_prompt: str, max_steps: int, message_history: list | None, output_type: BaseModel = None):
     with capture_run_messages() as messages:
         try:
-            result = await agent.run(
+            async with agent.iter(
                 user_prompt=user_prompt,
                 usage_limits=UsageLimits(request_limit=max_steps),
                 output_type=output_type,
                 message_history=message_history,
-            )
-            console.log(result.new_messages())
-            return result.all_messages()
+            ) as agent_run:
+                async for node in agent_run:
+                    pretty_print_node(node)
+                return agent_run.result.all_messages()
         except Exception as e:
             trace = traceback.format_exc()
             print('Agent run failed', trace)
