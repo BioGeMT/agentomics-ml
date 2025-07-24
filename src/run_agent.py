@@ -24,9 +24,10 @@ from run_logging.log_files import log_files
 from utils.create_user import create_new_user_and_rundir
 from utils.dataset_utils import setup_agent_datasets
 from utils.config import Config, make_config
-from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics
+from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics, get_best_iteration
 from utils.exceptions import IterationRunFailed
 from utils.printing_utils import pretty_print_node
+from utils.report_logger import save_step_output, add_metrics_to_report, rename_best_iteration_report, add_summary_to_report, add_final_test_metrics_to_best_report
 from steps.final_outcome import FinalOutcome, get_final_outcome_prompt
 from steps.data_split import DataSplit, get_data_split_prompt
 from steps.model_architecture import ModelArchitecture, get_model_architecture_prompt
@@ -65,7 +66,8 @@ async def run_agent(agent: Agent, user_prompt: str, max_steps: int, message_hist
             ) as agent_run:
                 async for node in agent_run:
                     pretty_print_node(node)
-                return agent_run.result.all_messages()
+                return agent_run.result.all_messages(), agent_run.result.data
+
         except Exception as e:
             trace = traceback.format_exc()
             print('Agent run failed', trace)
@@ -239,6 +241,8 @@ async def main(model, feedback_model, dataset, tags, best_metric, root_privilege
                     )
             print(feedback)
         finally:
+            add_metrics_to_report(config, run_index)
+            await add_summary_to_report(config, run_index, openrouter_api_key)
             log_files(config, iteration=run_index)
         
     try:
@@ -247,58 +251,67 @@ async def main(model, feedback_model, dataset, tags, best_metric, root_privilege
         print('FINAL TEST EVAL FAIL', str(e))
         log_inference_stage_and_metrics(1)
     
+    best_iteration = get_best_iteration(config)
+    rename_best_iteration_report(config, best_iteration)
+    add_final_test_metrics_to_best_report(config, best_iteration)
     log_files(config)
     wandb.finish()
 
 
 async def run_architecture(agent: Agent, validation_agent: Agent, split_dataset_agent: Agent, training_agent: Agent, config: Config, base_prompt: str, iteration: int):
-    messages_data_exploration = await run_agent(
+    messages_data_exploration, data_exploration_output = await run_agent(
         agent=agent,
         user_prompt=base_prompt + get_data_exploration_prompt(),
         max_steps=config.max_steps,
         output_type=DataExploration, # this is overriding the output_type
         message_history=None,
     )
+    save_step_output(config, 'data_exploration', data_exploration_output, iteration)
 
     if iteration == 0:
-        messages_split = await run_agent(
+        messages_split, data_split = await run_agent(
             agent=split_dataset_agent,
             user_prompt=get_data_split_prompt(config),
             max_steps=config.max_steps,
             message_history=messages_data_exploration,
-        )
+            )
+        save_step_output(config, 'data_split', data_split, iteration)
     else:
         messages_split = messages_data_exploration
 
-    messages_representation = await run_agent(
+    messages_representation, data_representation = await run_agent(
         agent=agent,
         user_prompt=get_data_representation_prompt(),
         max_steps=config.max_steps,
         output_type=DataRepresentation, # this is overriding the output_type
         message_history=messages_split,
     )
+    save_step_output(config, 'data_representation', data_representation, iteration)
 
-    messages_architecture = await run_agent(
+    messages_architecture, model_architecture = await run_agent(
         agent=agent,
         user_prompt=get_model_architecture_prompt(),
         max_steps=config.max_steps,
         output_type=ModelArchitecture, # this is overriding the output_type
         message_history=messages_representation,
     )
+    save_step_output(config, 'model_architecture', model_architecture, iteration)
 
-    messages_training = await run_agent(
+    messages_training, model_training = await run_agent(
         agent=training_agent, 
         user_prompt=get_model_training_prompt(), 
         max_steps=config.max_steps,
         message_history=messages_architecture,
     )
+    save_step_output(config, 'model_training', model_training, iteration)
 
-    _messages = await run_agent(
+    _messages, final_outcome = await run_agent(
         agent=validation_agent, 
         user_prompt=get_final_outcome_prompt(), 
         max_steps=config.max_steps,
         message_history=messages_training,
     )
+    save_step_output(config, 'final_outcome', final_outcome, iteration)
 
     return _messages
 

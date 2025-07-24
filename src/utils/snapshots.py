@@ -111,6 +111,14 @@ def snapshot(config, iteration, delete_old_snapshot=True):
         print(f"Snapshotting iteration number")
         f.write(str(iteration))
 
+def get_best_iteration(config):
+    snapshot_dir = config.snapshot_dir / config.agent_id
+    iteration_file = snapshot_dir / "iteration_number.txt"
+    if iteration_file.exists():
+        with open(iteration_file, 'r') as f:
+            return int(f.read().strip())
+    return 0
+
 def replace_workspace_path_with_snapshots(workspace_dir, snapshot_dir, absolute_path_snapshot_file):
     # Replaces hard-coded paths in the files to point to the snapshot dir
     with open(absolute_path_snapshot_file, "r") as f:
