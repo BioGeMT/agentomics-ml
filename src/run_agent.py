@@ -87,6 +87,7 @@ async def main(model, feedback_model, dataset, tags, best_metric, root_privilege
                          agent_dataset_dir=agent_dataset_dir)
 
     agent_id = create_new_user_and_rundir(config)
+    print('Agent ID:', agent_id)
     config.agent_id = agent_id
 
     setup_logging(config, api_key=wandb_key)
