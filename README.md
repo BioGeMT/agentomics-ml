@@ -2,7 +2,7 @@
 
 Agentomics-ML is an autonomous agentic system for development of machine learning models for omics data.
 
-Given a classification dataset, the system automatically generates a trained model and an inference script, allowing immediate predictions on new data.
+Given a dataset, the system automatically generates a trained model and an inference script, allowing immediate predictions on new data.
 
 Learn more in our [arXiv pre-print](https://arxiv.org/abs/2506.05542) 
 ## Download
@@ -74,7 +74,7 @@ Optionally, to enable logging your runs you can add a `WANDB_API_KEY` (https://w
 ### Add your files
 Create a folder for your dataset in the `datasets` folder and add your files. Follow the `datasets/sample_dataset` structure. For easiest use follow these rules:
 - Name your files exactly `train.csv`, `test.csv` and `dataset_description.md` 
-- In your csv files, provide a columns called `class` that will contain labels. Those can be both strings and integers. 
+- In your csv files, provide a column called `target` that will contain labels. For classification tasks, these can be both strings and integers. For regression tasks, these should be numeric values.
 
 Possible customizations:
 <!-- - providing `test.csv` is optional. Without it, test-set metrics will not be provided to the user at the end of the run. TODO implement -->
@@ -82,9 +82,9 @@ Possible customizations:
 
 
 ### Preprocess your files 
-To generate necessary metadata and files, run this command. Replace `sample_dataset` with the name of your dataset folder.
+To generate necessary metadata and files, run this command. Replace `sample_dataset` with the name of your dataset folder. Specify the task type (possible values: `classification` and `regression`).
 ```
-python src/utils/prepare_dataset.py --dataset-dir datasets/sample_dataset 
+python src/utils/prepare_dataset.py --dataset-dir datasets/sample_dataset --task-type classification
 ```
 
 
