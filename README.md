@@ -1,3 +1,4 @@
+# Try our [COLAB DEMO](https://colab.research.google.com/drive/1tCJtTrimw9OviErtKi7FRo5Nx09u7vhv?usp=sharing)
 # Agentomics-ML
 
 Agentomics-ML is an autonomous agentic system for development of machine learning models for omics data.
