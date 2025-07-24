@@ -59,6 +59,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
                 iteration=iteration,
                 prefix=evaluation_stage,
                 delete_preds=True,
+                task_type=dataset_metadata['task_type']
             )
         except Exception as e:
             print('STEALTH TEST EVAL FAIL')
@@ -79,6 +80,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
                 output_file=stage_to_metrics_file[evaluation_stage],
                 numeric_label_col=dataset_metadata['numeric_label_col'],
                 delete_preds=True,
+                task_type=dataset_metadata['task_type']
             )
             log_inference_stage_and_metrics(2, metrics=test_metrics)
         except Exception as e:
@@ -98,6 +100,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
                 output_file=stage_to_metrics_file[evaluation_stage],
                 numeric_label_col=dataset_metadata['numeric_label_col'],
                 delete_preds=True,
+                task_type=dataset_metadata['task_type']
             )
         except Exception as e:
             message = f"FAIL DURING DRY RUN METRICS COMPUTATION. {traceback.format_exc()}"
@@ -119,6 +122,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
                 iteration=iteration,
                 prefix=evaluation_stage,
                 delete_preds=True,
+                task_type=dataset_metadata['task_type']
             )
         except Exception as e:
             log_serial_metrics(prefix="validation", metrics=None, iteration=iteration)
@@ -139,6 +143,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
                 iteration=iteration,
                 prefix=evaluation_stage,
                 delete_preds=True,
+                task_type=dataset_metadata['task_type']
             )
         except Exception as e:
             log_serial_metrics(prefix=evaluation_stage, metrics=None, iteration=iteration)
@@ -146,13 +151,14 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
             raise Exception(message) from e
         print('TRAIN EVAL SUCCESS')
 
-def get_metrics_and_serial_log(results_file, test_file, output_file, numeric_label_col, iteration, prefix, delete_preds):
+def get_metrics_and_serial_log(results_file, test_file, output_file, numeric_label_col, iteration, prefix, delete_preds, task_type):
     metrics = get_metrics(
         results_file=results_file,
         test_file=test_file,
         output_file=output_file,
         numeric_label_col=numeric_label_col,
         delete_preds=delete_preds,
+        task_type=task_type
     )
     log_serial_metrics(prefix=prefix, metrics=metrics, iteration=iteration)
     return metrics
