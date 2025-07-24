@@ -84,7 +84,7 @@ def snapshot(config, iteration, delete_old_snapshot=True):
     # iterate the snapshot dir for all files
     for element in run_dir.iterdir():
         # if hidden file and not in a folder, skip it
-        print(f"Element: {element}")
+        # print(f"Element: {element}")
         if re.match(r"^\..*", element.name) and element.is_file():
             continue
         if element.is_file() and element.name in files_to_skip:
@@ -93,14 +93,14 @@ def snapshot(config, iteration, delete_old_snapshot=True):
             continue
         if element.is_file():
             # hard copy the file into snapshot dir
-            print(f"Snapshotting {element.name}")
+            # print(f"Snapshotting {element.name}")
             absolute_dest = snapshot_dir / element.name
             shutil.copy2(element, absolute_dest)
             if element.name.endswith(".py"):
                 replace_workspace_path_with_snapshots(run_dir, snapshot_dir, absolute_path_snapshot_file=absolute_dest)
         if element.is_dir():
             # hard copy the folder into snapshot dir
-            print(f"Snapshotting {element.name}")
+            # print(f"Snapshotting {element.name}")
             shutil.copytree(element, snapshot_dir / element.name, dirs_exist_ok=True, symlinks=True)
             # if dir is not hidden, replace the workspace path in python files
             if(not re.match(r"^\..*", element.name)):
