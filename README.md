@@ -82,7 +82,8 @@ Possible customizations:
 
 
 ### Preprocess your files 
-To generate necessary metadata and files, run this command. Replace `sample_dataset` with the name of your dataset folder. Specify the task type (possible values: `classification` and `regression`).
+To generate necessary metadata and files, run this command. Replace `sample_dataset` with the name of your dataset folder. 
+Specify the task type (possible values: `classification` and `regression`).
 ```
 python src/utils/prepare_dataset.py --dataset-dir datasets/sample_dataset --task-type classification
 ```

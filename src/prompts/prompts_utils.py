@@ -40,7 +40,7 @@ def get_system_prompt(config):
 def get_user_prompt(config):
     # Custom instructions go here
     return f"""
-    Create the best possible classifier that will generalize to new unseen data.
+    Create the best possible machine learning model that will generalize to new unseen data.
     """
 
 def get_iteration_prompt(config, run_index, feedback):
