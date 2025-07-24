@@ -17,7 +17,7 @@ def get_system_prompt(config):
         dataset_knowledge = f.read()
     
     return f"""
-    Your goal is to create a robust classifier that will generalize to new unseen data. Use tools and follow instructions to reach this goal.
+    Your goal is to create a robust machine learning model that will generalize to new unseen data. Use tools and follow instructions to reach this goal.
     You are using a linux system.
     You have access to both CPU and GPU resources. Use them efficiently to train models.
     You are provided with your own already activated environment
