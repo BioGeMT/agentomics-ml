@@ -1,4 +1,4 @@
-gene,noncodingRNA,noncodingRNA_name,noncodingRNA_fam,feature,class,chr,start,end,strand,gene_cluster_ID,numeric_label
+gene,noncodingRNA,noncodingRNA_name,noncodingRNA_fam,feature,target,chr,start,end,strand,gene_cluster_ID,numeric_label
 AAAGCTGTGGAACGCTACCTCTTCCTTTGAGACCTTGTGGAGAAGGGTCT,TGAGGTAGTAGGTTGTATAGTT,hsa-let-7a-5p,let-7,exon,1,1,212100882,212100931,+,2391,1
 TCACCTCAGACTCTGTCCAACCTCTGCCTCAAGATCAATGTCAAACTTGG,TGAGGTAGTAGGTTGTGTGGTT,hsa-let-7a-5p,let-7,exon,1,1,35913919,35913968,+,3972,1
 TTATATGTGCCCAGTGTGGCAAAACCTTCAATAATACCTCCAACCTGAGA,TGAGGTAGTAGGTTGTATAGTT,hsa-let-7a-5p,let-7,exon,1,1,42851209,42851258,+,222,1
