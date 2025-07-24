@@ -1,10 +1,10 @@
 import argparse
 import sys
 import pandas as pd
-from sklearn.metrics import average_precision_score, roc_auc_score, accuracy_score
+from sklearn.metrics import average_precision_score, roc_auc_score, accuracy_score, mean_squared_error
 import os
 
-def get_metrics(results_file, test_file, output_file=None, numeric_label_col="numeric_label", 
+def get_metrics(results_file, test_file, task_type, output_file=None, numeric_label_col="numeric_label", 
                     pred_col="prediction", acc_threshold=0.5, delete_preds=False):
     
     results = pd.read_csv(results_file)
@@ -15,15 +15,21 @@ def get_metrics(results_file, test_file, output_file=None, numeric_label_col="nu
     merged[numeric_label_col] = merged[numeric_label_col].astype(float)
     merged[pred_col] = merged[pred_col].astype(float)
 
-    auprc = average_precision_score(merged[numeric_label_col], merged[pred_col])
-    auroc = roc_auc_score(merged[numeric_label_col], merged[pred_col])
-    accuracy = accuracy_score(merged[numeric_label_col], (merged[pred_col] >= acc_threshold).astype(int))
+    if task_type == "classification":
+        auprc = average_precision_score(merged[numeric_label_col], merged[pred_col])
+        auroc = roc_auc_score(merged[numeric_label_col], merged[pred_col])
+        accuracy = accuracy_score(merged[numeric_label_col], (merged[pred_col] >= acc_threshold).astype(int))
 
-    metrics = {
-        "AUPRC": auprc,
-        "AUROC": auroc,
-        "ACC": accuracy,
-    }
+        metrics = {
+            "AUPRC": auprc,
+            "AUROC": auroc,
+            "ACC": accuracy,
+        }
+    else:
+        mse = mean_squared_error(merged[numeric_label_col], merged[pred_col])
+        metrics = {
+            "MSE": mse,
+        }
 
     # Save the results to the output file if specified
     if output_file:
@@ -48,6 +54,7 @@ def main():
     parser.add_argument("--pred-col", default="prediction", help="Name of the prediction column in the results file.")
     parser.add_argument("--numeric-label-col", default="numeric_label", help="Name of the numeric label column in the file.")
     parser.add_argument("--delete-preds", action="store_true", help="Delete the predictions file after evaluation.")
+    parser.add_argument("--task-type", choices=["classification", "regression"], required=True, help="Type of task: classification or regression.")
 
     args = parser.parse_args()
     
@@ -59,6 +66,7 @@ def main():
             pred_col=args.pred_col,
             numeric_label_col=args.numeric_label_col,
             delete_preds=args.delete_preds,
+            task_type=args.task_type
         )
     except Exception as e:
         sys.exit(f"Error: {e}")
