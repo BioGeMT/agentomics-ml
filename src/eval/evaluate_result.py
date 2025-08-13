@@ -1,7 +1,8 @@
 import argparse
 import sys
 import pandas as pd
-from sklearn.metrics import average_precision_score, roc_auc_score, accuracy_score, mean_squared_error
+import numpy as np
+from sklearn.metrics import average_precision_score, roc_auc_score, accuracy_score, mean_squared_error, mean_absolute_error, r2_score
 import os
 
 def get_metrics(results_file, test_file, task_type, output_file=None, numeric_label_col="numeric_label", 
@@ -27,8 +28,15 @@ def get_metrics(results_file, test_file, task_type, output_file=None, numeric_la
         }
     else:
         mse = mean_squared_error(merged[numeric_label_col], merged[pred_col])
+        rmse = np.sqrt(mse)
+        mae = mean_absolute_error(merged[numeric_label_col], merged[pred_col])
+        r2 = r2_score(merged[numeric_label_col], merged[pred_col])
+        
         metrics = {
             "MSE": mse,
+            "RMSE": rmse,
+            "MAE": mae,
+            "R2": r2,
         }
 
     # Save the results to the output file if specified

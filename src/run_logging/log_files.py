@@ -1,8 +1,20 @@
 import wandb
 from pathlib import Path
 
+def _is_wandb_active():
+    """Check if wandb is initialized and active."""
+    try:
+        return wandb.run is not None
+    except:
+        return False
+
 def log_files(config, files=None, iteration=None):
     print(f"Logging files for agent {config.agent_id} with iteration {iteration}")
+    
+    if not _is_wandb_active():
+        print("   ⚠️  WandB not initialized - skipping file logging")
+        return
+    
     dir_path = config.workspace_dir / config.agent_id if iteration is not None else config.snapshot_dir / config.agent_id
     if(not files):
         files = get_python_files(dir_path)

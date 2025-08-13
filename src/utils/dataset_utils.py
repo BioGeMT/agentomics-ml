@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import shutil
 import pandas as pd
 
 def prepare_dataset(train, test, target_col, description, name, 
@@ -73,8 +74,13 @@ def prepare_dataset(train, test, target_col, description, name,
 def setup_agent_datasets(dataset_dir, dataset_agent_dir):
     dataset_agent_dir.mkdir(parents=True, exist_ok=True)
     """
-    Links non-sentitive (non-test) dataset files to a directory accessible by agents.
+    Copies non-sensitive (non-test) dataset files to a directory accessible by agents.
     """
+
+    # If the directories are the same, skip copying to avoid circular references
+    if dataset_dir.resolve() == dataset_agent_dir.resolve():
+        print(f"INFO: Dataset directory and agent directory are the same ({dataset_dir}), skipping file copying")
+        return
 
     target_files = ['dataset_description.md', 'train.csv', 'train.no_label.csv']
 
@@ -92,5 +98,6 @@ def setup_agent_datasets(dataset_dir, dataset_agent_dir):
                     if target_file.exists() or target_file.is_symlink():
                             target_file.unlink()
 
-                    target_file.symlink_to(source_file)
+                    # Copy the file instead of creating a symbolic link
+                    shutil.copy2(source_file, target_file)
 

@@ -3,18 +3,18 @@ channels:
   - conda-forge
 dependencies:
   - python==3.10
-  - pandas
-  - ipykernel
-  - ipywidgets
-  - jupyter
+  - pandas==2.3.1
   - pydantic-ai==0.2.4
   - pip
   - pip:
-    - smolagents
-    - smolagents[litellm]
-    - langchain
-    - langchain-community
-    - scikit-learn
-    - wandb
-    - hrid
-    - timeout-function-decorator
+    - weave==0.51.59
+    - smolagents==1.21.1
+    - smolagents[litellm]==1.21.1
+    - langchain==0.3.27
+    - langchain-community==0.3.27
+    - scikit-learn==1.7.1
+    - wandb==0.21.1
+    - hrid==0.3.0
+    - timeout-function-decorator==2.0.0
+    - rich==14.1.0
+    - requests==2.32.4

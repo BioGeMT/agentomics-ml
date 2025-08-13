@@ -1,26 +1,37 @@
-# Use a Python base image
-FROM continuumio/miniconda3:latest
+FROM condaforge/mambaforge:23.3.1-0
 
-# Install sudo for later creation of the agent user
-RUN apt-get update && apt-get install -y sudo
+# Set memory-efficient conda/mamba settings
+ENV CONDA_ALWAYS_YES=true
+ENV CONDA_PKGS_DIRS=/tmp/conda-pkgs
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Set the root password
-RUN echo 'root:1234' | chpasswd
+# Install bc calculator for floating point arithmetic
+RUN apt-get update && apt-get install -y bc && rm -rf /var/lib/apt/lists/*
 
-# Create a directory for writable operations
-RUN mkdir /workspace 
+# Create a non-root user "agent" and give it a home
+RUN useradd -m -s /bin/bash agent \
+    && echo 'agent:changeme' | chpasswd
 
-# Create runs directory
-RUN mkdir /workspace/runs
+# Prepare workspace
+RUN mkdir -p /workspace/runs
 
-# Copy environment.yaml file
+# Copy & create your conda environment using environment.yaml (with mamba for speed and memory efficiency)
 COPY environment.yaml .
+RUN mamba env create -f environment.yaml \
+    && mamba clean -afy \
+    && rm -rf /tmp/conda-pkgs
 
-# Create conda environment
-RUN conda env create -f environment.yaml
+# Initialize conda for bash and set up auto-activation
+RUN conda init bash \
+    && echo "conda activate agentomics-env" >> /home/agent/.bashrc \
+    && echo "conda activate agentomics-env" >> /root/.bashrc
 
-# Set working directory
+# Copy the shared entrypoint script
+COPY agentomics-entrypoint.py /usr/local/bin/agentomics-entrypoint.py
+RUN chmod +x /usr/local/bin/agentomics-entrypoint.py
+
 WORKDIR /repository
 
-# Run the logging server and keep the container running
-CMD ["/bin/bash", "-c", "source activate agentomics-env && tail -f /dev/null"]
+# Set the entrypoint to use our shared script
+# ENTRYPOINT ["python", "/usr/local/bin/agentomics-entrypoint.py"]

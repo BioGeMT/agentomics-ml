@@ -2,6 +2,13 @@ from smolagents.memory import SystemPromptStep, TaskStep, ActionStep, PlanningSt
 from smolagents.monitoring import LogLevel
 import wandb
 
+def _is_wandb_active():
+    """Check if wandb is initialized and active."""
+    try:
+        return wandb.run is not None
+    except:
+        return False
+
 def replay(agent):
         logger = agent.logger
         logger.console.log("#" * 25 + "Replaying the agent's steps:" + "#" * 25)
@@ -23,8 +30,12 @@ def replay(agent):
             logger.console.log(step.to_messages(summary_mode=False))
         
         total_tokens = agent.monitor.get_total_token_counts()
-        wandb.log({
-            "total_tokens": total_tokens['input'] + total_tokens['output'],
-            "input_tokens": total_tokens['input'],
-            "output_tokens": total_tokens['output']
-        })
+        
+        if _is_wandb_active():
+            wandb.log({
+                "total_tokens": total_tokens['input'] + total_tokens['output'],
+                "input_tokens": total_tokens['input'],
+                "output_tokens": total_tokens['output']
+            })
+        else:
+            print("⚠️  WandB not initialized - skipping token logging")
