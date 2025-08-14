@@ -23,6 +23,110 @@ from run_agent import run_experiment
 
 console = Console()
 
+# Available validation metrics
+CLASSIFICATION_METRICS = ["AUPRC", "AUROC", "ACC"]
+REGRESSION_METRICS = ["MSE", "RMSE", "MAE", "R2"]
+VALIDATION_METRICS = CLASSIFICATION_METRICS + REGRESSION_METRICS
+
+def display_metrics_table(task_type=None):
+    """Display available validation metrics in a rich table format."""
+    if task_type:
+        title = f"Available Validation Metrics for {task_type.title()} Tasks"
+        if task_type == "classification":
+            metrics_to_show = CLASSIFICATION_METRICS
+        elif task_type == "regression":
+            metrics_to_show = REGRESSION_METRICS
+        else:
+            metrics_to_show = VALIDATION_METRICS
+    else:
+        title = "Available Validation Metrics"
+        metrics_to_show = VALIDATION_METRICS
+    
+    table = Table(title=title, box=box.ROUNDED)
+    table.add_column("#", style="cyan", no_wrap=True)
+    table.add_column("Metric", style="green")
+    table.add_column("Description", style="blue")
+    table.add_column("Task Type", style="yellow")
+    
+    metric_descriptions = {
+        "AUPRC": "Area Under Precision-Recall Curve",
+        "AUROC": "Area Under ROC Curve", 
+        "ACC": "Accuracy",
+        "MSE": "Mean Squared Error",
+        "RMSE": "Root Mean Squared Error",
+        "MAE": "Mean Absolute Error",
+        "R2": "R-squared Coefficient"
+    }
+    
+    metric_task_types = {
+        "AUPRC": "Classification",
+        "AUROC": "Classification", 
+        "ACC": "Classification",
+        "MSE": "Regression",
+        "RMSE": "Regression",
+        "MAE": "Regression",
+        "R2": "Regression"
+    }
+    
+    for i, metric in enumerate(metrics_to_show, 1):
+        description = metric_descriptions.get(metric, "")
+        task_type_desc = metric_task_types.get(metric, "")
+        table.add_row(str(i), metric, description, task_type_desc)
+    
+    console.print(table)
+
+def get_default_metric_for_task(task_type):
+    """Get the default metric for a given task type."""
+    if task_type == "classification":
+        return "ACC"
+    elif task_type == "regression":
+        return "R2"
+    else:
+        return "ACC"  # Fallback default
+
+def interactive_metric_selection(task_type=None):
+    """Get validation metric through interactive selection (requires TTY)."""
+    if not require_tty_for_interaction("metric selection", "Specify --val-metric argument"):
+        # Return default metric for non-interactive environments
+        default_metric = get_default_metric_for_task(task_type)
+        console.print(f"Using default metric for {task_type or 'unknown'} task: {default_metric}", style="yellow")
+        return default_metric
+    
+    # Determine which metrics to show based on task type
+    if task_type == "classification":
+        metrics_to_show = CLASSIFICATION_METRICS
+        console.print("Classification dataset detected - showing classification metrics:", style="green")
+    elif task_type == "regression":
+        metrics_to_show = REGRESSION_METRICS
+        console.print("Regression dataset detected - showing regression metrics:", style="green")
+    else:
+        metrics_to_show = VALIDATION_METRICS
+        console.print("Task type not detected - showing all available metrics:", style="yellow")
+    
+    console.print("Select validation metric for model evaluation:", style="cyan")
+    display_metrics_table(task_type)
+    
+    # Get user selection with safe prompting
+    default_metric = get_default_metric_for_task(task_type)
+    default_index = metrics_to_show.index(default_metric) + 1 if default_metric in metrics_to_show else 1
+    
+    while True:
+        try:
+            choice = safe_prompt(f"Select metric number (1-{len(metrics_to_show)})", str(default_index), "metric selection")
+            if choice is None:
+                console.print(f"Metric selection cancelled, using default: {default_metric}", style="yellow")
+                return default_metric
+            
+            choice_num = int(choice)
+            if 1 <= choice_num <= len(metrics_to_show):
+                selected_metric = metrics_to_show[choice_num - 1]
+                console.print(f"Selected metric: {selected_metric}", style="green")
+                return selected_metric
+            else:
+                console.print(f"Please enter a number between 1 and {len(metrics_to_show)}", style="red")
+        except (ValueError, KeyboardInterrupt):
+            console.print("Invalid input. Please enter a number.", style="red")
+
 def check_tty_available():
     """Check if TTY is available for interactive operations."""
     return sys.stdin.isatty() and sys.stdout.isatty()
@@ -257,10 +361,11 @@ def main():
     parser = argparse.ArgumentParser(description="Agentomics-ML Entry Point")
     parser.add_argument("--list-models", action="store_true", help="List available models and exit")
     parser.add_argument("--list-datasets", action="store_true", help="List available datasets and exit")
+    parser.add_argument("--list-metrics", action="store_true", help="List available validation metrics and exit")
     parser.add_argument("--dataset", help="Dataset name")
     parser.add_argument("--model", help="Model name")
     parser.add_argument("--target-column", help="Target column for regression")
-    parser.add_argument("--val-metric", help="Validation metric")
+    parser.add_argument("--val-metric", help="Validation metric", choices=VALIDATION_METRICS)
     
     args, unknown_args = parser.parse_known_args()
     paths = get_environment_paths()
@@ -279,6 +384,11 @@ def main():
         console.print("Available Coding & Reasoning Models", style="cyan")
         models = require_models(limit=30)
         display_models(models)
+        return 0
+    
+    if args.list_metrics:
+        console.print("Available Validation Metrics", style="cyan")
+        display_metrics_table()  # Show all metrics when listing
         return 0
     
     # Get dataset and model from args or environment
@@ -371,6 +481,13 @@ def main():
             # Not a regression task, skip target column selection entirely
             console.print(f"{task_type.title()} dataset - no target column selection needed", style="green")
     
+    # Interactive metric selection if needed (TTY is guaranteed at this point)
+    # Note: Metric selection comes before model selection to help users choose the right model for their optimization goal
+    val_metric = args.val_metric or os.getenv("VAL_METRIC")
+    if not val_metric:
+        console.print("Selecting validation metric interactively...", style="cyan")
+        val_metric = interactive_metric_selection(task_type) # Pass task_type here
+    
     # Interactive model selection if needed (TTY is guaranteed at this point)
     if not model:
         console.print("Selecting model interactively...", style="cyan")
@@ -381,7 +498,7 @@ def main():
         dataset=dataset,
         model=model,
         target_column=target_column,
-        val_metric=args.val_metric
+        val_metric=val_metric
     )
 
 if __name__ == "__main__":

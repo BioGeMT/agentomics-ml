@@ -25,15 +25,17 @@ export OPENROUTER_API_KEY="your-key-here"
 ./run.sh                    # Docker mode (recommended)
 ./run.sh --local           # Local mode (faster for development)
 
-# 3. Follow prompts to select dataset and model
+# 3. Follow prompts to select dataset, metric, and model
 ```
 
 **Or skip prompts with direct execution:**
 
 ```bash
-./run.sh -d sample_dataset -m "openai/gpt-4.1"          # Classification
-./run.sh -d electricity_cost_dataset -m "openai/gpt-4.1" # Regression
-./run.sh --local -d sample_dataset -m "openai/gpt-4.1"   # Local mode
+./run.sh -d sample_dataset -m "openai/gpt-4.1"                    # Classification (auto-detects metric)
+./run.sh -d electricity_cost_dataset -m "openai/gpt-4.1"          # Regression (auto-detects metric)
+./run.sh -d sample_dataset -m "openai/gpt-4.1" --metric AUROC     # Classification with specific metric
+./run.sh -d electricity_cost_dataset -m "openai/gpt-4.1" --metric RMSE # Regression with specific metric
+./run.sh --local -d sample_dataset -m "openai/gpt-4.1"            # Local mode
 ```
 
 > **Prerequisites:**
@@ -46,6 +48,8 @@ export OPENROUTER_API_KEY="your-key-here"
 The agent automatically:
 
 - 🔍 **Analyzes your data** and detects task type (classification/regression)
+- 🎯 **Lets you choose validation metric** based on task type (interactive selection)
+- 🤖 **Lets you select AI model** from available options with pricing
 - 🏗️ **Designs ML architecture** optimized for your dataset
 - 🎯 **Trains and validates** models using best practices
 - 📊 **Evaluates performance** with appropriate metrics
@@ -108,6 +112,7 @@ cp .env.example .env
 ./run.sh --local --list-datasets # Show available datasets (Local)
 ./run.sh --list-models          # Show available AI models (Docker)
 ./run.sh --local --list-models   # Show available AI models (Local)
+./run.sh --list-metrics         # Show available validation metrics
 ./run.sh --prepare-only         # Just prepare datasets (Docker)
 ./run.sh --local --prepare-only  # Just prepare datasets (Local)
 ./run.sh --help                # Show all options
@@ -609,20 +614,23 @@ python agentomics-entrypoint.py
 # Local mode (for development and testing)
 python agentomics-entrypoint.py --local
 
-# Interactive dataset/model selection
+# Interactive dataset/model/metric selection
 python agentomics-entrypoint.py --local --list-datasets
 python agentomics-entrypoint.py --local --list-models
+python agentomics-entrypoint.py --local --list-metrics
 
 # Direct execution with parameters
 python agentomics-entrypoint.py --local --dataset sample_dataset --model "openai/gpt-4.1"
+python agentomics-entrypoint.py --local --dataset sample_dataset --model "openai/gpt-4.1" --val-metric AUROC
 ```
 
 **Features:**
 
 - **Dual Mode Support**: Works in both Docker containers and local conda environments
 - **Environment Setup**: Automatically activates conda environment in local mode
-- **Interactive Selection**: Beautiful Rich UI for dataset and model selection
+- **Interactive Selection**: Beautiful Rich UI for dataset, metric, and model selection
 - **Smart Path Detection**: Uses appropriate paths for Docker (`/repository/*`) vs Local (`./`) modes
+- **Task-Aware Metric Selection**: Automatically detects task type and shows relevant metrics
 - **Agent Launch**: Starts the main agent with selected parameters
 - **Error Recovery**: Graceful handling with fallback mechanisms
 - **Direct Function Calls**: Optimized imports with subprocess fallbacks
@@ -1186,16 +1194,19 @@ If you see "No cost data available in Weave traces":
 ./run.sh --list-models                      # Docker mode
 ./run.sh --local --list-models              # Local mode
 
-# 3. Set up conda environment (for local mode only)
+# 3. List available metrics
+./run.sh --list-metrics                     # Show all metrics with descriptions
+
+# 4. Set up conda environment (for local mode only)
 conda env create -f environment.yaml       # First time only
 conda activate agentomics-env              # Each session
 
-# 4. Run with interactive selection
+# 5. Run with interactive selection
 ./run.sh                                    # Docker mode
 ./run.sh --local                            # Local mode
 
-# 5. Follow prompts to select dataset and model
-# 6. The script handles the rest automatically
+# 6. Follow prompts to select dataset, metric, and model
+# 7. The script handles the rest automatically
 ```
 
 ### Dataset and Model Examples
@@ -1329,6 +1340,22 @@ Agentomics-ML supports both classification and regression tasks with appropriate
 - `RMSE` (Root Mean Squared Error) - Square root of MSE, same units as target
 - `MAE` (Mean Absolute Error) - Average absolute differences
 - `R2` (R-squared) - Explained variance ratio (0-1, higher is better)
+
+**Interactive Metric Selection:**
+
+The system intelligently detects your dataset's task type and shows only relevant metrics:
+
+- **Classification datasets**: Shows only ACC, AUPRC, AUROC
+- **Regression datasets**: Shows only MSE, RMSE, MAE, R2
+- **Auto-detection**: Automatically suggests the best default metric for your task type
+- **Smart defaults**: ACC for classification, R2 for regression
+
+**List Available Metrics:**
+
+```bash
+./run.sh --list-metrics         # Show all available metrics with descriptions
+python agentomics-entrypoint.py --list-metrics  # Direct Python execution
+```
 
 **Usage Examples:**
 
