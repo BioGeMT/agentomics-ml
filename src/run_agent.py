@@ -1,15 +1,9 @@
-import dotenv
-import os
 import asyncio
-import httpx
 import traceback
 import argparse
 from pathlib import Path
 
-from pydantic_ai.models.openai import OpenAIModel
-from pydantic_ai.providers.openai import OpenAIProvider
 import wandb
-from openai import AsyncOpenAI
 
 from run_logging.evaluate_log_run import run_inference_and_log
 from run_logging.logging_helpers import log_inference_stage_and_metrics, log_serial_metrics
@@ -48,35 +42,11 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric, root_
     config.print_summary()
     
     # initialize logging and LLMs
-    dotenv.load_dotenv()
-    openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
-    wandb_key = os.getenv("WANDB_API_KEY")
-    wandb_project_name = os.getenv("WANDB_PROJECT_NAME")
-    wandb_entity = os.getenv("WANDB_ENTITY")
-    proxy_url = os.getenv("HTTP_PROXY")
-    wandb_logged_in = setup_logging(config, api_key=wandb_key, wandb_project_name=wandb_project_name, wandb_entity=wandb_entity)
+    wandb_logged_in = setup_logging(config)
+    default_model = create_model(config.model_name, config)
+    feedback_model = create_model(config.feedback_model_name, config)
 
-    async_http_client = httpx.AsyncClient(
-        proxy=proxy_url if config.use_proxy else None,
-        timeout= config.llm_response_timeout,
-    )
-
-    client = AsyncOpenAI(
-        base_url='https://openrouter.ai/api/v1',
-        api_key=openrouter_api_key,
-        http_client=async_http_client,
-    )
-
-    model = OpenAIModel(
-        config.model_name,
-        provider=OpenAIProvider(openai_client=client)
-    )
-    feedback_model = OpenAIModel(
-        config.feedback_model_name,
-        provider=OpenAIProvider(openai_client=client)
-    )
-
-    await run_agentomics(config=config, default_model=model, feedback_model=feedback_model, openai_client=client)
+    await run_agentomics(config=config, default_model=default_model, feedback_model=feedback_model)
 
     if(wandb_logged_in):
         wandb.finish()
