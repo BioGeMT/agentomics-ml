@@ -19,6 +19,7 @@ from utils.metrics import get_classification_metrics_names, get_regression_metri
 from utils.report_logger import add_metrics_to_report, add_summary_to_report, add_final_test_metrics_to_best_report, rename_and_snapshot_best_iteration_report
 
 from feedback.feedback_agent import get_feedback, aggregate_feedback
+from utils.report_logger import add_metrics_to_report, add_summary_to_report
 
 async def main(model_name, feedback_model_name, dataset, tags, val_metric, root_privileges, workspace_dir, prepared_datasets_dir, agent_dataset_dir, iterations, user_prompt):
     # Initialize configuration 
@@ -131,7 +132,7 @@ async def run_agentomics(config: Config, default_model, feedback_model, openai_c
                 )
         finally:
             add_metrics_to_report(config, run_index)
-            await add_summary_to_report(config, run_index, openai_client)
+            await add_summary_to_report(config, run_index)
             log_files(config, iteration=run_index)
         
     print("\nRunning final test evaluation...")
