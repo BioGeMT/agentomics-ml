@@ -69,9 +69,9 @@ async def run_agentomics(config: Config, default_model, feedback_model, openai_c
                 extra_info=f"{e.message} {e.exception_trace}",
                 config=config, 
                 new_metrics=new_metrics, 
+                model=feedback_model,
                 best_metrics=best_metrics,
                 is_new_best=False,
-                model=feedback_model,
                 aggregated_feedback=aggregate_feedback(all_feedbacks),
                 iteration=run_index
             )
