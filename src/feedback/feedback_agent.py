@@ -14,6 +14,7 @@ def create_feedback_agent(model, config):
 @weave.op(call_display_name="Get Feedback")
 async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, model, iteration, aggregated_feedback=None, extra_info="") -> str:
     if iteration == config.iterations - 1 : return "Last iteration, no feedback needed"
+    
     agent = create_feedback_agent(model, config)
     
     if is_new_best:
