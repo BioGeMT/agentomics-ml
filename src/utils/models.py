@@ -15,6 +15,7 @@ class StrEnum(str, Enum):
         return self.value
 
 class MODELS(StrEnum):
+    # API LLMs
     GPT4o="gpt-4o-2024-08-06"
     GPT4o_mini="gpt-4o-mini-2024-07-18"
     OPENROUTER_GPT4o="openrouter/openai/gpt-4"
@@ -23,8 +24,13 @@ class MODELS(StrEnum):
     GPT4_1_mini="gpt-4.1-mini-2025-04-14"
     GEMINI_2_5="google/gemini-2.5-pro-preview-03-25"
     GPT_O4_mini="openai/o4-mini"
+
+    # Local LLMs
     OLLAMA_GPT_OSS_20B="ollama/gpt-oss:20b"
     OLLAMA_DEVSTRAL_24B="ollama/devstral:24b"
+    OLLAMA_QWEN_3_30B="ollama/qwen3:30b"
+    OLLAMA_QWEN_3_CODER_30B="ollama/qwen3-coder:30b"
+    OLLAMA_MISTRAL_3_2_24B="ollama/mistral-small3.2:24b"
 
     @staticmethod
     def is_local_model(model_name):
@@ -43,7 +49,7 @@ def create_model(model_name, config):
         ollama_model_name = MODELS.get_local_model_name(model_name)
         return OpenAIModel(
             model_name=ollama_model_name,
-            provider=OpenAIProvider(base_url='http://localhost:11434/v1'), #base ollama endpoint
+            provider=OpenAIProvider(base_url='http://host.docker.internal:11434/v1'), # Ollama via Docker bridge
         )
     else:
         proxy_url = os.getenv("HTTP_PROXY")
