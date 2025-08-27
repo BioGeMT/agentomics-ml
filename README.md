@@ -94,7 +94,7 @@ This will create `prepared_datasets` folder as a sibling folder to Agentomics-ML
 
 If you're running in your own Docker container with permission restrictions, you can customize the path of this folder by passing `--output-dir <your/path/prepared_datasets>`
 
-If your label column has a different name than `class`, or you want to specify your own label mapping for binary datasets, run `python src/utils/prepare_dataset.py --help` for more info. 
+If your label column has a different name than `target`, or you want to specify your own label mapping for binary datasets, run `python src/utils/prepare_dataset.py --help` for more info. 
 
 
 ## Run the agent
