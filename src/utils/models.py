@@ -49,7 +49,7 @@ def create_model(model_name, config):
         ollama_model_name = MODELS.get_local_model_name(model_name)
         return OpenAIModel(
             model_name=ollama_model_name,
-            provider=OpenAIProvider(base_url='http://host.docker.internal:11434/v1'), # Ollama via Docker bridge
+            provider=OpenAIProvider(base_url=os.getenv('OLLAMA_BASE_URL')),
         )
     else:
         proxy_url = os.getenv("HTTP_PROXY")
