@@ -1,7 +1,5 @@
 FROM continuumio/miniconda3:23.3.1-0
 
-# We don't actually need git for dataset preparation, skip system packages
-
 # Create preparation environment
 COPY environment.yaml .
 RUN conda env create -f environment.yaml \
@@ -14,4 +12,4 @@ RUN conda init bash
 WORKDIR /repository
 
 # Set the default command to run preparation directly
-CMD ["conda", "run", "-n", "agentomics-env", "python", "/repository/src/utils/dataset_preparation.py", "--batch"] 
+CMD ["conda", "run", "-n", "agentomics-env", "python", "/repository/src/utils/dataset_preparation.py", "--prepare-all"] 

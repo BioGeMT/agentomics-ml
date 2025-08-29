@@ -3,12 +3,11 @@ import os
 import sys
 import csv
 from pathlib import Path
-from typing import List, Dict, Optional
-import pandas as pd
+from typing import List, Dict
 from rich.console import Console
 from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from .dataset_utils import prepare_dataset
+from dataset_utils import prepare_dataset
 
 console = Console()
 
@@ -30,49 +29,6 @@ def count_csv_rows(csv_file: str) -> int:
     except (FileNotFoundError, IOError, UnicodeDecodeError):
         return 0
 
-def auto_detect_task_type_and_target(dataset_dir: Path, quiet: bool = False) -> tuple:
-    """Auto-detect target column and task type from the dataset."""
-    train_path = dataset_dir / 'train.csv'
-    if not train_path.exists():
-        raise FileNotFoundError(f"train.csv not found in {dataset_dir}")
-    
-    df = pd.read_csv(train_path)
-    
-    # Auto-detect target column
-    possible_target_cols = ['class', 'target', 'label', 'y']
-    target_col = None
-    for col in possible_target_cols:
-        if col in df.columns:
-            target_col = col
-            break
-    
-    if target_col is None:
-        # Use the last column as target
-        target_col = df.columns[-1]
-        if not quiet:
-            console.print(f'[dim]INFO: Using last column as target: {target_col}[/dim]')
-    else:
-        if not quiet:
-            console.print(f'[dim]INFO: Auto-detected target column: {target_col}[/dim]')
-    
-    # Auto-detect task type based on target column
-    target_values = df[target_col].dropna()
-    unique_values = target_values.nunique()
-    is_numeric = pd.api.types.is_numeric_dtype(target_values)
-    
-    if is_numeric and unique_values > 10:
-        task_type = 'regression'
-        if not quiet:
-            console.print(f'[dim]INFO: Auto-detected regression task (numeric target with {unique_values} unique values)[/dim]')
-    else:
-        task_type = 'classification' 
-        if not quiet:
-            console.print(f'[dim]INFO: Auto-detected classification task ({unique_values} unique values)[/dim]')
-    
-    return target_col, task_type
-
-
-
 def check_dataset_prepared(dataset_dir: str, prepared_datasets_dir: str) -> bool:
     """Check if a dataset is already prepared."""
     dataset_name = Path(dataset_dir).name
@@ -81,7 +37,47 @@ def check_dataset_prepared(dataset_dir: str, prepared_datasets_dir: str) -> bool
     train_file = prepared_path / "train.csv"
     return metadata_file.exists() and train_file.exists()
 
-def get_dataset_info(datasets_dir: str, prepared_datasets_dir: str) -> List[Dict]:
+def get_single_dataset_info(dataset_dir: str, prepared_datasets_dir: str) -> Dict:
+    if not dataset_dir.is_dir():
+        return None
+        
+    dataset_name = dataset_dir.name
+    train_file = dataset_dir / "train.csv"
+    test_file = dataset_dir / "test.csv"
+    
+    # Count rows in raw files
+    train_rows = count_csv_rows(str(train_file)) if train_file.exists() else 0
+    test_rows = count_csv_rows(str(test_file)) if test_file.exists() else 0
+    
+    # Check if already prepared
+    is_prepared = check_dataset_prepared(str(dataset_dir), prepared_datasets_dir)
+    
+    # Check if can be prepared
+    can_prepare = train_file.exists() and train_rows > 0
+    
+    if not train_file.exists():
+        status = "Missing train.csv"
+    elif train_rows == 0:
+        status = "Empty train.csv"
+    elif is_prepared:
+        status = "Already prepared"
+    elif can_prepare:
+        status = "Ready to prepare"
+    else:
+        status = "Cannot prepare"
+        
+    return {
+        "name": dataset_name,
+        "path": dataset_dir,
+        "train_rows": train_rows,
+        "test_rows": test_rows,
+        "status": status,
+        "can_prepare": can_prepare,
+        "should_prepare": can_prepare and not is_prepared,
+        "is_prepared": is_prepared
+    }
+
+def get_all_datasets_info(datasets_dir: str, prepared_datasets_dir: str) -> List[Dict]:
     """
     Collect information about all datasets for preparation.
     
@@ -97,50 +93,16 @@ def get_dataset_info(datasets_dir: str, prepared_datasets_dir: str) -> List[Dict
     if not datasets_path.exists():
         return []
     
-    dataset_info = []
+    datasets_info = []
     
     for dataset_dir in datasets_path.iterdir():
-        if not dataset_dir.is_dir():
-            continue
-            
-        dataset_name = dataset_dir.name
-        train_file = dataset_dir / "train.csv"
-        test_file = dataset_dir / "test.csv"
+        dataset_info = get_single_dataset_info(dataset_dir, prepared_datasets_dir)
+        if(dataset_info):
+            datasets_info.append(dataset_info)
         
-        # Count rows in raw files
-        train_rows = count_csv_rows(str(train_file)) if train_file.exists() else 0
-        test_rows = count_csv_rows(str(test_file)) if test_file.exists() else 0
-        
-        # Check if already prepared
-        is_prepared = check_dataset_prepared(str(dataset_dir), prepared_datasets_dir)
-        
-        # Check if can be prepared
-        can_prepare = train_file.exists() and train_rows > 0
-        
-        if not train_file.exists():
-            status = "Missing train.csv"
-        elif train_rows == 0:
-            status = "Empty train.csv"
-        elif is_prepared:
-            status = "Already prepared"
-        elif can_prepare:
-            status = "Ready to prepare"
-        else:
-            status = "Cannot prepare"
-            
-        dataset_info.append({
-            "name": dataset_name,
-            "path": dataset_dir,
-            "train_rows": train_rows,
-            "test_rows": test_rows,
-            "status": status,
-            "can_prepare": can_prepare and not is_prepared,
-            "is_prepared": is_prepared
-        })
-    
     # Sort by name for consistent ordering
-    dataset_info.sort(key=lambda x: x["name"])
-    return dataset_info
+    datasets_info.sort(key=lambda x: x["name"])
+    return datasets_info
 
 def display_preparation_table(datasets: List[Dict], title: str = "Dataset Preparation Status") -> None:
     """
@@ -208,85 +170,23 @@ def display_preparation_table(datasets: List[Dict], title: str = "Dataset Prepar
     
     console.print(table)
 
-def prepare_single_dataset(dataset_info: Dict, prepared_datasets_dir: str, 
-                          target_col: Optional[str] = None, task_type: Optional[str] = None,
-                          positive_class: Optional[str] = None, negative_class: Optional[str] = None) -> bool:
+def prepare_all_datasets(datasets_dir: str, prepared_datasets_dir: str) -> None:
     """
-    Prepare a single dataset using the dataset_utils.prepare_dataset function directly.
-    
-    Args:
-        dataset_info: Dataset information dictionary
-        prepared_datasets_dir: Path to prepared datasets directory
-        target_col: Optional target column override
-        task_type: Optional task type override
-        positive_class: Optional positive class override
-        negative_class: Optional negative class override
-        
-    Returns:
-        True if preparation was successful
-    """
-    try:
-        dataset_path = dataset_info["path"]
-        
-        # Auto-detect target column and task type (fully automatic in batch mode)
-        if target_col is None or task_type is None:
-            detected_target_col, detected_task_type = auto_detect_task_type_and_target(dataset_path, quiet=True)
-            
-            # In batch mode, always use auto-detected values (no interactive selection)
-            final_target_col = target_col or detected_target_col
-            final_task_type = task_type or detected_task_type
-            
-            console.print(f"[dim]Auto-detected for {dataset_path.name}: target='{final_target_col}', task='{final_task_type}'[/dim]")
-        else:
-            final_target_col = target_col
-            final_task_type = task_type
-        
-        # Prepare file paths
-        train_file = dataset_path / 'train.csv'
-        test_file = dataset_path / 'test.csv' if (dataset_path / 'test.csv').exists() else None
-        description_file = dataset_path / 'dataset_description.md' if (dataset_path / 'dataset_description.md').exists() else None
-        dataset_name = dataset_path.name
-        
-        # Call the actual preparation function
-        prepare_dataset(
-            train=train_file,
-            test=test_file,
-            target_col=final_target_col,
-            description=description_file,
-            name=dataset_name,
-            positive_class=positive_class,
-            negative_class=negative_class,
-            task_type=final_task_type,
-            output_dir=Path(prepared_datasets_dir)
-        )
-        return True
-        
-    except Exception as e:
-        console.print(f"[red]Error preparing {dataset_info['name']}: {e}[/red]")
-        return False
-
-def batch_prepare_datasets(datasets_dir: str, prepared_datasets_dir: str, 
-                          task_type: Optional[str] = None) -> None:
-    """
-    Batch prepare multiple datasets with Rich progress display.
+    Prepare multiple datasets with Rich progress display.
     
     Args:
         datasets_dir: Path to raw datasets directory
         prepared_datasets_dir: Path to prepared datasets directory
-        task_type: Optional task type override
     """
     console.print("[bold blue]Agentomics-ML Dataset Preparation[/bold blue]")
     console.print("=" * 50)
     console.print("")
     
-    # Ensure prepared datasets directory exists
-    Path(prepared_datasets_dir).mkdir(parents=True, exist_ok=True)
-    
     # Get initial dataset information
     console.print(f"[dim]Scanning datasets in {datasets_dir}...[/dim]")
-    datasets = get_dataset_info(datasets_dir, prepared_datasets_dir)
+    datasets_info = get_all_datasets_info(datasets_dir, prepared_datasets_dir)
     
-    if not datasets:
+    if not datasets_info:
         console.print(f"[red]No datasets found in {datasets_dir}[/red]")
         console.print("")
         console.print("[blue]To add datasets:[/blue]")
@@ -298,13 +198,14 @@ def batch_prepare_datasets(datasets_dir: str, prepared_datasets_dir: str,
     console.print("")
     
     # Show initial status
-    display_preparation_table(datasets, "Datasets Found - Preparation Status")
+    #TODO make sure table shows classification/regression that was detected
+    display_preparation_table(datasets_info, "Datasets Found - Preparation Status")
     console.print("")
     
     # Count datasets needing preparation
-    need_preparation = [d for d in datasets if d["can_prepare"]]
-    already_prepared = [d for d in datasets if d["is_prepared"]]
-    cannot_prepare = [d for d in datasets if not d["can_prepare"] and not d["is_prepared"]]
+    need_preparation = [d for d in datasets_info if d["should_prepare"]]
+    already_prepared = [d for d in datasets_info if d["is_prepared"]]
+    cannot_prepare = [d for d in datasets_info if not d["can_prepare"] and not d["is_prepared"]]
     
     if not need_preparation:
         if already_prepared:
@@ -314,7 +215,7 @@ def batch_prepare_datasets(datasets_dir: str, prepared_datasets_dir: str,
         
         console.print("")
         console.print("[blue]Summary:[/blue]")
-        console.print(f"  Total datasets: {len(datasets)}")
+        console.print(f"  Total datasets: {len(datasets_info)}")
         console.print(f"  Already prepared: [green]{len(already_prepared)}[/green]")
         console.print(f"  Cannot prepare: [red]{len(cannot_prepare)}[/red]")
         
@@ -337,32 +238,45 @@ def batch_prepare_datasets(datasets_dir: str, prepared_datasets_dir: str,
         console=console
     ) as progress:
         
-        for dataset in need_preparation:
-            task = progress.add_task(f"Preparing {dataset['name']}...", total=None)
-            
-            success = prepare_single_dataset(dataset, prepared_datasets_dir, task_type=task_type)
+        for dataset_info in need_preparation:
+            task = progress.add_task(f"Preparing {dataset_info['name']}...", total=None)
+            try:
+                console.print(f"[yellow]Preparing dataset '{dataset_info['name']}'[/yellow]")
+                prepare_dataset(
+                    dataset_dir=dataset_info['path'],
+                    target_col=None, #auto-detected inside
+                    positive_class=None, #auto-detected inside
+                    negative_class=None, #auto-detected inside
+                    task_type=None, #auto-detected inside
+                    output_dir=prepared_datasets_dir,
+                )
+                success = True
+            except Exception as e:
+                console.print(f"[red]Error preparing dataset '{dataset_info['name']}': {e}[/red]")
+                success = False
             
             if success:
-                progress.update(task, description=f"{dataset['name']} prepared successfully")
+                progress.update(task, description=f"{dataset_info['name']} prepared successfully")
                 prepared_now += 1
-                dataset["status"] = "Prepared"
-                dataset["is_prepared"] = True
-                dataset["can_prepare"] = False
+                dataset_info["status"] = "Prepared"
+                dataset_info["is_prepared"] = True
+                dataset_info["can_prepare"] = False
+                dataset_info["should_prepare"] = False
             else:
-                progress.update(task, description=f"{dataset['name']} preparation failed")
+                progress.update(task, description=f"{dataset_info['name']} preparation failed")
                 failed_now += 1
-                dataset["status"] = "Failed"
+                dataset_info["status"] = "Failed"
     
     console.print("")
     
     # Show final status
     if prepared_now > 0:
-        display_preparation_table(datasets, "Final Preparation Results")
+        display_preparation_table(datasets_info, "Final Preparation Results")
         console.print("")
     
     # Summary
     console.print("[blue]Preparation Summary:[/blue]")
-    console.print(f"  Total datasets: {len(datasets)}")
+    console.print(f"  Total datasets: {len(datasets_info)}")
     console.print(f"  Already prepared: [green]{len(already_prepared)}[/green]")
     console.print(f"  Prepared now: [green]{prepared_now}[/green]")
     console.print(f"  Failed: [red]{failed_now}[/red]")
@@ -376,7 +290,7 @@ def batch_prepare_datasets(datasets_dir: str, prepared_datasets_dir: str,
     if len(already_prepared) + prepared_now > 0:
         console.print("")
         console.print("[green]Next steps:[/green]")
-        console.print("   1. Run the main agent: [cyan]./run.sh[/cyan]")
+        console.print("   1. Run the agent: [cyan]./run.sh[/cyan]")
         console.print("   2. Select your prepared dataset")
         console.print("   3. Choose your AI model")
         console.print("   4. Let the agent work its magic!")
@@ -388,64 +302,58 @@ def batch_prepare_datasets(datasets_dir: str, prepared_datasets_dir: str,
 def parse_args():
     parser = argparse.ArgumentParser(description="Dataset preparation with auto-detection")
     parser.add_argument('--dataset-dir', type=Path, help='Single dataset directory to prepare')
-    parser.add_argument('--batch', action='store_true', help='Batch mode: prepare all datasets in datasets-dir')
+    parser.add_argument('--prepare-all', action='store_true', help='Prepare all datasets in datasets-dir and auto-detect their targets and tasks')
+    parser.add_argument('--docker-mode', action='store_true', help='Whether this is running from the Dockerfile.prepare container')
     parser.add_argument('--target-col', type=str, default=None, help='Target column name (auto-detected if not provided)')
     parser.add_argument('--task-type', choices=['classification', 'regression'], default=None, help='Task type (auto-detected if not provided)')
+    parser.add_argument('--positive-class', help='Value used in the label column for a positive class (affects some binary classification metrics). If not provided, numeric labels are assigned based on the label appearance order in the train csv file.', default=None)
+    parser.add_argument('--negative-class', help='Value used in the label column for a negative class (affects some binary classification metrics). If not provided, numeric labels are assigned based on the label appearance order in the train csv file.', default=None)
     return parser.parse_args()
 
 def main():
-    global console
     args = parse_args()
     
-    # Auto-detect environment (Docker vs Local)
-    if os.path.exists("/repository"):
+    if args.docker_mode:
         # Docker environment
-        default_datasets_dir = "/repository/datasets"
-        default_prepared_dir = "/repository/prepared_datasets"
+        datasets_dir = "/repository/datasets"
+        prepared_datasets_dir = "/repository/prepared_datasets"
     else:
         # Local environment
-        default_datasets_dir = "./datasets"
-        default_prepared_dir = "./prepared_datasets"
+        datasets_dir = "./datasets"
+        prepared_datasets_dir = "./prepared_datasets"
+
+    # If environment variables are set, override defaults
+    datasets_dir = os.environ.get("DATASETS_DIR", datasets_dir)
+    prepared_datasets_dir = os.environ.get("PREPARED_DATASETS_DIR", prepared_datasets_dir)
+    Path(prepared_datasets_dir).mkdir(parents=True, exist_ok=True)
+
     
-    if args.batch or not args.dataset_dir:
-        # Batch mode - prepare all datasets
-        datasets_dir = os.environ.get("DATASETS_DIR", default_datasets_dir)
-        prepared_datasets_dir = os.environ.get("PREPARED_DATASETS_DIR", default_prepared_dir)
-        task_type = args.task_type or os.environ.get("TASK_TYPE")
-        
-        batch_prepare_datasets(datasets_dir, prepared_datasets_dir, task_type)
+    if args.prepare_all or not args.dataset_dir:
+        # Prepare all datasets
+        prepare_all_datasets(datasets_dir, prepared_datasets_dir)
         
     else:
         # Single dataset mode
-        dataset_dir = args.dataset_dir
-        prepared_datasets_dir = Path(os.environ.get("PREPARED_DATASETS_DIR", default_prepared_dir))
-        
-        # Auto-detect target column and task type
-        if args.target_col is None or args.task_type is None:
-            target_col, task_type = auto_detect_task_type_and_target(dataset_dir)
-            console.print(f'[dim]Auto-detected: target="{target_col}", task="{task_type}"[/dim]')
-        else:
-            target_col = args.target_col
-            task_type = args.task_type
-        
-        # Prepare single dataset
-        console.print(f'[blue]Preparing dataset "{dataset_dir.name}" for {task_type} task with target column "{target_col}"[/blue]')
-        
-        train_file = dataset_dir / 'train.csv'
-        test_file = dataset_dir / 'test.csv' if (dataset_dir / 'test.csv').exists() else None
-        description_file = dataset_dir / 'dataset_description.md' if (dataset_dir / 'dataset_description.md').exists() else None
-        
-        prepare_dataset(
-            train=train_file,
-            test=test_file,
-            target_col=target_col,
-            description=description_file,
-            name=dataset_dir.name,
-            task_type=task_type,
-            output_dir=prepared_datasets_dir
-        )
-        
-        console.print(f"[green]Dataset '{dataset_dir.name}' prepared successfully![/green]")
 
+        #TODO should we assume that for single-dataset run, we always generate/regenerate even if already prepared?
+        # dataset_info = get_single_dataset_info(args.dataset_dir, prepared_datasets_dir)
+        # if(not dataset_info['should_prepare']):
+        #     console.print(f"[red]Skipping dataset '{args.dataset_dir.name}'. Status: {dataset_info['status']}[/red]")
+        #     return
+
+        console.print(f'[blue]Preparing dataset "{args.dataset_dir.name}"')# for {task_type} task with target column "{target_col}"[/blue]')
+        try:
+            prepare_dataset(
+                dataset_dir=args.dataset_dir,
+                target_col=args.target_col,
+                positive_class=args.positive_class, #is auto-detected inside - do the same for target/task ?
+                negative_class=args.negative_class,
+                task_type=args.task_type,
+                output_dir=prepared_datasets_dir,
+            )
+            console.print(f"[green]Dataset '{args.dataset_dir.name}' prepared successfully![/green]")
+        except Exception as e:
+            console.print(f"[red]Dataset '{args.dataset_dir.name}' preparation failed! {e}[/red]")
+        
 if __name__ == "__main__":
     main()
