@@ -9,4 +9,4 @@ Utilisation Rate (%): Indicates the operational intensity and capacity usage, di
 Air Quality Index (AQI): Can influence energy consumption through HVAC system usage for maintaining indoor air quality.
 Issue Resolution Time (hours): A proxy for operational efficiency; longer resolution times may correlate with energy waste.
 Resident Count (number of people): A significant factor for residential and mixed-use properties, directly affecting electricity usage.
-Electricity Cost (USD/month): The target variable, representing the monthly electricity expenditure, influenced by all other parameters.
+Target (USD/month): The target variable, representing the monthly electricity expenditure, influenced by all other parameters.

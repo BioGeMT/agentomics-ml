@@ -1,4 +1,4 @@
-site_area,structure_type,water_consumption,recycling_rate,utilisation_rate,air_quality_index,issue_resolution_time,resident_count,electricity_cost
+site_area,structure_type,water_consumption,recycling_rate,utilisation_rate,air_quality_index,issue_resolution_time,resident_count,target
 4903,Mixed-use,8208.0,56,65,68,36,189,3210.0
 2155,Mixed-use,1628.0,89,44,49,24,111,1312.0
 3001,Mixed-use,2381.0,64,73,8,43,263,2410.0
