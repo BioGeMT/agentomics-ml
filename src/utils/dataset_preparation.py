@@ -303,7 +303,6 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Dataset preparation with auto-detection")
     parser.add_argument('--dataset-dir', type=Path, help='Single dataset directory to prepare')
     parser.add_argument('--prepare-all', action='store_true', help='Prepare all datasets in datasets-dir and auto-detect their targets and tasks')
-    parser.add_argument('--docker-mode', action='store_true', help='Whether this is running from the Dockerfile.prepare container')
     parser.add_argument('--target-col', type=str, default=None, help='Target column name (auto-detected if not provided)')
     parser.add_argument('--task-type', choices=['classification', 'regression'], default=None, help='Task type (auto-detected if not provided)')
     parser.add_argument('--positive-class', help='Value used in the label column for a positive class (affects some binary classification metrics). If not provided, numeric labels are assigned based on the label appearance order in the train csv file.', default=None)
@@ -313,34 +312,15 @@ def parse_args():
 def main():
     args = parse_args()
     
-    if args.docker_mode:
-        # Docker environment
-        datasets_dir = "/repository/datasets"
-        prepared_datasets_dir = "/repository/prepared_datasets"
-    else:
-        # Local environment
-        datasets_dir = "./datasets"
-        prepared_datasets_dir = "./prepared_datasets"
-
     # If environment variables are set, override defaults
-    datasets_dir = os.environ.get("DATASETS_DIR", datasets_dir)
-    prepared_datasets_dir = os.environ.get("PREPARED_DATASETS_DIR", prepared_datasets_dir)
+    datasets_dir = os.environ.get("DATASETS_DIR", default="./datasets")
+    prepared_datasets_dir = os.environ.get("PREPARED_DATASETS_DIR", default="./prepared_datasets")
+    
     Path(prepared_datasets_dir).mkdir(parents=True, exist_ok=True)
 
-    
     if args.prepare_all or not args.dataset_dir:
-        # Prepare all datasets
         prepare_all_datasets(datasets_dir, prepared_datasets_dir)
-        
     else:
-        # Single dataset mode
-
-        #TODO should we assume that for single-dataset run, we always generate/regenerate even if already prepared?
-        # dataset_info = get_single_dataset_info(args.dataset_dir, prepared_datasets_dir)
-        # if(not dataset_info['should_prepare']):
-        #     console.print(f"[red]Skipping dataset '{args.dataset_dir.name}'. Status: {dataset_info['status']}[/red]")
-        #     return
-
         console.print(f'[blue]Preparing dataset "{args.dataset_dir.name}"')# for {task_type} task with target column "{target_col}"[/blue]')
         try:
             prepare_dataset(
