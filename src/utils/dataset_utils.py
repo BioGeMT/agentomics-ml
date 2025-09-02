@@ -1,8 +1,97 @@
 #!/usr/bin/env python3
+import csv
 import json
 import shutil
 import pandas as pd
 from pathlib import Path
+from typing import List, Dict
+
+def count_csv_rows(csv_file: str) -> int:
+    """
+    Count rows in a CSV file (excluding header).
+    """
+    try:
+        with open(csv_file, 'r', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            row_count = sum(1 for _ in reader)
+            return max(0, row_count - 1)  # Subtract 1 for header
+    except (FileNotFoundError, IOError, UnicodeDecodeError):
+        return 0
+    
+def get_single_dataset_info(dataset_dir: str, prepared_datasets_dir: str) -> Dict:
+    if not dataset_dir.is_dir():
+        return None
+        
+    dataset_name = dataset_dir.name
+    train_file = dataset_dir / "train.csv"
+    test_file = dataset_dir / "test.csv"
+    
+    # Count rows in raw files
+    train_rows = count_csv_rows(str(train_file)) if train_file.exists() else 0
+    test_rows = count_csv_rows(str(test_file)) if test_file.exists() else 0
+    
+    # Check if already prepared
+    is_prepared = check_dataset_prepared(str(dataset_dir), prepared_datasets_dir)
+    
+    # Check if can be prepared
+    can_prepare = train_file.exists() and train_rows > 0
+    
+    if not train_file.exists():
+        status = "Missing train.csv"
+    elif train_rows == 0:
+        status = "Empty train.csv"
+    elif is_prepared:
+        status = "Already prepared"
+    elif can_prepare:
+        status = "Ready to prepare"
+    else:
+        status = "Cannot prepare"
+        
+    return {
+        "name": dataset_name,
+        "path": dataset_dir,
+        "train_rows": train_rows,
+        "test_rows": test_rows,
+        "status": status,
+        "can_prepare": can_prepare,
+        "should_prepare": can_prepare and not is_prepared,
+        "is_prepared": is_prepared
+    }
+
+def get_all_datasets_info(datasets_dir: str, prepared_datasets_dir: str) -> List[Dict]:
+    """
+    Collect information about all datasets for preparation.
+    
+    Args:
+        datasets_dir: Path to raw datasets directory
+        prepared_datasets_dir: Path to prepared datasets directory
+        
+    Returns:
+        List of dataset information dictionaries
+    """
+    datasets_path = Path(datasets_dir)
+    
+    if not datasets_path.exists():
+        return []
+    
+    datasets_info = []
+    
+    for dataset_dir in datasets_path.iterdir():
+        dataset_info = get_single_dataset_info(dataset_dir, prepared_datasets_dir)
+        if(dataset_info):
+            datasets_info.append(dataset_info)
+        
+    # Sort by name for consistent ordering
+    datasets_info.sort(key=lambda x: x["name"])
+    return datasets_info
+
+def check_dataset_prepared(dataset_dir: str, prepared_datasets_dir: str) -> bool:
+    """Check if a dataset is already prepared."""
+    dataset_name = Path(dataset_dir).name
+    prepared_path = Path(prepared_datasets_dir) / dataset_name
+    metadata_file = prepared_path / "metadata.json"
+    train_file = prepared_path / "train.csv"
+    return metadata_file.exists() and train_file.exists()
 
 def auto_detect_target_col(train_df):
     """Auto-detect target column"""
@@ -120,31 +209,27 @@ def prepare_dataset(dataset_dir, target_col,
 
     (out_dir / 'metadata.json').write_text(json.dumps(meta, indent=4))
 
-def setup_agent_datasets(dataset_dir, dataset_agent_dir):
-    dataset_agent_dir.mkdir(parents=True, exist_ok=True)
+def setup_nonsensitive_dataset_files_for_agent(prepared_datasets_dir: Path, agent_datasets_dir: Path, dataset_name: str):
     """
-    Copies non-sensitive (non-test) dataset files to a directory accessible by agents.
+    Copies non-sensitive (non-test) dataset files to a shared directory accessible by agents.
     """
+    source_dataset_dir = prepared_datasets_dir / dataset_name
+    target_dataset_dir = agent_datasets_dir / dataset_name
+    target_dataset_dir.mkdir(parents=True, exist_ok=True)
 
-    # If the directories are the same, skip copying to avoid circular references
-    if dataset_dir.resolve() == dataset_agent_dir.resolve():
-        print(f"INFO: Dataset directory and agent directory are the same ({dataset_dir}), skipping file copying")
-        return
+    assert target_dataset_dir.is_dir()
 
     target_files = ['dataset_description.md', 'train.csv', 'train.no_label.csv']
+    for file in target_files:
+        source_file = source_dataset_dir / file
+        target_file = target_dataset_dir / file
 
-    for dataset in dataset_dir.iterdir():
-        if dataset.is_dir():
-            agent_subfolder = dataset_agent_dir / dataset.name
-            agent_subfolder.mkdir(exist_ok=True)
+        if source_file.exists():
+            if target_file.exists() or target_file.is_symlink():
+                    target_file.unlink()
 
-            for file in target_files:
-                source_file = dataset / file
-
-                target_file = dataset_agent_dir / dataset.name / file
-
-                if source_file.exists():
-                    if target_file.exists() or target_file.is_symlink():
-                            target_file.unlink()
-
-                    shutil.copy2(source_file, target_file)
+            #TODO why was this changed from a symlink to a copy?
+            #TODO bug was this: if agent changed the file in it's own workspace folder, it was changing the OG prepared files
+            #TODO make it read-only simlink 
+            #TODO check raw data -> prepared data is not a symlink but a hard copy!
+            shutil.copy2(source_file, target_file)

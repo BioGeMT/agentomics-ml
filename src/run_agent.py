@@ -6,7 +6,6 @@ import traceback
 import argparse
 from pathlib import Path
 
-from rich.console import Console
 from pydantic import BaseModel
 from pydantic_ai import Agent, ModelRetry, capture_run_messages
 from pydantic_ai.models.openai import OpenAIModel
@@ -23,11 +22,11 @@ from run_logging.logging_helpers import log_inference_stage_and_metrics, log_ser
 from run_logging.wandb import setup_logging
 from run_logging.log_files import log_files
 from utils.create_user import create_new_user_and_rundir
-from utils.dataset_utils import setup_agent_datasets
+from utils.dataset_utils import setup_nonsensitive_dataset_files_for_agent
 from utils.config import Config, make_config
 from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics
 from utils.exceptions import IterationRunFailed
-from utils.openrouter_api import init_weave_with_costs
+from utils.weave_utils import init_weave_with_costs
 from steps.final_outcome import FinalOutcome, get_final_outcome_prompt
 from steps.data_split import DataSplit, get_data_split_prompt
 from steps.model_architecture import ModelArchitecture, get_model_architecture_prompt
@@ -65,18 +64,6 @@ else:
     
     weave_enabled = False
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="Runs agent and outputs results to the workspace directory")
-    parser.add_argument('--dataset-name', required=True, help='Name of the folder containing dataset files')
-    parser.add_argument('--model', help='Openrouter-available LLM model to use', default="openai/gpt-4.1")
-    parser.add_argument('--val-metric', help='Validation metric to use for the best model selection', default="ACC", choices=["AUPRC", "AUROC", "ACC", "MSE", "RMSE", "MAE", "R2"])
-    parser.add_argument('--no-root-privileges', action='store_true', help='Flag to run without root privileges. This is not recommended, since it decreases security by not preventing the agent from accessing/modifying files outside of its own workspace.')
-    parser.add_argument('--workspace-dir', type=Path, default=Path('../workspace/runs').resolve(), help='Path to a directory which will store the agent run and generated files')
-    parser.add_argument('--prepared-datasets-dir', type=Path, default=Path('../prepared_datasets').resolve(), help='Path to a directory which contains prepared datasets.')
-    parser.add_argument('--agent-datasets-dir', type=Path, default=Path('../workspace/datasets').resolve(), help='Path to a directory which contains non-test data accessible by agents.')
-    parser.add_argument('--tags', nargs='*', default=[], help='(Optional) Tags for a wandb run logging')
-    return parser.parse_args()
-
 @weave_op(call_display_name=lambda call: f"Agent Run - {getattr(call.inputs.get('output_type'), '__name__', 'General') if call.inputs.get('output_type') else 'General'}")
 async def run_agent(agent: Agent, user_prompt: str, max_steps: int, message_history: list | None, output_type: BaseModel = None):
     with capture_run_messages() as messages:
@@ -106,9 +93,9 @@ async def main(model, feedback_model, dataset, tags, best_metric, root_privilege
                          tags=tags, 
                          best_metric=best_metric,
                          root_privileges=root_privileges,
-                         workspace_dir=workspace_dir,
-                         dataset_dir=dataset_dir,
-                         agent_dataset_dir=agent_dataset_dir)
+                         workspace_dir=Path(workspace_dir),
+                         dataset_dir=Path(dataset_dir),
+                         agent_dataset_dir=Path(agent_dataset_dir))
 
     agent_id = create_new_user_and_rundir(config)
     config.agent_id = agent_id
@@ -388,22 +375,50 @@ async def run_architecture(agent: Agent, validation_agent: Agent, split_dataset_
 
     return _messages
 
-async def run_experiment():
-    args = parse_args()
-    setup_agent_datasets(args.prepared_datasets_dir, args.agent_datasets_dir)
+def parse_args():
+    parser = argparse.ArgumentParser(description="Runs agent and outputs results to the workspace directory")
+    parser.add_argument('--dataset-name', required=True, help='Name of the folder containing dataset files')
+    parser.add_argument('--model', help='Openrouter-available LLM model to use', default="openai/gpt-4.1")
+    #TODO update choices
+    parser.add_argument('--val-metric', help='Validation metric to use for the best model selection', default="ACC", choices=["AUPRC", "AUROC", "ACC", "MSE", "RMSE", "MAE", "R2"])
+    parser.add_argument('--no-root-privileges', action='store_true', help='Flag to run without root privileges. This is not recommended, since it decreases security by not preventing the agent from accessing/modifying files outside of its own workspace.')
+    parser.add_argument('--workspace-dir', type=Path, default=Path('../workspace/runs').resolve(), help='Path to a directory which will store the agent run and generated files')
+    parser.add_argument('--prepared-datasets-dir', type=Path, default=Path('../prepared_datasets').resolve(), help='Path to a directory which contains prepared datasets.')
+    parser.add_argument('--agent-datasets-dir', type=Path, default=Path('../workspace/datasets').resolve(), help='Path to a directory which contains non-test data accessible by agents.')
+    parser.add_argument('--tags', nargs='*', default=[], help='(Optional) Tags for a wandb run logging')
+    return parser.parse_args()
 
-    FEEDBACK_MODEL = args.model
+async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, agent_datasets_dir, workspace_dir, tags, no_root_privileges):
+    setup_nonsensitive_dataset_files_for_agent(
+        prepared_datasets_dir=Path(prepared_datasets_dir), 
+        agent_datasets_dir=Path(agent_datasets_dir),
+        dataset_name=dataset_name,
+    ) #TODO not necessary? we can setup permissions directly
+    FEEDBACK_MODEL = model
     await main(
-        model=args.model, 
+        model=model, 
         feedback_model=FEEDBACK_MODEL, 
-        dataset=args.dataset_name, 
-        tags=args.tags,
-        best_metric=args.val_metric, 
-        root_privileges=not args.no_root_privileges, 
+        dataset=dataset_name, 
+        tags=tags,
+        best_metric=val_metric, 
+        root_privileges=not no_root_privileges, 
+        workspace_dir=workspace_dir, 
+        dataset_dir=prepared_datasets_dir, 
+        agent_dataset_dir=agent_datasets_dir,
+    )
+
+async def run_experiment_from_terminal():
+    args = parse_args()
+    await run_experiment(
+        model=args.model, 
+        dataset_name=args.dataset_name, 
+        val_metric=args.val_metric, 
+        prepared_datasets_dir=args.prepared_datasets_dir, 
+        agent_datasets_dir=args.agent_datasets_dir, 
         workspace_dir=args.workspace_dir, 
-        dataset_dir=args.prepared_datasets_dir, 
-        agent_dataset_dir=args.agent_datasets_dir,
+        tags=args.tags,
+        no_root_privileges=args.no_root_privileges,
     )
 
 if __name__ == "__main__":
-    asyncio.run(run_experiment())
+    asyncio.run(run_experiment_from_terminal())

@@ -1,8 +1,7 @@
 import argparse
 import sys
 import pandas as pd
-import numpy as np
-from sklearn.metrics import average_precision_score, roc_auc_score, accuracy_score, mean_squared_error, mean_absolute_error, r2_score
+from eval.metrics import get_classification_metrics_functions, get_regression_metrics_functions
 import os
 
 def get_metrics(results_file, test_file, task_type, output_file=None, numeric_label_col="numeric_label", 
@@ -16,28 +15,16 @@ def get_metrics(results_file, test_file, task_type, output_file=None, numeric_la
     merged[numeric_label_col] = merged[numeric_label_col].astype(float)
     merged[pred_col] = merged[pred_col].astype(float)
 
+    metrics = {}
     if task_type == "classification":
-        auprc = average_precision_score(merged[numeric_label_col], merged[pred_col])
-        auroc = roc_auc_score(merged[numeric_label_col], merged[pred_col])
-        accuracy = accuracy_score(merged[numeric_label_col], (merged[pred_col] >= acc_threshold).astype(int))
+        metric_to_fn = get_classification_metrics_functions(acc_threshold=acc_threshold)
+        for metric_name, fn in metric_to_fn.items():
+            metrics[metric_name] = fn(merged[numeric_label_col], merged[pred_col])
 
-        metrics = {
-            "AUPRC": auprc,
-            "AUROC": auroc,
-            "ACC": accuracy,
-        }
     else:
-        mse = mean_squared_error(merged[numeric_label_col], merged[pred_col])
-        rmse = np.sqrt(mse)
-        mae = mean_absolute_error(merged[numeric_label_col], merged[pred_col])
-        r2 = r2_score(merged[numeric_label_col], merged[pred_col])
-        
-        metrics = {
-            "MSE": mse,
-            "RMSE": rmse,
-            "MAE": mae,
-            "R2": r2,
-        }
+        metric_to_fn = get_regression_metrics_functions()
+        for metric_name, fn in metric_to_fn.items():
+            metrics[metric_name] = fn(merged[numeric_label_col], merged[pred_col])
 
     # Save the results to the output file if specified
     if output_file:

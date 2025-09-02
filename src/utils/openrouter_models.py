@@ -5,10 +5,11 @@ from typing import Dict, List, Optional
 from rich.console import Console
 from rich.table import Table
 from rich import box
+from utils.user_input import get_user_input_for_int
 
 console = Console()
 
-class OpenRouterAPI:
+class OpenRouterModelsUtils:
     """OpenRouter API client for model fetching and filtering."""
     
     def __init__(self, api_key: str):
@@ -235,7 +236,7 @@ def display_models(models: List[Dict]):
 
 def get_model_choices(api_key: str, limit: int = 20) -> List[str]:
     """Get list of model IDs for selection."""
-    api = OpenRouterAPI(api_key)
+    api = OpenRouterModelsUtils(api_key)
     models = api.get_filtered_models(limit)
     return [model["id"] for model in models] if models else []
 
@@ -243,7 +244,7 @@ def interactive_model_selection(api_key: str, limit: int = 20) -> Optional[str]:
     """Interactive model selection."""
     console.print("Fetching models from OpenRouter...")
     
-    api = OpenRouterAPI(api_key)
+    api = OpenRouterModelsUtils(api_key)
     models = api.get_filtered_models(limit)
     
     if not models:
@@ -270,70 +271,6 @@ def interactive_model_selection(api_key: str, limit: int = 20) -> Optional[str]:
         console.print("Invalid input")
         return None
 
-# Weave Integration Functions
-def setup_weave_costs(weave_client, model_id: str, api_key: str) -> bool:
-    """Set up cost tracking in Weave for the specified model."""
-    console.print(f"Setting up cost tracking for model: {model_id}")
-    
-    api = OpenRouterAPI(api_key)
-    models = api.fetch_models()
-    
-    if not models:
-        console.print(f"No cost information available for model: {model_id}")
-        console.print(f"Cost tracking will be disabled for this session")
-        return False
-    
-    # Find the model and get its costs
-    for model in models:
-        if model.get("id") == model_id:
-            pricing = model.get("pricing", {})
-            if pricing:
-                try:
-                    input_cost = float(pricing.get("prompt", "0"))
-                    output_cost = float(pricing.get("completion", "0"))
-                    
-                    # Add costs to Weave
-                    weave_client.add_cost(
-                        llm_id=model_id,
-                        prompt_token_cost=input_cost,
-                        completion_token_cost=output_cost
-                    )
-                    
-                    console.print(f"Cost tracking enabled:")
-                    console.print(f"   • Model: {model_id}")
-                    console.print(f"     - Prompt tokens: ${input_cost:.8f}/token")
-                    console.print(f"     - Completion tokens: ${output_cost:.8f}/token")
-                    
-                    return True
-                except (ValueError, TypeError) as e:
-                    console.print(f"Invalid pricing format: {e}")
-                    return False
-    
-    console.print(f"Model {model_id} not found")
-    return False
-
-def init_weave_with_costs(project_name: str, model_id: str, api_key: str):
-    """Initialize Weave and set up cost tracking for the specified model."""
-    import weave
-    
-    console.print(f"Initializing Weave for project: {project_name}")
-    
-    try:
-        weave_client = weave.init(project_name)
-        
-        # Set up costs for the model
-        setup_success = setup_weave_costs(weave_client, model_id, api_key)
-        
-        if setup_success:
-            console.print(f"Weave integration ready with cost tracking")
-        else:
-            console.print(f"Weave initialized but cost tracking unavailable")
-        
-        return weave_client
-        
-    except Exception as e:
-        console.print(f"Failed to initialize Weave: {e}")
-        return None
 
 # CLI Interface
 if __name__ == "__main__":
@@ -351,7 +288,7 @@ if __name__ == "__main__":
         console.print("Get your key from: https://openrouter.ai/keys")
         sys.exit(1)
     
-    api = OpenRouterAPI(api_key)
+    api = OpenRouterModelsUtils(api_key)
     models = api.get_filtered_models(args.limit)
     
     if models:
@@ -364,3 +301,28 @@ if __name__ == "__main__":
     else:
         console.print("Failed to fetch models")
         sys.exit(1)
+
+def load_available_models(openrouter_api_key, limit=20):
+    #TODO make the class into just functions taking api_key as param?
+    model_utils = OpenRouterModelsUtils(openrouter_api_key)
+    return model_utils.get_filtered_models(limit=limit)
+
+def interactive_model_selection(limit=20):
+    """Get model through interactive selection (requires TTY)."""
+    console.print("Selecting model interactively...", style="cyan")
+    models_info = load_available_models(os.getenv("OPENROUTER_API_KEY"), limit=limit)
+    if not models_info:
+        console.print("Could not fetch models, using default.", style="red")
+        return None
+
+    display_models(models_info)
+    choice = get_user_input_for_int(
+        f"Select model number (1-{len(models_info)}) or press Enter for default:", 
+        valid_options=list(range(1, len(models_info)+1))
+    )
+    if not choice:
+        console.print("Model selection cancelled, using default.", style="yellow")
+        return None
+
+    return models_info[choice-1]['id']
+
