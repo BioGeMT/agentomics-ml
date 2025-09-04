@@ -38,7 +38,7 @@ def display_metrics_table(task_type=None):
     console.print(table)
     return metrics_to_show
 
-def interactive_metric_selection(task_type=None):
+def interactive_metric_selection(task_type=None, default=None):
     """Get validation metric through interactive selection (requires TTY)."""
     console = Console()
     console.print("Selecting validation metric interactively...", style="cyan")
@@ -49,9 +49,6 @@ def interactive_metric_selection(task_type=None):
         prompt_text=f"Select metric number (1-{len(showed_metrics)})",
         valid_options=list(range(1, len(showed_metrics) + 1)),
     )
-    if not choice:
-        console.print(f"Metric selection cancelled, using default.", style="yellow")
-        return None
     
     selected_metric = showed_metrics[choice-1]
     console.print(f"Selected metric: {selected_metric}", style="green")

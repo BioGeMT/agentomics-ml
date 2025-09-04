@@ -14,6 +14,7 @@ from utils.openrouter_models import display_models, load_available_models, inter
 from utils.metrics_interactive_utils import display_metrics_table, interactive_metric_selection
 from utils.metrics import get_classification_metrics_names, get_regression_metrics_names
 from utils.env_utils import is_openrouter_key_available, is_wandb_key_available
+from utils.user_input import get_user_input_for_int
 from run_agent import run_experiment
 
 console = Console()
@@ -38,6 +39,7 @@ def main():
     parser.add_argument("--list-metrics", action="store_true", help="List available validation metrics and exit")
     parser.add_argument("--root-privileges", action="store_true", help="Whether the script has root privileges to create a new user for the agent (recommended)")
     parser.add_argument("--dataset", help="Dataset name")
+    parser.add_argument("--iterations", type=int, help="Number of iterations to run")
     parser.add_argument("--model", help="Model name")
 
     available_metrics = get_classification_metrics_names() + get_regression_metrics_names()
@@ -49,6 +51,7 @@ def main():
     dataset = args.dataset
     model = args.model
     val_metric = args.val_metric
+    iterations = args.iterations
 
     repository_dir = Path(__file__).parent.parent.resolve()
     repository_parent_dir = repository_dir.parent.resolve()
@@ -108,14 +111,12 @@ def main():
 
     if not val_metric:
         val_metric = interactive_metric_selection(task_type)
-        if not val_metric:
-            # Using default metric based on task type
-            val_metric = get_classification_metrics_names()[0] if task_type == "classification" else get_regression_metrics_names()[0]
     
     if not model:
-        model = interactive_model_selection(limit=50)
-        if not model:
-            model = "openai/gpt-4.1"
+        model = interactive_model_selection(limit=50, default="openai/gpt-4.1")
+
+    if not iterations:
+        iterations = get_user_input_for_int("Enter number of iterations to run:", default=5)
     
     # Run the agent
     asyncio.run(run_experiment(
@@ -127,6 +128,7 @@ def main():
         workspace_dir=paths["workspace_runs_dir"],
         tags=None,
         no_root_privileges=args.root_privileges,
+        iterations=iterations,
     ))
     return 0
         
