@@ -103,6 +103,11 @@ def auto_detect_target_col(train_df):
         
     print(f'INFO: Using last column as target: {train_df.columns[-1]}')
     return train_df.columns[-1]
+
+def get_task_type_from_prepared_dataset(prepared_dataset_dir: str) -> str:
+    metadata_file = prepared_dataset_dir / "metadata.json"
+    metadata = json.loads(metadata_file.read_text())
+    return metadata.get("task_type")
         
 def auto_detect_task_type(train_df, target_col) :
     """Auto-detect task type based on target column values"""

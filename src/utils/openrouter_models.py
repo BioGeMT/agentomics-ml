@@ -307,7 +307,7 @@ def load_available_models(openrouter_api_key, limit=20):
     model_utils = OpenRouterModelsUtils(openrouter_api_key)
     return model_utils.get_filtered_models(limit=limit)
 
-def interactive_model_selection(limit=20):
+def interactive_model_selection(limit=20, default=None):
     """Get model through interactive selection (requires TTY)."""
     console.print("Selecting model interactively...", style="cyan")
     models_info = load_available_models(os.getenv("OPENROUTER_API_KEY"), limit=limit)
@@ -315,14 +315,15 @@ def interactive_model_selection(limit=20):
         console.print("Could not fetch models, using default.", style="red")
         return None
 
+    valid_options = list(range(1, len(models_info)+1))
+    model_names = [model['id'] for model in models_info]
+    index_of_default = model_names.index(default) + 1 if default in model_names else 1
     display_models(models_info)
     choice = get_user_input_for_int(
         f"Select model number (1-{len(models_info)}) or press Enter for default:", 
-        valid_options=list(range(1, len(models_info)+1))
+        valid_options=valid_options,
+        default=index_of_default,
     )
-    if not choice:
-        console.print("Model selection cancelled, using default.", style="yellow")
-        return None
 
     return models_info[choice-1]['id']
 
