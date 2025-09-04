@@ -6,8 +6,8 @@ from utils.dataset_utils import get_task_type_from_prepared_dataset
 @dataclass
 class Config:
     # defined at runtime
-    model: str
-    feedback_model: str
+    model_name: str
+    feedback_model_name: str
     dataset: str
     tags: List[str]
     val_metric: str
@@ -32,58 +32,45 @@ class Config:
     run_python_tool_timeout: int = 60 * 60 * 6 #This affects max training time
     credit_budget: int = 30 # Only applies when using a provisioning openrouter key #TODO
     max_tool_retries: int = 5
-    
-    # # Logging and tracing configuration
-    # # These can be overridden via command line arguments or environment variables
-    # wandb_entity: str = "ceitec-ai"                # --wandb-entity
-    # wandb_project: str = "Agentomics-ML"           # --wandb-project  
-    # weave_project: Optional[str] = None            # --weave-project (defaults to {wandb_entity}/{wandb_project})
-    
-    # #TODO reintroduce Weave
-    # def get_weave_project(self) -> str:
-    #     """Get the Weave project name. Defaults to wandb_entity/wandb_project if weave_project is None."""
-    #     return self.weave_project or f"{self.wandb_entity}/{self.wandb_project}"
+    agent_id: str = None
 
-def make_config(
-    model: str,
-    feedback_model: str,
-    dataset: str,
-    tags: List[str],
-    val_metric: str,
-    root_privileges: bool,
-    workspace_dir: Path,
-    prepared_datasets_dir: Path,
-    agent_dataset_dir: Path,
-    # wandb_entity: Optional[str] = None,
-    # wandb_project: Optional[str] = None,
-    # weave_project: Optional[str] = None,
-    max_steps: Optional[int] = None,
-    iterations: Optional[int] = 5,
-) -> Config:
-    config = Config(
-        model=model,
-        feedback_model=feedback_model,
-        dataset=dataset,
-        tags=tags,
-        val_metric=val_metric,
-        root_privileges=root_privileges,
-        workspace_dir=workspace_dir,
-        prepared_dataset_dir=prepared_datasets_dir / dataset,
-        agent_dataset_dir=agent_dataset_dir / dataset,
-        snapshot_dir= workspace_dir / "snapshots",
-        iterations=iterations,
-        task_type = get_task_type_from_prepared_dataset(prepared_datasets_dir / dataset),
-        max_steps=max_steps,
-    )
-    
-    # Override defaults with provided values
-    # if wandb_entity is not None:
-    #     config.wandb_entity = wandb_entity
-    # if wandb_project is not None:
-    #     config.wandb_project = wandb_project
-    # if weave_project is not None:
-    #     config.weave_project = weave_project
-    # if max_steps is not None:
-    #     config.max_steps = max_steps
+    def __init__(
+        self,
+        model_name: str,
+        feedback_model_name: str,
+        dataset: str,
+        tags: List[str],
+        val_metric: str,
+        root_privileges: bool,
+        workspace_dir: Path,
+        prepared_datasets_dir: Path,
+        agent_dataset_dir: Path,
+        max_steps: Optional[int] = None,
+        iterations: Optional[int] = 5,
+    ):
+        self.model_name = model_name
+        self.feedback_model_name = feedback_model_name
+        self.dataset = dataset
+        self.tags = tags
+        self.val_metric = val_metric
+        self.root_privileges = root_privileges
+        self.workspace_dir = workspace_dir
+        self.prepared_dataset_dir = prepared_datasets_dir / dataset
+        self.agent_dataset_dir = agent_dataset_dir / dataset
+        self.snapshot_dir = workspace_dir / "snapshots"
+        self.iterations = iterations
+        self.task_type = get_task_type_from_prepared_dataset(prepared_datasets_dir / dataset)
         
-    return config
+        if max_steps is not None:
+            self.max_steps = max_steps
+
+    def print_summary(self):
+        print('=== AGENTOMICS CONFIGURATION ===')
+        print('MAIN MODEL:', self.model_name)
+        print('FEEDBACK MODEL:', self.feedback_model_name)
+        print('DATASET:', self.dataset)
+        print('TASK TYPE:', self.task_type)
+        print('VAL METRIC:', self.val_metric)
+        print('AGENT ID:', self.agent_id)
+        print('ITERATIONS:', self.iterations)
+        print('===============================')

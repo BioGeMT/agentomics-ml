@@ -7,7 +7,7 @@ dependencies:
   - pydantic-ai==0.2.4
   - pip
   - pip:
-    - weave==0.51.59
+    - weave==0.52.5 #Often breaks with new versions, update as necessary
     - scikit-learn==1.7.1
     - wandb==0.21.1
     - hrid==0.3.0

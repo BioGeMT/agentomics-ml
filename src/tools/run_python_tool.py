@@ -36,6 +36,7 @@ def create_run_python_tool(agent_id, workspace_dir, timeout, max_retries, proxy)
         function=_run_python, 
         takes_ctx=False, 
         max_retries=max_retries,
-        require_parameter_descriptions=True
+        require_parameter_descriptions=True,
+        name="run_python",
     )
     return run_python_tool

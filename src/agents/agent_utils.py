@@ -2,9 +2,11 @@ import traceback
 from pydantic import BaseModel
 from pydantic_ai import Agent, capture_run_messages
 from pydantic_ai.usage import UsageLimits
+import weave
 from utils.exceptions import IterationRunFailed
 from utils.printing_utils import pretty_print_node
 
+@weave.op(call_display_name=lambda call: f"Agent Step - {call.inputs['output_type'].__name__ if call.inputs.get('output_type', None) else call.inputs['agent'].output_type.__name__}")
 async def run_agent(agent: Agent, user_prompt: str, max_steps: int, message_history: list | None, output_type: BaseModel = None, verbose: bool = True):
     with capture_run_messages() as messages:
         try:

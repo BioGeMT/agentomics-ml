@@ -1,6 +1,7 @@
 import os
 
 from pydantic_ai import Agent, ModelRetry
+import weave
 
 from agents.agent_utils import run_agent
 from agents.prompts.prompts_utils import get_iteration_prompt, get_user_prompt, get_system_prompt
@@ -62,7 +63,6 @@ def create_agents(config: Config, model):
             raise ModelRetry("Train file does not exist.")
         if not os.path.exists(result.path_to_model_file):
             raise ModelRetry("Model file does not exist.")
-        #TODO make a PR - ADD check that the train.py contains our function call for valid metric tracking
         return result
 
     @inference_agent.output_validator
@@ -137,6 +137,7 @@ async def run_architecture(text_output_agent: Agent, inference_agent: Agent, spl
 
     return _messages
 
+@weave.op(call_display_name=lambda call: f"Iteration {call.inputs.get('iteration', 0) + 1}")
 async def run_iteration(config: Config, model, iteration, feedback):
     agents_dict = create_agents(config=config, model=model)
 

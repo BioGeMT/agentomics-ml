@@ -1,14 +1,7 @@
 from pydantic_ai import Agent
-from pydantic_ai.models.openai import OpenAIModel
-from pydantic_ai.providers.openai import OpenAIProvider
-import httpx
-from openai import AsyncOpenAI
-import dotenv
-import os
 import time
 import weave
 
-@weave.op(call_display_name="Create Feedback Agent")
 def create_feedback_agent(model, config):
     feedback_agent = Agent(
         model=model,
@@ -18,25 +11,9 @@ def create_feedback_agent(model, config):
     
     return feedback_agent
 
-@weave.op(call_display_name=lambda call: f"Get Feedback - Iteration {call.inputs.get('iteration', 0) + 1}")
-async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, api_key, iteration, aggregated_feedback=None, extra_info="") -> str:
+@weave.op(call_display_name="Get Feedback")
+async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, model, iteration, aggregated_feedback=None, extra_info="") -> str:
     if iteration == config.iterations - 1 : return "Last iteration, no feedback needed"
-    dotenv.load_dotenv()
-    proxy_url = os.getenv('PROXY_URL')
-    async_http_client = httpx.AsyncClient(
-        proxy=proxy_url if config.use_proxy else None,
-        timeout= config.llm_response_timeout,
-    )
-    client = AsyncOpenAI(
-        base_url='https://openrouter.ai/api/v1',
-        api_key=api_key,
-        http_client=async_http_client,
-    )
-    model = OpenAIModel(
-        config.feedback_model,
-        provider=OpenAIProvider(openai_client=client)
-    )
-
     agent = create_feedback_agent(model, config)
     
     if is_new_best:
@@ -72,7 +49,6 @@ async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, 
     time.sleep(3)
     return feedback.data
 
-@weave.op(call_display_name="Aggregate Historical Feedback")
 def aggregate_feedback(feedback_list):
     if len(feedback_list) == 1: #TODO first iteration list contains None
         return None
