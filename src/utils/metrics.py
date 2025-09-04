@@ -23,3 +23,9 @@ def get_classification_metrics_names():
 
 def get_regression_metrics_names():
     return list(get_regression_metrics_functions().keys())
+
+def get_task_to_metrics_names():
+    return {
+        "classification": get_classification_metrics_names(),
+        "regression": get_regression_metrics_names(),
+    }

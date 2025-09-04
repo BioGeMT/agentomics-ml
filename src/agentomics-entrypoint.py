@@ -6,12 +6,14 @@ from pathlib import Path
 from rich.console import Console
 from rich.panel import Panel
 import json
+import dotenv
 
 from utils.dataset_utils import get_all_datasets_info
 from utils.datasets_interactive_utils import interactive_dataset_selection, print_datasets_table
 from utils.openrouter_models import display_models, load_available_models, interactive_model_selection
 from utils.metrics_interactive_utils import display_metrics_table, interactive_metric_selection
-from eval.metrics import get_classification_metrics_names, get_regression_metrics_names
+from utils.metrics import get_classification_metrics_names, get_regression_metrics_names
+from utils.env_utils import is_openrouter_key_available, is_wandb_key_available
 from run_agent import run_experiment
 
 console = Console()
@@ -23,16 +25,6 @@ Welcome to Agentomics-ML
 ===============================================
 """    
     console.print(Panel(welcome_text, style="bold blue"))
-
-def is_openrouter_key_available():
-    if not os.getenv("OPENROUTER_API_KEY"):
-        return False
-    return True
-
-def is_wandb_key_available():
-    if not os.getenv("WANDB_API_KEY"):
-        return False
-    return True
 
 def check_tty_available():
     """Check if TTY is available for interactive operations."""
@@ -52,6 +44,8 @@ def main():
     parser.add_argument("--val-metric", help="Validation metric", choices=available_metrics)
     
     args = parser.parse_args()
+    dotenv.load_dotenv()
+
     dataset = args.dataset
     model = args.model
     val_metric = args.val_metric

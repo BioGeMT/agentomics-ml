@@ -1,22 +1,22 @@
 FROM condaforge/mambaforge:23.3.1-0
 
-# Set memory-efficient conda/mamba settings
-ENV CONDA_ALWAYS_YES=true
+# Always set -y to conda install commands
+ENV CONDA_ALWAYS_YES=true 
+# Cache conda packages in a temp directory (removed after build - reduces image size)
 ENV CONDA_PKGS_DIRS=/tmp/conda-pkgs
+# Similar as above but for pip
 ENV PIP_NO_CACHE_DIR=1
+# Suppress pip version warnings
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Install bc calculator for floating point arithmetic
-RUN apt-get update && apt-get install -y bc && rm -rf /var/lib/apt/lists/*
-
-# Create a non-root user "agent" and give it a home
-RUN useradd -m -s /bin/bash agent \
-    && echo 'agent:changeme' | chpasswd
+# Install bc calculator for floating point arithmetic and sudo for later creation of the agent user
+RUN apt-get update && apt-get install -y bc sudo && rm -rf /var/lib/apt/lists/*
 
 # Prepare workspace
-RUN mkdir -p /workspace/runs
+RUN mkdir -p /workspace/runs 
+RUN mkdir -p /workspace/datasets
 
-# Copy & create your conda environment using environment.yaml (with mamba for speed and memory efficiency)
+# Copy & create your conda environment\ using environment.yaml (with mamba for speed and memory efficiency)
 COPY environment.yaml .
 RUN mamba env create -f environment.yaml \
     && mamba clean -afy \
@@ -24,14 +24,8 @@ RUN mamba env create -f environment.yaml \
 
 # Initialize conda for bash and set up auto-activation
 RUN conda init bash \
-    && echo "conda activate agentomics-env" >> /home/agent/.bashrc \
     && echo "conda activate agentomics-env" >> /root/.bashrc
-
-# Copy the shared entrypoint script
-COPY agentomics-entrypoint.py /usr/local/bin/agentomics-entrypoint.py
-RUN chmod +x /usr/local/bin/agentomics-entrypoint.py
 
 WORKDIR /repository
 
-# Set the entrypoint to use our shared script
-# ENTRYPOINT ["python", "/usr/local/bin/agentomics-entrypoint.py"]
+ENTRYPOINT ["/opt/conda/envs/agentomics-env/bin/python", "/repository/src/agentomics-entrypoint.py"]
