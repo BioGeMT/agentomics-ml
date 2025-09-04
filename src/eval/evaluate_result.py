@@ -1,7 +1,7 @@
 import argparse
 import sys
 import pandas as pd
-from eval.metrics import get_classification_metrics_functions, get_regression_metrics_functions
+from utils.metrics import get_classification_metrics_functions, get_regression_metrics_functions
 import os
 
 def get_metrics(results_file, test_file, task_type, output_file=None, numeric_label_col="numeric_label", 

@@ -3,121 +3,22 @@ import shutil
 from pathlib import Path
 
 def get_metrics_from_file(file_path):
-    """
-    Read metrics from a file with enhanced error handling and debugging.
-    
-    Args:
-        file_path: Path to the metrics file
-        
-    Returns:
-        Dict of metrics
-        
-    Raises:
-        Exception: If file doesn't exist, is empty, or has invalid format
-    """
-    file_path = Path(file_path)
-    
-    print(f"🔍 Reading metrics from: {file_path}")
-    
-    if not file_path.exists():
-        raise Exception(f"Metrics file does not exist: {file_path}")
-    
-    file_size = file_path.stat().st_size
-    print(f"   📊 File size: {file_size} bytes")
-    
-    if file_size == 0:
-        raise Exception(f"Metrics file is empty: {file_path}")
-    
-    try:
-        metrics = {}
-        with open(file_path, "r") as f:
-            content = f.read().strip()
-            print(f"   📄 File content: {content}")
-            
-            if not content:
-                raise Exception(f"Metrics file contains no data: {file_path}")
-            
-            for line_num, line in enumerate(content.split('\n'), 1):
-                line = line.strip()
-                if not line:
-                    continue
-                    
-                if ": " not in line:
-                    raise Exception(f"Invalid format in metrics file {file_path} at line {line_num}: '{line}' (expected 'key: value')")
-                
-                try:
-                    key, value = line.split(": ", 1)
-                    metrics[key] = float(value)
-                except ValueError as e:
-                    raise Exception(f"Could not parse value '{value}' for key '{key}' in {file_path} at line {line_num}: {e}")
-        
-        print(f"   ✅ Successfully parsed metrics: {metrics}")
-        return metrics
-        
-    except Exception as e:
-        print(f"   ❌ Error reading metrics file {file_path}: {e}")
-        raise
+    metrics = {}
+    with open(file_path, "r") as f:
+        for line in f:
+            key, value = line.strip().split(": ")
+            metrics[key] = float(value)
+    return metrics
 
 def get_valid_and_train_metrics(base_path):
-    """
-    Get validation and training metrics from files with enhanced error handling.
-    
-    Args:
-        base_path: Base directory containing metrics files
-        
-    Returns:
-        Dict of combined metrics with prefixes
-    """
     base_path = Path(base_path)
-    val_metrics_file = base_path / "validation_metrics.txt"
-    train_metrics_file = base_path / "train_metrics.txt"
-    
-    print(f"🔍 Getting validation and training metrics from: {base_path}")
-    print(f"   📁 Validation metrics file: {val_metrics_file}")
-    print(f"   📁 Training metrics file: {train_metrics_file}")
-    
+    val_metrics = get_metrics_from_file(base_path / "validation_metrics.txt")
+    train_metric = get_metrics_from_file(base_path / "train_metrics.txt")
     all_metrics = {}
-    
-    # Try to get validation metrics
-    try:
-        val_metrics = get_metrics_from_file(val_metrics_file)
-        val_metrics = {f"validation/{k}": v for k, v in val_metrics.items()}
-        all_metrics.update(val_metrics)
-        print(f"   ✅ Validation metrics loaded: {val_metrics}")
-    except Exception as e:
-        print(f"   ❌ Could not load validation metrics: {e}")
-        # Add placeholder metrics to maintain structure for both classification and regression
-        all_metrics.update({
-            "validation/AUPRC": -1,
-            "validation/AUROC": -1,
-            "validation/ACC": -1,
-            "validation/MSE": -1,
-            "validation/RMSE": -1,
-            "validation/MAE": -1,
-            "validation/R2": -1,
-        })
-    
-    # Try to get training metrics
-    try:
-        train_metrics = get_metrics_from_file(train_metrics_file)
-        train_metrics = {f"train/{k}": v for k, v in train_metrics.items()}
-        all_metrics.update(train_metrics)
-        print(f"   ✅ Training metrics loaded: {train_metrics}")
-    except Exception as e:
-        print(f"   ❌ Could not load training metrics: {e}")
-        print(f"   ❌ This is likely why training metrics are not appearing in W&B!")
-        # Add placeholder metrics to maintain structure for both classification and regression
-        all_metrics.update({
-            "train/AUPRC": -1,
-            "train/AUROC": -1,
-            "train/ACC": -1,
-            "train/MSE": -1,
-            "train/RMSE": -1,
-            "train/MAE": -1,
-            "train/R2": -1,
-        })
-    
-    print(f"   📊 Combined metrics: {all_metrics}")
+    val_metrics = {f"validation/{k}": v for k, v in val_metrics.items()}
+    train_metric = {f"train/{k}": v for k, v in train_metric.items()}
+    all_metrics.update(val_metrics)
+    all_metrics.update(train_metric)
     return all_metrics
 
 def get_best_metrics(config):
@@ -155,7 +56,7 @@ def is_new_best(config):
 
     #TODO parametrize improvement threshold
     necessary_improvement = 0
-    is_new_best = new_metrics[f"validation/{config.best_metric}"] > best_metrics[f"validation/{config.best_metric}"] + necessary_improvement
+    is_new_best = new_metrics[f"validation/{config.val_metric}"] > best_metrics[f"validation/{config.val_metric}"] + necessary_improvement
     print(f"is_new_best: {is_new_best}")
     print(f"New metrics: {new_metrics}")
     print(f"Best metrics: {best_metrics}")
