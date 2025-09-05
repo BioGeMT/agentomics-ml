@@ -9,8 +9,8 @@ ENV PIP_NO_CACHE_DIR=1
 # Suppress pip version warnings
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Install bc calculator for floating point arithmetic and sudo for later creation of the agent user
-RUN apt-get update && apt-get install -y bc sudo && rm -rf /var/lib/apt/lists/*
+# Install sudo for later creation of the agent user
+RUN apt-get update && apt-get install -y sudo && rm -rf /var/lib/apt/lists/*
 
 # Prepare workspace
 RUN mkdir -p /workspace/runs 

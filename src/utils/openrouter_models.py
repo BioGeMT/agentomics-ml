@@ -303,7 +303,6 @@ if __name__ == "__main__":
         sys.exit(1)
 
 def load_available_models(openrouter_api_key, limit=20):
-    #TODO make the class into just functions taking api_key as param?
     model_utils = OpenRouterModelsUtils(openrouter_api_key)
     return model_utils.get_filtered_models(limit=limit)
 
