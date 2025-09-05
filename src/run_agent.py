@@ -47,8 +47,10 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric, root_
     dotenv.load_dotenv()
     openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
     wandb_key = os.getenv("WANDB_API_KEY")
+    wandb_project_name = os.getenv("WANDB_PROJECT_NAME")
+    wandb_entity = os.getenv("WANDB_ENTITY")
     proxy_url = os.getenv("HTTP_PROXY")
-    wandb_logged_in = setup_logging(config, api_key=wandb_key)
+    wandb_logged_in = setup_logging(config, api_key=wandb_key, wandb_project_name=wandb_project_name, wandb_entity=wandb_entity)
 
     async_http_client = httpx.AsyncClient(
         proxy=proxy_url if config.use_proxy else None,
