@@ -163,7 +163,7 @@ async def run_agentomics(config: Config, default_model, feedback_model):
         run_inference_and_log(config, iteration=run_index, evaluation_stage='test', use_best_snapshot=True)
     except Exception as e:
         print('FINAL TEST EVAL FAIL', str(e))
-        log_inference_stage_and_metrics(1)
+        log_inference_stage_and_metrics(1, task_type=config.task_type)
     
     log_files(config)
 
