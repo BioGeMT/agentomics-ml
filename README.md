@@ -105,17 +105,29 @@ feature1,feature2,feature3,target
 ``` -->
 ### Local (no-docker) run
 <div style="border:2px solid red; background:#ee2400; padding:10px; border-radius:6px;">
-  <strong>⚠️ Warning:</strong> When you run `run_agent.py` or `run_agent_interactive.py`, only run them inside a secure environment (like your own docker container)! The `run_agent*` scripts will be able to exectute arbitrary bash commands!
+  <strong>⚠️ Warning:</strong> When you run outside of the main script (`run.sh`), only run scripts inside a secure environment (like your own docker container)! The agent tools can exectute arbitrary bash commands!
 </div>
 
-#### Dataset preparation
-To prepare datasets (inside the Agentomics-ML/datasets directory) for the agent, run:
+#### Quickstart
+```bash
+# 1. Set your API key (get from https://openrouter.ai)
+export OPENROUTER_API_KEY="your-key-here"
+# OR create a .env file (see .env.example) 
+
+# 2. Run the agent and select one of the sample datasets
+./run_local.sh #!Only run in your own secure environment!
+```
+
+#### Running scripts separately
+If you want to have more fine-grained control over the agent runs, follow these steps:
+##### Dataset preparation
+To prepare datasets (using data from the Agentomics-ML/datasets directory) for the agent, run:
 ```
 conda env create -f environment_prepare.yaml
 conda activate agentomics-prepare-env
 python src/prepare_datasets.py
 ```
-#### Agent run
+##### Agent run
 To run the agent and select options interactively, run:
 ```
 conda env create -f environment.yaml
