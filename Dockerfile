@@ -1,26 +1,31 @@
-# Use a Python base image
-FROM continuumio/miniconda3:latest
+FROM condaforge/mambaforge:23.3.1-0
+
+# Always set -y to conda install commands
+ENV CONDA_ALWAYS_YES=true 
+# Cache conda packages in a temp directory (removed after build - reduces image size)
+ENV CONDA_PKGS_DIRS=/tmp/conda-pkgs
+# Similar as above but for pip
+ENV PIP_NO_CACHE_DIR=1
+# Suppress pip version warnings
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
 # Install sudo for later creation of the agent user
-RUN apt-get update && apt-get install -y sudo
+RUN apt-get update && apt-get install -y sudo && rm -rf /var/lib/apt/lists/*
 
-# Set the root password
-RUN echo 'root:1234' | chpasswd
+# Prepare workspace
+RUN mkdir -p /workspace/runs 
+RUN mkdir -p /workspace/datasets
 
-# Create a directory for writable operations
-RUN mkdir /workspace 
-
-# Create runs directory
-RUN mkdir /workspace/runs
-
-# Copy environment.yaml file
+# Copy & create your conda environment\ using environment.yaml (with mamba for speed and memory efficiency)
 COPY environment.yaml .
+RUN mamba env create -f environment.yaml \
+    && mamba clean -afy \
+    && rm -rf /tmp/conda-pkgs
 
-# Create conda environment
-RUN conda env create -f environment.yaml
+# Initialize conda for bash and set up auto-activation
+RUN conda init bash \
+    && echo "conda activate agentomics-env" >> /root/.bashrc
 
-# Set working directory
 WORKDIR /repository
 
-# Run the logging server and keep the container running
-CMD ["/bin/bash", "-c", "source activate agentomics-env && tail -f /dev/null"]
+ENTRYPOINT ["/opt/conda/envs/agentomics-env/bin/python", "/repository/src/run_agent_interactive.py"]

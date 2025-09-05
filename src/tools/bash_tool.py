@@ -102,7 +102,8 @@ def create_bash_tool(agent_id, workspace_dir, timeout, max_retries, autoconda=Tr
             takes_ctx=False,
             max_retries=max_retries,
             # description=None, # Inferred from the function docstring
-            require_parameter_descriptions=True
+            require_parameter_descriptions=True,
+            name="bash",
         )
 
         return bash_tool

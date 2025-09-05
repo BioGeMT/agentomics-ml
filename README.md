@@ -1,137 +1,266 @@
-# Try our [COLAB DEMO](https://colab.research.google.com/drive/1tCJtTrimw9OviErtKi7FRo5Nx09u7vhv?usp=sharing)
+# Try out [Google Colab Demo](https://colab.research.google.com/drive/1tCJtTrimw9OviErtKi7FRo5Nx09u7vhv?usp=sharing)
+
 # Agentomics-ML
 
-Agentomics-ML is an autonomous agentic system for development of machine learning models for omics data.
+🤖 **Autonomous AI agent for supervised machine learning model development on omics data**
 
-Given a dataset, the system automatically generates a trained model and an inference script, allowing immediate predictions on new data.
+Given a raw dataset, Agentomics-ML autonomously generates
+- A trained model, ready to run inference on new data
+- A report summarizing the model development process and evaluation metrics
 
-Learn more in our [arXiv pre-print](https://arxiv.org/abs/2506.05542) 
+**⏱️ Typical timing:** 30-120 minutes depending on dataset size and complexity
+
+Agentomics-ML works like a ML engineer
+- Explores data before designing a model
+- Conciders domain information
+- Chooses proper data representation
+- Designs and trains models, including custom neural networks
+- Works iteratively, reacting to issues like overfitting and underfitting based on validation metrics
+- Produces working scripts, including their conda environments
+
+You can use
+- any LLM, including local models
+- any classification or regression dataset in a csv format (see #Run on your own dataset)
+- variety of metrics for validation (accuracy, AUROC, AURPC, MSE, ...)
+
+📖 [Preprint](https://arxiv.org/abs/2506.05542) | 🚀 [Quick Start](#quick-start) | [Website](https://agentomicsml.com/)
 ## Download
+
 ```
 git clone https://github.com/BioGeMT/Agentomics-ML.git
 cd Agentomics-ML
 ```
 
-## Environment setup (Docker + conda environment)
-NOTE: We provide a docker container for running Agentomics-ML securely. If your machine doesn't allow you to create a new docker container, it's possible to run in an already existing docker container (e.g. colab). If you do, we advise to run in a disposable container and setup proper permissions (e.g. only mounting files read-only, not storing valuable files) since agents will be able to run arbitrary bash commands in this container (for example rm -rf /*).
-If you run in your own docker container, create environment by running `conda env create -f environment.yaml`, activate it, and proceed to the <b>Prepare your API keys</b> step.
+> **Prerequisites:**
+>
+> - **Docker mode (recommended)**: Docker must be installed. [Get Docker here](https://docs.docker.com/get-docker/) if needed.
+> - **Local mode**: Conda must be installed.
 
-### Make sure you have Docker installed
+## Quick Start
+
+```bash
+# 1. Set your API key (get from https://openrouter.ai)
+export OPENROUTER_API_KEY="your-key-here"
+# OR create a .env file (see .env.example) 
+
+# 2. Run the agent and select one of the sample datasets
+./run.sh
 ```
-docker --version
+
+## Run on your own dataset
+Create a folder inside `Agentomics-ML/datasets` and drop your files there
+
+- add `train.csv` - Contains your training data. This will be used by the agent for training and validation
+- add `test.csv` - Contains your testing data. This will be hidden from the agent, and used only to evaluate the final model. 
+- add `dataset_description.md` - Domain information for the agent. See the sample datasets for examples.
+
+The csv files must contain a 'class' or 'target' column for the classification or regression labels. 
+
+### Create Dataset Structure
+
 ```
-  
-<!-- - Install plugin for rescricting the volume size
+datasets/
+  your_dataset/
+    train.csv              # Required: your training data
+    test.csv              # Optional: test data
+    dataset_description.md # Optional: data description
 ```
-docker plugin install ashald/docker-volume-loopback
+### CSV Format
+
+**Classification example:**
+
+```csv
+feature1,feature2,feature3,class
+0.5,1.2,0.8,positive
+0.3,2.1,0.6,negative
+```
+
+**Regression example:**
+
+```csv
+feature1,feature2,feature3,target
+0.5,1.2,0.8,125.45
+0.3,2.1,0.6,187.92
+```
+
+## Advanced run parameters
+### TODO extra run.sh parameters, including non-interactive runs
+<!-- ```bash
+./run.sh --list-datasets        # Show available datasets (Docker)
+./run.sh --local --list-datasets # Show available datasets (Local)
+./run.sh --list-models          # Show available AI models (Docker)
+./run.sh --local --list-models   # Show available AI models (Local)
+./run.sh --list-metrics         # Show available validation metrics
+./run.sh --prepare-only         # Just prepare datasets (Docker)
+./run.sh --local --prepare-only  # Just prepare datasets (Local)
+./run.sh --help                # Show all options
 ``` -->
+<!-- ```bash
+# Pre-built image with specific dataset/model
+./run.sh cloudmark -d heart_disease -m "openai/gpt-4.1"
 
-### Create volume (this will store all agent-generated files)
-```
-docker volume create agentomics_volume
-```
-
-<!-- - Create volume with maximum storage size
-```
-docker volume create -d ashald/docker-volume-loopback:latest -o size=50G agents_volume
+# Custom image with utility commands
+./run.sh myorg --list-datasets
+./run.sh cloudmark --prepare-only
 ``` -->
+### Local (no-docker) run
+<div style="border:2px solid red; background:#ee2400; padding:10px; border-radius:6px;">
+  <strong>⚠️ Warning:</strong> When you run `run_agent.py` or `run_agent_interactive.py`, only run them inside a secure environment (like your own docker container)! The `run_agent*` scripts will be able to exectute arbitrary bash commands!
+</div>
 
-### Build docker image
+#### Dataset preparation
+To prepare datasets (inside the Agentomics-ML/datasets directory) for the agent, run:
 ```
-docker build -t agentomics_img .
+conda env create -f environment_prepare.yaml
+conda activate agentomics-prepare-env
+python src/prepare_datasets.py
 ```
-
-### Run the container
-We recommend running the container with access to your GPUs, scroll down to the `GPU settings` section to see how to install the Nvidia container toolkit if you haven't yet.
+#### Agent run
+To run the agent and select options interactively, run:
 ```
-docker run -d \
-    --name agentomics_cont \
-    -v $(pwd):/repository:ro \
-    -v agentomics_volume:/workspace/runs \
-    --gpus all \ #add only if you use GPUs
-    --env NVIDIA_VISIBLE_DEVICES=all \ #add only if you use GPUs
-    agentomics_img
-```
-
-This mounts the repository directory in read-only mode for security
-
-### Attach console to the container
-```
-docker exec -it agentomics_cont bash
-```
-### Activate the default conda environment
-```
-source activate agentomics-env
+conda env create -f environment.yaml
+conda activate agentomics-env
+python src/run_agent_interactive.py
 ```
 
-## Prepare your API keys
-Create a `.env` file in the Agentomics-ML folder containing your API keys. Example content: `OPENROUTER_API_KEY=my-api-key-1234`
-
-You will need to add an `OPENROUTER_API_KEY` (https://openrouter.ai)
-
-Optionally, to enable logging your runs you can add a `WANDB_API_KEY` (https://wandb.ai)
-
-## Prepare your dataset
-### Add your files
-Create a folder for your dataset in the `datasets` folder and add your files. Follow the `datasets/sample_dataset` structure. For easiest use follow these rules:
-- Name your files exactly `train.csv`, `test.csv` and `dataset_description.md` 
-- In your csv files, provide a column called `target` that will contain labels. For classification tasks, these can be both strings and integers. For regression tasks, these should be numeric values.
-
-Possible customizations:
-<!-- - providing `test.csv` is optional. Without it, test-set metrics will not be provided to the user at the end of the run. TODO implement -->
-- providing `dataset_description.md` is optional. Without it, the agent will be slightly limited but functional.
-
-
-### Preprocess your files 
-To generate necessary metadata and files, run this command. Replace `sample_dataset` with the name of your dataset folder. 
-Specify the task type (possible values: `classification` and `regression`).
+To run the agent directly (pre-specifying arguments)
 ```
-python src/utils/prepare_dataset.py --dataset-dir datasets/sample_dataset --task-type classification
+conda env create -f environment.yaml
+conda activate agentomics-env
+python src/run_agent.py --model <model> --dataset <dataset> --val-metric <val_metric>
 ```
 
+### Logging
+We support logging to W&B, including agent traces, metrics of various model iterations, and generated files.
+To enable logging, specify WANDB_* keys in your `.env` file (see `.env.example`)
 
-This will create `prepared_datasets` folder as a sibling folder to Agentomics-ML.
+# Developer information
 
-If you're running in your own Docker container with permission restrictions, you can customize the path of this folder by passing `--output-dir <your/path/prepared_datasets>`
+## Configuration
 
-If your label column has a different name than `target`, or you want to specify your own label mapping for binary datasets, run `python src/utils/prepare_dataset.py --help` for more info. 
+To modify agent behavior (LLM temperature, timeouts, etc.), edit `src/utils/config.py`
 
+## Build and Push Commands
 
-## Run the agent
-Run this command, replace `sample_dataset` with the name of your dataset folder. This can take up to few hours.
+For developers wanting to build and distribute their own Docker images, use the provided build script:
+
+```bash
+# Build and push both images (multi-architecture)
+./build.sh myusername
+
+# Build and push specific version
+./build.sh myusername v1.0
 ```
-python src/run_agent.py --dataset-name sample_dataset
+
+**Features:**
+
+- **Multi-platform Support**: Automatically detects and builds for your platform
+- **Dependency Management**: Includes all required Python packages
+- **Dataset Processing**: Handles various dataset formats and preprocessing
+- **Error Handling**: Docker provides clear error messages for build/push issues
+
+### Multi-Architecture Builds (ARM64 + AMD64)
+
+For production deployments and wide compatibility, you should build and push multi-architecture images that work on both Intel/AMD processors (amd64) and ARM processors (arm64, including Apple Silicon).
+
+#### Prerequisites
+
+First, enable Docker's multi-platform builder:
+
+```bash
+# Create and use a multi-platform builder
+docker buildx create --name multiplatform --use
+docker buildx inspect --bootstrap
 ```
 
-This will output all files, metrics and reports from the run into the `workspace` directory, which is created as a sibling directory to the Agemtomics-ML folder. See the `workspace/runs/snapshots` directory for best-run files and best-run report.
+#### Build Multi-Architecture Images
 
-If you're using your own docker container and don't have sudo permissions, pass the `--no-root-privileges` flag to the `run_agent.py` script to enable the agent to run. This will cause the agent to have access to files outside of its own workspace (like other agent runs).
+**Build both architectures for main agent:**
 
-If you've changed the `--output-dir` in the `Preprocess your files`  step, you need to pass the same path to the `--prepared-datasets-dir` argument to this script. Run `--help` to see more customization options
+```bash
+# Build and push main agent image for multiple architectures
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -t myusername/agentomics:latest \
+  --push .
+```
+
+**Build both architectures for preparation image:**
+
+```bash
+# Build and push preparation image for multiple architectures
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -f Dockerfile.prepare \
+  -t myusername/agentomics-prepare:latest \
+  --push .
+```
 
 
 
-If you want to modify any agent-specific details like LLM teperature or timeouts, change them in the `src/utils/config.py` file
+**With version tags:**
 
-If you've initialized a wandb api key, you can also see the whole agent trace and metric progression in your wandb project. You can also track the agent progress in your console and by inspecting files in its `workspace` directory.
+```bash
+# Build and push specific versions (multi-arch)
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -t myusername/agentomics:v1.0 \
+  -t myusername/agentomics:latest \
+  --push .
 
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -f Dockerfile.prepare \
+  -t myusername/agentomics-prepare:v1.0 \
+  -t myusername/agentomics-prepare:latest \
+  --push .
+```
 
+#### Architecture-Specific Builds (Optional)
 
+If you need to build for specific architectures only:
 
-# Extras
+```bash
+# Build only for ARM64 (Apple Silicon, ARM servers)
+docker buildx build \
+  --platform linux/arm64 \
+  -t myusername/agentomics:arm64 \
+  --push .
 
+# Build only for AMD64 (Intel/AMD processors)
+docker buildx build \
+  --platform linux/amd64 \
+  -t myusername/agentomics:amd64 \
+  --push .
+```
+
+#### Verification
+
+**Check that your images support multiple architectures:**
+
+```bash
+# Inspect manifests to see supported architectures
+docker buildx imagetools inspect myusername/agentomics:latest
+docker buildx imagetools inspect myusername/agentomics-prepare:latest
+
+# Expected output should show both:
+# - linux/amd64
+# - linux/arm64
+```
 
 ## Proxy settings
 
 If you are using a proxy, Docker will not automatically detect it and therefore every installation command will fail.
 
 Create the systemd service directory if it doesn't exist and create or edit the proxy configuration file:
+
 ```
 sudo mkdir -p /etc/systemd/system/docker.service.d
 sudo nano /etc/systemd/system/docker.service.d/http-proxy.conf
 ```
 
 Add the following lines:
+
 ```
 [Service]
 Environment="HTTP_PROXY=http://your-proxy:port"
@@ -140,6 +269,7 @@ Environment="NO_PROXY=localhost,127.0.0.1"
 ```
 
 Reload the systemd configuration and restart Docker
+
 ```
 sudo systemctl daemon-reload
 sudo systemctl restart docker
@@ -147,10 +277,10 @@ sudo systemctl restart docker
 
 Make sure to have at least one of the following environment variables with the proxy address:
 
-* http_proxy
-* https_proxy
-* HTTP_PROXY 
-* HTTPS_PROXY 
+- http_proxy
+- https_proxy
+- HTTP_PROXY
+- HTTPS_PROXY
 
 You can run the following commands to check the value of these variables and check if they have been defined:
 
@@ -161,33 +291,30 @@ env | grep -i "https_proxy"
 ```
 
 Build the Docker image passing the proxy build arguments:
+
 ```
 docker build \
   --build-arg HTTP_PROXY=$HTTP_PROXY \
   --build-arg HTTPS_PROXY=$HTTPS_PROXY \
   --build-arg http_proxy=$http_proxy \
   --build-arg https_proxy=$https_proxy \
-  -t agents_img .
+  -t agentomics .
 ```
 
-Run the container passing the proxy arguments:
+Or use the build script with proxy environment variables set:
+
 ```
-docker run -d \
-    --name agents_cont \
-    -v "$(pwd)":/repository:ro \
-    -v agents_volume:/workspace/runs \
-    --env HTTP_PROXY=$HTTP_PROXY \
-    --env HTTPS_PROXY=$HTTPS_PROXY \
-    --env http_proxy=$http_proxy \
-    --env https_proxy=$https_proxy \
-    agents_img
+./build.sh
 ```
+
+The `./run.sh` script automatically handles proxy settings if environment variables are set.
 
 ## GPU settings
 
 If you need to use GPU acceleration with your container, you'll need to configure Docker to access your NVIDIA GPUs.
 
 1. Install the NVIDIA Container Toolkit:
+
    ```
    # Follow the installation guide at:
    # https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
@@ -195,27 +322,26 @@ If you need to use GPU acceleration with your container, you'll need to configur
 
 2. Build the Docker image as per above instructions (add proxy arguments if needed)
 
-3. Run the container with GPU access:
+3. The `./run.sh` script automatically detects and uses GPU access when available:
+
+   ```
+   ./run.sh
+   ```
+
+   For manual setup with GPU access:
+
    ```
    docker run -d \
-       --name agents_cont \
-       -v $(pwd):/repository:ro \
-       -v agents_volume:/workspace/runs \
+       --name agentomics-agent \
+       -e OPENROUTER_API_KEY="your-key" \
+       -e WANDB_API_KEY="your-wandb-key" \
+       -e DATASET_NAME="sample_dataset" \
+       -e MODEL_NAME="openai/gpt-4.1" \
+       -e PREPARED_DATASETS_DIR="/repository/prepared_datasets" \
+       -v agentomics-workspace:/workspace \
+       -v $(pwd):/repository \
+       -v $(pwd)/prepared_datasets:/repository/prepared_datasets \
        --gpus all \
        --env NVIDIA_VISIBLE_DEVICES=all \
-       agents_img
+       agentomics/agentomics:latest
    ```
-
-   Note: If using a proxy, add the appropriate environment variables as shown in the proxy section.
-
-## Developer guidelines and tips
-
-Whatever packages you add, add them to the environment.yaml file
-
-If they are conda packages, you can just re-run
-`conda env export --from-history > environment.yaml`
-
-If they are pip packages, you have to manually add them.
-
-You can update your existing environment by running this command
-`conda env update --file environment.yaml --prune`

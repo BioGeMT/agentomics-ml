@@ -1,2 +1,46 @@
-/repository/datasets/human_non_tata_promoters/human_nontata_promoters_test.csv
-/repository/datasets/human_non_tata_promoters/human_nontata_promoters_test.no_label.csv
+# Reduce Docker build context size for memory efficiency
+.git
+.gitignore
+*.md
+*.cast
+.env
+.env.*
+node_modules
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.cache
+.pytest_cache
+.hypothesis
+
+# Exclude large directories that aren't needed in container
+runs/
+outputs/
+logs/
+temp/
+tmp/
+*.tmp
+
+# Exclude IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Exclude OS files
+.DS_Store
+Thumbs.db

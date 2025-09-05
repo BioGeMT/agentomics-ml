@@ -1,0 +1,15 @@
+FROM continuumio/miniconda3:23.3.1-0
+
+# Create preparation environment
+COPY environment_prepare.yaml .
+RUN conda env create -f environment_prepare.yaml \
+    && conda clean -afy
+
+# Initialize conda
+RUN conda init bash
+
+# Set working directory
+WORKDIR /repository
+
+# Set the default command to run preparation directly
+CMD ["conda", "run", "-n", "agentomics-prepare-env", "python", "/repository/src/prepare_datasets.py", "--prepare-all"] 

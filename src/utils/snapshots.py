@@ -1,5 +1,6 @@
 import re
 import shutil
+from pathlib import Path
 
 def get_metrics_from_file(file_path):
     metrics = {}
@@ -10,6 +11,7 @@ def get_metrics_from_file(file_path):
     return metrics
 
 def get_valid_and_train_metrics(base_path):
+    base_path = Path(base_path)
     val_metrics = get_metrics_from_file(base_path / "validation_metrics.txt")
     train_metric = get_metrics_from_file(base_path / "train_metrics.txt")
     all_metrics = {}
@@ -54,7 +56,7 @@ def is_new_best(config):
 
     #TODO parametrize improvement threshold
     necessary_improvement = 0
-    is_new_best = new_metrics[f"validation/{config.best_metric}"] > best_metrics[f"validation/{config.best_metric}"] + necessary_improvement
+    is_new_best = new_metrics[f"validation/{config.val_metric}"] > best_metrics[f"validation/{config.val_metric}"] + necessary_improvement
     print(f"is_new_best: {is_new_best}")
     print(f"New metrics: {new_metrics}")
     print(f"Best metrics: {best_metrics}")

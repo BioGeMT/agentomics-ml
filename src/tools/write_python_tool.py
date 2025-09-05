@@ -39,6 +39,7 @@ def create_write_python_tool(agent_id, max_retries, workspace_dir):
         takes_ctx=False, 
         max_retries=max_retries,
         # description=None, # Infered from the function docstring
-        require_parameter_descriptions=True
+        require_parameter_descriptions=True,
+        name="write_python",
     )
     return write_python_tool

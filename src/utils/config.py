@@ -1,56 +1,76 @@
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
+from utils.dataset_utils import get_task_type_from_prepared_dataset
 
 @dataclass
 class Config:
     # defined at runtime
-    model: str
-    feedback_model: str
+    model_name: str
+    feedback_model_name: str
     dataset: str
     tags: List[str]
-    best_metric: str #TODO rename into validation_metric
-    dataset_dir: Path
+    val_metric: str
+    prepared_dataset_dir: Path
     agent_dataset_dir: Path
     workspace_dir: Path
     snapshot_dir: Path
     root_privileges: bool
-    agent_id: Optional[str] = None # assigned after user creation
+    iterations: int
+    task_type: str
 
+    agent_id: Optional[str] = None # assigned after user creation
     # static defaults
     temperature: float = 1.0
     max_steps: int = 100 #TODO rename, this is per-step limit
     max_run_retries: int = 1
     max_validation_retries: int = 5
     use_proxy: bool = True
-    iterations: int = 5
     llm_response_timeout: int = 60 * 15
     bash_tool_timeout: int = 60 * 5
     write_python_tool_timeout: int = 60 * 1
     run_python_tool_timeout: int = 60 * 60 * 6 #This affects max training time
-    credit_budget: int = 30 # Only applies when using a provisioning openrouter key
+    credit_budget: int = 30 # Only applies when using a provisioning openrouter key #TODO
     max_tool_retries: int = 5
+    agent_id: str = None
 
-def make_config(
-    model: str,
-    feedback_model: str,
-    dataset: str,
-    tags: List[str],
-    best_metric: str,
-    root_privileges: bool,
-    workspace_dir: Path,
-    dataset_dir: Path,
-    agent_dataset_dir: Path
-) -> Config:
-    return Config(
-        model=model,
-        feedback_model=feedback_model,
-        dataset=dataset,
-        tags=tags,
-        best_metric=best_metric,
-        root_privileges=root_privileges,
-        workspace_dir=workspace_dir,
-        dataset_dir=dataset_dir / dataset,
-        agent_dataset_dir=agent_dataset_dir / dataset,
-        snapshot_dir= workspace_dir / "snapshots"
-    )
+    def __init__(
+        self,
+        model_name: str,
+        feedback_model_name: str,
+        dataset: str,
+        tags: List[str],
+        val_metric: str,
+        root_privileges: bool,
+        workspace_dir: Path,
+        prepared_datasets_dir: Path,
+        agent_dataset_dir: Path,
+        max_steps: Optional[int] = None,
+        iterations: Optional[int] = 5,
+    ):
+        self.model_name = model_name
+        self.feedback_model_name = feedback_model_name
+        self.dataset = dataset
+        self.tags = tags
+        self.val_metric = val_metric
+        self.root_privileges = root_privileges
+        self.workspace_dir = workspace_dir
+        self.prepared_dataset_dir = prepared_datasets_dir / dataset
+        self.agent_dataset_dir = agent_dataset_dir / dataset
+        self.snapshot_dir = workspace_dir / "snapshots"
+        self.iterations = iterations
+        self.task_type = get_task_type_from_prepared_dataset(prepared_datasets_dir / dataset)
+        
+        if max_steps is not None:
+            self.max_steps = max_steps
+
+    def print_summary(self):
+        print('=== AGENTOMICS CONFIGURATION ===')
+        print('MAIN MODEL:', self.model_name)
+        print('FEEDBACK MODEL:', self.feedback_model_name)
+        print('DATASET:', self.dataset)
+        print('TASK TYPE:', self.task_type)
+        print('VAL METRIC:', self.val_metric)
+        print('AGENT ID:', self.agent_id)
+        print('ITERATIONS:', self.iterations)
+        print('===============================')

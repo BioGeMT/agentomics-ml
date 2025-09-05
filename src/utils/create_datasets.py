@@ -78,7 +78,7 @@ def generate_genomic_benchmarks_files():
         repo_path = Path(os.path.abspath(os.path.dirname(__file__))).parent.parent
 
         download_path = download_dataset(dataset_name, dest_path=repo_path/".genomic_benchmarks", cache_path=repo_path/".genomic_benchmarks")
-        
+
         local_dset_path = repo_path / "datasets" / dataset_name
         class_col = "class"
         numeric_label_col = "numeric_label"

@@ -9,9 +9,9 @@ def create_new_user_and_rundir(config):
 
     if config.root_privileges:
         subprocess.run(
-        ["sudo", "useradd", "-d", run_dir, "-m", "-p", "1234", run_id],
-        check=True
-        )   
+            ["sudo", "useradd", "-d", run_dir, "-m", "-p", "1234", run_id],
+            check=True
+        )
         subprocess.run(
             ["sudo", "chmod", "o-rwx", run_dir],
             check=True
@@ -20,6 +20,7 @@ def create_new_user_and_rundir(config):
         run_dir.mkdir(parents=True, exist_ok=True)
     
     snapshot_dir.mkdir(parents=True, exist_ok=True)
+    
     return run_id
 
 if __name__ == "__main__":

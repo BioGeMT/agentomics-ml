@@ -14,7 +14,7 @@ async def generate_summary(config, report_content, openrouter_api_key):
     )
     
     response = await client.chat.completions.create(
-        model=config.model,
+        model=config.model_name,
         messages=[
             {"role": "system", "content": "Summarize this ML experiment report in 5-10 lines. Focus on key decisions, approaches, and outcomes."},
             {"role": "user", "content": report_content}

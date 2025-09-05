@@ -152,7 +152,7 @@ def generate_iterative_runs(tags, path, method, entity='ceitec-ai', project='Age
 
     df = pd.DataFrame(runs_data)
     df['successful_run'] = df['ACC'].apply(lambda x: True if x >= 0 else False)
-    df = df.rename(columns={'best_metric': 'metric_to_optimize'})
+    df = df.rename(columns={'val_metric': 'metric_to_optimize'})
     cols_to_drop = [ 
         'run_id', 
         'tags', 
