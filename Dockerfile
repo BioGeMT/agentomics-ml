@@ -28,4 +28,4 @@ RUN conda init bash \
 
 WORKDIR /repository
 
-ENTRYPOINT ["/opt/conda/envs/agentomics-env/bin/python", "/repository/src/agentomics-entrypoint.py"]
+ENTRYPOINT ["/opt/conda/envs/agentomics-env/bin/python", "/repository/src/run_agent_interactive.py"]

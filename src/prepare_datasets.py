@@ -2,8 +2,9 @@ import argparse
 import os
 from pathlib import Path
 from rich.console import Console
-from dataset_utils import prepare_dataset
-from datasets_interactive_utils import prepare_all_datasets
+
+from utils.dataset_utils import prepare_dataset
+from utils.datasets_interactive_utils import prepare_all_datasets
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Dataset preparation with auto-detection")

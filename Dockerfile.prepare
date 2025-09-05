@@ -12,4 +12,4 @@ RUN conda init bash
 WORKDIR /repository
 
 # Set the default command to run preparation directly
-CMD ["conda", "run", "-n", "agentomics-prepare-env", "python", "/repository/src/utils/dataset_preparation.py", "--prepare-all"] 
+CMD ["conda", "run", "-n", "agentomics-prepare-env", "python", "/repository/src/prepare_datasets.py", "--prepare-all"] 
