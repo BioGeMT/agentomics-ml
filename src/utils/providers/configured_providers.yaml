@@ -1,0 +1,26 @@
+providers:
+  - name: "OpenAI"
+    apikey: "${OPENAI_API_KEY}"
+    base_url: "https://api.openai.com/v1"
+    list_models_endpoint: "https://api.openai.com/v1/models"
+  
+  - name: "Anthropic"
+    apikey: "${ANTHROPIC_API_KEY}"
+    base_url: "https://api.anthropic.com"
+    list_models_endpoint: "https://api.anthropic.com/v1/models"
+
+  - name: "OpenRouter"
+    apikey: "${OPENROUTER_API_KEY}"
+    base_url: "https://openrouter.ai/api/v1"
+    list_models_endpoint: "https://openrouter.ai/api/v1/models"
+
+  - name: "Ollama"
+    apikey: ""
+    base_url: "http://host.docker.internal:11434/v1"
+    list_models_endpoint: "http://host.docker.internal:11434/api/tags"
+
+  # Needs pydanticai version update
+  #- name: "GoogleAI"
+  #  apikey: "${GOOGLEAI_API_KEY}"
+  #  base_url: "https://generativelanguage.googleapis.com/v1"
+  #  list_models_endpoint: "https://generativelanguage.googleapis.com/v1/models"

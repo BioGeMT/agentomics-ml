@@ -16,3 +16,4 @@ dependencies:
     - requests==2.32.4
     - python-dotenv==1.1.1
     - openai==1.102.0
+    - anthropic==0.67.0
