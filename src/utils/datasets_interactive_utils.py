@@ -125,7 +125,7 @@ def prepare_all_datasets(datasets_dir: str, prepared_datasets_dir: str) -> None:
         
         if already_prepared:
             console.print("")
-            console.print("[green]Ready to use! Run: ./run.sh[/green]")
+            console.print("[green]Ready to use![/green]")
         
         sys.exit(0)
     
@@ -194,7 +194,7 @@ def prepare_all_datasets(datasets_dir: str, prepared_datasets_dir: str) -> None:
     if len(already_prepared) + prepared_now > 0:
         console.print("")
         console.print("[green]Next steps:[/green]")
-        console.print("   1. Run the agent: [cyan]./run.sh[/cyan]")
+        console.print("   1. Run the agent:")
         console.print("   2. Select your prepared dataset")
         console.print("   3. Choose your AI model")
         console.print("   4. Let the agent work its magic!")
@@ -226,7 +226,6 @@ def interactive_dataset_selection(datasets: List[Dict]) -> Optional[str]:
 
     if not prepared_datasets:
         console.print("[red]No prepared datasets available for selection[/red]")
-        console.print("[dim]Run ./run.sh --prepare-only to prepare datasets first[/dim]")
         return None
     
     choice = get_user_input_for_int(
