@@ -1,6 +1,5 @@
 from pathlib import Path
 import textwrap
-from utils.models import create_model
 from pydantic_ai.messages import ModelRequest, SystemPromptPart, UserPromptPart
 from pydantic_ai.models import ModelRequestParameters
 from utils.snapshots import get_best_iteration
@@ -9,11 +8,8 @@ def wrap_text(text, width=100):
     return '\n'.join(textwrap.fill(line, width) for line in str(text).split('\n'))
 
 
-async def generate_summary(config, report_content):
-    # Parametrize summary model with optional override
-    summary_model_name = getattr(config, 'summary_model_name', None) or config.model_name
-    model = create_model(summary_model_name, config)
-    
+async def generate_summary(model, report_content):
+    #TODO parametrize summary model    
     messages = [
         ModelRequest(parts=[
             SystemPromptPart(content="Summarize this ML experiment report in 5-10 lines. Focus on key decisions, approaches, and outcomes."),
@@ -29,9 +25,8 @@ async def generate_summary(config, report_content):
         )
     )
     return response.parts[0].content
-
-
-async def add_summary_to_report(config, iteration):
+    
+async def add_summary_to_report(model, config, iteration):
     report_dir = config.reports_dir / config.agent_id
     report_dir.mkdir(parents=True, exist_ok=True)
     report_file = report_dir / f"run_report_iter_{iteration}.txt"
@@ -39,7 +34,7 @@ async def add_summary_to_report(config, iteration):
     with open(report_file, 'r') as f:
         content = f.read()
     
-    summary = await generate_summary(config, content)
+    summary = await generate_summary(model, content)
     wrapped_summary = wrap_text(summary, 100)
     
     with open(report_file, 'w') as f:

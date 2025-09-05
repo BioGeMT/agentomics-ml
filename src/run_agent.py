@@ -2,6 +2,7 @@ import asyncio
 import traceback
 import argparse
 from pathlib import Path
+import os
 
 import wandb
 
@@ -17,11 +18,12 @@ from utils.workspace_setup import ensure_workspace_folders
 from agents.architecture import run_iteration
 from utils.metrics import get_classification_metrics_names, get_regression_metrics_names
 from utils.report_logger import add_metrics_to_report, add_summary_to_report, add_final_test_metrics_to_best_report, rename_and_snapshot_best_iteration_report
-
+from utils.providers.provider import Provider, get_provider_and_api_key
 from feedback.feedback_agent import get_feedback, aggregate_feedback
-from utils.report_logger import add_metrics_to_report, add_summary_to_report
 
-async def main(model_name, feedback_model_name, dataset, tags, val_metric, root_privileges, workspace_dir, prepared_datasets_dir, agent_dataset_dir, iterations, user_prompt):
+
+async def main(model_name, feedback_model_name, dataset, tags, val_metric, root_privileges, 
+               workspace_dir, prepared_datasets_dir, agent_dataset_dir, iterations, user_prompt, provider):
     # Initialize configuration 
     config = Config(
         model_name=model_name, 
@@ -44,15 +46,16 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric, root_
     
     # initialize logging and LLMs
     wandb_logged_in = setup_logging(config)
-    default_model = create_model(config.model_name, config)
-    feedback_model = create_model(config.feedback_model_name, config)
+    default_model = provider.create_model(config.model_name, config)
+    feedback_model = provider.create_model(config.feedback_model_name, config)
+    #TODO Instantiate report logger model and pass it to add_summary_to_report
 
     await run_agentomics(config=config, default_model=default_model, feedback_model=feedback_model)
 
     if(wandb_logged_in):
         wandb.finish()
 
-async def run_agentomics(config: Config, default_model, feedback_model, openai_client):
+async def run_agentomics(config: Config, default_model, feedback_model):
     all_feedbacks = []
     feedback = None
     print(f"Starting training loop with {config.iterations} iterations")
@@ -132,7 +135,7 @@ async def run_agentomics(config: Config, default_model, feedback_model, openai_c
                 )
         finally:
             add_metrics_to_report(config, run_index)
-            await add_summary_to_report(config, run_index)
+            await add_summary_to_report(default_model, config, run_index)
             log_files(config, iteration=run_index)
         
     print("\nRunning final test evaluation...")
@@ -150,7 +153,8 @@ async def run_agentomics(config: Config, default_model, feedback_model, openai_c
 def parse_args():
     parser = argparse.ArgumentParser(description="Runs agent and outputs results to the workspace directory")
     parser.add_argument('--dataset-name', required=True, help='Name of the folder containing dataset files')
-    parser.add_argument('--model', help='Openrouter-available LLM model to use', default="openai/gpt-4.1")
+    parser.add_argument('--model', help='LLM model to use', required=True)
+    parser.add_argument('--provider', help=f'API provider to use. Available: {Provider.get_available_providers()}. Auto detected if only one API key provided.', default=None)
     parser.add_argument('--no-root-privileges', action='store_true', help='Flag to run without root privileges. This is not recommended, since it decreases security by not preventing the agent from accessing/modifying files outside of its own workspace.')
     parser.add_argument('--workspace-dir', type=Path, default=Path('../workspace').resolve(), help='Path to a directory which will store agent runs, snapshots, and reports')
     parser.add_argument('--prepared-datasets-dir', type=Path, default=Path('../repository/prepared_datasets').resolve(), help='Path to a directory which contains prepared datasets.')
@@ -164,7 +168,8 @@ def parse_args():
 
     return parser.parse_args()
 
-async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, agent_datasets_dir, workspace_dir, tags, no_root_privileges, iterations, user_prompt):
+async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, agent_datasets_dir,
+                          workspace_dir, tags, no_root_privileges, iterations, user_prompt, provider):
     setup_nonsensitive_dataset_files_for_agent(
         prepared_datasets_dir=Path(prepared_datasets_dir), 
         agent_datasets_dir=Path(agent_datasets_dir),
@@ -183,10 +188,23 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
         agent_dataset_dir=agent_datasets_dir,
         iterations=iterations,
         user_prompt=user_prompt,
+        provider=provider
     )
 
 async def run_experiment_from_terminal():
     args = parse_args()
+
+    if args.provider:
+        provider_name = args.provider
+        provider_config = Provider.get_provider_config(provider_name)
+        api_key_env = provider_config.get("apikey", "").replace("${", "").replace("}", "")
+        api_key = os.getenv(api_key_env, "")
+        provider = Provider.create_provider(provider_name, api_key)
+    else:
+        # Fall back to interactive selection if not provided
+        api_key, provider_name = get_provider_and_api_key()
+        provider = Provider.create_provider(provider_name, api_key)
+
     await run_experiment(
         model=args.model, 
         dataset_name=args.dataset_name, 
@@ -198,6 +216,7 @@ async def run_experiment_from_terminal():
         no_root_privileges=args.no_root_privileges,
         iterations=args.iterations,
         user_prompt=args.user_prompt,
+        provider=provider
     )
 
 if __name__ == "__main__":
