@@ -6,7 +6,7 @@ def log_files(config, files=None, iteration=None):
     if not is_wandb_active():
         return
     
-    dir_path = config.workspace_dir / config.agent_id if iteration is not None else config.snapshot_dir / config.agent_id
+    dir_path = config.runs_dir / config.agent_id if iteration is not None else config.snapshots_dir / config.agent_id
     if(not files):
         files = get_python_files(dir_path)
 

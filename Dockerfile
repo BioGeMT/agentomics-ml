@@ -12,10 +12,6 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 # Install sudo for later creation of the agent user
 RUN apt-get update && apt-get install -y sudo && rm -rf /var/lib/apt/lists/*
 
-# Prepare workspace
-RUN mkdir -p /workspace/runs 
-RUN mkdir -p /workspace/datasets
-
 # Copy & create your conda environment\ using environment.yaml (with mamba for speed and memory efficiency)
 COPY environment.yaml .
 RUN mamba env create -f environment.yaml \

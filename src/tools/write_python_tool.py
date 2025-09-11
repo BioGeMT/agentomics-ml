@@ -2,7 +2,7 @@ import traceback
 from pydantic_ai import Tool
 from pathlib import Path
 
-def create_write_python_tool(agent_id, max_retries, workspace_dir):
+def create_write_python_tool(agent_id, max_retries, runs_dir):
     def _write_python(code: str, file_path: str):
         """
         A tool to write python code into a single file.
@@ -19,7 +19,7 @@ def create_write_python_tool(agent_id, max_retries, workspace_dir):
         """
         
         # Check if the file_path points to agents directory (we're not using bash, so we can't check privileges)
-        necessary_prefix = str(workspace_dir / agent_id)
+        necessary_prefix = str(runs_dir / agent_id)
         if not str(Path(file_path).resolve()).startswith(necessary_prefix):
             return f"Error: file_path must start with {necessary_prefix}. Provided: {file_path}"
         

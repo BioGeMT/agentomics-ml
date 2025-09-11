@@ -14,7 +14,9 @@ class Config:
     prepared_dataset_dir: Path
     agent_dataset_dir: Path
     workspace_dir: Path
-    snapshot_dir: Path
+    snapshots_dir: Path
+    runs_dir: Path
+    reports_dir: Path
     root_privileges: bool
     iterations: int
     task_type: str
@@ -54,10 +56,12 @@ class Config:
         self.tags = tags
         self.val_metric = val_metric
         self.root_privileges = root_privileges
-        self.workspace_dir = workspace_dir
         self.prepared_dataset_dir = prepared_datasets_dir / dataset
         self.agent_dataset_dir = agent_dataset_dir / dataset
-        self.snapshot_dir = workspace_dir / "snapshots"
+        self.workspace_dir = workspace_dir
+        self.runs_dir = workspace_dir / "runs"
+        self.snapshots_dir = workspace_dir / "snapshots"
+        self.reports_dir = workspace_dir / "reports"
         self.iterations = iterations
         self.task_type = get_task_type_from_prepared_dataset(prepared_datasets_dir / dataset)
         
