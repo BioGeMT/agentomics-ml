@@ -2,10 +2,10 @@ from pydantic_ai import Tool
 from pathlib import Path
 from .bash_tool import BashProcess
 
-def create_run_python_tool(agent_id, workspace_dir, timeout, max_retries, proxy):
+def create_run_python_tool(agent_id, runs_dir, timeout, max_retries, proxy):
     bash = BashProcess(
         agent_id=agent_id,
-        workspace_dir=workspace_dir,
+        runs_dir=runs_dir,
         autoconda=False,
         timeout=timeout,
         proxy = proxy,
@@ -26,7 +26,7 @@ def create_run_python_tool(agent_id, workspace_dir, timeout, max_retries, proxy)
             return "python_file_path is not a valid python file path"
         
         #TODO allow to accept arguments + validate they don't break the bash (requiring input etc)
-        env_path = workspace_dir / agent_id / ".conda" / "envs" / f"{agent_id}_env"
+        env_path = runs_dir / agent_id / ".conda" / "envs" / f"{agent_id}_env"
         command = f"conda run -p {env_path} --no-capture-output python {python_file_path}"
         out = bash.run(command)
         

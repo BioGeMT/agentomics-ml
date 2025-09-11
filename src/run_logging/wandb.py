@@ -12,7 +12,7 @@ def setup_logging(config, api_key, wandb_project_name, wandb_entity, dir="/tmp/w
         return False
     try:
         wandb.init(
-            dir=config.workspace_dir / dir,
+            dir=config.runs_dir / dir,
             entity=wandb_entity,
             project=wandb_project_name,
             tags=config.tags,

@@ -10,18 +10,18 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
     with open(config.prepared_dataset_dir / "metadata.json") as f:
         dataset_metadata = json.load(f)
 
-    run_dir = config.workspace_dir / config.agent_id
-    snapshot_dir = config.snapshot_dir / config.agent_id
-    source_folder = 'snapshots' if use_best_snapshot else 'workspace'
+    run_dir = config.runs_dir / config.agent_id
+    snapshot_dir = config.snapshots_dir / config.agent_id
+    source_folder = 'snapshot' if use_best_snapshot else 'run'
     if(use_best_snapshot):
         print('USING BEST SNAPSHOT')
     conda_path = {
-        'workspace': run_dir / ".conda" / "envs" / f"{config.agent_id}_env",
-        'snapshots': snapshot_dir / ".conda"/ "envs" / f"{config.agent_id}_env",
+        'run': run_dir / ".conda" / "envs" / f"{config.agent_id}_env",
+        'snapshot': snapshot_dir / ".conda"/ "envs" / f"{config.agent_id}_env",
     }
     inference_path = {
-        'workspace': run_dir / "inference.py",
-        'snapshots': snapshot_dir / "inference.py",
+        'run': run_dir / "inference.py",
+        'snapshot': snapshot_dir / "inference.py",
     }
     stage_to_input = {
         'dry_run': config.prepared_dataset_dir / "train.no_label.csv",

@@ -25,25 +25,25 @@ def get_best_metrics(config):
     if(not best_metrics_exists(config)):
         return {}
     else:
-        return get_valid_and_train_metrics(config.snapshot_dir / config.agent_id)
+        return get_valid_and_train_metrics(config.snapshots_dir / config.agent_id)
 
 def get_new_metrics(config):
     if(not new_metrics_exists(config)):
         return {}
     else:
-        return get_valid_and_train_metrics(config.workspace_dir / config.agent_id)
+        return get_valid_and_train_metrics(config.runs_dir / config.agent_id)
 
 def get_new_and_best_metrics(config):
     return get_new_metrics(config), get_best_metrics(config)
 
 def best_metrics_exists(config):
-    best_metrics_path = config.snapshot_dir / config.agent_id / "validation_metrics.txt"
+    best_metrics_path = config.snapshots_dir / config.agent_id / "validation_metrics.txt"
     if(best_metrics_path.is_file()):
         return True
     return False
 
 def new_metrics_exists(config):
-    new_metrics_path = config.workspace_dir / config.agent_id / "validation_metrics.txt"
+    new_metrics_path = config.runs_dir / config.agent_id / "validation_metrics.txt"
     if(new_metrics_path.is_file()):
         return True
     return False
@@ -67,8 +67,8 @@ def delete_snapshot(snapshot_dir):
         shutil.rmtree(snapshot_dir)
 
 def snapshot(config, iteration, delete_old_snapshot=True):
-    run_dir = config.workspace_dir / config.agent_id
-    snapshot_dir = config.snapshot_dir / config.agent_id
+    run_dir = config.runs_dir / config.agent_id
+    snapshot_dir = config.snapshots_dir / config.agent_id
 
     if delete_old_snapshot:
         delete_snapshot(snapshot_dir)
@@ -114,19 +114,19 @@ def snapshot(config, iteration, delete_old_snapshot=True):
         f.write(str(iteration))
 
 def get_best_iteration(config):
-    snapshot_dir = config.snapshot_dir / config.agent_id
+    snapshot_dir = config.snapshots_dir / config.agent_id
     iteration_file = snapshot_dir / "iteration_number.txt"
     if iteration_file.exists():
         with open(iteration_file, 'r') as f:
             return int(f.read().strip())
     return 0
 
-def replace_workspace_path_with_snapshots(workspace_dir, snapshot_dir, absolute_path_snapshot_file):
+def replace_workspace_path_with_snapshots(run_dir, snapshot_dir, absolute_path_snapshot_file):
     # Replaces hard-coded paths in the files to point to the snapshot dir
     with open(absolute_path_snapshot_file, "r") as f:
         old_content = f.read()
-    new_content = old_content.replace(str(workspace_dir), str(snapshot_dir))
+    new_content = old_content.replace(str(run_dir), str(snapshot_dir))
     if(old_content != new_content):
-        print(f"Replaced {workspace_dir} with {snapshot_dir} in {absolute_path_snapshot_file}")
+        print(f"Replaced {run_dir} with {snapshot_dir} in {absolute_path_snapshot_file}")
         with open(absolute_path_snapshot_file, "w") as f:
             f.write(new_content)

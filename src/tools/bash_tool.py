@@ -6,10 +6,10 @@ import shlex
 from pydantic_ai import Tool
 
 class BashProcess:
-    def __init__(self, agent_id, workspace_dir, autoconda=True, timeout=60, proxy=False):
+    def __init__(self, agent_id, runs_dir, autoconda=True, timeout=60, proxy=False):
         self.locked = threading.Lock()
         self.agent_id = agent_id
-        self.workspace_dir = workspace_dir
+        self.runs_dir = runs_dir
         self.autoconda = autoconda
         self.timeout = timeout
         self.proxy = proxy
@@ -18,7 +18,7 @@ class BashProcess:
             self.create_conda_env()
     
     def create_conda_env(self):
-        conda_env_path = self.workspace_dir / self.agent_id / ".conda" / "envs" / f"{self.agent_id}_env"
+        conda_env_path = self.runs_dir / self.agent_id / ".conda" / "envs" / f"{self.agent_id}_env"
         self.run(
             f"conda create -p {conda_env_path} python=3.9 -y"
         )
@@ -62,10 +62,10 @@ class BashProcess:
             output = output[:5000]+"\n ... (output truncated, too long)"
         return output.strip()
 
-def create_bash_tool(agent_id, workspace_dir, timeout, max_retries, autoconda=True, proxy=False):
+def create_bash_tool(agent_id, runs_dir, timeout, max_retries, autoconda=True, proxy=False):
         bash = BashProcess(
             agent_id=agent_id,
-            workspace_dir=workspace_dir,
+            runs_dir=runs_dir,
             autoconda=autoconda,
             timeout=timeout,
             proxy=proxy
@@ -90,7 +90,7 @@ def create_bash_tool(agent_id, workspace_dir, timeout, max_retries, autoconda=Tr
             Args:
                 command: A valid bash command.
             """  
-            env_path = workspace_dir / agent_id / ".conda" / "envs" / f"{agent_id}_env"
+            env_path = runs_dir / agent_id / ".conda" / "envs" / f"{agent_id}_env"
             command_parsed = shlex.quote(command)
             command = f"conda run -p {env_path} --no-capture-output bash -c {command_parsed}"
             out = bash.run(command)

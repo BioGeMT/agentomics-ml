@@ -7,7 +7,7 @@ def create_tools(config):
     tools =[
             create_bash_tool(
                 agent_id=config.agent_id,
-                workspace_dir=config.workspace_dir,
+                runs_dir=config.runs_dir,
                 timeout=config.bash_tool_timeout, 
                 autoconda=True,
                 max_retries=config.max_tool_retries,
@@ -16,10 +16,10 @@ def create_tools(config):
             create_write_python_tool( #Tries to create the same-name conda environment
                 agent_id=config.agent_id, 
                 max_retries=config.max_tool_retries,
-                workspace_dir=config.workspace_dir),
+                runs_dir=config.runs_dir),
             create_run_python_tool(
                 agent_id=config.agent_id,
-                workspace_dir=config.workspace_dir,
+                runs_dir=config.runs_dir,
                 timeout=config.run_python_tool_timeout,
                 proxy=config.use_proxy,
                 max_retries=config.max_tool_retries),

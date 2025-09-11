@@ -4,8 +4,8 @@ from hrid import HRID
 
 def create_new_user_and_rundir(config):
     run_id = "_".join(HRID().generate().replace("-", "_").replace(" ","_").split("_")[:-1])[:32]
-    run_dir = config.workspace_dir / run_id
-    snapshot_dir = config.snapshot_dir / run_id
+    run_dir = config.runs_dir / run_id
+    snapshot_dir = config.snapshots_dir / run_id
 
     if config.root_privileges:
         subprocess.run(

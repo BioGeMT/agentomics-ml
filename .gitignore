@@ -187,10 +187,11 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-# Datasets
+# Folders
 .genomic_benchmarks
 .miRBench
 prepared_datasets
 datasets
 workspace/runs
 workspace
+outputs

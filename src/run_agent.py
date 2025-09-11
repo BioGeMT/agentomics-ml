@@ -19,8 +19,10 @@ from utils.create_user import create_new_user_and_rundir
 from utils.dataset_utils import setup_nonsensitive_dataset_files_for_agent
 from utils.config import Config
 from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics
+from utils.workspace_setup import ensure_workspace_folders
 from agents.architecture import run_iteration
 from utils.metrics import get_classification_metrics_names, get_regression_metrics_names
+from utils.report_logger import add_metrics_to_report, add_summary_to_report, add_final_test_metrics_to_best_report, rename_and_snapshot_best_iteration_report
 
 from feedback.feedback_agent import get_feedback, aggregate_feedback
 
@@ -38,6 +40,7 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric, root_
         agent_dataset_dir=Path(agent_dataset_dir),
         iterations=iterations,
     )
+    ensure_workspace_folders(config)
     # Create a user for the agent
     agent_id = create_new_user_and_rundir(config)
     config.agent_id = agent_id
@@ -156,15 +159,19 @@ async def run_agentomics(config: Config, default_model, feedback_model):
                     extra_info=f"Inference failed: {traceback.format_exc()}",
                 )
         finally:
+            add_metrics_to_report(config, run_index)
+            await add_summary_to_report(config, run_index)
             log_files(config, iteration=run_index)
         
     print("\nRunning final test evaluation...")
     try:
-        run_inference_and_log(config, iteration=run_index, evaluation_stage='test', use_best_snapshot=True)
+        run_inference_and_log(config, iteration=None, evaluation_stage='test', use_best_snapshot=True)
+        add_final_test_metrics_to_best_report(config)
     except Exception as e:
         print('FINAL TEST EVAL FAIL', str(e))
         log_inference_stage_and_metrics(1, task_type=config.task_type)
-    
+
+    rename_and_snapshot_best_iteration_report(config)
     log_files(config)
 
 
@@ -173,7 +180,7 @@ def parse_args():
     parser.add_argument('--dataset-name', required=True, help='Name of the folder containing dataset files')
     parser.add_argument('--model', help='Openrouter-available LLM model to use', default="openai/gpt-4.1")
     parser.add_argument('--no-root-privileges', action='store_true', help='Flag to run without root privileges. This is not recommended, since it decreases security by not preventing the agent from accessing/modifying files outside of its own workspace.')
-    parser.add_argument('--workspace-dir', type=Path, default=Path('../workspace/runs').resolve(), help='Path to a directory which will store the agent run and generated files')
+    parser.add_argument('--workspace-dir', type=Path, default=Path('../workspace').resolve(), help='Path to a directory which will store agent runs, snapshots, and reports')
     parser.add_argument('--prepared-datasets-dir', type=Path, default=Path('../repository/prepared_datasets').resolve(), help='Path to a directory which contains prepared datasets.')
     parser.add_argument('--agent-datasets-dir', type=Path, default=Path('../workspace/datasets').resolve(), help='Path to a directory which contains non-test data accessible by agents.')
     parser.add_argument('--tags', nargs='*', default=[], help='(Optional) Tags for a wandb run logging')
