@@ -75,12 +75,12 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric, root_
         provider=OpenAIProvider(openai_client=client)
     )
 
-    await run_agentomics(config=config, default_model=model, feedback_model=feedback_model)
+    await run_agentomics(config=config, default_model=model, feedback_model=feedback_model, openai_client=client)
 
     if(wandb_logged_in):
         wandb.finish()
 
-async def run_agentomics(config: Config, default_model, feedback_model):
+async def run_agentomics(config: Config, default_model, feedback_model, openai_client):
     all_feedbacks = []
     feedback = None
     print(f"Starting training loop with {config.iterations} iterations")
@@ -160,7 +160,7 @@ async def run_agentomics(config: Config, default_model, feedback_model):
                 )
         finally:
             add_metrics_to_report(config, run_index)
-            await add_summary_to_report(config, run_index)
+            await add_summary_to_report(config, run_index, openai_client)
             log_files(config, iteration=run_index)
         
     print("\nRunning final test evaluation...")
