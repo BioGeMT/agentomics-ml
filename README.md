@@ -8,7 +8,7 @@ Given a raw dataset, Agentomics-ML autonomously generates
 - A trained model, ready to run inference on new data
 - A report summarizing the model development process and evaluation metrics
 
-**⏱️ Typical timing:** 30-120 minutes depending on dataset size and complexity
+<!-- **⏱️ Typical timing:** 30-120 minutes depending on dataset size and complexity -->
 
 Agentomics-ML works like a ML engineer
 - Explores data before designing a model
@@ -18,10 +18,11 @@ Agentomics-ML works like a ML engineer
 - Works iteratively, reacting to issues like overfitting and underfitting based on validation metrics
 - Produces working scripts, including their conda environments
 
-You can use
-- any LLM, including local models
-- any classification or regression dataset in a csv format (see #Run on your own dataset)
-- variety of metrics for validation (accuracy, AUROC, AURPC, MSE, ...)
+Currently Agentomics-ML supports
+- Any LLM, including local models
+- Any classification or regression dataset in a csv format
+- Secure runs using docker containers and volumes, constraining the agent to read-only access to the Agentomics-ML folder and code execution only inside a docker container
+
 
 📖 [Preprint](https://arxiv.org/abs/2506.05542) | 🚀 [Quick Start](#quick-start) | [Website](https://agentomicsml.com/)
 ## Download
@@ -31,10 +32,10 @@ git clone https://github.com/BioGeMT/Agentomics-ML.git
 cd Agentomics-ML
 ```
 
-> **Prerequisites:**
->
-> - **Docker mode (recommended)**: Docker must be installed. [Get Docker here](https://docs.docker.com/get-docker/) if needed.
-> - **Local mode**: Conda must be installed.
+**Prerequisites:**
+
+- **Docker mode (recommended)**: [Docker](https://docs.docker.com/get-docker/) must be installed.
+- **Local mode**: Conda must be installed.
 
 ## Quick Start
 
@@ -47,102 +48,83 @@ export OPENROUTER_API_KEY="your-key-here"
 ./run.sh
 ```
 
+After the run is finished, the `outputs` folder contains 
+- Generated files (training script, inference script, model files, ...)
+- Final report (Summary of the model, train/valid/test metrics, ...)
+
 ## Run on your own dataset
 Create a folder inside `Agentomics-ML/datasets` and drop your files there
 
 - add `train.csv` - Contains your training data. This will be used by the agent for training and validation
-- add `test.csv` - Contains your testing data. This will be hidden from the agent, and used only to evaluate the final model. 
-- add `dataset_description.md` - Domain information for the agent. See the sample datasets for examples.
+- (OPTIONAL) add `test.csv` - Contains your testing data. This will be hidden from the agent, and used to add test set metrics to the final report.
+- (OPTIONAL) add `dataset_description.md` - Data description and domain information for the agent. See the sample datasets for examples.
 
-The csv files must contain a 'class' or 'target' column for the classification or regression labels. 
+The csv files must contain a column for the classification or regression labels named exactly either `class` or `target`. 
 
-### Create Dataset Structure
+See the `datasets` folder for examples
 
+## Predictions
+When getting predictions on new data, make sure the data file has the same column names as your training data. There's no need to provide the class/target column, as this will be predicted.
+
+The output will be a csv file containing a single columns called 'predictions' in the same order as your data.
 ```
-datasets/
-  your_dataset/
-    train.csv              # Required: your training data
-    test.csv              # Optional: test data
-    dataset_description.md # Optional: data description
-```
-### CSV Format
-
-**Classification example:**
-
-```csv
-feature1,feature2,feature3,class
-0.5,1.2,0.8,positive
-0.3,2.1,0.6,negative
+cd outputs/best_run_files/<run_name>
+conda activate .conda/envs/<run_name> 
+python inference.py --input <path_to_inference_data_csv> --output <path_to_output_csv>
 ```
 
-**Regression example:**
 
-```csv
-feature1,feature2,feature3,target
-0.5,1.2,0.8,125.45
-0.3,2.1,0.6,187.92
+# Advanced run parameters
+## Explicit parameters
+Running `./run.sh` with no parameters will prompt you to select them interactively.
+
+You can also supply them directly to skip the interactive selection
 ```
+.run/sh \
+  --model gpt-5-nano \
+  --dataset human_ocr_ensembl \
+  --iterations 5 \
+  --val-metric ACC \
+```
+Run `./run.sh --help` for more information.
 
-## Advanced run parameters
-### TODO extra run.sh parameters, including non-interactive runs
-<!-- ```bash
-./run.sh --list-datasets        # Show available datasets (Docker)
-./run.sh --local --list-datasets # Show available datasets (Local)
-./run.sh --list-models          # Show available AI models (Docker)
-./run.sh --local --list-models   # Show available AI models (Local)
-./run.sh --list-metrics         # Show available validation metrics
-./run.sh --prepare-only         # Just prepare datasets (Docker)
-./run.sh --local --prepare-only  # Just prepare datasets (Local)
-./run.sh --help                # Show all options
-``` -->
-<!-- ```bash
-# Pre-built image with specific dataset/model
-./run.sh cloudmark -d heart_disease -m "openai/gpt-4.1"
-
-# Custom image with utility commands
-./run.sh myorg --list-datasets
-./run.sh cloudmark --prepare-only
-``` -->
-### Local (no-docker) run
+## Local mode (no-docker)
 <div style="border:2px solid red; background:#ee2400; padding:10px; border-radius:6px;">
-  <strong>⚠️ Warning:</strong> When you run outside of the main script (`run.sh`), only run scripts inside a secure environment (like your own docker container)! The agent tools can exectute arbitrary bash commands!
+  <strong>⚠️ Warning:</strong> Only run local mode inside a secure environment (like your own docker container with read-only mounts or google colab)! The agent tools can exectute arbitrary bash commands!
 </div>
 
-#### Quickstart
-```bash
-# 1. Set your API key (get from https://openrouter.ai)
-export OPENROUTER_API_KEY="your-key-here"
-# OR create a .env file (see .env.example) 
+If you can't create your own docker container, you can run in local mode with significantly decreased security by adding the `--local` flag.
 
-# 2. Run the agent and select one of the sample datasets
-./run_local.sh #!Only run in your own secure environment!
-```
+`./run.sh --local`
 
-#### Running scripts separately
+## Running scripts separately
 If you want to have more fine-grained control over the agent runs, follow these steps:
-##### Dataset preparation
+### Dataset preparation
 To prepare datasets (using data from the Agentomics-ML/datasets directory) for the agent, run:
 ```
 conda env create -f environment_prepare.yaml
 conda activate agentomics-prepare-env
 python src/prepare_datasets.py
 ```
-##### Agent run
-To run the agent and select options interactively, run:
+
+Run `python src/prepare_datasets.py --help` for info on more fine-grained control of dataset preparation (e.g. explicitly specifying classification/regression task, explicit positive/negative class, etc..)
+
+### Agent run
+To run the agent run:
 ```
 conda env create -f environment.yaml
 conda activate agentomics-env
 python src/run_agent_interactive.py
 ```
 
-To run the agent directly (pre-specifying arguments)
+To run the agent with more logging options and pre-specifying arguments
 ```
 conda env create -f environment.yaml
 conda activate agentomics-env
 python src/run_agent.py --model <model> --dataset <dataset> --val-metric <val_metric>
 ```
 
-### Logging
+## Logging
 We support logging to W&B, including agent traces, metrics of various model iterations, and generated files.
 To enable logging, specify WANDB_* keys in your `.env` file (see `.env.example`)
 
