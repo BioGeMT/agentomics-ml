@@ -49,11 +49,15 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
     command = f"{command_prefix} python {inference_path[source_folder]} --input {stage_to_input[evaluation_stage]} --output {stage_to_output[evaluation_stage]}"
     inference_out = subprocess.run(command, shell=True, executable="/bin/bash", capture_output=True)
     if(evaluation_stage == 'stealth_test'):
+        test_file_path = config.prepared_dataset_dir / "test.csv"
+        if(not test_file_path.exists()):
+            print('STEALTH TEST EVAL SKIPPED - NO TEST SET')
+            return
         print('RUNNING STEALTH TEST EVAL')
         try:
             _ = get_metrics_and_serial_log(
                 results_file=stage_to_output[evaluation_stage],
-                test_file=config.prepared_dataset_dir / "test.csv",
+                test_file=test_file_path,
                 output_file=None,
                 numeric_label_col=dataset_metadata['numeric_label_col'],
                 iteration=iteration,
@@ -68,6 +72,10 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
         print('STEALTH TEST EVAL SUCCESS')
         return
     if(evaluation_stage == 'test'):
+        test_file_path = config.prepared_dataset_dir / "test.csv"
+        if(not test_file_path.exists()):
+            print('TEST EVAL SKIPPED - NO TEST SET')
+            return
         print('RUNNING TEST EVAL')
         if(inference_out.returncode != 0):
             print('TEST EVAL FAIL', str(inference_out))
@@ -76,7 +84,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
         try:
             test_metrics = get_metrics(
                 results_file=stage_to_output[evaluation_stage],
-                test_file=config.prepared_dataset_dir / "test.csv",
+                test_file=test_file_path,
                 output_file=stage_to_metrics_file[evaluation_stage],
                 numeric_label_col=dataset_metadata['numeric_label_col'],
                 delete_preds=True,
