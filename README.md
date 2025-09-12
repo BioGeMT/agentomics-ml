@@ -88,6 +88,15 @@ You can also supply them directly to skip the interactive selection
 ```
 Run `./run.sh --help` for more information.
 
+## Custom user prompt
+The default prompt: 
+`Create the best possible machine learning model that will generalize to new unseen data.`
+
+You can overwrite it with your own user prompt for the agent by passing the `--user-prompt` argument.
+```
+/run.sh --user-prompt "Only create simple ML models like logistic regression and shallow decision trees"
+```
+
 ## Local mode (no-docker)
 <div style="border:2px solid red; background:#ee2400; padding:10px; border-radius:6px;">
   <strong>⚠️ Warning:</strong> Only run local mode inside a secure environment (like your own docker container with read-only mounts or google colab)! The agent tools can exectute arbitrary bash commands!

@@ -26,7 +26,7 @@ from utils.report_logger import add_metrics_to_report, add_summary_to_report, ad
 
 from feedback.feedback_agent import get_feedback, aggregate_feedback
 
-async def main(model_name, feedback_model_name, dataset, tags, val_metric, root_privileges, workspace_dir, prepared_datasets_dir, agent_dataset_dir, iterations):
+async def main(model_name, feedback_model_name, dataset, tags, val_metric, root_privileges, workspace_dir, prepared_datasets_dir, agent_dataset_dir, iterations, user_prompt):
     # Initialize configuration 
     config = Config(
         model_name=model_name, 
@@ -39,6 +39,7 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric, root_
         prepared_datasets_dir=Path(prepared_datasets_dir),
         agent_dataset_dir=Path(agent_dataset_dir),
         iterations=iterations,
+        user_prompt=user_prompt,
     )
     ensure_workspace_folders(config)
     # Create a user for the agent
@@ -185,13 +186,14 @@ def parse_args():
     parser.add_argument('--agent-datasets-dir', type=Path, default=Path('../workspace/datasets').resolve(), help='Path to a directory which contains non-test data accessible by agents.')
     parser.add_argument('--tags', nargs='*', default=[], help='(Optional) Tags for a wandb run logging')
     parser.add_argument('--iterations', type=int, default=5, help='Number of training iterations to run')
+    parser.add_argument('--user-prompt', type=str, default="Create the best possible machine learning model that will generalize to new unseen data.", help='(Optional) Text to overwrite the default user prompt')
 
     val_metric_choices = get_classification_metrics_names() + get_regression_metrics_names()
     parser.add_argument('--val-metric', help='Validation metric to use for the best model selection', required=True, choices=val_metric_choices)
 
     return parser.parse_args()
 
-async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, agent_datasets_dir, workspace_dir, tags, no_root_privileges, iterations):
+async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, agent_datasets_dir, workspace_dir, tags, no_root_privileges, iterations, user_prompt):
     setup_nonsensitive_dataset_files_for_agent(
         prepared_datasets_dir=Path(prepared_datasets_dir), 
         agent_datasets_dir=Path(agent_datasets_dir),
@@ -209,6 +211,7 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
         prepared_datasets_dir=prepared_datasets_dir, 
         agent_dataset_dir=agent_datasets_dir,
         iterations=iterations,
+        user_prompt=user_prompt,
     )
 
 async def run_experiment_from_terminal():
@@ -223,6 +226,7 @@ async def run_experiment_from_terminal():
         tags=args.tags,
         no_root_privileges=args.no_root_privileges,
         iterations=args.iterations,
+        user_prompt=args.user_prompt,
     )
 
 if __name__ == "__main__":

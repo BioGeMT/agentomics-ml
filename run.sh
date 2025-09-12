@@ -1,24 +1,28 @@
 set -euo pipefail
 
-AGENTOMICS_ARGS=""
+AGENTOMICS_ARGS=()
 LOCAL_MODE=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
         --model)
-            AGENTOMICS_ARGS="$AGENTOMICS_ARGS --model $2"
+            AGENTOMICS_ARGS+=(--model "$2")
             shift 2
             ;;
         --dataset)
-            AGENTOMICS_ARGS="$AGENTOMICS_ARGS --dataset $2"
+            AGENTOMICS_ARGS+=(--dataset "$2")
             shift 2
             ;;
         --iterations)
-            AGENTOMICS_ARGS="$AGENTOMICS_ARGS --iterations $2"
+            AGENTOMICS_ARGS+=(--iterations "$2")
             shift 2
             ;;
         --val-metric)
-            AGENTOMICS_ARGS="$AGENTOMICS_ARGS --val-metric $2"
+            AGENTOMICS_ARGS+=(--val-metric "$2")
+            shift 2
+            ;;
+        --user-prompt)
+            AGENTOMICS_ARGS+=(--user-prompt "$2")
             shift 2
             ;;
         --local)
@@ -50,7 +54,7 @@ if [ "$LOCAL_MODE" = true ]; then
 
     eval "$(conda shell.bash hook)"
     conda activate agentomics-env
-    python src/run_agent_interactive.py $AGENTOMICS_ARGS
+    python src/run_agent_interactive.py "${AGENTOMICS_ARGS[@]}"
 
     mkdir -p outputs/best_run_files outputs/reports
     cp -r workspace/snapshots/. outputs/best_run_files/
@@ -73,7 +77,7 @@ else
         --name agentomics_cont \
         -v $(pwd):/repository:ro \
         -v temp_agentomics_volume:/workspace \
-        agentomics_img $AGENTOMICS_ARGS
+        agentomics_img "${AGENTOMICS_ARGS[@]}"
 
     # Copy best-run files and report
     mkdir -p outputs/best_run_files outputs/reports
