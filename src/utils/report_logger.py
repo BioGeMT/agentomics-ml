@@ -83,7 +83,10 @@ def add_final_test_metrics_to_best_report(config):
     best_report = report_dir / f"run_report_iter_{best_iteration}.txt"
     #TODO we write this at final test stage to the agent's run dir - change to a better location for clarity
     test_metrics_file = output_dir / "test_metrics.txt"
-    
+    if not test_metrics_file.exists():
+        print('No test metrics file found to add to best report.')
+        return
+
     with open(test_metrics_file, 'r') as f:
         test_metrics = f.read().strip()
     

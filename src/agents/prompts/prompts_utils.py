@@ -27,10 +27,7 @@ def get_system_prompt(config):
     # return load_prompts(config["prompt"])["system_prompt"]
 
 def get_user_prompt(config):
-    # Custom instructions go here
-    return f"""
-    Create the best possible machine learning model that will generalize to new unseen data.
-    """
+    return config.user_prompt
 
 def get_iteration_prompt(config, run_index, feedback):
     return f"""

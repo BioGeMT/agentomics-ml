@@ -20,6 +20,7 @@ class Config:
     root_privileges: bool
     iterations: int
     task_type: str
+    user_prompt: str
 
     agent_id: Optional[str] = None # assigned after user creation
     # static defaults
@@ -47,6 +48,7 @@ class Config:
         workspace_dir: Path,
         prepared_datasets_dir: Path,
         agent_dataset_dir: Path,
+        user_prompt: str,
         max_steps: Optional[int] = None,
         iterations: Optional[int] = 5,
     ):
@@ -64,7 +66,8 @@ class Config:
         self.reports_dir = workspace_dir / "reports"
         self.iterations = iterations
         self.task_type = get_task_type_from_prepared_dataset(prepared_datasets_dir / dataset)
-        
+        self.user_prompt = user_prompt
+
         if max_steps is not None:
             self.max_steps = max_steps
 
@@ -77,4 +80,5 @@ class Config:
         print('VAL METRIC:', self.val_metric)
         print('AGENT ID:', self.agent_id)
         print('ITERATIONS:', self.iterations)
+        print('USER PROMPT:', self.user_prompt)
         print('===============================')

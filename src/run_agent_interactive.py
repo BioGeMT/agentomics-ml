@@ -41,6 +41,7 @@ def main():
     parser.add_argument("--dataset", help="Dataset name")
     parser.add_argument("--iterations", type=int, help="Number of iterations to run")
     parser.add_argument("--model", help="Model name")
+    parser.add_argument('--user-prompt', type=str, default="Create the best possible machine learning model that will generalize to new unseen data.", help='(Optional) Text to overwrite the default user prompt')
 
     available_metrics = get_classification_metrics_names() + get_regression_metrics_names()
     parser.add_argument("--val-metric", help="Validation metric", choices=available_metrics)
@@ -129,6 +130,7 @@ def main():
         tags=None,
         no_root_privileges=args.root_privileges,
         iterations=iterations,
+        user_prompt=args.user_prompt
     ))
     return 0
         
