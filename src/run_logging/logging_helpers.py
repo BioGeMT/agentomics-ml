@@ -19,18 +19,26 @@ def log_inference_stage_and_metrics(stage, task_type, metrics=None):
     if not is_wandb_active():
         return
     
+    # Log to console
+    stage_names = {0: "DRY_RUN", 1: "FAILED", 2: "TEST_EVALUATION"}
+    stage_name = stage_names.get(stage, f"STAGE_{stage}")
+    print(f"Wandb Logging - Stage: {stage_name}")
+    
     wandb.log({"inference_stage": stage})
     if stage == 0 or stage == 1:
        metrics_names = get_task_to_metrics_names()[task_type]
+       print(f"   Logging placeholder metrics: {metrics_names}")
        wandb.log({m: -1 for m in metrics_names})
     else:
+        if metrics:
+            print(f"   Logging test metrics: {metrics}")
         wandb.log(metrics)
 
 def log_serial_metrics(prefix, task_type, metrics=None, iteration=None):
     if not is_wandb_active():
         return
     
-    if(not metrics):
+    if not metrics:
         metrics_names = get_task_to_metrics_names()[task_type]
         wandb.log({f"{prefix}/{m}": -1 for m in metrics_names}, step=iteration)
 

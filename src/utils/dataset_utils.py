@@ -122,6 +122,38 @@ def auto_detect_task_type(train_df, target_col) :
     print(f'INFO: Auto-detected classification task ({unique_values} unique values)')
     return 'classification'
 
+def smart_sort_labels(labels):
+    """
+    Sort labels with semantic sense:
+    - Pure numeric labels: "1", "2", "10" → 1, 2, 10
+    - Labels with numeric prefixes: "Rank 1", "Rank 2", "Rank 10" → Rank 1, Rank 2, Rank 10
+    - Mixed labels: "A", "B", "1", "2", "10" → 1, 2, 10, A, B
+    """
+    def sort_key(label):
+        # Try to extract numeric part for sorting
+        import re
+        
+        # Check if the entire label is numeric
+        if str(label).strip().replace('.', '').replace('-', '').isdigit():
+            return (0, float(label))  # Numeric labels first, sorted by value
+        
+        # Check if label has numeric prefix (e.g., "Rank 1", "Class 10")
+        numeric_match = re.match(r'^(.+?)\s*(\d+(?:\.\d+)?)\s*$', str(label).strip())
+        if numeric_match:
+            prefix, number = numeric_match.groups()
+            return (1, prefix, float(number))  # Labels with numeric suffix, sorted by prefix then number
+        
+        # Check if label has numeric suffix (e.g., "1st", "2nd", "10th")
+        suffix_match = re.match(r'^(\d+(?:\.\d+)?)\s*(.+?)$', str(label).strip())
+        if suffix_match:
+            number, suffix = suffix_match.groups()
+            return (1, float(number), suffix)  # Labels with numeric prefix, sorted by number then suffix
+        
+        # Fallback to alphabetical for non-numeric labels
+        return (2, str(label))
+    
+    return sorted(labels, key=sort_key)
+
 def get_label_to_number_map(train_df, test_df, target_col, positive_class=None, negative_class=None):
     unique_labels = train_df[target_col].dropna().unique()
 
@@ -138,8 +170,9 @@ def get_label_to_number_map(train_df, test_df, target_col, positive_class=None, 
         # binary classification
         label_map = {negative_class: 0, positive_class: 1}
     else:
-        # multiclass: alphabetical order
-        label_map = {lbl: i for i, lbl in enumerate(sorted(unique_labels, key=str))}
+        # multiclass: smart semantic sorting
+        sorted_labels = smart_sort_labels(unique_labels)
+        label_map = {lbl: i for i, lbl in enumerate(sorted_labels)}
 
     print(f"INFO: Label to number mapping: {label_map}. If this is wrong, please provide positive-class and negative-class parameters to the script.")
 
