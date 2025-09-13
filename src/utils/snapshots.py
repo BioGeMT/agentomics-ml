@@ -58,8 +58,8 @@ def is_new_best(config):
     #TODO parametrize improvement threshold
     necessary_improvement = 0
     metric_name = config.val_metric
-    direction_map = get_higher_is_better_map()
-    higher_is_better = direction_map[metric_name]
+    higher_is_better_map = get_higher_is_better_map()
+    higher_is_better = higher_is_better_map[metric_name]
 
     new_val = new_metrics[f"validation/{metric_name}"]
     best_val = best_metrics[f"validation/{metric_name}"]
