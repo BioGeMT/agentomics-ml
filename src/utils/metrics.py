@@ -1,4 +1,4 @@
-from sklearn.metrics import average_precision_score, roc_auc_score, accuracy_score, mean_squared_error, mean_absolute_error, r2_score
+from sklearn.metrics import average_precision_score, roc_auc_score, accuracy_score, mean_squared_error, mean_absolute_error, r2_score, f1_score, log_loss, matthews_corrcoef
 import numpy as np
 
 def get_classification_metrics_functions(acc_threshold=0.5):
@@ -6,6 +6,9 @@ def get_classification_metrics_functions(acc_threshold=0.5):
         "ACC": lambda y_true, y_pred: accuracy_score(y_true, (y_pred >= acc_threshold).astype(int)),
         "AUPRC": lambda y_true, y_pred: average_precision_score(y_true, y_pred),
         "AUROC": lambda y_true, y_pred: roc_auc_score(y_true, y_pred),
+        "F1": lambda y_true, y_pred: f1_score(y_true, (y_pred >= acc_threshold).astype(int)),
+        "LOG_LOSS": lambda y_true, y_pred: log_loss(y_true, np.clip(y_pred, 1e-15, 1-1e-15)),
+        "MCC": lambda y_true, y_pred: matthews_corrcoef(y_true, (y_pred >= acc_threshold).astype(int)),
     }
     return metric_to_fn
 
@@ -29,7 +32,7 @@ def get_task_to_metrics_names():
         "classification": get_classification_metrics_names(),
         "regression": get_regression_metrics_names(),
     }
-_HIGHER_IS_BETTER = {"ACC": True, "AUPRC": True, "AUROC": True, "MSE": False, "RMSE": False, "MAE": False, "R2": True}
+_HIGHER_IS_BETTER = {"ACC": True, "AUPRC": True, "AUROC": True, "F1": True, "LOG_LOSS": False, "MCC": True, "MSE": False, "RMSE": False, "MAE": False, "R2": True}
 
 def get_higher_is_better_map():
     return _HIGHER_IS_BETTER.copy()
