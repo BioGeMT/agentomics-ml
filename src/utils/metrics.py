@@ -40,7 +40,6 @@ def get_task_to_metrics_names():
         "classification": get_classification_metrics_names(),
         "regression": get_regression_metrics_names(),
     }
-_HIGHER_IS_BETTER = {"ACC": True, "AUPRC": True, "AUROC": True, "F1": True, "LOG_LOSS": False, "MCC": True, "MSE": False, "RMSE": False, "MAE": False, "MAPE": False, "POS_PCC": True, "NEG_PCC": False, "R2": True}
 
 def get_higher_is_better_map():
-    return _HIGHER_IS_BETTER.copy()
+    return {"ACC": True, "AUPRC": True, "AUROC": True, "F1": True, "LOG_LOSS": False, "MCC": True, "MSE": False, "RMSE": False, "MAE": False, "MAPE": False, "POS_PCC": True, "NEG_PCC": False, "R2": True}
