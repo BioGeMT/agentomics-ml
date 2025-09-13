@@ -23,8 +23,8 @@ def get_regression_metrics_functions():
         "RMSE": lambda y_true, y_pred: np.sqrt(mean_squared_error(y_true, y_pred)),
         "MAE": lambda y_true, y_pred: mean_absolute_error(y_true, y_pred),
         "MAPE": lambda y_true, y_pred: mean_absolute_percentage_error(y_true, y_pred),
-        "POS_PCC": lambda y_true, y_pred: max(pcc(y_true, y_pred), 0.0),
-        "NEG_PCC": lambda y_true, y_pred: min(pcc(y_true, y_pred), 0.0),
+        "POS_PCC": lambda y_true, y_pred: pcc(y_true, y_pred),
+        "NEG_PCC": lambda y_true, y_pred: pcc(y_true, y_pred),
         "R2": lambda y_true, y_pred: r2_score(y_true, y_pred),
     }
     return metric_to_fn
