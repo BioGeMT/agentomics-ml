@@ -1,6 +1,7 @@
 import re
 import shutil
 from pathlib import Path
+from utils.metrics import get_higher_is_better_map
 
 def get_metrics_from_file(file_path):
     metrics = {}
@@ -56,7 +57,17 @@ def is_new_best(config):
 
     #TODO parametrize improvement threshold
     necessary_improvement = 0
-    is_new_best = new_metrics[f"validation/{config.val_metric}"] > best_metrics[f"validation/{config.val_metric}"] + necessary_improvement
+    metric_name = config.val_metric
+    direction_map = get_higher_is_better_map()
+    higher_is_better = direction_map[metric_name]
+
+    new_val = new_metrics[f"validation/{metric_name}"]
+    best_val = best_metrics[f"validation/{metric_name}"]
+
+    if higher_is_better:
+        is_new_best = new_val > best_val + necessary_improvement
+    else:
+        is_new_best = new_val < best_val - necessary_improvement
     print(f"is_new_best: {is_new_best}")
     print(f"New metrics: {new_metrics}")
     print(f"Best metrics: {best_metrics}")
