@@ -6,28 +6,125 @@ def pcc(y_true, y_pred):
     r = pearsonr(np.asarray(y_true, float).ravel(), np.asarray(y_pred, float).ravel())[0]
     return float(r) if np.isfinite(r) else 0.0
 
-def get_classification_metrics_functions(acc_threshold=0.5):
-    metric_to_fn = {
-        "ACC": lambda y_true, y_pred: accuracy_score(y_true, (y_pred >= acc_threshold).astype(int)),
-        "AUPRC": lambda y_true, y_pred: average_precision_score(y_true, y_pred),
-        "AUROC": lambda y_true, y_pred: roc_auc_score(y_true, y_pred),
-        "F1": lambda y_true, y_pred: f1_score(y_true, (y_pred >= acc_threshold).astype(int)),
-        "LOG_LOSS": lambda y_true, y_pred: log_loss(y_true, np.clip(y_pred, 1e-15, 1-1e-15)),
-        "MCC": lambda y_true, y_pred: matthews_corrcoef(y_true, (y_pred >= acc_threshold).astype(int)),
+class Metric:
+    """
+    A metric class that encapsulates:
+    - The computation function
+    - Whether it needs probabilities (True) or hard predictions (False)  
+    - Whether higher values are better (True) or worse (False)
+    """
+    
+    def __init__(self, function, needs_probabilities: bool, higher_is_better: bool):
+        self.function = function
+        self.needs_probabilities = needs_probabilities
+        self.higher_is_better = higher_is_better
+    
+    def __call__(self, y_true, y_pred_or_prob):
+        return self.function(y_true, y_pred_or_prob)
+
+def _auroc_metric(y_true, y_prob):
+    """Handle AUROC for both binary and multiclass cases."""
+    if y_prob.ndim == 1:
+        # Binary classification
+        return roc_auc_score(y_true, y_prob)
+    else:
+        # Multiclass classification - use 'ovr' (one-vs-rest) strategy
+        return roc_auc_score(y_true, y_prob, multi_class='ovr')
+
+def _auprc_metric(y_true, y_prob):
+    """Handle AUPRC for both binary and multiclass cases."""
+    if y_prob.ndim == 1:
+        # Binary classification
+        return average_precision_score(y_true, y_prob)
+    else:
+        # Multiclass classification - use macro average
+        return average_precision_score(y_true, y_prob, average='macro')
+
+def get_classification_metrics_functions():
+    """Returns a dictionary mapping metric names to Metric objects."""
+    return {
+        "ACC": Metric(
+            function=lambda y_true, y_pred: accuracy_score(y_true, y_pred),
+            needs_probabilities=False,
+            higher_is_better=True
+        ),
+        "AUPRC": Metric(
+            function=_auprc_metric,
+            needs_probabilities=True,
+            higher_is_better=True
+        ),
+        "AUROC": Metric(
+            function=_auroc_metric,
+            needs_probabilities=True,
+            higher_is_better=True
+        ),
+        "F1": Metric(
+            function=lambda y_true, y_pred: f1_score(y_true, y_pred, average='macro'),
+            needs_probabilities=False,
+            higher_is_better=True
+        ),
+        "LOG_LOSS": Metric(
+            function=lambda y_true, y_prob: log_loss(y_true, np.clip(y_prob, 1e-15, 1-1e-15)),
+            needs_probabilities=True,
+            higher_is_better=False
+        ),
+        "MCC": Metric(
+            function=lambda y_true, y_pred: matthews_corrcoef(y_true, y_pred),
+            needs_probabilities=False,
+            higher_is_better=True
+        ),
     }
-    return metric_to_fn
 
 def get_regression_metrics_functions():
-    metric_to_fn = {
-        "MSE":  lambda y_true, y_pred: mean_squared_error(y_true, y_pred),
-        "RMSE": lambda y_true, y_pred: np.sqrt(mean_squared_error(y_true, y_pred)),
-        "MAE": lambda y_true, y_pred: mean_absolute_error(y_true, y_pred),
-        "MAPE": lambda y_true, y_pred: mean_absolute_percentage_error(y_true, y_pred),
-        "POS_PCC": lambda y_true, y_pred: pcc(y_true, y_pred),
-        "NEG_PCC": lambda y_true, y_pred: pcc(y_true, y_pred),
-        "R2": lambda y_true, y_pred: r2_score(y_true, y_pred),
+    """Returns a dictionary mapping metric names to Metric objects."""
+    return {
+        "MSE": Metric(
+            function=lambda y_true, y_pred: mean_squared_error(y_true, y_pred),
+            needs_probabilities=False,  # Regression always uses predictions
+            higher_is_better=False
+        ),
+        "RMSE": Metric(
+            function=lambda y_true, y_pred: np.sqrt(mean_squared_error(y_true, y_pred)),
+            needs_probabilities=False,
+            higher_is_better=False
+        ),
+        "MAE": Metric(
+            function=lambda y_true, y_pred: mean_absolute_error(y_true, y_pred),
+            needs_probabilities=False,
+            higher_is_better=False
+        ),
+        "MAPE": Metric(
+            function=lambda y_true, y_pred: mean_absolute_percentage_error(y_true, y_pred),
+            needs_probabilities=False,
+            higher_is_better=False
+        ),
+        "POS_PCC": Metric(
+            function=lambda y_true, y_pred: pcc(y_true, y_pred),
+            needs_probabilities=False,
+            higher_is_better=True
+        ),
+        "NEG_PCC": Metric(
+            function=lambda y_true, y_pred: pcc(y_true, y_pred),
+            needs_probabilities=False,
+            higher_is_better=False  # Negative correlation
+        ),
+        "R2": Metric(
+            function=lambda y_true, y_pred: r2_score(y_true, y_pred),
+            needs_probabilities=False,
+            higher_is_better=True
+        ),
     }
-    return metric_to_fn
+
+# Backward compatibility functions
+def get_classification_metrics_requiring_probabilities():
+    """Return a set of metric names that require probability scores instead of hard predictions."""
+    metrics = get_classification_metrics_functions()
+    return {name for name, metric in metrics.items() if metric.needs_probabilities}
+
+def get_classification_metrics_requiring_predictions():
+    """Return a set of metric names that require hard predictions instead of probabilities."""
+    metrics = get_classification_metrics_functions()
+    return {name for name, metric in metrics.items() if not metric.needs_probabilities}
 
 def get_classification_metrics_names():
     return list(get_classification_metrics_functions().keys())
@@ -41,5 +138,4 @@ def get_task_to_metrics_names():
         "regression": get_regression_metrics_names(),
     }
 
-def get_higher_is_better_map():
-    return {"ACC": True, "AUPRC": True, "AUROC": True, "F1": True, "LOG_LOSS": False, "MCC": True, "MSE": False, "RMSE": False, "MAE": False, "MAPE": False, "POS_PCC": True, "NEG_PCC": False, "R2": True}
+

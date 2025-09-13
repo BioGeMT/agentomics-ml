@@ -19,7 +19,7 @@ def setup_logging(config, api_key, wandb_project_name, wandb_entity, dir="/tmp/w
             config=asdict(config),
             name=config.agent_id,
         )
-        if(wandb_entity and wandb_project_name):
+        if wandb_entity and wandb_project_name:
             weave.init(f"{wandb_entity}/{wandb_project_name}")
         return True
     except CommError:

@@ -1,4 +1,5 @@
 import os
+import json
 
 from pydantic_ai import Agent, ModelRetry
 import weave
@@ -15,6 +16,25 @@ from utils.config import Config
 from utils.report_logger import save_step_output
 from tools.setup_tools import create_tools
 from run_logging.evaluate_log_run import run_inference_and_log
+
+def get_target_classes_from_metadata(config: Config):
+    """Get target classes from the prepared dataset metadata."""
+    metadata_path = config.prepared_dataset_dir / "metadata.json"
+    if not metadata_path.exists():
+        return None
+    
+    with open(metadata_path, 'r') as f:
+        metadata = json.load(f)
+    
+    if config.task_type == "classification" and "label_to_scalar" in metadata:
+        # Get the original class labels (keys) and sort them by their numeric mapping
+        label_to_scalar = metadata["label_to_scalar"]
+        # Sort by numeric value to get consistent ordering
+        sorted_labels = sorted(label_to_scalar.items(), key=lambda x: x[1])
+        # Return 0-based numeric labels for probability column naming
+        return [str(i) for i in range(len(sorted_labels))]
+    
+    return None
 
 def create_agents(config: Config, model):
     tools = create_tools(config)
@@ -91,9 +111,11 @@ async def run_architecture(text_output_agent: Agent, inference_agent: Agent, spl
     save_step_output(config, 'data_exploration', data_exploration_output, iteration)
 
     if iteration == 0:
+        # Get target classes for proper data splitting
+        target_classes = get_target_classes_from_metadata(config)
         messages_split, data_split = await run_agent(
             agent=split_dataset_agent,
-            user_prompt=get_data_split_prompt(config),
+            user_prompt=get_data_split_prompt(config, target_classes, config.task_type),
             max_steps=config.max_steps,
             message_history=messages_data_exploration,
             )
@@ -127,9 +149,13 @@ async def run_architecture(text_output_agent: Agent, inference_agent: Agent, spl
     )
     save_step_output(config, 'model_training', model_training, iteration)
 
+    # Get target classes for proper inference script generation
+    # Note: target_classes can be None for regression tasks
+    target_classes = get_target_classes_from_metadata(config)
+    
     _messages, final_outcome = await run_agent(
         agent=inference_agent, 
-        user_prompt=get_final_outcome_prompt(), 
+        user_prompt=get_final_outcome_prompt(target_classes), 
         max_steps=config.max_steps,
         message_history=messages_training,
     )

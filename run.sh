@@ -1,3 +1,10 @@
+#!/usr/bin/env bash
+
+# Ensure we are running under bash even if invoked via sh/zsh
+if [ -z "${BASH_VERSION:-}" ]; then
+  exec /usr/bin/env bash "$0" "$@"
+fi
+
 set -euo pipefail
 
 AGENTOMICS_ARGS=()
@@ -54,7 +61,7 @@ if [ "$LOCAL_MODE" = true ]; then
 
     eval "$(conda shell.bash hook)"
     conda activate agentomics-env
-    python src/run_agent_interactive.py "${AGENTOMICS_ARGS[@]}"
+    python src/run_agent_interactive.py ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
 
     mkdir -p outputs/best_run_files outputs/reports
     cp -r workspace/snapshots/. outputs/best_run_files/
@@ -65,7 +72,7 @@ else
         --rm \
         -it \
         --name agentomics_prepare_cont \
-        -v $(pwd):/repository \
+        -v "$(pwd)":/repository \
         agentomics_prepare_img
 
     docker build -t agentomics_img .
@@ -75,9 +82,9 @@ else
         -it \
         --rm \
         --name agentomics_cont \
-        -v $(pwd):/repository:ro \
+        -v "$(pwd)":/repository:ro \
         -v temp_agentomics_volume:/workspace \
-        agentomics_img "${AGENTOMICS_ARGS[@]}"
+        agentomics_img ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
 
     # Copy best-run files and report
     mkdir -p outputs/best_run_files outputs/reports

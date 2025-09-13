@@ -13,7 +13,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
     run_dir = config.runs_dir / config.agent_id
     snapshot_dir = config.snapshots_dir / config.agent_id
     source_folder = 'snapshot' if use_best_snapshot else 'run'
-    if(use_best_snapshot):
+    if use_best_snapshot:
         print('USING BEST SNAPSHOT')
     conda_path = {
         'run': run_dir / ".conda" / "envs" / f"{config.agent_id}_env",
@@ -48,9 +48,9 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
     command_prefix=f"conda run -p {conda_path[source_folder]} --no-capture-output"
     command = f"{command_prefix} python {inference_path[source_folder]} --input {stage_to_input[evaluation_stage]} --output {stage_to_output[evaluation_stage]}"
     inference_out = subprocess.run(command, shell=True, executable="/bin/bash", capture_output=True)
-    if(evaluation_stage == 'stealth_test'):
+    if evaluation_stage == 'stealth_test':
         test_file_path = config.prepared_dataset_dir / "test.csv"
-        if(not test_file_path.exists()):
+        if not test_file_path.exists():
             print('STEALTH TEST EVAL SKIPPED - NO TEST SET')
             return
         print('RUNNING STEALTH TEST EVAL')
@@ -71,13 +71,13 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
             return
         print('STEALTH TEST EVAL SUCCESS')
         return
-    if(evaluation_stage == 'test'):
+    if evaluation_stage == 'test':
         test_file_path = config.prepared_dataset_dir / "test.csv"
-        if(not test_file_path.exists()):
+        if not test_file_path.exists():
             print('TEST EVAL SKIPPED - NO TEST SET')
             return
         print('RUNNING TEST EVAL')
-        if(inference_out.returncode != 0):
+        if inference_out.returncode != 0:
             print('TEST EVAL FAIL', str(inference_out))
             log_inference_stage_and_metrics(1, task_type=config.task_type)
             raise Exception('Inference on TEST script failed:', str(inference_out))
@@ -96,9 +96,9 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
             log_inference_stage_and_metrics(1, task_type=config.task_type)
             return
         print('TEST EVAL SUCCESS')
-    if(evaluation_stage == 'dry_run'):
+    if evaluation_stage == 'dry_run':
         print('RUNNING DRY RUN EVAL')
-        if(inference_out.returncode != 0):
+        if inference_out.returncode != 0:
             print('DRY RUN EVAL FAIL during inference:', inference_out.stderr)
             raise ModelRetry(f'Inference script validation failed: {str(inference_out)}')
         try:
@@ -115,9 +115,9 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
             print(message)
             raise ModelRetry(message)
         print('DRY RUN EVAL SUCCESS')
-    if(evaluation_stage == 'validation'):
+    if evaluation_stage == 'validation':
         print('RUNNING VALIDATION EVAL')
-        if(inference_out.returncode != 0):
+        if inference_out.returncode != 0:
             print('VALIDATION EVAL FAIL during inference:', inference_out.stderr)
             log_serial_metrics(prefix=evaluation_stage, metrics=None, iteration=iteration, task_type=config.task_type)
             raise Exception('Inference script validation failed:', str(inference_out))
@@ -137,9 +137,9 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
             message = "FAIL DURING VALIDATION METRICS COMPUTATION."
             raise Exception(message) from e
         print('VALIDATION EVAL SUCCESS')
-    if(evaluation_stage == 'train'):
+    if evaluation_stage == 'train':
         print('RUNNING TRAIN EVAL')
-        if(inference_out.returncode != 0):
+        if inference_out.returncode != 0:
             print('TRAIN EVAL FAIL during inference:', inference_out.stderr)
             raise Exception('Inference script validation failed:', str(inference_out))
         try:
