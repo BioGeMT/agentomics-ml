@@ -24,18 +24,18 @@ class Metric:
 
 def _auroc_metric(y_true, y_prob):
     """Handle AUROC for both binary and multiclass cases."""
-    if y_prob.ndim == 1:
+    if y_prob.shape[1] == 2:
         # Binary classification
-        return roc_auc_score(y_true, y_prob)
+        return roc_auc_score(y_true, y_prob[:, 1])
     else:
         # Multiclass classification - use 'ovr' (one-vs-rest) strategy
         return roc_auc_score(y_true, y_prob, multi_class='ovr')
 
 def _auprc_metric(y_true, y_prob):
     """Handle AUPRC for both binary and multiclass cases."""
-    if y_prob.ndim == 1:
+    if y_prob.shape[1] == 2:
         # Binary classification
-        return average_precision_score(y_true, y_prob)
+        return average_precision_score(y_true, y_prob[:, 1])
     else:
         # Multiclass classification - use macro average
         return average_precision_score(y_true, y_prob, average='macro')
