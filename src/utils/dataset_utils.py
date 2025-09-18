@@ -105,9 +105,19 @@ def auto_detect_target_col(train_df):
     return train_df.columns[-1]
 
 def get_task_type_from_prepared_dataset(prepared_dataset_dir: str) -> str:
-    metadata_file = prepared_dataset_dir / "metadata.json"
-    metadata = json.loads(metadata_file.read_text())
+    metadata_path = prepared_dataset_dir / "metadata.json"
+    metadata = json.loads(metadata_path.read_text())
     return metadata.get("task_type")
+
+def get_classes_integers(config):
+    """Get classes integers from the prepared dataset metadata."""
+    if config.task_type != "classification":
+        return None
+
+    metadata_path = config.prepared_dataset_dir / "metadata.json"
+    metadata = json.loads(metadata_path.read_text())
+    # Sort by numeric value to get consistent ordering
+    return sorted(metadata["label_to_scalar"].values())
         
 def auto_detect_task_type(train_df, target_col) :
     """Auto-detect task type based on target column values"""
