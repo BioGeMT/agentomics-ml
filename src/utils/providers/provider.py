@@ -20,8 +20,9 @@ class Provider():
     """Parent provider class. All providers must extend this class."""
     console = Console()
     
-    def __init__(self, name: str, base_url: str = None, list_models_endpoint: str = None):
+    def __init__(self, name: str, base_url: str, api_key: Optional[str] = None, list_models_endpoint: Optional[str] = None):
         self.name = name
+        self.api_key = api_key
         self.base_url = base_url
         self.list_models_endpoint = list_models_endpoint
         self.headers = {}
@@ -89,8 +90,8 @@ class Provider():
           )
           client = AsyncOpenAI(
               base_url=self.base_url,
-              api_key=self.api_key, #inherited from subclasses
-              http_client=async_http_client
+              api_key=self.api_key,
+              http_client=async_http_client,
           )
           return OpenAIModel(
               model_name=model_name,
@@ -129,26 +130,25 @@ class Provider():
         """Factory method to create providers."""
         provider_config = Provider.get_provider_config(provider_name)
         base_url = provider_config["base_url"]
-        list_models_endpoint = provider_config["list_models_endpoint"]
         name_lower = provider_name.lower()
         
         if name_lower == "openrouter":
             from .openrouter_provider import OpenRouterProvider
-            return OpenRouterProvider(api_key, base_url, list_models_endpoint)
+            return OpenRouterProvider(api_key, base_url, provider_config["list_models_endpoint"])
         elif name_lower == "ollama":
             from .ollama_provider import OllamaProvider
-            return OllamaProvider(base_url, list_models_endpoint)
+            return OllamaProvider(base_url, provider_config["list_models_endpoint"])
         elif name_lower == "anthropic":
             from .anthropic_provider import AnthropicProvider
-            return AnthropicProvider(api_key, base_url, list_models_endpoint)
+            return AnthropicProvider(api_key, base_url, provider_config["list_models_endpoint"])
         elif name_lower == "openai":
             from .openai_provider import OpenAiProvider
-            return OpenAiProvider(api_key, base_url, list_models_endpoint)
+            return OpenAiProvider(api_key, base_url, provider_config["list_models_endpoint"])
         # elif name_lower == "googleai": requires pydanticai version update
         #     from .googleai_provider import GoogleAiProvider
         #     return GoogleAiProvider(api_key, base_url, list_models_endpoint)
-        else:
-            raise ValueError(f"Unsupported provider: {provider_name}")
+        else: #user given provider, must be OpenAI compatible (https://ai.pydantic.dev/models/overview/#openai-compatible-providers)
+            return Provider(provider_name, api_key, base_url)
         
 
 def get_provided_api_keys() -> Dict[str, str]:
