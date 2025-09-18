@@ -197,7 +197,7 @@ async def run_experiment_from_terminal():
     if args.provider:
         provider_name = args.provider
         provider_config = Provider.get_provider_config(provider_name)
-        api_key_env = provider_config.get("apikey", "").replace("${", "").replace("}", "")
+        api_key_env = provider_config.get("apikey", "")
         api_key = os.getenv(api_key_env, "")
         provider = Provider.create_provider(provider_name, api_key)
     else:
