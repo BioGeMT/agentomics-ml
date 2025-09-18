@@ -59,7 +59,6 @@ def is_new_best(config):
     necessary_improvement = 0
     metric_name = config.val_metric
     
-    # Get higher_is_better directly from the metrics
     higher_is_better_map = get_higher_is_better_map()
     higher_is_better = higher_is_better_map[metric_name]
 
