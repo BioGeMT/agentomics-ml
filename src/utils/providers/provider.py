@@ -107,6 +107,7 @@ class Provider():
 
             for provider in provider_config.get("providers", []):
                 if provider.get("name").lower() == provider_name.lower():
+                    provider["apikey"] = provider["apikey"].replace("${", "").replace("}", "")
                     return provider
         raise ValueError(f"Provider {provider_name} not available in {yaml_path} file")
     
@@ -158,7 +159,7 @@ def get_provided_api_keys() -> Dict[str, str]:
 
     for provider_name in available_providers:
         provider_config = Provider.get_provider_config(provider_name)
-        api_key_env = provider_config.get("apikey", "").replace("${", "").replace("}", "")
+        api_key_env = provider_config.get("apikey", "")
 
         if (api_key_env and os.getenv(api_key_env)) or (provider_name.lower() == "ollama" and os.getenv("OLLAMA_BASE_URL")):
               provided_keys[provider_name] = os.getenv(api_key_env, "")
@@ -208,7 +209,7 @@ def list_required_api_keys() -> str:
 
     for provider_name in available_providers:
         provider_config = Provider.get_provider_config(provider_name)
-        api_key_env = provider_config.get("apikey", "").replace("${", "").replace("}", "")
+        api_key_env = provider_config.get("apikey", "")
         if api_key_env:  # Skip Ollama which has empty apikey
             required_env_vars.append(api_key_env)
         elif provider_name.lower() == "ollama":
