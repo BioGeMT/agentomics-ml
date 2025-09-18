@@ -154,7 +154,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Runs agent and outputs results to the workspace directory")
     parser.add_argument('--dataset-name', required=True, help='Name of the folder containing dataset files')
     parser.add_argument('--model', help='LLM model to use', required=True)
-    parser.add_argument('--provider', help=f'API provider to use. Available: {Provider.get_available_providers()}. Auto detected if only one API key provided.', default=None)
+    parser.add_argument('--provider', required=True, help=f'API provider to use. Available: {Provider.get_available_providers()}.')
     parser.add_argument('--no-root-privileges', action='store_true', help='Flag to run without root privileges. This is not recommended, since it decreases security by not preventing the agent from accessing/modifying files outside of its own workspace.')
     parser.add_argument('--workspace-dir', type=Path, default=Path('../workspace').resolve(), help='Path to a directory which will store agent runs, snapshots, and reports')
     parser.add_argument('--prepared-datasets-dir', type=Path, default=Path('../repository/prepared_datasets').resolve(), help='Path to a directory which contains prepared datasets.')
@@ -194,16 +194,10 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
 async def run_experiment_from_terminal():
     args = parse_args()
 
-    if args.provider:
-        provider_name = args.provider
-        provider_config = Provider.get_provider_config(provider_name)
-        api_key_env = provider_config.get("apikey", "")
-        api_key = os.getenv(api_key_env, "")
-        provider = Provider.create_provider(provider_name, api_key)
-    else:
-        # Fall back to interactive selection if not provided
-        api_key, provider_name = get_provider_and_api_key()
-        provider = Provider.create_provider(provider_name, api_key)
+    provider_config = Provider.get_provider_config(args.provider)
+    api_key_env = provider_config.get("apikey", "")
+    api_key = os.getenv(api_key_env, "")
+    provider = Provider.create_provider(args.provider, api_key)
 
     await run_experiment(
         model=args.model, 
