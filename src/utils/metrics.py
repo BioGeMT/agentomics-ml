@@ -2,15 +2,11 @@ from sklearn.metrics import average_precision_score, roc_auc_score, accuracy_sco
 from scipy.stats import pearsonr
 import numpy as np
 
-def pcc(y_true, y_pred):
-    r = pearsonr(np.asarray(y_true, float).ravel(), np.asarray(y_pred, float).ravel())[0]
-    return float(r) if np.isfinite(r) else 0.0
-
 class Metric:
     """
     A metric class that encapsulates:
     - The computation function
-    - Whether it needs probabilities (True) or hard predictions (False)  
+    - Whether it needs probabilities (True) or class predictions (False)  
     - Whether higher values are better (True) or worse (False)
     """
     
@@ -21,6 +17,10 @@ class Metric:
     
     def __call__(self, y_true, y_pred_or_prob):
         return self.function(y_true, y_pred_or_prob)
+
+def _pcc(y_true, y_pred):
+    r = pearsonr(np.asarray(y_true, float).ravel(), np.asarray(y_pred, float).ravel())[0]
+    return float(r) if np.isfinite(r) else 0.0
 
 def _auroc_metric(y_true, y_prob):
     """Handle AUROC for both binary and multiclass cases."""
@@ -99,12 +99,12 @@ def get_regression_metrics_functions():
             higher_is_better=False
         ),
         "POS_PCC": Metric(
-            function=lambda y_true, y_pred: pcc(y_true, y_pred),
+            function=lambda y_true, y_pred: _pcc(y_true, y_pred),
             needs_probabilities=False,
             higher_is_better=True
         ),
         "NEG_PCC": Metric(
-            function=lambda y_true, y_pred: pcc(y_true, y_pred),
+            function=lambda y_true, y_pred: _pcc(y_true, y_pred),
             needs_probabilities=False,
             higher_is_better=False  # Negative correlation
         ),
@@ -115,7 +115,6 @@ def get_regression_metrics_functions():
         ),
     }
 
-# Backward compatibility functions
 def get_classification_metrics_requiring_probabilities():
     """Return a set of metric names that require probability scores instead of hard predictions."""
     metrics = get_classification_metrics_functions()
@@ -138,4 +137,10 @@ def get_task_to_metrics_names():
         "regression": get_regression_metrics_names(),
     }
 
-
+def get_higher_is_better_map():
+    """Return a dictionary mapping metric names to whether higher values are better."""
+    all_metrics = {
+        **get_classification_metrics_functions(),
+        **get_regression_metrics_functions(),
+    }
+    return {name: metric.higher_is_better for name, metric in all_metrics.items()}

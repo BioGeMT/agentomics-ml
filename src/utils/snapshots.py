@@ -1,7 +1,7 @@
 import re
 import shutil
 from pathlib import Path
-from utils.metrics import get_classification_metrics_functions, get_regression_metrics_functions
+from utils.metrics import get_classification_metrics_functions, get_higher_is_better_map, get_regression_metrics_functions
 
 def get_metrics_from_file(file_path):
     metrics = {}
@@ -60,20 +60,8 @@ def is_new_best(config):
     metric_name = config.val_metric
     
     # Get higher_is_better directly from the metrics
-    higher_is_better = None
-    for name, metric in get_classification_metrics_functions().items():
-        if name == metric_name:
-            higher_is_better = metric.higher_is_better
-            break
-    
-    if higher_is_better is None:
-        for name, metric in get_regression_metrics_functions().items():
-            if name == metric_name:
-                higher_is_better = metric.higher_is_better
-                break
-    
-    if higher_is_better is None:
-        raise ValueError(f"Unknown metric: {metric_name}")
+    higher_is_better_map = get_higher_is_better_map()
+    higher_is_better = higher_is_better_map[metric_name]
 
     new_val = new_metrics[f"validation/{metric_name}"]
     best_val = best_metrics[f"validation/{metric_name}"]
