@@ -92,7 +92,6 @@ async def run_architecture(text_output_agent: Agent, inference_agent: Agent, spl
     save_step_output(config, 'data_exploration', data_exploration_output, iteration)
 
     if iteration == 0:
-        # Get target classes for proper data splitting
         messages_split, data_split = await run_agent(
             agent=split_dataset_agent,
             user_prompt=get_data_split_prompt(config),
