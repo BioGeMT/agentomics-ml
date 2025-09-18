@@ -6,55 +6,40 @@ from utils.metrics import get_classification_metrics_functions, get_regression_m
 import os
 
 def get_metrics(results_file, test_file, task_type, output_file=None, numeric_label_col="numeric_label", 
-                    pred_col="prediction", delete_preds=False):
+                    pred_col="prediction", prob_col_prefix = 'probability_', delete_preds=False):
     
     results = pd.read_csv(results_file)
     test = pd.read_csv(test_file)
-
     merged = pd.merge(results, test, left_index=True, right_index=True)
-
-    merged[numeric_label_col] = merged[numeric_label_col].astype(float)
-    merged[pred_col] = merged[pred_col].astype(float)
-
-    # For classification, ensure predictions are integers for accuracy calculation
+    metrics = {}
+    
     if task_type == "classification":
+        # For classification, ensure predictions and labels are integers
         merged[pred_col] = merged[pred_col].astype(int)
         merged[numeric_label_col] = merged[numeric_label_col].astype(int)
-
-    metrics = {}
-    if task_type == "classification":
-        metric_to_fn = get_classification_metrics_functions()
-        
         # Extract probability columns if they exist
-        prob_cols = [col for col in results.columns if col.startswith('probability_')]
-        
-        for metric_name, metric in metric_to_fn.items():
-            if metric.needs_probabilities:
-                if not prob_cols:
-                    print(f"Warning: No probability columns found, skipping {metric_name}")
-                    continue
-                
-                # Get all probability columns and sort them numerically
-                prob_cols_sorted = sorted(prob_cols, key=lambda x: int(x.split('_')[1]))
-                
-                # Build probability matrix: each row is a sample, each column is a class
-                # Use all available probability columns
-                prob_matrix = []
-                
-                for prob_col in prob_cols_sorted:
-                    prob_matrix.append(merged[prob_col].astype(float).values)
-                
-                # Convert to numpy array and transpose so each row is a sample
-                y_prob = np.array(prob_matrix).T
-                metrics[metric_name] = metric(merged[numeric_label_col], y_prob)
-            else:
-                # For metrics that need hard predictions (like ACC), use the prediction column
-                metrics[metric_name] = metric(merged[numeric_label_col], merged[pred_col])
+        prob_cols = [col for col in results.columns if col.startswith(prob_col_prefix)]
+        assert len(prob_cols) > 0, f"No probability columns found with prefix '{prob_col_prefix}'."
+        # Sort probability columns numerically
+        prob_cols_sorted = sorted(prob_cols, key=lambda x: int(x.split('_')[1]))
 
-    else:
+        metric_to_fn = get_classification_metrics_functions()
+        for metric_name, metric_fn in metric_to_fn.items():
+            if metric_fn.needs_probabilities:
+                y_prob = merged[prob_cols_sorted].astype(float).values
+                metrics[metric_name] = metric_fn(merged[numeric_label_col], y_prob)
+            else:
+                # For metrics that need class predictions (like ACC), use the prediction column
+                metrics[metric_name] = metric_fn(merged[numeric_label_col], merged[pred_col])
+
+    if task_type == "regression":
+        # For regression, ensure predictions and labels are floats
+        merged[numeric_label_col] = merged[numeric_label_col].astype(float)
+        merged[pred_col] = merged[pred_col].astype(float)
+
         metric_to_fn = get_regression_metrics_functions()
-        for metric_name, metric in metric_to_fn.items():
-            metrics[metric_name] = metric(merged[numeric_label_col], merged[pred_col])
+        for metric_name, metric_fn in metric_to_fn.items():
+            metrics[metric_name] = metric_fn(merged[numeric_label_col], merged[pred_col])
 
     # Save the results to the output file if specified
     if output_file:
