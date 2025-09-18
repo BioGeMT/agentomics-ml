@@ -5,8 +5,7 @@ from utils.user_input import get_user_input_for_int
 
 class OpenAiProvider(Provider):
     def __init__(self, api_key: str, base_url: str, list_models_endpoint: str):
-        super().__init__(name="OpenAI", base_url=base_url, list_models_endpoint=list_models_endpoint)
-        self.api_key = api_key
+        super().__init__(name="OpenAI", api_key=api_key, base_url=base_url, list_models_endpoint=list_models_endpoint)
         self.headers = {"Authorization": f"Bearer {api_key}"}
         
     def filter_models(self) -> List[str]:

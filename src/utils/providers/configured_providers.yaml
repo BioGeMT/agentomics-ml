@@ -19,6 +19,11 @@ providers:
     base_url: "http://host.docker.internal:11434/v1"
     list_models_endpoint: "http://host.docker.internal:11434/api/tags"
 
+  #Custom provider example
+  # - name: "Vercel"
+  #   apikey: "${VERCEL_API_KEY}"
+  #   base_url: "https://ai-gateway.vercel.sh/v1"
+
   # Needs pydanticai version update
   #- name: "GoogleAI"
   #  apikey: "${GOOGLEAI_API_KEY}"
