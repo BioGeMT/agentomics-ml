@@ -80,7 +80,7 @@ Running `./run.sh` with no parameters will prompt you to select them interactive
 
 You can also supply them directly to skip the interactive selection
 ```
-.run/sh \
+.run.sh \
   --model gpt-5-nano \
   --dataset human_ocr_ensembl \
   --iterations 5 \
