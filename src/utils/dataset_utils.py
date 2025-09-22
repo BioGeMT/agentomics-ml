@@ -25,10 +25,12 @@ def get_single_dataset_info(dataset_dir: str, prepared_datasets_dir: str) -> Dic
     dataset_name = dataset_dir.name
     train_file = dataset_dir / "train.csv"
     test_file = dataset_dir / "test.csv"
+    validation_file = dataset_dir / "validation.csv"
     
     # Count rows in raw files
     train_rows = count_csv_rows(str(train_file)) if train_file.exists() else 0
     test_rows = count_csv_rows(str(test_file)) if test_file.exists() else 0
+    validation_rows = count_csv_rows(str(validation_file)) if validation_file.exists() else 0
     
     # Check if already prepared
     is_prepared = check_dataset_prepared(str(dataset_dir), prepared_datasets_dir)
@@ -52,6 +54,7 @@ def get_single_dataset_info(dataset_dir: str, prepared_datasets_dir: str) -> Dic
         "path": dataset_dir,
         "train_rows": train_rows,
         "test_rows": test_rows,
+        "validation_rows": validation_rows,
         "status": status,
         "can_prepare": can_prepare,
         "should_prepare": can_prepare and not is_prepared,
@@ -154,11 +157,13 @@ def prepare_dataset(dataset_dir, target_col,
     """
     train = dataset_dir / 'train.csv'
     test = dataset_dir / 'test.csv' if (dataset_dir / 'test.csv').exists() else None
+    validation = dataset_dir / 'validation.csv' if (dataset_dir / 'validation.csv').exists() else None
     description = dataset_dir / 'dataset_description.md' if (dataset_dir / 'dataset_description.md').exists() else None
     name = dataset_dir.name
 
     train_df = pd.read_csv(train)
     test_df = pd.read_csv(test) if test else None
+    validation_df = pd.read_csv(validation) if validation else None
     
     if target_col is None:
         target_col = auto_detect_target_col(train_df)
@@ -177,6 +182,8 @@ def prepare_dataset(dataset_dir, target_col,
     dataframes = [('train', train_df)]
     if test_df is not None:
         dataframes.append(('test', test_df))
+    if validation_df is not None:
+        dataframes.append(('validation', validation_df))
     
     dataset_name = name
     out_dir = Path(output_dir) / dataset_name
@@ -224,7 +231,7 @@ def setup_nonsensitive_dataset_files_for_agent(prepared_datasets_dir: Path, agen
 
     assert target_dataset_dir.is_dir()
 
-    target_files = ['dataset_description.md', 'train.csv', 'train.no_label.csv']
+    target_files = ['dataset_description.md', 'train.csv', 'train.no_label.csv', 'validation.csv', 'validation.no_label.csv']
     for file in target_files:
         source_file = source_dataset_dir / file
         target_file = target_dataset_dir / file

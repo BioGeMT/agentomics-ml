@@ -1,4 +1,5 @@
 import os
+import shutil
 
 from pydantic_ai import Agent, ModelRetry
 import weave
@@ -91,13 +92,18 @@ async def run_architecture(text_output_agent: Agent, inference_agent: Agent, spl
     save_step_output(config, 'data_exploration', data_exploration_output, iteration)
 
     if iteration == 0:
-        messages_split, data_split = await run_agent(
-            agent=split_dataset_agent,
-            user_prompt=get_data_split_prompt(config),
-            max_steps=config.max_steps,
-            message_history=messages_data_exploration,
-            )
-        save_step_output(config, 'data_split', data_split, iteration)
+        if not (config.agent_dataset_dir / "validation.csv").exists():
+            messages_split, data_split = await run_agent(
+                agent=split_dataset_agent,
+                user_prompt=get_data_split_prompt(config),
+                max_steps=config.max_steps,
+                message_history=messages_data_exploration,
+                )
+            save_step_output(config, 'data_split', data_split, iteration)
+        else:
+            shutil.copy2(config.agent_dataset_dir / "train.csv", config.runs_dir / config.agent_id / "train.csv")
+            shutil.copy2(config.agent_dataset_dir / "validation.csv", config.runs_dir / config.agent_id / "validation.csv")
+            messages_split = messages_data_exploration
     else:
         messages_split = messages_data_exploration
 

@@ -26,6 +26,7 @@ def print_datasets_table(datasets: List[Dict], title: str = "Dataset Preparation
     table.add_column("#", style="dim", width=4)
     table.add_column("Dataset Name", style="cyan", no_wrap=True, width=25)
     table.add_column("Train Rows", justify="right", style="green", width=12)
+    table.add_column("Val Rows", justify="right", style="yellow", width=12)
     table.add_column("Test Rows", justify="right", style="green", width=12)
     table.add_column("Status", style="magenta", width=25)
     
@@ -35,6 +36,10 @@ def print_datasets_table(datasets: List[Dict], title: str = "Dataset Preparation
             train_display = f"[green]{dataset['train_rows']:,}[/green]"
         else:
             train_display = "[dim]N/A[/dim]"
+        if dataset['validation_rows'] > 0:
+            val_display = f"[yellow]{dataset['validation_rows']:,}[/yellow]"
+        else:
+            val_display = "[dim]N/A[/dim]"
             
         if dataset['test_rows'] > 0:
             test_display = f"[blue]{dataset['test_rows']:,}[/blue]"
@@ -66,6 +71,7 @@ def print_datasets_table(datasets: List[Dict], title: str = "Dataset Preparation
             f"[dim]{i}[/dim]",
             f"[bold cyan]{dataset['name']}[/bold cyan]",
             train_display,
+            val_display,
             test_display,
             status_display
         ]
