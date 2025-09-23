@@ -5,6 +5,7 @@ import shutil
 import pandas as pd
 from pathlib import Path
 from typing import List, Dict
+import subprocess
 
 def count_csv_rows(csv_file: str) -> int:
     """
@@ -281,3 +282,4 @@ def setup_nonsensitive_dataset_files_for_agent(prepared_datasets_dir: Path, agen
             #TODO make it read-only simlink 
             #TODO check raw data -> prepared data is not a symlink but a hard copy!
             shutil.copy2(source_file, target_file)
+            subprocess.run(["setfacl", "-b", str(target_file)], check=True) # give access to the agent user
