@@ -1,7 +1,9 @@
 import subprocess
 import re
 import threading
-import shlex
+import shlex    
+import os
+from pathlib import Path
 
 from pydantic_ai import Tool
 
@@ -13,10 +15,24 @@ class BashProcess:
         self.autoconda = autoconda
         self.timeout = timeout
         self.proxy = proxy
+        self.agent_env = self.setup_agent_env_vars()
 
         if autoconda:
             self.create_conda_env()
     
+    def setup_agent_env_vars(self):
+        agent_home_dir = Path(self.runs_dir / self.agent_id)
+        agent_env = {}
+        
+        for key, value in os.environ.items():
+            if "API_KEY" in key: # don't pass any API keys to the agent
+                continue
+            agent_env[key] = value
+
+        agent_env['HOME'] = str(agent_home_dir)
+
+        return agent_env
+
     def create_conda_env(self):
         conda_env_path = self.runs_dir / self.agent_id / ".conda" / "envs" / f"{self.agent_id}_env"
         self.run(
@@ -34,6 +50,9 @@ class BashProcess:
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     text=True,
+                    env=self.agent_env,
+                    user=self.agent_id,
+                    group=self.agent_id,
                     errors="replace" # handle invalid UTF-8 bytes
                 )
                 output = result.stdout
