@@ -14,12 +14,9 @@ from agents.steps.data_exploration import DataExploration, get_data_exploration_
 from agents.steps.model_training import ModelTraining, get_model_training_prompt
 from utils.config import Config
 from utils.report_logger import save_step_output
-from tools.setup_tools import create_tools
 from run_logging.evaluate_log_run import run_inference_and_log
 
-def create_agents(config: Config, model):
-    tools = create_tools(config)
-
+def create_agents(config: Config, model, tools):
     text_output_agent = Agent( # this is data exploration, representation, architecture reasoning agent
         model=model,
         system_prompt=get_system_prompt(config),
@@ -139,8 +136,8 @@ async def run_architecture(text_output_agent: Agent, inference_agent: Agent, spl
     return _messages
 
 @weave.op(call_display_name=lambda call: f"Iteration {call.inputs.get('iteration', 0) + 1}")
-async def run_iteration(config: Config, model, iteration, feedback):
-    agents_dict = create_agents(config=config, model=model)
+async def run_iteration(config: Config, model, iteration, feedback, tools):
+    agents_dict = create_agents(config=config, model=model, tools=tools)
 
     if iteration == 0:
         base_prompt = get_user_prompt(config)

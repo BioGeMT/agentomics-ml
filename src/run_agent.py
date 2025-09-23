@@ -20,6 +20,7 @@ from utils.metrics import get_classification_metrics_names, get_regression_metri
 from utils.report_logger import add_metrics_to_report, add_summary_to_report, add_final_test_metrics_to_best_report, rename_and_snapshot_best_iteration_report
 from utils.providers.provider import Provider, get_provider_and_api_key
 from feedback.feedback_agent import get_feedback, aggregate_feedback
+from tools.setup_tools import create_tools
 
 
 async def main(model_name, feedback_model_name, dataset, tags, val_metric, root_privileges, 
@@ -56,13 +57,15 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric, root_
         wandb.finish()
 
 async def run_agentomics(config: Config, default_model, feedback_model):
+    tools = create_tools(config)
+    
     all_feedbacks = []
     feedback = None
     print(f"Starting training loop with {config.iterations} iterations")
     for run_index in range(config.iterations):
         print(f"\n=== ITERATION {run_index + 1} / {config.iterations} ===")
         try:
-            current_run_messages = await run_iteration(config=config, model=default_model, iteration=run_index, feedback=feedback)
+            current_run_messages = await run_iteration(config=config, model=default_model, iteration=run_index, feedback=feedback, tools=tools)
         except Exception as e:
             log_serial_metrics(prefix='validation', metrics=None, iteration=run_index, task_type=config.task_type)
             log_serial_metrics(prefix='train', metrics=None, iteration=run_index, task_type=config.task_type)
