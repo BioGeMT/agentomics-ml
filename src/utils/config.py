@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
-from utils.dataset_utils import get_task_type_from_prepared_dataset
+from .dataset_utils import get_task_type_from_prepared_dataset
 
 @dataclass
 class Config:

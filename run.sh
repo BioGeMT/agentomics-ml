@@ -9,6 +9,7 @@ set -euo pipefail
 
 AGENTOMICS_ARGS=()
 LOCAL_MODE=false
+TEST_MODE=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -34,6 +35,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --local)
             LOCAL_MODE=true
+            shift
+            ;;
+        --test)
+            TEST_MODE=true
             shift
             ;;
         *)
@@ -78,20 +83,31 @@ else
     docker build -t agentomics_img .
     docker volume create temp_agentomics_volume
 
-    docker run \
-        -it \
-        --rm \
-        --name agentomics_cont \
+    if [ "$TEST_MODE" = true ]; then
+        docker run \
+            -it \
+            --rm \
+            --name agentomics_test_cont \
             -v "$(pwd)":/repository \
-        -v temp_agentomics_volume:/workspace \
-        agentomics_img ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
+            -v temp_agentomics_volume:/workspace \
+            --entrypoint /opt/conda/envs/agentomics-env/bin/python \
+            agentomics_img -m test.test_agent_permissions
+    else
+        docker run \
+            -it \
+            --rm \
+            --name agentomics_cont \
+            -v "$(pwd)":/repository \
+            -v temp_agentomics_volume:/workspace \
+            agentomics_img ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
 
-    # Copy best-run files and report
-    mkdir -p outputs/best_run_files outputs/reports
-    docker run --rm -v temp_agentomics_volume:/source -v $(pwd)/outputs:/dest busybox cp -r /source/snapshots/. /dest/best_run_files/
+        # Copy best-run files and report
+        mkdir -p outputs/best_run_files outputs/reports
+        docker run --rm -v temp_agentomics_volume:/source -v $(pwd)/outputs:/dest busybox cp -r /source/snapshots/. /dest/best_run_files/
 
-    # Copy reports from all iterations
-    docker run --rm -v temp_agentomics_volume:/source -v $(pwd)/outputs:/dest busybox cp -r /source/reports/. /dest/reports/
+        # Copy reports from all iterations
+        docker run --rm -v temp_agentomics_volume:/source -v $(pwd)/outputs:/dest busybox cp -r /source/reports/. /dest/reports/
+    fi
 
     docker volume rm temp_agentomics_volume
 fi
