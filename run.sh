@@ -82,7 +82,7 @@ else
         -it \
         --rm \
         --name agentomics_cont \
-        -v "$(pwd)":/repository:ro \
+            -v "$(pwd)":/repository \
         -v temp_agentomics_volume:/workspace \
         agentomics_img ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
 

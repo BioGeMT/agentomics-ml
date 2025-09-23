@@ -10,7 +10,7 @@ ENV PIP_NO_CACHE_DIR=1
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
 # Install sudo for later creation of the agent user
-RUN apt-get update && apt-get install -y sudo && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y acl && rm -rf /var/lib/apt/lists/*
 
 # Copy & create your conda environment\ using environment.yaml (with mamba for speed and memory efficiency)
 COPY environment.yaml .
