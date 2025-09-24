@@ -90,8 +90,10 @@ else
             --name agentomics_test_cont \
             -v "$(pwd)":/repository \
             -v temp_agentomics_volume:/workspace \
+            --gpus all \
+            --env NVIDIA_VISIBLE_DEVICES=all \
             --entrypoint /opt/conda/envs/agentomics-env/bin/python \
-            agentomics_img -m test.test_agent_permissions
+            agentomics_img -m test.test_gpu_access
     else
         docker run \
             -it \
@@ -99,6 +101,8 @@ else
             --name agentomics_cont \
             -v "$(pwd)":/repository \
             -v temp_agentomics_volume:/workspace \
+            --gpus all \
+            --env NVIDIA_VISIBLE_DEVICES=all \
             agentomics_img ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
 
         # Copy best-run files and report
