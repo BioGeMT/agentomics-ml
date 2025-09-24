@@ -1,61 +1,7 @@
-import unittest
-from pathlib import Path
+from test.utils_test import BaseAgentTest
 
-from src.tools.bash_tool import create_bash_tool
-from src.tools.write_python_tool import create_write_python_tool
-from src.tools.run_python_tool import create_run_python_tool
-from src.utils.create_user import create_new_user_and_rundir
-from src.utils.config import Config
-from src.utils.workspace_setup import ensure_workspace_folders
-
-class TestGpuAccess(unittest.TestCase):
+class TestGpuAccess(BaseAgentTest):
     """Test suite for GPU agent access"""
-
-    @classmethod
-    def setUpClass(cls):
-        cls.config = Config(
-            model_name="openai/gpt-3.5-turbo",
-            feedback_model_name="openai/gpt-3.5-turbo",
-            dataset="AGO2_CLASH_Hejret",
-            tags=[],
-            val_metric="ACC",
-            root_privileges=True,
-            workspace_dir=Path("/workspace").resolve(),
-            prepared_datasets_dir=Path('../repository/prepared_datasets').resolve(),
-            agent_dataset_dir=Path('../workspace/datasets').resolve(),
-            iterations=5,
-            user_prompt="Create the best possible machine learning model that will generalize to new unseen data."
-        )
-        
-        ensure_workspace_folders(cls.config)
-        cls.agent_id = create_new_user_and_rundir(cls.config)
-        cls.config.agent_id = cls.agent_id
-        print(f"Created test agent: {cls.agent_id}")
-        
-        print("Setting up tools for testing (including conda env creation, might take a moment)\n")
-        
-        cls.bash_tool = create_bash_tool(
-            agent_id=cls.agent_id,
-            runs_dir=cls.config.runs_dir,
-            timeout=10*60,
-            max_retries=cls.config.max_tool_retries,
-            autoconda=True,
-            proxy=cls.config.use_proxy
-        )
-        
-        cls.write_python_tool = create_write_python_tool(
-            agent_id=cls.agent_id,
-            runs_dir=cls.config.runs_dir,
-            max_retries=cls.config.max_tool_retries
-        )
-        
-        cls.run_python_tool = create_run_python_tool(
-            agent_id=cls.agent_id,
-            runs_dir=cls.config.runs_dir,
-            timeout=cls.config.run_python_tool_timeout,
-            proxy=cls.config.use_proxy,
-            max_retries=cls.config.max_tool_retries
-        )
 
     def test_gpu_access_bash(self):
         """Test if the agent can access the GPU using bash tool."""
@@ -69,7 +15,7 @@ class TestGpuAccess(unittest.TestCase):
     def test_gpu_pytorch_python(self):
         """Test if the agent can access the GPU using python tool (PyTorch)."""
 
-        print("Installing PyTorch with CUDA support, might take a while...")
+        print("Installing PyTorch, might take a while...")
         install_result = self.bash_tool.function("pip install torch")
         self.assertNotIn("ERROR", install_result, "Failed to install PyTorch through pip")
         
@@ -112,17 +58,4 @@ class TestGpuAccess(unittest.TestCase):
         self.assertNotIn("Command failed", write_result, "Should be able to write TensorFlow test file")
 
         run_result = self.run_python_tool.function(python_file_path=file_path)
-        print(run_result)
         self.assertNotIn("GPU devices found: 0", run_result, "No GPU devices found for TensorFlow")
-
-def run_gpu_tests():
-    loader = unittest.TestLoader()
-    suite = loader.loadTestsFromTestCase(TestGpuAccess)
-
-    runner = unittest.TextTestRunner(verbosity=2, stream=None)
-    result = runner.run(suite)
-
-    return result.wasSuccessful()
-
-if __name__ == "__main__":
-    run_gpu_tests()
