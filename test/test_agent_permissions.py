@@ -1,64 +1,7 @@
-import unittest
-from pathlib import Path
+from test.utils_test import BaseAgentTest
 
-from src.tools.bash_tool import create_bash_tool
-from src.tools.write_python_tool import create_write_python_tool
-from src.tools.run_python_tool import create_run_python_tool
-from src.utils.create_user import create_new_user_and_rundir
-from src.utils.config import Config
-from src.utils.workspace_setup import ensure_workspace_folders
-
-
-class TestAgentPermissions(unittest.TestCase):
+class TestAgentPermissions(BaseAgentTest):
     """Test suite for agent isolation and security."""
-    
-    @classmethod
-    def setUpClass(cls):
-        """Set up a test agent and tools for testing."""
-        
-        cls.config = Config(
-            model_name="openai/gpt-3.5-turbo",
-            feedback_model_name="openai/gpt-3.5-turbo",
-            dataset="AGO2_CLASH_Hejret",
-            tags=[],
-            val_metric="ACC",
-            root_privileges=True,
-            workspace_dir=Path("/workspace").resolve(),
-            prepared_datasets_dir=Path('../repository/prepared_datasets').resolve(),
-            agent_dataset_dir=Path('../workspace/datasets').resolve(),
-            iterations=5,
-            user_prompt="Create the best possible machine learning model that will generalize to new unseen data."
-        )
-        
-        ensure_workspace_folders(cls.config)
-        cls.agent_id = create_new_user_and_rundir(cls.config)
-        cls.config.agent_id = cls.agent_id
-        print(f"Created test agent: {cls.agent_id}")
-        
-        print("Setting up tools for testing (including conda env creation, might take a moment)\n")
-        
-        cls.bash_tool = create_bash_tool(
-            agent_id=cls.agent_id,
-            runs_dir=cls.config.runs_dir,
-            timeout=120,
-            max_retries=cls.config.max_tool_retries,
-            autoconda=True,
-            proxy=cls.config.use_proxy
-        )
-        
-        cls.write_python_tool = create_write_python_tool(
-            agent_id=cls.agent_id,
-            runs_dir=cls.config.runs_dir,
-            max_retries=cls.config.max_tool_retries
-        )
-        
-        cls.run_python_tool = create_run_python_tool(
-            agent_id=cls.agent_id,
-            runs_dir=cls.config.runs_dir,
-            timeout=cls.config.run_python_tool_timeout,
-            proxy=cls.config.use_proxy,
-            max_retries=cls.config.max_tool_retries
-        )
 
     def test_agent_user_context(self):
         """Test that agent tools run as the correct user and group (not root)."""
@@ -198,15 +141,3 @@ except Exception as e:
         run_result = self.run_python_tool.function(python_file_path=test_file_path)
         self.assertNotIn("SECURITY_BREACH", run_result, f"Agent performed disruptive action: {run_result}")
         self.assertIn("Good:", run_result, "Should show security restrictions are working")
-
-def run_isolation_tests():
-    loader = unittest.TestLoader()
-    suite = loader.loadTestsFromTestCase(TestAgentPermissions)
-    
-    runner = unittest.TextTestRunner(verbosity=2, stream=None)
-    result = runner.run(suite)
-    
-    return result.wasSuccessful()
-
-if __name__ == "__main__":
-    run_isolation_tests()

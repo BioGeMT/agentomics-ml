@@ -93,7 +93,7 @@ else
             --gpus all \
             --env NVIDIA_VISIBLE_DEVICES=all \
             --entrypoint /opt/conda/envs/agentomics-env/bin/python \
-            agentomics_img -m test.test_gpu_access
+            agentomics_img -m test.run_all_tests
     else
         docker run \
             -it \
