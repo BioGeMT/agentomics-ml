@@ -221,10 +221,9 @@ def interactive_dataset_selection(datasets: List[Dict]) -> Optional[str]:
     
     console.print("Selecting dataset interactively...", style="cyan")
     print_datasets_table(datasets)
-    prepared_datasets = [d for d in datasets if d['is_prepared']]
-    prepared_datasets_table_indicies = [i+1 for i,d in enumerate(datasets) if d['is_prepared']]
+    prepared_datasets_table_indicies = [i+1 for i,d in enumerate(datasets)]
 
-    if not prepared_datasets:
+    if not datasets:
         console.print("[red]No prepared datasets available for selection[/red]")
         return None
     
