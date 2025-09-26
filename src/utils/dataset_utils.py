@@ -59,6 +59,34 @@ def get_single_dataset_info(dataset_dir: str, prepared_datasets_dir: str) -> Dic
         "is_prepared": is_prepared
     }
 
+def get_single_prepared_dataset_info(prepared_dataset_dir: str) -> Dict:
+    if not prepared_dataset_dir.is_dir():
+        return None
+        
+    dataset_name = prepared_dataset_dir.name
+    train_file = prepared_dataset_dir / "train.csv"
+    test_file = prepared_dataset_dir / "test.csv"
+    #TODO display explicit validation set status
+    
+    # Count rows in raw files
+    train_rows = count_csv_rows(str(train_file)) if train_file.exists() else 0
+    test_rows = count_csv_rows(str(test_file)) if test_file.exists() else 0
+    
+    if not train_file.exists():
+        status = "Missing train.csv"
+    elif train_rows == 0:
+        status = "Empty train.csv"
+    else:
+        status = "Prepared"
+        
+    return {
+        "name": dataset_name,
+        "path": prepared_dataset_dir,
+        "train_rows": train_rows,
+        "test_rows": test_rows,
+        "status": status
+    }
+
 def get_all_datasets_info(datasets_dir: str, prepared_datasets_dir: str) -> List[Dict]:
     """
     Collect information about all datasets for preparation.
@@ -85,6 +113,32 @@ def get_all_datasets_info(datasets_dir: str, prepared_datasets_dir: str) -> List
     # Sort by name for consistent ordering
     datasets_info.sort(key=lambda x: x["name"])
     return datasets_info
+
+def get_all_prepared_datasets_info(prepared_datasets_dir: str) -> List[Dict]:
+    """
+    Collect information about all prepared datasets.
+    
+    Args:
+        prepared_datasets_dir: Path to prepared datasets directory
+        
+    Returns:
+        List of dataset information dictionaries
+    """
+    prepared_datasets_path = Path(prepared_datasets_dir)
+    
+    if not prepared_datasets_path.exists():
+        return []
+    
+    prepared_datasets_info = []
+    
+    for prepared_dataset_dir in prepared_datasets_path.iterdir():
+        dataset_info = get_single_prepared_dataset_info(prepared_dataset_dir)
+        if(dataset_info):
+            prepared_datasets_info.append(dataset_info)
+        
+    # Sort by name for consistent ordering
+    prepared_datasets_info.sort(key=lambda x: x["name"])
+    return prepared_datasets_info
 
 def check_dataset_prepared(dataset_dir: str, prepared_datasets_dir: str) -> bool:
     """Check if a dataset is already prepared."""
@@ -258,6 +312,11 @@ def prepare_dataset(dataset_dir, target_col,
 
     (out_dir / 'metadata.json').write_text(json.dumps(meta, indent=4))
 
+    non_sensitive_files = ['dataset_description.md', 'train.csv', 'train.no_label.csv']
+    for file in out_dir.iterdir():
+        if file.name not in non_sensitive_files:
+            subprocess.run(["chmod", "o-rwx", file], check=True)
+
 def setup_nonsensitive_dataset_files_for_agent(prepared_datasets_dir: Path, agent_datasets_dir: Path, dataset_name: str):
     """
     Copies non-sensitive (non-test) dataset files to a shared directory accessible by agents.
@@ -282,4 +341,3 @@ def setup_nonsensitive_dataset_files_for_agent(prepared_datasets_dir: Path, agen
             #TODO make it read-only simlink 
             #TODO check raw data -> prepared data is not a symlink but a hard copy!
             shutil.copy2(source_file, target_file)
-            subprocess.run(["setfacl", "-b", str(target_file)], check=True) # give access to the agent user

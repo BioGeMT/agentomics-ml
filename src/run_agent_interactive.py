@@ -7,7 +7,7 @@ from rich.panel import Panel
 import json
 import dotenv
 
-from utils.dataset_utils import get_all_datasets_info
+from utils.dataset_utils import get_all_prepared_datasets_info
 from utils.datasets_interactive_utils import interactive_dataset_selection, print_datasets_table
 from utils.metrics_interactive_utils import display_metrics_table, interactive_metric_selection
 from utils.providers.provider import Provider, get_provider_and_api_key
@@ -68,7 +68,7 @@ def main():
     # Handle list-only modes (these don't require interactivity)
     if args.list_datasets:
         console.print("Available Datasets", style="cyan")
-        datasets = get_all_datasets_info(paths["datasets_dir"], paths["prepared_datasets_dir"])
+        datasets = get_all_prepared_datasets_info(paths["prepared_datasets_dir"])
         print_datasets_table(datasets)
         return 0
     
@@ -95,7 +95,7 @@ def main():
     # Go to interactive selection if dataset/model/val_metric not provided
     print_welcome()
     if not dataset:
-        datasets = get_all_datasets_info(paths["datasets_dir"], paths["prepared_datasets_dir"])
+        datasets = get_all_prepared_datasets_info(paths["prepared_datasets_dir"])
         dataset = interactive_dataset_selection(datasets)
         if not dataset:
             console.print("No dataset selected", style="red")
