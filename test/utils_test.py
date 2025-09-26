@@ -1,5 +1,6 @@
 import unittest
 from pathlib import Path
+import dotenv
 
 from src.tools.bash_tool import create_bash_tool
 from src.tools.write_python_tool import create_write_python_tool
@@ -28,6 +29,8 @@ def get_shared_test_resources():
               iterations=5,
               user_prompt="Create the best possible machine learning model that will generalize to new unseen data."
           )
+        
+        dotenv.load_dotenv()
 
         setup_nonsensitive_dataset_files_for_agent(
             prepared_datasets_dir=config.prepared_dataset_dir.parent,
