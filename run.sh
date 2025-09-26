@@ -74,6 +74,7 @@ if [ "$LOCAL_MODE" = true ]; then
 else
     docker build -t agentomics_prepare_img -f Dockerfile.prepare .
     docker run \
+        -u $(id -u):$(id -g) \
         --rm \
         -it \
         --name agentomics_prepare_cont \
@@ -88,7 +89,10 @@ else
             -it \
             --rm \
             --name agentomics_test_cont \
-            -v "$(pwd)":/repository \
+            -v "$(pwd)/src":/repository/src:ro \
+            -v "$(pwd)/test":/repository/test:ro \
+            -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
+            -v "$(pwd)/.env":/repository/.env:ro \
             -v temp_agentomics_volume:/workspace \
             --gpus all \
             --env NVIDIA_VISIBLE_DEVICES=all \
@@ -99,7 +103,9 @@ else
             -it \
             --rm \
             --name agentomics_cont \
-            -v "$(pwd)":/repository \
+            -v "$(pwd)/src":/repository/src:ro \
+            -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
+            -v "$(pwd)/.env":/repository/.env:ro \
             -v temp_agentomics_volume:/workspace \
             --gpus all \
             --env NVIDIA_VISIBLE_DEVICES=all \
@@ -107,10 +113,10 @@ else
 
         # Copy best-run files and report
         mkdir -p outputs/best_run_files outputs/reports
-        docker run --rm -v temp_agentomics_volume:/source -v $(pwd)/outputs:/dest busybox cp -r /source/snapshots/. /dest/best_run_files/
+        docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume:/source -v $(pwd)/outputs:/dest busybox cp -r /source/snapshots/. /dest/best_run_files/
 
         # Copy reports from all iterations
-        docker run --rm -v temp_agentomics_volume:/source -v $(pwd)/outputs:/dest busybox cp -r /source/reports/. /dest/reports/
+        docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume:/source -v $(pwd)/outputs:/dest busybox cp -r /source/reports/. /dest/reports/
     fi
 
     docker volume rm temp_agentomics_volume
