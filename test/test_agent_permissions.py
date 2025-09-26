@@ -1,4 +1,6 @@
 from test.utils_test import BaseAgentTest
+from pathlib import Path
+import subprocess
 
 class TestAgentPermissions(BaseAgentTest):
     """Test suite for agent isolation and security."""
@@ -17,9 +19,13 @@ class TestAgentPermissions(BaseAgentTest):
         self.assertNotIn("gid=0", result, "Should not run as root group (gid=0)")
 
         result = self.bash_tool.function("sudo whoami 2>&1")
-        result = self.bash_tool.function("sudo whoami 2>&1")
         cannot_sudo = "Command failed" in result or "not allowed" in result or "not found" in result or "not in the sudoers file" in result
         self.assertTrue(cannot_sudo, f"Agent should not have sudo access. Got: {result}")
+
+        result = self.bash_tool.function("exit")
+        user = self.bash_tool.function("whoami").strip()
+        self.assertNotEqual(user, "root", f"After running 'exit', user should not be root")
+        self.assertEqual(user, self.agent_id, f"After running 'exit', user should remain as {self.agent_id}.")
 
     def test_agent_directory_access(self):
         """Test that agent can access only its own work directory."""
@@ -57,7 +63,7 @@ class TestAgentPermissions(BaseAgentTest):
             "Agent should not read test data content"
         )
 
-    def test_dataset_access_permissions(self):
+    def test_agent_dataset_access_permissions(self):
         """Test agent's dataset access from workspace."""
         
         result = self.bash_tool.function(f"ls -la {self.config.agent_dataset_dir}/")
@@ -67,6 +73,22 @@ class TestAgentPermissions(BaseAgentTest):
         result = self.bash_tool.function(f"head -5 {self.config.agent_dataset_dir}/train.csv 2>&1")
         self.assertNotIn("Permission denied", result, "Agent should read its dataset content")
         self.assertNotIn("Command failed", result, "head command should succeed")
+    
+    def test_agent_access_to_prepared_datasets(self):
+        non_sensitive_files = ['dataset_description.md', 'train.csv', 'train.no_label.csv']
+        for file in self.config.prepared_dataset_dir.iterdir():
+            if file.name not in non_sensitive_files:
+                result = self.bash_tool.function(f"head -5 {self.config.prepared_dataset_dir}/{file.name} 2>&1")
+                self.assertIn("Permission denied", result, f"Agent should not access its dataset directory {file.name} file")
+                self.assertIn("Command failed", result, "ls command should not succeed")
+
+        for filename in non_sensitive_files:
+            result = self.bash_tool.function(f"head -5 {self.config.prepared_dataset_dir}/{filename} 2>&1")
+            self.assertNotIn("Permission denied", result, f"Agent should read file {filename} in dataset folder")
+            self.assertNotIn("Command failed", result, "head command should succeed")
+
+    def test_agent_access_to_repository_datasets(self):
+        self.assertFalse(Path("/repository/datasets/").is_dir())
 
     def test_api_key_protection(self):
         """Test that agent cannot access API keys."""
@@ -74,11 +96,13 @@ class TestAgentPermissions(BaseAgentTest):
         # Check if agent can see environment variables with API keys
         env_result = self.bash_tool.function("env | grep -i 'api\\|key' 2>&1")
         self.assertIn("Command failed", env_result, f"Agent should not see any API/key environment variables. Found: {env_result}")
-        
+
+        self.assertNotIn("Command failed", subprocess.run(["env", "|", "grep", "-i", "'api\\|key'", "2>&1"], shell=True, capture_output=True, text=True).stdout, "root should see environment variables")
+
         # Check .env file access
         env_file_result = self.bash_tool.function("cat /repository/.env 2>&1")
         self.assertTrue(
-            "Permission denied" in env_file_result or "No such file" in env_file_result,
+            "Permission denied" in env_file_result,
             f"Should not access .env file. Got: {env_file_result}"
         )
     
