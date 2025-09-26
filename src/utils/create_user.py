@@ -2,15 +2,6 @@ import subprocess
 import sys
 from hrid import HRID
 
-def _change_repository_permissions(agent_id):
-    """Change to read-only agent access for repository with specific restrictions."""
-    subprocess.run(["setfacl", "-R", "-m", f"u:{agent_id}:r-X", "/repository"], check=True)
-
-    subprocess.run(["setfacl", "-m", f"u:{agent_id}:---", "/repository/.env"], check=True)
-
-    subprocess.run(["setfacl", "-R", "-m", f"u:{agent_id}:---", "/repository/datasets"], check=True)
-    subprocess.run(["setfacl", "-R", "-m", f"u:{agent_id}:---", "/repository/prepared_datasets"], check=True)
-
 def create_new_user_and_rundir(config):
     run_id = "_".join(HRID().generate().replace("-", "_").replace(" ","_").split("_")[:-1])[:32]
     run_dir = config.runs_dir / run_id
@@ -21,7 +12,6 @@ def create_new_user_and_rundir(config):
             ["useradd", "-d", run_dir, "-m", "-U", run_id],
             check=True
         )
-        _change_repository_permissions(run_id)
     else:
         run_dir.mkdir(parents=True, exist_ok=True)
     
