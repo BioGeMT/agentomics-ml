@@ -52,7 +52,7 @@ def run_inference_on_test_data(test_data_path):
 
 def copy_and_format_predictions_for_biomlbench(preds_source_path, preds_dest_path, target_col):
     preds_df = pd.read_csv(preds_source_path).reset_index()
-    preds_df['id'] = preds_df.index #TODO check index comes from 0 to n-1
+    preds_df['id'] = preds_df.index
     preds_df = preds_df[['id','prediction']].rename(columns={'prediction': target_col})
     preds_df.to_csv(preds_dest_path, index=False)
 
