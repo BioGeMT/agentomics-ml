@@ -10,6 +10,7 @@ set -euo pipefail
 AGENTOMICS_ARGS=()
 LOCAL_MODE=false
 TEST_MODE=false
+CPU_ONLY=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -39,6 +40,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --test)
             TEST_MODE=true
+            shift
+            ;;
+        --cpu-only)
+            CPU_ONLY=true
             shift
             ;;
         *)
@@ -84,18 +89,23 @@ else
     docker build -t agentomics_img .
     docker volume create temp_agentomics_volume
 
+    GPU_FLAGS=()
+    if [ "$CPU_ONLY" = false ]; then
+        GPU_FLAGS+=(--gpus all)
+        GPU_FLAGS+=(--env NVIDIA_VISIBLE_DEVICES=all)
+    fi
+
     if [ "$TEST_MODE" = true ]; then
         docker run \
             -it \
             --rm \
             --name agentomics_test_cont \
+            ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/test":/repository/test:ro \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
             -v "$(pwd)/.env":/repository/.env:ro \
             -v temp_agentomics_volume:/workspace \
-            --gpus all \
-            --env NVIDIA_VISIBLE_DEVICES=all \
             --entrypoint /opt/conda/envs/agentomics-env/bin/python \
             agentomics_img -m test.run_all_tests
     else
@@ -103,12 +113,11 @@ else
             -it \
             --rm \
             --name agentomics_cont \
+            ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
             -v "$(pwd)/.env":/repository/.env:ro \
             -v temp_agentomics_volume:/workspace \
-            --gpus all \
-            --env NVIDIA_VISIBLE_DEVICES=all \
             agentomics_img ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
 
         # Copy best-run files and report

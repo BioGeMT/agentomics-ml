@@ -314,7 +314,7 @@ The `./run.sh` script automatically handles proxy settings if environment variab
 
 ## GPU settings
 
-If you need to use GPU acceleration with your container, you'll need to configure Docker to access your NVIDIA GPUs.
+GPU support is enabled by default. To use GPU acceleration, you need to configure Docker to access your NVIDIA GPUs:
 
 1. Install the NVIDIA Container Toolkit:
 
@@ -323,28 +323,14 @@ If you need to use GPU acceleration with your container, you'll need to configur
    # https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
    ```
 
-2. Build the Docker image as per above instructions (add proxy arguments if needed)
-
-3. The `./run.sh` script automatically detects and uses GPU access when available:
+2. Run normally (GPU will be used automatically):
 
    ```
    ./run.sh
    ```
 
-   For manual setup with GPU access:
+If you want to disable GPU support, use the `--cpu-only` flag:
 
    ```
-   docker run -d \
-       --name agentomics-agent \
-       -e OPENROUTER_API_KEY="your-key" \
-       -e WANDB_API_KEY="your-wandb-key" \
-       -e DATASET_NAME="sample_dataset" \
-       -e MODEL_NAME="openai/gpt-4.1" \
-       -e PREPARED_DATASETS_DIR="/repository/prepared_datasets" \
-       -v agentomics-workspace:/workspace \
-       -v $(pwd):/repository \
-       -v $(pwd)/prepared_datasets:/repository/prepared_datasets \
-       --gpus all \
-       --env NVIDIA_VISIBLE_DEVICES=all \
-       agentomics/agentomics:latest
+   ./run.sh --cpu-only
    ```

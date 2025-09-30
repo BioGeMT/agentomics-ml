@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
+import subprocess
 from typing import List, Optional
 from .dataset_utils import get_task_type_from_prepared_dataset
 
@@ -71,6 +72,21 @@ class Config:
         if max_steps is not None:
             self.max_steps = max_steps
 
+    def _check_gpu_availability(self) -> Optional[str]:
+        try:
+            result = subprocess.run(['nvidia-smi', '--list-gpus'], capture_output=True, text=True)
+
+            if result.returncode == 0 and result.stdout.strip():
+                gpus = []
+                for line in result.stdout.strip().split('\n'):
+                    line = line.split('(UUID:')[0].strip() # remove UUID part
+                    line = line.split(':', 1)[1].strip() # get only device name
+                    gpus.append(line)
+                return ', '.join(gpus)
+            return None
+        except:
+            return None
+
     def print_summary(self):
         print('=== AGENTOMICS CONFIGURATION ===')
         print('MAIN MODEL:', self.model_name)
@@ -81,4 +97,11 @@ class Config:
         print('AGENT ID:', self.agent_id)
         print('ITERATIONS:', self.iterations)
         print('USER PROMPT:', self.user_prompt)
+
+        gpu_info = self._check_gpu_availability()
+        if gpu_info:
+            print(f'GPU: Available ({gpu_info})')
+        else:
+            print('GPU: Not available')
+
         print('===============================')
