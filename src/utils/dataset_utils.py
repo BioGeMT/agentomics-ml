@@ -282,10 +282,13 @@ def prepare_dataset(dataset_dir, target_col,
     
     # Generate train, test, and no_label CSV files
     for split_name, df in dataframes:
-        if task_type == 'classification':
-            df['numeric_label'] = df[target_col].map(label_map)
-        else:
-            df['numeric_label'] = df[target_col]
+        try:
+            if task_type == 'classification':
+                df['numeric_label'] = df[target_col].map(label_map)
+            else:
+                df['numeric_label'] = df[target_col]
+        except KeyError as e:
+            raise KeyError(f"Target column '{target_col}' not found in {split_name} dataset. Available columns: {df.columns}") from e
 
         df.to_csv(out_dir / f'{split_name}.csv', index=False)
         df.drop([target_col, 'numeric_label'], axis=1).to_csv(

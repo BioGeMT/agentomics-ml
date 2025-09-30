@@ -1,12 +1,12 @@
 import wandb
-from wandb.errors import AuthenticationError
+from wandb.errors import AuthenticationError, UsageError
 from utils.metrics import get_task_to_metrics_names
 
 def login_to_wandb(api_key):
     try:
         wandb.login(key=api_key, anonymous="allow", timeout=5)
         return True
-    except AuthenticationError:
+    except (AuthenticationError, UsageError):
         return False
 
 def is_wandb_active():
