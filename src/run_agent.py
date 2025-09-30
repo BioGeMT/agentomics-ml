@@ -85,61 +85,45 @@ async def run_agentomics(config: Config, default_model, feedback_model):
             log_files(config, iteration=run_index)
             continue
 
-        try:
-            print("Starting evaluation phase")
-            print("  Running validation inference...")
-            run_inference_and_log(config, iteration=run_index, evaluation_stage='validation')
-            print("  Running training inference...")
-            run_inference_and_log(config, iteration=run_index, evaluation_stage='train')
-            print("  Running stealth test inference...")
-            run_inference_and_log(config, iteration=run_index, evaluation_stage='stealth_test')
+        print("Starting evaluation phase")
+        print("  Running validation inference...")
+        run_inference_and_log(config, iteration=run_index, evaluation_stage='validation')
+        print("  Running training inference...")
+        run_inference_and_log(config, iteration=run_index, evaluation_stage='train')
+        print("  Running stealth test inference...")
+        run_inference_and_log(config, iteration=run_index, evaluation_stage='stealth_test')
 
-            new_metrics, best_metrics = get_new_and_best_metrics(config)
-            all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far: {best_metrics}"))
-            
-            if is_new_best(config):
-                feedback = await get_feedback(
-                    context=current_run_messages, 
-                    config=config, 
-                    new_metrics=new_metrics, 
-                    best_metrics=best_metrics, 
-                    is_new_best=True, 
-                    model=feedback_model,
-                    iteration=run_index,
-                    aggregated_feedback=aggregate_feedback(all_feedbacks)
-                )
-
-                snapshot(config, run_index)  # Snapshotting overrides the previous snapshot, influencing the get_new_and_best_metrics function
-            else:
-                feedback =await get_feedback(
-                    current_run_messages, 
-                    config, 
-                    new_metrics, 
-                    best_metrics, 
-                    is_new_best=False, 
-                    model=feedback_model,
-                    iteration=run_index,
-                    aggregated_feedback=aggregate_feedback(all_feedbacks)
-                )
-
-        except Exception as e:
-            new_metrics, best_metrics = get_new_and_best_metrics(config)
-            all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far after the feedback incorporation: {best_metrics}"))
+        new_metrics, best_metrics = get_new_and_best_metrics(config)
+        all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far: {best_metrics}"))
+        
+        if is_new_best(config):
             feedback = await get_feedback(
-                    current_run_messages, 
-                    config, 
-                    new_metrics, 
-                    best_metrics, 
-                    is_new_best=False, 
-                    model=feedback_model,
-                    iteration=run_index,
-                    aggregated_feedback=aggregate_feedback(all_feedbacks),
-                    extra_info=f"Inference failed: {traceback.format_exc()}",
-                )
-        finally:
-            add_metrics_to_report(config, run_index)
-            await add_summary_to_report(default_model, config, run_index)
-            log_files(config, iteration=run_index)
+                context=current_run_messages, 
+                config=config, 
+                new_metrics=new_metrics, 
+                best_metrics=best_metrics, 
+                is_new_best=True, 
+                model=feedback_model,
+                iteration=run_index,
+                aggregated_feedback=aggregate_feedback(all_feedbacks)
+            )
+
+            snapshot(config, run_index)  # Snapshotting overrides the previous snapshot, influencing the get_new_and_best_metrics function
+        else:
+            feedback =await get_feedback(
+                current_run_messages, 
+                config, 
+                new_metrics, 
+                best_metrics, 
+                is_new_best=False, 
+                model=feedback_model,
+                iteration=run_index,
+                aggregated_feedback=aggregate_feedback(all_feedbacks)
+            )
+
+        add_metrics_to_report(config, run_index)
+        await add_summary_to_report(default_model, config, run_index)
+        log_files(config, iteration=run_index)
         
     print("\nRunning final test evaluation...")
     try:
