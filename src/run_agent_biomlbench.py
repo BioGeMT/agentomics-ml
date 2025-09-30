@@ -102,9 +102,9 @@ if __name__ == '__main__':
         dataset_name='temp_dataset', # Name doesnt matter since biomlbench has his own run structure
         val_metric=args.val_metric,
         iterations=args.iterations,
-        user_prompt="Create the best possible machine learning model that will generalize to new unseen data.",
+        # user_prompt="Create the best possible machine learning model that will generalize to new unseen data.",
         # Testing prompt
-        # user_prompt="Create only small CPU-only model like linear regression with small amounts of parameters and epochs",
+        user_prompt="Create only small CPU-only model like linear regression with small amounts of parameters and epochs",
         workspace_dir = '/home/workspace',
         prepared_datasets_dir= '/home/agent/prepared_datasets',
         agent_datasets_dir= '/home/workspace/datasets',
