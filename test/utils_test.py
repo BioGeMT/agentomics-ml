@@ -2,9 +2,7 @@ import unittest
 from pathlib import Path
 import dotenv
 
-from src.tools.bash_tool import create_bash_tool
-from src.tools.write_python_tool import create_write_python_tool
-from src.tools.run_python_tool import create_run_python_tool
+from src.tools.setup_tools import create_tools
 from src.utils.create_user import create_new_user_and_rundir
 from src.utils.config import Config
 from src.utils.workspace_setup import ensure_workspace_folders
@@ -44,28 +42,7 @@ def get_shared_test_resources():
 
         print("Setting up tools for testing (including conda env creation, might take a moment)\n")
 
-        bash_tool = create_bash_tool(
-            agent_id=agent_id,
-            runs_dir=config.runs_dir,
-            timeout=10*60,
-            max_retries=config.max_tool_retries,
-            autoconda=True,
-            proxy=config.use_proxy
-        )
-
-        write_python_tool = create_write_python_tool(
-            agent_id=agent_id,
-            runs_dir=config.runs_dir,
-            max_retries=config.max_tool_retries
-        )
-
-        run_python_tool = create_run_python_tool(
-            agent_id=agent_id,
-            runs_dir=config.runs_dir,
-            timeout=config.run_python_tool_timeout,
-            proxy=config.use_proxy,
-            max_retries=config.max_tool_retries
-        )
+        bash_tool, write_python_tool, run_python_tool = create_tools(config)
 
         _shared_test_resources = {
             'config': config,

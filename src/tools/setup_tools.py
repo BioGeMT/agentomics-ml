@@ -1,6 +1,6 @@
-from tools.bash_tool import create_bash_tool
-from tools.write_python_tool import create_write_python_tool
-from tools.run_python_tool import create_run_python_tool
+from .bash_tool import create_bash_tool
+from .write_python_tool import create_write_python_tool
+from .run_python_tool import create_run_python_tool
 import weave
 
 def create_tools(config):
