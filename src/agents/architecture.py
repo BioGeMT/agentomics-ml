@@ -3,6 +3,7 @@ import json
 
 from pydantic_ai import Agent, ModelRetry
 import weave
+import pandas as pd
 
 from agents.agent_utils import run_agent
 from agents.prompts.prompts_utils import get_iteration_prompt, get_user_prompt, get_system_prompt
@@ -56,10 +57,9 @@ def create_agents(config: Config, model, tools):
         
         target_col = 'numeric_label' #TODO generalize and take from metadata.json or config
         for path in [result.train_path, result.val_path]:
-            with open(path, 'r') as f:
-                header = f.readline()
-                if target_col not in header.split(','):
-                    raise ModelRetry(f"Target column {target_col} not found in dataset {path}.")
+            df = pd.read_csv(path)
+            if target_col not in df.columns:
+                raise ModelRetry(f"Target column {target_col} not found in dataset {path}. Columns found: {df.columns.tolist()}")
         return result
     
     @training_agent.output_validator
