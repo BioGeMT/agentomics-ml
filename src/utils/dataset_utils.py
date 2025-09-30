@@ -250,6 +250,9 @@ def prepare_dataset(dataset_dir, target_col,
     If target_col and/or task_type is None, it will be auto-detected and printed out
     If positive_class and negative_class are None, they will be auto-detected for binary classification and printed out
     """
+    dataset_dir = Path(dataset_dir)
+    output_dir = Path(output_dir)
+
     train = dataset_dir / 'train.csv'
     test = dataset_dir / 'test.csv' if (dataset_dir / 'test.csv').exists() else None
     description = dataset_dir / 'dataset_description.md' if (dataset_dir / 'dataset_description.md').exists() else None
