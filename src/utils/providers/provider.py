@@ -216,3 +216,9 @@ def list_required_api_keys() -> str:
             required_env_vars.append("OLLAMA_BASE_URL")
     
     return ", ".join(required_env_vars)
+
+def get_provider_from_string(provider_name: str) -> Provider:
+    provider_config = Provider.get_provider_config(provider_name)
+    api_key_env = provider_config.get("apikey", "")
+    api_key = os.getenv(api_key_env, "")
+    return Provider.create_provider(provider_name, api_key)
