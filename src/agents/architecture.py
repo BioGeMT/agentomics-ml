@@ -53,6 +53,13 @@ def create_agents(config: Config, model, tools):
     async def validate_split_dataset(result: DataSplit) -> DataSplit:
         if not os.path.exists(result.train_path) or not os.path.exists(result.val_path):
             raise ModelRetry("Split dataset files do not exist.")
+        
+        target_col = 'numeric_label' #TODO generalize and take from metadata.json or config
+        for path in [result.train_path, result.val_path]:
+            with open(path, 'r') as f:
+                header = f.readline()
+                if target_col not in header.split(','):
+                    raise ModelRetry(f"Target column {target_col} not found in dataset {path}.")
         return result
     
     @training_agent.output_validator
