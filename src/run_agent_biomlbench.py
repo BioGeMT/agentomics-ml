@@ -1,0 +1,121 @@
+import asyncio
+import os
+import argparse
+import shutil
+import pandas as pd
+import subprocess
+from pathlib import Path
+
+from utils.dataset_utils import prepare_dataset
+from run_agent import run_experiment
+
+def setup_agentomics_folder_structure_and_files(description_path, train_data_path, target_col, task_type):
+    os.mkdir('/home/workspace')
+    os.mkdir('/home/workspace/datasets')
+
+    os.mkdir('/home/agent/raw_datasets')
+    os.mkdir('/home/agent/raw_datasets/temp_dataset')
+
+    shutil.copy(description_path, '/home/agent/raw_datasets/temp_dataset/dataset_description.md')
+    shutil.copy(train_data_path, '/home/agent/raw_datasets/temp_dataset/train.csv')
+
+    os.mkdir('/home/agent/prepared_datasets')
+    os.mkdir('/home/agent/prepared_datasets/temp_dataset')
+
+    prepare_dataset(
+        dataset_dir='/home/agent/raw_datasets/temp_dataset',
+        target_col=target_col,
+        positive_class=None,
+        negative_class=None,
+        task_type=task_type,
+        output_dir='/home/agent/prepared_datasets',
+    )
+
+def run_inference_on_test_data(test_data_path):
+    snapshots_dir = '/home/workspace/snapshots'
+    run_names = os.listdir(snapshots_dir)
+    assert len(run_names) == 1, "Expected exactly one run"
+    run_name = run_names[0]
+
+    env_path = Path(f"{snapshots_dir}/{run_name}") / ".conda"/ "envs" / f"{run_name}_env"
+    inference_path = Path(f"{snapshots_dir}/{run_name}") / "inference.py"
+    input_path = test_data_path
+    output_path = f'{snapshots_dir}/{run_name}/predictions.csv'
+
+    command_prefix=f"conda run -p {env_path} --no-capture-output"
+    command = f"{command_prefix} python {inference_path} --input {input_path} --output {output_path}"
+    inference_out = subprocess.run(command, shell=True, executable="/bin/bash", capture_output=True, check=False)
+    if inference_out.returncode != 0:
+        print("Error during inference:")
+        print(inference_out.stderr.decode())
+    return output_path
+
+def copy_and_format_predictions_for_biomlbench(preds_source_path, preds_dest_path, target_col):
+    preds_df = pd.read_csv(preds_source_path).reset_index()
+    preds_df['id'] = preds_df.index #TODO check index comes from 0 to n-1
+    preds_df = preds_df[['id','prediction']].rename(columns={'prediction': target_col})
+    preds_df.to_csv(preds_dest_path, index=False)
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--model', type=str, help='Model id to use (depends on provider)')
+    parser.add_argument('--val-metric', type=str, help='Validation metric to use')
+    parser.add_argument('--iterations', type=int, help='Number of iterations to run')
+    parser.add_argument('--target-col', type=str, help='Name of the target column')
+    parser.add_argument('--task-type', type=str, help='Task type: classification or regression')
+    parser.add_argument('--provider', type=str, default='openrouter', help='Provider name (e.g., openai, openrouter)')
+    args = parser.parse_args()
+    return args
+
+if __name__ == '__main__':
+    args = parse_args()
+
+    # Env vars (passed by biomlbench docker image)
+    # For submission extraction
+    SUBMISSION_DIR = os.getenv('SUBMISSION_DIR')
+    # For logs extraction (currently no logs linked)
+    LOGS_DIR= os.getenv('LOGS_DIR')
+    # For agent-generated code extraction (currently no code output linked)
+    CODE_DIR= os.getenv('CODE_DIR')
+    # Not extracted
+    AGENT_DIR= os.getenv('AGENT_DIR')
+    # For agent prediction extraction
+    SUBMISSION_DIR = os.getenv('SUBMISSION_DIR', '')
+
+    # Locations of data (passed by biomlbench docker image)
+    description_path = '/home/data/description.md'
+    train_data = '/home/data/train.csv'
+    test_no_label = '/home/data/test_features.csv'
+    sample_submission = '/home/data/sample_submission.csv'
+    # Where to output predictions for biomlbench
+    submission_path = os.path.join(SUBMISSION_DIR, 'submission.csv')
+
+    setup_agentomics_folder_structure_and_files(
+        description_path = description_path, 
+        train_data_path = train_data, 
+        target_col=args.target_col, 
+        task_type=args.task_type
+    )
+
+    asyncio.run(run_experiment(
+        model=args.model,
+        dataset_name='temp_dataset', # Name doesnt matter since biomlbench has his own run structure
+        val_metric=args.val_metric,
+        iterations=args.iterations,
+        user_prompt="Create the best possible machine learning model that will generalize to new unseen data.",
+        # Testing prompt
+        # user_prompt="Create only small CPU-only model like linear regression with small amounts of parameters and epochs",
+        workspace_dir = '/home/workspace',
+        prepared_datasets_dir= '/home/agent/prepared_datasets',
+        agent_datasets_dir= '/home/workspace/datasets',
+        tags=[],
+        no_root_privileges=True, # because of sudo create user restrictions due to biomlbench container not being run as root 
+        provider=args.provider,
+    ))
+
+    predictions_path = run_inference_on_test_data(test_no_label)
+    copy_and_format_predictions_for_biomlbench(
+        preds_source_path=predictions_path,
+        preds_dest_path=submission_path,
+        target_col=args.target_col
+    )
