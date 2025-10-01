@@ -1,4 +1,4 @@
-def get_system_prompt(config):    
+def get_system_prompt(config):
     train_csv_path = config.agent_dataset_dir / "train.csv"
     validation_csv_path = config.agent_dataset_dir / "validation.csv"
     dataset_knowledge_path = config.agent_dataset_dir / "dataset_description.md"
@@ -7,7 +7,7 @@ def get_system_prompt(config):
         dataset_knowledge = f.read()
     dataset_paths = f"Dataset path:\n    {train_csv_path}"
     if validation_csv_path.exists():
-        dataset_paths += f"\n    Validation path:\n    {config.runs_dir / config.agent_id / 'validation.csv'} (use this for model optimization instead of creating train/validation split)"
+        dataset_paths += f"\n    Validation path:\n    {validation_csv_path} (use this for model optimization instead of creating train/validation split)"
     
     return f"""
     Your goal is to create a robust machine learning model that will generalize to new unseen data. Use tools and follow instructions to reach this goal.
