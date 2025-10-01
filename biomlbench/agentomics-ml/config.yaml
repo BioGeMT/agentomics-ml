@@ -4,5 +4,8 @@ agentomics-ml:
   env_vars:
     OPENROUTER_API_KEY: "TODO:YOUR_API_KEY"
     # OPENROUTER_API_KEY: "${OPENROUTER_API_KEY}" # alternatively, use env var
-    # pass WANDB_API_KEY for logging
+    # pass wandb keys for logging
+    # WANDB_API_KEY: ""
+    # WANDB_PROJECT_NAME: ""
+    # WANDB_ENTITY: ""
 
