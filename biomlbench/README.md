@@ -1,9 +1,11 @@
 # Follow the biomlbench docs (relevant parts copypasted below)
+This can be done outside of our repository completely
 
 ## Install with uv
 git clone https://github.com/science-machine/biomlbench.git
 cd biomlbench
 uv sync
+source .venv/bin/activate
 
 ## Pull prebuilt images (recommended - saves build time)
 ./scripts/pull_prebuilt_images.sh

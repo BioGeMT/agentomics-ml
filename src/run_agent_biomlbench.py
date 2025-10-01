@@ -9,21 +9,21 @@ from pathlib import Path
 from utils.dataset_utils import prepare_dataset
 from run_agent import run_experiment
 
-def setup_agentomics_folder_structure_and_files(description_path, train_data_path, target_col, task_type):
+def setup_agentomics_folder_structure_and_files(description_path, train_data_path, target_col, task_type, dataset_name):
     os.mkdir('/home/workspace')
     os.mkdir('/home/workspace/datasets')
 
     os.mkdir('/home/agent/raw_datasets')
-    os.mkdir('/home/agent/raw_datasets/temp_dataset')
+    os.mkdir(f'/home/agent/raw_datasets/{dataset_name}')
 
-    shutil.copy(description_path, '/home/agent/raw_datasets/temp_dataset/dataset_description.md')
-    shutil.copy(train_data_path, '/home/agent/raw_datasets/temp_dataset/train.csv')
+    shutil.copy(description_path, f'/home/agent/raw_datasets/{dataset_name}/dataset_description.md')
+    shutil.copy(train_data_path, f'/home/agent/raw_datasets/{dataset_name}/train.csv')
 
     os.mkdir('/home/agent/prepared_datasets')
-    os.mkdir('/home/agent/prepared_datasets/temp_dataset')
+    os.mkdir(f'/home/agent/prepared_datasets/{dataset_name}')
 
     prepare_dataset(
-        dataset_dir='/home/agent/raw_datasets/temp_dataset',
+        dataset_dir=f'/home/agent/raw_datasets/{dataset_name}',
         target_col=target_col,
         positive_class=None,
         negative_class=None,
@@ -55,6 +55,11 @@ def copy_and_format_predictions_for_biomlbench(preds_source_path, preds_dest_pat
     preds_df['id'] = preds_df.index
     preds_df = preds_df[['id','prediction']].rename(columns={'prediction': target_col})
     preds_df.to_csv(preds_dest_path, index=False)
+
+def extract_dataset_name_from_description(description_path):
+    with open(description_path, 'r') as f:
+        first_line = f.readline()
+        return first_line.lstrip('#').strip()
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -90,16 +95,19 @@ if __name__ == '__main__':
     # Where to output predictions for biomlbench
     submission_path = os.path.join(SUBMISSION_DIR, 'submission.csv')
 
+    dataset_name = extract_dataset_name_from_description(description_path)
+
     setup_agentomics_folder_structure_and_files(
         description_path = description_path, 
         train_data_path = train_data, 
         target_col=args.target_col, 
-        task_type=args.task_type
+        task_type=args.task_type,
+        dataset_name=dataset_name
     )
 
     asyncio.run(run_experiment(
         model=args.model,
-        dataset_name='temp_dataset', # Name doesnt matter since biomlbench has his own run structure
+        dataset_name=dataset_name, # Name doesnt matter for biomlbench, has his own run structure, but matters for our logging
         val_metric=args.val_metric,
         iterations=args.iterations,
         user_prompt="Create the best possible machine learning model that will generalize to new unseen data.",
