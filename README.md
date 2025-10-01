@@ -56,10 +56,13 @@ After the run is finished, the `outputs` folder contains
 Create a folder inside `Agentomics-ML/datasets` and drop your files there
 
 - add `train.csv` - Contains your training data. This will be used by the agent for training and validation
+- (OPTIONAL) add `validation.csv` - Contains your validation data. If provided, the agent will use this instead of creating its own train/validation split.
 - (OPTIONAL) add `test.csv` - Contains your testing data. This will be hidden from the agent, and used to add test set metrics to the final report.
 - (OPTIONAL) add `dataset_description.md` - Data description and domain information for the agent. See the sample datasets for examples.
 
 The csv files must contain a column for the classification or regression labels named exactly either `class` or `target`. 
+
+**Note:** If you don't provide a `validation.csv`, the agent will automatically create a train/validation split from your `train.csv` during its first iteration.
 
 See the `datasets` folder for examples
 
