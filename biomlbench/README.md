@@ -13,6 +13,11 @@ source .venv/bin/activate
 `./scripts/pull_prebuilt_images.sh`
 
 ## Prepare a task
+Create a polaris API key and run
+`polaris login --overwrite`
+
+Then prepare a dataset
+
 `biomlbench prepare -t polarishub/tdcommons-caco2-wang`
 
 # Run agentomics as a biomlbench agent
