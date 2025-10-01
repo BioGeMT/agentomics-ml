@@ -69,6 +69,7 @@ def parse_args():
     parser.add_argument('--target-col', type=str, help='Name of the target column')
     parser.add_argument('--task-type', type=str, help='Task type: classification or regression')
     parser.add_argument('--provider', type=str, default='openrouter', help='Provider name (e.g., openai, openrouter)')
+    parser.add_argument('--user-prompt', type=str, default=None, help='Custom user prompt to guide the agent')
     args = parser.parse_args()
     return args
 
@@ -110,7 +111,7 @@ if __name__ == '__main__':
         dataset_name=dataset_name, # Name doesnt matter for biomlbench, has his own run structure, but matters for our logging
         val_metric=args.val_metric,
         iterations=args.iterations,
-        user_prompt="Create the best possible machine learning model that will generalize to new unseen data.",
+        user_prompt=args.user_prompt,
         # Testing prompt
         # user_prompt="Create only small CPU-only model like linear regression with small amounts of parameters and epochs",
         workspace_dir = '/home/workspace',

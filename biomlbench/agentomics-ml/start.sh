@@ -11,4 +11,5 @@ echo -e "\033[0;31mStarting Agentomics-ML...\033[0m"
     --val-metric MSE \
     --iterations 1 \
     --target-col Y \
-    --task-type regression
+    --task-type regression \
+    --user-prompt "Create the best possible machine learning model that will generalize to new unseen data."
