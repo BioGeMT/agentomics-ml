@@ -1,6 +1,5 @@
 import os
 import json
-import shutil
 
 from pydantic_ai import Agent, ModelRetry
 import weave
