@@ -69,11 +69,12 @@ def get_single_prepared_dataset_info(prepared_dataset_dir: str) -> Dict:
     dataset_name = prepared_dataset_dir.name
     train_file = prepared_dataset_dir / "train.csv"
     test_file = prepared_dataset_dir / "test.csv"
-    #TODO display explicit validation set status
-    
+    validation_file = prepared_dataset_dir / "validation.csv"
+
     # Count rows in raw files
     train_rows = count_csv_rows(str(train_file)) if train_file.exists() else 0
     test_rows = count_csv_rows(str(test_file)) if test_file.exists() else 0
+    validation_rows = count_csv_rows(str(validation_file)) if validation_file.exists() else 0
     
     if not train_file.exists():
         status = "Missing train.csv"
@@ -87,6 +88,7 @@ def get_single_prepared_dataset_info(prepared_dataset_dir: str) -> Dict:
         "path": prepared_dataset_dir,
         "train_rows": train_rows,
         "test_rows": test_rows,
+        "validation_rows": validation_rows,
         "status": status
     }
 
