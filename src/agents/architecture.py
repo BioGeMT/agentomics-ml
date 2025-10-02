@@ -95,7 +95,7 @@ async def run_architecture(text_output_agent: Agent, inference_agent: Agent, spl
     )
     save_step_output(config, 'data_exploration', data_exploration_output, iteration)
 
-    if iteration == 0 and not (config.agent_dataset_dir / "validation.csv").exists():
+    if iteration == 0 and not config.explicit_valid_set_provided:
         messages_split, data_split = await run_agent(
             agent=split_dataset_agent,
             user_prompt=get_data_split_prompt(config),
