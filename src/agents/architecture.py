@@ -3,6 +3,7 @@ import json
 
 from pydantic_ai import Agent, ModelRetry
 import weave
+import pandas as pd
 
 from agents.agent_utils import run_agent
 from agents.prompts.prompts_utils import get_iteration_prompt, get_user_prompt, get_system_prompt
@@ -53,6 +54,12 @@ def create_agents(config: Config, model, tools):
     async def validate_split_dataset(result: DataSplit) -> DataSplit:
         if not os.path.exists(result.train_path) or not os.path.exists(result.val_path):
             raise ModelRetry("Split dataset files do not exist.")
+        
+        target_col = 'numeric_label' #TODO generalize and take from metadata.json or config
+        for path in [result.train_path, result.val_path]:
+            df = pd.read_csv(path)
+            if target_col not in df.columns:
+                raise ModelRetry(f"Target column {target_col} not found in dataset {path}. Columns found: {df.columns.tolist()}")
         return result
     
     @training_agent.output_validator

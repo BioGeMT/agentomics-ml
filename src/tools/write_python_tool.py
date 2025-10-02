@@ -29,6 +29,10 @@ def create_write_python_tool(agent_id, max_retries, runs_dir):
         except SyntaxError as e:
             return traceback.format_exc()
 
+        #Check the file_path doesnt need any mkdirs
+        if not Path(file_path).parent.exists():
+            return f"Error: Directory {Path(file_path).parent} does not exist."
+        
         # Write 
         with open(file_path, "w") as f:
             f.write(code)

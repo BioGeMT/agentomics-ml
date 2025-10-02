@@ -8,7 +8,7 @@ from pathlib import Path
 from pydantic_ai import Tool
 
 class BashProcess:
-    def __init__(self, agent_id, runs_dir, autoconda=True, timeout=60, proxy=False):
+    def __init__(self, agent_id, runs_dir, root_privileges, autoconda=True, timeout=60, proxy=False):
         self.locked = threading.Lock()
         self.agent_id = agent_id
         self.runs_dir = runs_dir
@@ -16,6 +16,7 @@ class BashProcess:
         self.timeout = timeout
         self.proxy = proxy
         self.agent_env = self.setup_agent_env_vars()
+        self.root_privileges = root_privileges
 
         if autoconda:
             self.create_conda_env()
@@ -42,18 +43,23 @@ class BashProcess:
     def run(self, command: str):
         with self.locked: #exclusive bash access
             try:
+                run_kwargs = {
+                    "shell": True,
+                    "executable": "/bin/bash",
+                    "timeout": self.timeout,
+                    "stdout": subprocess.PIPE,
+                    "stderr": subprocess.STDOUT,
+                    "text": True,
+                    "env": self.agent_env,
+                    "errors": "replace"  # handle invalid UTF-8 bytes
+                }
+                if self.root_privileges:
+                    run_kwargs["user"] = self.agent_id
+                    run_kwargs["group"] = self.agent_id
+
                 result = subprocess.run(
-                    command, 
-                    shell=True,
-                    executable="/bin/bash",
-                    timeout=self.timeout,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    text=True,
-                    env=self.agent_env,
-                    user=self.agent_id,
-                    group=self.agent_id,
-                    errors="replace" # handle invalid UTF-8 bytes
+                    command,
+                    **run_kwargs
                 )
                 output = result.stdout
                 if result.stderr:
@@ -81,13 +87,14 @@ class BashProcess:
             output = output[:5000]+"\n ... (output truncated, too long)"
         return output.strip()
 
-def create_bash_tool(agent_id, runs_dir, timeout, max_retries, autoconda=True, proxy=False):
+def create_bash_tool(agent_id, runs_dir, timeout, max_retries, root_privileges, autoconda=True, proxy=False):
         bash = BashProcess(
             agent_id=agent_id,
             runs_dir=runs_dir,
             autoconda=autoconda,
             timeout=timeout,
-            proxy=proxy
+            proxy=proxy,
+            root_privileges=root_privileges,
         )
 
         def _bash(command: str):

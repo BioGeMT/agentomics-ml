@@ -18,7 +18,7 @@ from utils.workspace_setup import ensure_workspace_folders
 from agents.architecture import run_iteration
 from utils.metrics import get_classification_metrics_names, get_regression_metrics_names
 from utils.report_logger import add_metrics_to_report, add_summary_to_report, add_final_test_metrics_to_best_report, rename_and_snapshot_best_iteration_report
-from utils.providers.provider import Provider, get_provider_and_api_key
+from utils.providers.provider import Provider, get_provider_from_string
 from feedback.feedback_agent import get_feedback, aggregate_feedback
 from tools.setup_tools import create_tools
 
@@ -85,61 +85,45 @@ async def run_agentomics(config: Config, default_model, feedback_model):
             log_files(config, iteration=run_index)
             continue
 
-        try:
-            print("Starting evaluation phase")
-            print("  Running validation inference...")
-            run_inference_and_log(config, iteration=run_index, evaluation_stage='validation')
-            print("  Running training inference...")
-            run_inference_and_log(config, iteration=run_index, evaluation_stage='train')
-            print("  Running stealth test inference...")
-            run_inference_and_log(config, iteration=run_index, evaluation_stage='stealth_test')
+        print("Starting evaluation phase")
+        print("  Running validation inference...")
+        run_inference_and_log(config, iteration=run_index, evaluation_stage='validation')
+        print("  Running training inference...")
+        run_inference_and_log(config, iteration=run_index, evaluation_stage='train')
+        print("  Running stealth test inference...")
+        run_inference_and_log(config, iteration=run_index, evaluation_stage='stealth_test')
 
-            new_metrics, best_metrics = get_new_and_best_metrics(config)
-            all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far: {best_metrics}"))
-            
-            if is_new_best(config):
-                feedback = await get_feedback(
-                    context=current_run_messages, 
-                    config=config, 
-                    new_metrics=new_metrics, 
-                    best_metrics=best_metrics, 
-                    is_new_best=True, 
-                    model=feedback_model,
-                    iteration=run_index,
-                    aggregated_feedback=aggregate_feedback(all_feedbacks)
-                )
-
-                snapshot(config, run_index)  # Snapshotting overrides the previous snapshot, influencing the get_new_and_best_metrics function
-            else:
-                feedback =await get_feedback(
-                    current_run_messages, 
-                    config, 
-                    new_metrics, 
-                    best_metrics, 
-                    is_new_best=False, 
-                    model=feedback_model,
-                    iteration=run_index,
-                    aggregated_feedback=aggregate_feedback(all_feedbacks)
-                )
-
-        except Exception as e:
-            new_metrics, best_metrics = get_new_and_best_metrics(config)
-            all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far after the feedback incorporation: {best_metrics}"))
+        new_metrics, best_metrics = get_new_and_best_metrics(config)
+        all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far: {best_metrics}"))
+        
+        if is_new_best(config):
             feedback = await get_feedback(
-                    current_run_messages, 
-                    config, 
-                    new_metrics, 
-                    best_metrics, 
-                    is_new_best=False, 
-                    model=feedback_model,
-                    iteration=run_index,
-                    aggregated_feedback=aggregate_feedback(all_feedbacks),
-                    extra_info=f"Inference failed: {traceback.format_exc()}",
-                )
-        finally:
-            add_metrics_to_report(config, run_index)
-            await add_summary_to_report(default_model, config, run_index)
-            log_files(config, iteration=run_index)
+                context=current_run_messages, 
+                config=config, 
+                new_metrics=new_metrics, 
+                best_metrics=best_metrics, 
+                is_new_best=True, 
+                model=feedback_model,
+                iteration=run_index,
+                aggregated_feedback=aggregate_feedback(all_feedbacks)
+            )
+
+            snapshot(config, run_index)  # Snapshotting overrides the previous snapshot, influencing the get_new_and_best_metrics function
+        else:
+            feedback =await get_feedback(
+                current_run_messages, 
+                config, 
+                new_metrics, 
+                best_metrics, 
+                is_new_best=False, 
+                model=feedback_model,
+                iteration=run_index,
+                aggregated_feedback=aggregate_feedback(all_feedbacks)
+            )
+
+        add_metrics_to_report(config, run_index)
+        await add_summary_to_report(default_model, config, run_index)
+        log_files(config, iteration=run_index)
         
     print("\nRunning final test evaluation...")
     try:
@@ -178,6 +162,8 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
         agent_datasets_dir=Path(agent_datasets_dir),
         dataset_name=dataset_name,
     )
+    provider = get_provider_from_string(provider)
+
     FEEDBACK_MODEL = model
     await main(
         model_name=model, 
@@ -197,11 +183,6 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
 async def run_experiment_from_terminal():
     args = parse_args()
 
-    provider_config = Provider.get_provider_config(args.provider)
-    api_key_env = provider_config.get("apikey", "")
-    api_key = os.getenv(api_key_env, "")
-    provider = Provider.create_provider(args.provider, api_key)
-
     await run_experiment(
         model=args.model, 
         dataset_name=args.dataset_name, 
@@ -213,7 +194,7 @@ async def run_experiment_from_terminal():
         no_root_privileges=args.no_root_privileges,
         iterations=args.iterations,
         user_prompt=args.user_prompt,
-        provider=provider
+        provider=args.provider
     )
 
 if __name__ == "__main__":

@@ -69,7 +69,7 @@ When getting predictions on new data, make sure the data file has the same colum
 The output will be a csv file containing a single columns called 'predictions' in the same order as your data.
 ```
 cd outputs/best_run_files/<run_name>
-conda activate .conda/envs/<run_name> 
+conda activate .conda/envs/<run_name>_env 
 python inference.py --input <path_to_inference_data_csv> --output <path_to_output_csv>
 ```
 
