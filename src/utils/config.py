@@ -68,6 +68,7 @@ class Config:
         self.iterations = iterations
         self.task_type = get_task_type_from_prepared_dataset(prepared_datasets_dir / dataset)
         self.user_prompt = user_prompt
+        self.explicit_valid_set_provided = (agent_dataset_dir / dataset / "validation.csv").exists()
 
         if max_steps is not None:
             self.max_steps = max_steps
