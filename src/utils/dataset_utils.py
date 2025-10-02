@@ -332,7 +332,7 @@ def prepare_dataset(dataset_dir, target_col,
         if file.name not in non_sensitive_files:
             subprocess.run(["chmod", "o-rwx", file], check=True)
 
-def setup_nonsensitive_dataset_files_for_agent(prepared_datasets_dir: Path, agent_datasets_dir: Path, dataset_name: str, agent_workspace_dir: Path):
+def setup_nonsensitive_dataset_files_for_agent(prepared_datasets_dir: Path, agent_datasets_dir: Path, dataset_name: str):
     """
     Copies non-sensitive (non-test) dataset files to a shared directory accessible by agents.
     """
@@ -356,7 +356,3 @@ def setup_nonsensitive_dataset_files_for_agent(prepared_datasets_dir: Path, agen
             #TODO make it read-only simlink 
             #TODO check raw data -> prepared data is not a symlink but a hard copy!
             shutil.copy2(source_file, target_file)
-
-    if (target_dataset_dir / "validation.csv").exists():
-        shutil.copy2(target_dataset_dir / "train.csv", agent_workspace_dir / "train.csv")
-        shutil.copy2(target_dataset_dir / "validation.csv", agent_workspace_dir / "validation.csv")

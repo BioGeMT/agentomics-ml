@@ -45,13 +45,6 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric, root_
     config.agent_id = agent_id
     config.print_summary()
 
-    setup_nonsensitive_dataset_files_for_agent(
-        prepared_datasets_dir=Path(prepared_datasets_dir),
-        agent_datasets_dir=Path(agent_dataset_dir),
-        dataset_name=dataset,
-        agent_workspace_dir=config.runs_dir / config.agent_id,
-    )
-
     # initialize logging and LLMs
     wandb_logged_in = setup_logging(config)
     default_model = provider.create_model(config.model_name, config)
@@ -164,6 +157,11 @@ def parse_args():
 
 async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, agent_datasets_dir,
                           workspace_dir, tags, no_root_privileges, iterations, user_prompt, provider):
+    setup_nonsensitive_dataset_files_for_agent(
+        prepared_datasets_dir=Path(prepared_datasets_dir),
+        agent_datasets_dir=Path(agent_datasets_dir),
+        dataset_name=dataset_name,
+    )
     FEEDBACK_MODEL = model
     await main(
         model_name=model, 
