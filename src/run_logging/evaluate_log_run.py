@@ -23,11 +23,19 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
         'run': run_dir / "inference.py",
         'snapshot': snapshot_dir / "inference.py",
     }
+    # For validation and train sets, check if agent created them or if they were provided
+    if config.explicit_valid_set_provided:
+        validation_input = config.agent_dataset_dir / "validation.csv"
+        train_input = config.agent_dataset_dir / "train.csv"
+    else:
+        validation_input = run_dir / "validation.csv"
+        train_input = run_dir / "train.csv"
+
     stage_to_input = {
         'dry_run': config.prepared_dataset_dir / "train.no_label.csv",
-        'validation': run_dir / "validation.csv",
+        'validation': validation_input,
         'test': config.prepared_dataset_dir / "test.no_label.csv",
-        'train': run_dir / "train.csv",
+        'train': train_input,
         'stealth_test': config.prepared_dataset_dir / "test.no_label.csv",
     }
     stage_to_output = {
