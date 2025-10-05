@@ -302,7 +302,7 @@ def prepare_dataset(dataset_dir, target_col,
         except KeyError as e:
             raise KeyError(f"Target column '{target_col}' not found in {split_name} dataset. Available columns: {df.columns}") from e
 
-        df.to_csv(out_dir / f'{split_name}.csv', index=False)
+        df.drop(columns=[target_col]).to_csv(out_dir / f'{split_name}.csv', index=False)
         df.drop([target_col, 'numeric_label'], axis=1).to_csv(
             out_dir / f'{split_name}.no_label.csv', index=False
         )
