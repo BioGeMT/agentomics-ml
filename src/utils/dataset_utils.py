@@ -160,9 +160,8 @@ def auto_detect_target_col(train_df):
         if col in train_df.columns:
             print(f'INFO: Auto-detected target column: {col}')
             return col
-        
-    print(f'INFO: Using last column as target: {train_df.columns[-1]}')
-    return train_df.columns[-1]
+
+    raise ValueError(f"Could not auto-detect target column. Expected one of {possible_target_cols}, but found columns: {train_df.columns.tolist()}. Please specify --target-col explicitly.")
 
 def get_task_type_from_prepared_dataset(prepared_dataset_dir: str) -> str:
     metadata_path = prepared_dataset_dir / "metadata.json"
