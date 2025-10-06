@@ -85,65 +85,72 @@ def create_agents(config: Config, model, tools):
     } 
 
 
-async def run_architecture(text_output_agent: Agent, inference_agent: Agent, split_dataset_agent: Agent, training_agent: Agent, config: Config, base_prompt: str, iteration: int):
-    messages_data_exploration, data_exploration_output = await run_agent(
-        agent=text_output_agent,
-        user_prompt=base_prompt + get_data_exploration_prompt(),
-        max_steps=config.max_steps,
-        output_type=DataExploration, # this is overriding the output_type
-        message_history=None,
-    )
-    save_step_output(config, 'data_exploration', data_exploration_output, iteration)
+async def run_ablation_architecture(text_output_agent: Agent, inference_agent: Agent, split_dataset_agent: Agent, training_agent: Agent, config: Config, base_prompt: str, iteration: int, steps_to_skip: list):
+    messages = None
+    if 'data_exploration' not in steps_to_skip:
+        messages, data_exploration_output = await run_agent(
+            agent=text_output_agent,
+            user_prompt=base_prompt + get_data_exploration_prompt(),
+            max_steps=config.max_steps,
+            output_type=DataExploration, # this is overriding the output_type
+            message_history=messages,
+        )
+        save_step_output(config, 'data_exploration', data_exploration_output, iteration)
 
     if iteration == 0 and not config.explicit_valid_set_provided:
-        messages_split, data_split = await run_agent(
-            agent=split_dataset_agent,
-            user_prompt=get_data_split_prompt(config),
+        if 'data_split' not in steps_to_skip:
+            prompt = (base_prompt + get_data_split_prompt(config)) if messages is None else get_data_split_prompt(config)
+            messages, data_split = await run_agent(
+                agent=split_dataset_agent,
+                user_prompt=prompt,
+                max_steps=config.max_steps,
+                message_history=messages,
+                )
+            save_step_output(config, 'data_split', data_split, iteration)
+
+    if 'data_representation' not in steps_to_skip:
+        prompt = (base_prompt + get_data_representation_prompt()) if messages is None else get_data_representation_prompt()
+        messages, data_representation = await run_agent(
+            agent=text_output_agent,
+            user_prompt=prompt,
             max_steps=config.max_steps,
-            message_history=messages_data_exploration,
-            )
-        save_step_output(config, 'data_split', data_split, iteration)
-    else:
-        messages_split = messages_data_exploration
+            output_type=DataRepresentation, # this is overriding the output_type
+            message_history=messages,
+        )
+        save_step_output(config, 'data_representation', data_representation, iteration)
 
-    messages_representation, data_representation = await run_agent(
-        agent=text_output_agent,
-        user_prompt=get_data_representation_prompt(),
-        max_steps=config.max_steps,
-        output_type=DataRepresentation, # this is overriding the output_type
-        message_history=messages_split,
-    )
-    save_step_output(config, 'data_representation', data_representation, iteration)
+    if 'model_architecture' not in steps_to_skip:
+        messages, model_architecture = await run_agent(
+            agent=text_output_agent,
+            user_prompt=get_model_architecture_prompt(),
+            max_steps=config.max_steps,
+            output_type=ModelArchitecture, # this is overriding the output_type
+            message_history=messages,
+        )
+        save_step_output(config, 'model_architecture', model_architecture, iteration)
 
-    messages_architecture, model_architecture = await run_agent(
-        agent=text_output_agent,
-        user_prompt=get_model_architecture_prompt(),
-        max_steps=config.max_steps,
-        output_type=ModelArchitecture, # this is overriding the output_type
-        message_history=messages_representation,
-    )
-    save_step_output(config, 'model_architecture', model_architecture, iteration)
+    if 'model_training' not in steps_to_skip:
+        messages, model_training = await run_agent(
+            agent=training_agent, 
+            user_prompt=get_model_training_prompt(), 
+            max_steps=config.max_steps,
+            message_history=messages,
+        )
+        save_step_output(config, 'model_training', model_training, iteration)
 
-    messages_training, model_training = await run_agent(
-        agent=training_agent, 
-        user_prompt=get_model_training_prompt(), 
-        max_steps=config.max_steps,
-        message_history=messages_architecture,
-    )
-    save_step_output(config, 'model_training', model_training, iteration)
+    if 'final_outcome' not in steps_to_skip:
+        messages, final_outcome = await run_agent(
+            agent=inference_agent, 
+            user_prompt=get_final_outcome_prompt(config), 
+            max_steps=config.max_steps,
+            message_history=messages,
+        )
+        save_step_output(config, 'final_outcome', final_outcome, iteration)
 
-    _messages, final_outcome = await run_agent(
-        agent=inference_agent, 
-        user_prompt=get_final_outcome_prompt(config), 
-        max_steps=config.max_steps,
-        message_history=messages_training,
-    )
-    save_step_output(config, 'final_outcome', final_outcome, iteration)
-
-    return _messages
+    return messages
 
 @weave.op(call_display_name=lambda call: f"Iteration {call.inputs.get('iteration', 0) + 1}")
-async def run_iteration(config: Config, model, iteration, feedback, tools):
+async def run_iteration(config: Config, model, iteration, feedback, tools, steps_to_skip):
     agents_dict = create_agents(config=config, model=model, tools=tools)
 
     if iteration == 0:
@@ -151,7 +158,7 @@ async def run_iteration(config: Config, model, iteration, feedback, tools):
     else:
         base_prompt = get_iteration_prompt(config, iteration, feedback)
 
-    messages = await run_architecture(
+    messages = await run_ablation_architecture(
         text_output_agent=agents_dict["text_output_agent"],
         split_dataset_agent=agents_dict["split_dataset_agent"],
         training_agent=agents_dict["training_agent"],
@@ -159,5 +166,6 @@ async def run_iteration(config: Config, model, iteration, feedback, tools):
         config=config,
         base_prompt=base_prompt,
         iteration=iteration,
+        steps_to_skip=steps_to_skip
     )
     return messages

@@ -25,7 +25,7 @@ from tools.setup_tools import create_tools
 
 
 async def main(model_name, feedback_model_name, dataset, tags, val_metric, 
-               workspace_dir, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir, iterations, user_prompt, provider_name):
+               workspace_dir, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir, iterations, user_prompt, provider_name, steps_to_skip):
     agent_id = os.getenv('AGENT_ID')
     # Initialize configuration 
     config = Config(
@@ -57,12 +57,12 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric,
     feedback_model = provider.create_model(config.feedback_model_name, config)
     #TODO Instantiate report logger model and pass it to add_summary_to_report
 
-    await run_agentomics(config=config, default_model=default_model, feedback_model=feedback_model)
+    await run_agentomics(config=config, default_model=default_model, feedback_model=feedback_model, steps_to_skip=steps_to_skip)
 
     if(wandb_logged_in):
         wandb.finish()
 
-async def run_agentomics(config: Config, default_model, feedback_model):
+async def run_agentomics(config: Config, default_model, feedback_model, steps_to_skip):
     tools = create_tools(config)
     
     all_feedbacks = []
@@ -71,7 +71,7 @@ async def run_agentomics(config: Config, default_model, feedback_model):
     for run_index in range(config.iterations):
         print(f"\n=== ITERATION {run_index + 1} / {config.iterations} ===")
         try:
-            current_run_messages = await run_iteration(config=config, model=default_model, iteration=run_index, feedback=feedback, tools=tools)
+            current_run_messages = await run_iteration(config=config, model=default_model, iteration=run_index, feedback=feedback, steps_to_skip=steps_to_skip)
         except Exception as e:
             log_serial_metrics(prefix='validation', metrics=None, iteration=run_index, task_type=config.task_type)
             log_serial_metrics(prefix='train', metrics=None, iteration=run_index, task_type=config.task_type)
@@ -146,14 +146,15 @@ def parse_args():
     parser.add_argument('--tags', nargs='*', default=[], help='(Optional) Tags for a wandb run logging')
     parser.add_argument('--iterations', type=int, default=5, help='Number of training iterations to run')
     parser.add_argument('--user-prompt', type=str, default="Create the best possible machine learning model that will generalize to new unseen data.", help='(Optional) Text to overwrite the default user prompt')
+    parser.add_argument('--steps-to-skip', nargs='*', default=[], help='(Optional) List of steps to skip. Available steps: data_exploration, data_split, data_representation, model_architecture, model_training, final_outcome')
 
     val_metric_choices = get_classification_metrics_names() + get_regression_metrics_names()
     parser.add_argument('--val-metric', help='Validation metric to use for the best model selection', required=True, choices=val_metric_choices)
 
     return parser.parse_args()
 
-async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir,
-                          workspace_dir, tags, iterations, user_prompt, provider):
+async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir, 
+                          workspace_dir, tags, iterations, user_prompt, provider, steps_to_skip):
     setup_nonsensitive_dataset_files_for_agent(
         prepared_datasets_dir=Path(prepared_datasets_dir),
         agent_datasets_dir=Path(agent_datasets_dir),
@@ -172,7 +173,8 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
         agent_datasets_dir=agent_datasets_dir,
         iterations=iterations,
         user_prompt=user_prompt,
-        provider_name=provider
+        provider_name=provider,
+        steps_to_skip=steps_to_skip
     )
 
 async def run_experiment_from_terminal():
@@ -189,7 +191,8 @@ async def run_experiment_from_terminal():
         tags=args.tags,
         iterations=args.iterations,
         user_prompt=args.user_prompt,
-        provider=args.provider
+        provider=args.provider,
+        steps_to_skip=args.steps_to_skip
     )
 
 if __name__ == "__main__":
