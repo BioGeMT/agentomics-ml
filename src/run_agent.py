@@ -13,7 +13,7 @@ from run_logging.log_files import log_files
 from utils.create_user import create_new_user_and_rundir
 from utils.dataset_utils import setup_nonsensitive_dataset_files_for_agent
 from utils.config import Config
-from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics
+from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics, best_metrics_exists
 from utils.workspace_setup import ensure_workspace_folders
 from agents.architecture import run_iteration
 from utils.metrics import get_classification_metrics_names, get_regression_metrics_names
@@ -24,7 +24,7 @@ from tools.setup_tools import create_tools
 
 
 async def main(model_name, feedback_model_name, dataset, tags, val_metric, root_privileges, 
-               workspace_dir, prepared_datasets_dir, agent_dataset_dir, iterations, user_prompt, provider):
+               workspace_dir, prepared_datasets_dir, agent_dataset_dir, iterations, user_prompt, provider, steps_to_skip):
     # Initialize configuration 
     config = Config(
         model_name=model_name, 
@@ -51,90 +51,95 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric, root_
     feedback_model = provider.create_model(config.feedback_model_name, config)
     #TODO Instantiate report logger model and pass it to add_summary_to_report
 
-    await run_agentomics(config=config, default_model=default_model, feedback_model=feedback_model)
+    await run_agentomics(config=config, default_model=default_model, feedback_model=feedback_model, steps_to_skip=steps_to_skip)
 
     if(wandb_logged_in):
         wandb.finish()
 
-async def run_agentomics(config: Config, default_model, feedback_model):
+async def run_agentomics(config: Config, default_model, feedback_model, steps_to_skip):
     tools = create_tools(config)
     
     all_feedbacks = []
     feedback = None
     print(f"Starting training loop with {config.iterations} iterations")
-    for run_index in range(config.iterations):
-        print(f"\n=== ITERATION {run_index + 1} / {config.iterations} ===")
-        try:
-            current_run_messages = await run_iteration(config=config, model=default_model, iteration=run_index, feedback=feedback, tools=tools)
-        except Exception as e:
-            log_serial_metrics(prefix='validation', metrics=None, iteration=run_index, task_type=config.task_type)
-            log_serial_metrics(prefix='train', metrics=None, iteration=run_index, task_type=config.task_type)
-            new_metrics, best_metrics = get_new_and_best_metrics(config)
-            all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far: {best_metrics}")) # append feedback from last iteration before to process it
-            feedback = await get_feedback(
-                context=e.context_messages,
-                extra_info=f"{e.message} {e.exception_trace}",
-                config=config, 
-                new_metrics=new_metrics, 
-                model=feedback_model,
-                best_metrics=best_metrics,
-                is_new_best=False,
-                aggregated_feedback=aggregate_feedback(all_feedbacks),
-                iteration=run_index
-            )
-            log_files(config, iteration=run_index)
-            continue
-
-        print("Starting evaluation phase")
-        print("  Running validation inference...")
-        run_inference_and_log(config, iteration=run_index, evaluation_stage='validation')
-        print("  Running training inference...")
-        run_inference_and_log(config, iteration=run_index, evaluation_stage='train')
-        print("  Running stealth test inference...")
-        run_inference_and_log(config, iteration=run_index, evaluation_stage='stealth_test')
-
-        new_metrics, best_metrics = get_new_and_best_metrics(config)
-        all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far: {best_metrics}"))
-        
-        if is_new_best(config):
-            feedback = await get_feedback(
-                context=current_run_messages, 
-                config=config, 
-                new_metrics=new_metrics, 
-                best_metrics=best_metrics, 
-                is_new_best=True, 
-                model=feedback_model,
-                iteration=run_index,
-                aggregated_feedback=aggregate_feedback(all_feedbacks)
-            )
-
-            snapshot(config, run_index)  # Snapshotting overrides the previous snapshot, influencing the get_new_and_best_metrics function
-        else:
-            feedback =await get_feedback(
-                current_run_messages, 
-                config, 
-                new_metrics, 
-                best_metrics, 
-                is_new_best=False, 
-                model=feedback_model,
-                iteration=run_index,
-                aggregated_feedback=aggregate_feedback(all_feedbacks)
-            )
-
-        add_metrics_to_report(config, run_index)
-        await add_summary_to_report(default_model, config, run_index)
-        log_files(config, iteration=run_index)
-        
-    print("\nRunning final test evaluation...")
     try:
-        run_inference_and_log(config, iteration=None, evaluation_stage='test', use_best_snapshot=True)
-        add_final_test_metrics_to_best_report(config)
-    except Exception as e:
-        print('FINAL TEST EVAL FAIL', str(e))
-        log_inference_stage_and_metrics(1, task_type=config.task_type)
+        for run_index in range(config.iterations):
+            print(f"\n=== ITERATION {run_index + 1} / {config.iterations} ===")
+            try:
+                current_run_messages = await run_iteration(config=config, model=default_model, iteration=run_index, feedback=feedback, tools=tools, steps_to_skip=steps_to_skip)
+            except Exception as e:
+                log_serial_metrics(prefix='validation', metrics=None, iteration=run_index, task_type=config.task_type)
+                log_serial_metrics(prefix='train', metrics=None, iteration=run_index, task_type=config.task_type)
+                new_metrics, best_metrics = get_new_and_best_metrics(config)
+                all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far: {best_metrics}")) # append feedback from last iteration before to process it
+                feedback = await get_feedback(
+                    context=e.context_messages,
+                    extra_info=f"{e.message} {e.exception_trace}",
+                    config=config, 
+                    new_metrics=new_metrics, 
+                    model=feedback_model,
+                    best_metrics=best_metrics,
+                    is_new_best=False,
+                    aggregated_feedback=aggregate_feedback(all_feedbacks),
+                    iteration=run_index
+                )
+                log_files(config, iteration=run_index)
+                continue
 
-    rename_and_snapshot_best_iteration_report(config)
-    log_files(config)
+            print("Starting evaluation phase")
+            print("  Running validation inference...")
+            run_inference_and_log(config, iteration=run_index, evaluation_stage='validation')
+            print("  Running training inference...")
+            run_inference_and_log(config, iteration=run_index, evaluation_stage='train')
+            print("  Running stealth test inference...")
+            run_inference_and_log(config, iteration=run_index, evaluation_stage='stealth_test')
+
+            new_metrics, best_metrics = get_new_and_best_metrics(config)
+            all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far: {best_metrics}"))
+            
+            if is_new_best(config):
+                feedback = await get_feedback(
+                    context=current_run_messages, 
+                    config=config, 
+                    new_metrics=new_metrics, 
+                    best_metrics=best_metrics, 
+                    is_new_best=True, 
+                    model=feedback_model,
+                    iteration=run_index,
+                    aggregated_feedback=aggregate_feedback(all_feedbacks)
+                )
+
+                snapshot(config, run_index)  # Snapshotting overrides the previous snapshot, influencing the get_new_and_best_metrics function
+            else:
+                feedback =await get_feedback(
+                    current_run_messages, 
+                    config, 
+                    new_metrics, 
+                    best_metrics, 
+                    is_new_best=False, 
+                    model=feedback_model,
+                    iteration=run_index,
+                    aggregated_feedback=aggregate_feedback(all_feedbacks)
+                )
+
+            add_metrics_to_report(config, run_index)
+            await add_summary_to_report(default_model, config, run_index)
+            log_files(config, iteration=run_index)
+    finally:
+        if best_metrics_exists(config):
+            print("\nRunning final test evaluation...")
+            try:
+                run_inference_and_log(config, iteration=None, evaluation_stage='test', use_best_snapshot=True)
+                add_final_test_metrics_to_best_report(config)
+            except Exception as e:
+                print('FINAL TEST EVAL FAIL', str(e))
+                log_inference_stage_and_metrics(1, task_type=config.task_type)
+            
+            rename_and_snapshot_best_iteration_report(config)
+            log_files(config)
+        else:
+            print("No successful iterations, skipping final test evaluation.")
+            print("="*50 + "\n")
 
 
 def parse_args():
@@ -149,6 +154,7 @@ def parse_args():
     parser.add_argument('--tags', nargs='*', default=[], help='(Optional) Tags for a wandb run logging')
     parser.add_argument('--iterations', type=int, default=5, help='Number of training iterations to run')
     parser.add_argument('--user-prompt', type=str, default="Create the best possible machine learning model that will generalize to new unseen data.", help='(Optional) Text to overwrite the default user prompt')
+    parser.add_argument('--steps-to-skip', nargs='*', default=[], help='(Optional) List of steps to skip. Available steps: data_exploration, data_split, data_representation, model_architecture, model_training, final_outcome')
 
     val_metric_choices = get_classification_metrics_names() + get_regression_metrics_names()
     parser.add_argument('--val-metric', help='Validation metric to use for the best model selection', required=True, choices=val_metric_choices)
@@ -156,7 +162,7 @@ def parse_args():
     return parser.parse_args()
 
 async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, agent_datasets_dir,
-                          workspace_dir, tags, no_root_privileges, iterations, user_prompt, provider):
+                          workspace_dir, tags, no_root_privileges, iterations, user_prompt, provider, steps_to_skip):
     setup_nonsensitive_dataset_files_for_agent(
         prepared_datasets_dir=Path(prepared_datasets_dir),
         agent_datasets_dir=Path(agent_datasets_dir),
@@ -175,7 +181,8 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
         agent_dataset_dir=agent_datasets_dir,
         iterations=iterations,
         user_prompt=user_prompt,
-        provider=provider
+        provider=provider,
+        steps_to_skip=steps_to_skip
     )
 
 async def run_experiment_from_terminal():
@@ -192,7 +199,8 @@ async def run_experiment_from_terminal():
         no_root_privileges=args.no_root_privileges,
         iterations=args.iterations,
         user_prompt=args.user_prompt,
-        provider=args.provider
+        provider=args.provider,
+        steps_to_skip=args.steps_to_skip
     )
 
 if __name__ == "__main__":
