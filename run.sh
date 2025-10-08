@@ -87,7 +87,20 @@ else
         agentomics_prepare_img
 
     docker build -t agentomics_img .
-    docker volume create temp_agentomics_volume
+
+    if docker volume inspect temp_agentomics_volume >/dev/null 2>&1; then
+        echo "Volume containing previous runs (temp_agentomics_volume) already exists"
+
+        read -p "Do you want to remove and recreate it? (y/n) " answer
+        if [[ "$answer" =~ ^[Yy]$ ]]; then
+            docker volume rm temp_agentomics_volume
+            docker volume create temp_agentomics_volume
+        else
+            echo "Using existing volume. Previous runs' data may be present."
+        fi
+    else
+        docker volume create temp_agentomics_volume
+    fi
 
     GPU_FLAGS=()
     if [ "$CPU_ONLY" = false ]; then
