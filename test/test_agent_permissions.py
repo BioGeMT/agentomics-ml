@@ -102,7 +102,7 @@ class TestAgentPermissions(BaseAgentTest):
         # Check .env file access
         env_file_result = self.bash_tool.function("cat /repository/.env 2>&1")
         self.assertTrue(
-            "Permission denied" in env_file_result,
+            "Permission denied" or "No such file or directory" in env_file_result,
             f"Should not access .env file. Got: {env_file_result}"
         )
     

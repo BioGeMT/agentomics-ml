@@ -113,11 +113,11 @@ else
             -it \
             --rm \
             --name agentomics_test_cont \
+            --env-file $(pwd)/.env \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/test":/repository/test:ro \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
-            -v "$(pwd)/.env":/repository/.env:ro \
             -v temp_agentomics_volume:/workspace \
             --entrypoint /opt/conda/envs/agentomics-env/bin/python \
             agentomics_img -m test.run_all_tests
@@ -126,10 +126,10 @@ else
             -it \
             --rm \
             --name agentomics_cont \
+            --env-file $(pwd)/.env \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
-            -v "$(pwd)/.env":/repository/.env:ro \
             -v temp_agentomics_volume:/workspace \
             agentomics_img ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
 
