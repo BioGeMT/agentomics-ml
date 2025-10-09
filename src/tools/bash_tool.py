@@ -3,34 +3,29 @@ import re
 import threading
 import shlex    
 import os
-from pathlib import Path
 
 from pydantic_ai import Tool
 
 class BashProcess:
-    def __init__(self, agent_id, runs_dir, root_privileges, autoconda=True, timeout=60, proxy=False):
+    def __init__(self, agent_id, runs_dir, autoconda=True, timeout=60, proxy=False):
         self.locked = threading.Lock()
         self.agent_id = agent_id
         self.runs_dir = runs_dir
         self.autoconda = autoconda
         self.timeout = timeout
         self.proxy = proxy
-        self.agent_env = self.setup_agent_env_vars()
-        self.root_privileges = root_privileges
+        self.agent_env = self.filter_agent_env_vars()
 
         if autoconda:
             self.create_conda_env()
     
-    def setup_agent_env_vars(self):
-        agent_home_dir = Path(self.runs_dir / self.agent_id)
+    def filter_agent_env_vars(self):
         agent_env = {}
         
         for key, value in os.environ.items():
             if "API_KEY" in key: # don't pass any API keys to the agent
                 continue
             agent_env[key] = value
-
-        agent_env['HOME'] = str(agent_home_dir)
 
         return agent_env
 
@@ -53,9 +48,6 @@ class BashProcess:
                     "env": self.agent_env,
                     "errors": "replace"  # handle invalid UTF-8 bytes
                 }
-                if self.root_privileges:
-                    run_kwargs["user"] = self.agent_id
-                    run_kwargs["group"] = self.agent_id
 
                 result = subprocess.run(
                     command,
@@ -87,14 +79,13 @@ class BashProcess:
             output = output[:5000]+"\n ... (output truncated, too long)"
         return output.strip()
 
-def create_bash_tool(agent_id, runs_dir, timeout, max_retries, root_privileges, autoconda=True, proxy=False):
+def create_bash_tool(agent_id, runs_dir, timeout, max_retries, autoconda=True, proxy=False):
         bash = BashProcess(
             agent_id=agent_id,
             runs_dir=runs_dir,
             autoconda=autoconda,
             timeout=timeout,
-            proxy=proxy,
-            root_privileges=root_privileges,
+            proxy=proxy
         )
 
         def _bash(command: str):
