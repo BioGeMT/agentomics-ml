@@ -35,50 +35,24 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
         'dry_run': config.prepared_dataset_dir / "train.no_label.csv",
         'validation': validation_input,
         'test': config.prepared_dataset_dir / "test.no_label.csv",
-        'train': train_input,
-        'stealth_test': config.prepared_dataset_dir / "test.no_label.csv",
+        'train': train_input
     }
     stage_to_output = {
         'dry_run': run_dir / "eval_predictions_dry_run.csv",
         'validation': run_dir / "eval_predictions_validation.csv",
         'test': run_dir / "eval_predictions_test.csv",
-        'train': run_dir / "eval_predictions_train.csv",
-        'stealth_test': snapshot_dir / "eval_predictions_stealth_test.csv",
+        'train': run_dir / "eval_predictions_train.csv"
     }
     stage_to_metrics_file = {
         'dry_run': run_dir / "dry_run_metrics.txt",
         'validation': run_dir / "validation_metrics.txt",
         'test': run_dir / "test_metrics.txt",
-        'train': run_dir / "train_metrics.txt",
-        'stealth_test': snapshot_dir / "stealth_test_metrics.txt",
+        'train': run_dir / "train_metrics.txt"
     }
 
     command_prefix=f"conda run -p {conda_path[source_folder]} --no-capture-output"
     command = f"{command_prefix} python {inference_path[source_folder]} --input {stage_to_input[evaluation_stage]} --output {stage_to_output[evaluation_stage]}"
     inference_out = subprocess.run(command, shell=True, executable="/bin/bash", capture_output=True)
-    if evaluation_stage == 'stealth_test':
-        test_file_path = config.prepared_dataset_dir / "test.csv"
-        if not test_file_path.exists():
-            print('STEALTH TEST EVAL SKIPPED - NO TEST SET')
-            return
-        print('RUNNING STEALTH TEST EVAL')
-        try:
-            _ = get_metrics_and_serial_log(
-                results_file=stage_to_output[evaluation_stage],
-                test_file=test_file_path,
-                output_file=None,
-                numeric_label_col=dataset_metadata['numeric_label_col'],
-                iteration=iteration,
-                prefix=evaluation_stage,
-                delete_preds=True,
-                task_type=dataset_metadata['task_type']
-            )
-        except Exception as e:
-            print('STEALTH TEST EVAL FAIL')
-            log_serial_metrics(prefix=evaluation_stage, metrics=None, iteration=iteration, task_type=config.task_type)
-            return
-        print('STEALTH TEST EVAL SUCCESS')
-        return
     if evaluation_stage == 'test':
         test_file_path = config.prepared_dataset_dir / "test.csv"
         if not test_file_path.exists():

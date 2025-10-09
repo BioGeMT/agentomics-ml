@@ -96,8 +96,6 @@ async def run_agentomics(config: Config, default_model, feedback_model):
         run_inference_and_log(config, iteration=run_index, evaluation_stage='validation')
         print("  Running training inference...")
         run_inference_and_log(config, iteration=run_index, evaluation_stage='train')
-        print("  Running stealth test inference...")
-        run_inference_and_log(config, iteration=run_index, evaluation_stage='stealth_test')
 
         new_metrics, best_metrics = get_new_and_best_metrics(config)
         all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far: {best_metrics}"))
