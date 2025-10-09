@@ -191,6 +191,7 @@ cython_debug/
 .genomic_benchmarks
 .miRBench
 prepared_datasets
+prepared_test_sets
 datasets
 workspace/runs
 workspace
