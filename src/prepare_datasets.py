@@ -23,11 +23,13 @@ def main():
     # If environment variables are set, override defaults
     datasets_dir = os.environ.get("DATASETS_DIR", default="./datasets")
     prepared_datasets_dir = os.environ.get("PREPARED_DATASETS_DIR", default="./prepared_datasets")
+    prepared_test_sets_dir = os.environ.get("PREPARED_TESTS_DIR", default="./prepared_test_sets")
     
     Path(prepared_datasets_dir).mkdir(parents=True, exist_ok=True)
+    Path(prepared_test_sets_dir).mkdir(parents=True, exist_ok=True)
 
     if args.prepare_all or not args.dataset_dir:
-        prepare_all_datasets(datasets_dir, prepared_datasets_dir)
+        prepare_all_datasets(datasets_dir, prepared_datasets_dir, prepared_test_sets_dir)
     else:
         console.print(f'[blue]Preparing dataset "{args.dataset_dir.name}"')# for {task_type} task with target column "{target_col}"[/blue]')
         try:
@@ -38,6 +40,7 @@ def main():
                 negative_class=args.negative_class,
                 task_type=args.task_type,
                 output_dir=prepared_datasets_dir,
+                test_output_dir=prepared_test_sets_dir
             )
             console.print(f"[green]Dataset '{args.dataset_dir.name}' prepared successfully![/green]")
         except Exception as e:

@@ -270,20 +270,21 @@ def get_label_to_number_map(train_df, test_df, target_col, positive_class=None, 
     return label_map
 
 def prepare_dataset(dataset_dir, target_col,
-                   positive_class, negative_class, task_type, output_dir, interactive=False):
+                   positive_class, negative_class, task_type, output_dir, test_sets_output_dir, interactive=False):
     """
-    Preprocesses dataset files to a format digestable by the agent code
+    Preprocesses dataset files to a format digestable by the agent code. Stores test set files in a separate directory.
     If target_col and/or task_type is None, it will be auto-detected and printed out
     If positive_class and negative_class are None, they will be auto-detected for binary classification and printed out
     """
     dataset_dir = Path(dataset_dir)
     output_dir = Path(output_dir)
+    test_sets_output_dir = Path(test_sets_output_dir)
 
     train = dataset_dir / 'train.csv'
     test = dataset_dir / 'test.csv' if (dataset_dir / 'test.csv').exists() else None
     validation = dataset_dir / 'validation.csv' if (dataset_dir / 'validation.csv').exists() else None
     description = dataset_dir / 'dataset_description.md' if (dataset_dir / 'dataset_description.md').exists() else None
-    name = dataset_dir.name
+    dataset_name = dataset_dir.name
 
     train_df = pd.read_csv(train)
     test_df = pd.read_csv(test) if test else None
@@ -309,9 +310,10 @@ def prepare_dataset(dataset_dir, target_col,
     if validation_df is not None:
         dataframes.append(('validation', validation_df))
     
-    dataset_name = name
-    out_dir = Path(output_dir) / dataset_name
+    out_dir = output_dir / dataset_name
     out_dir.mkdir(parents=True, exist_ok=True)
+    test_out_dir = test_sets_output_dir / dataset_name
+    test_out_dir.mkdir(parents=True, exist_ok=True)
     
     # Generate train, test, and no_label CSV files
     for split_name, df in dataframes:
@@ -323,9 +325,10 @@ def prepare_dataset(dataset_dir, target_col,
         except KeyError as e:
             raise KeyError(f"Target column '{target_col}' not found in {split_name} dataset. Available columns: {df.columns}") from e
 
-        df.drop(columns=[target_col]).to_csv(out_dir / f'{split_name}.csv', index=False)
+        target_dir = test_out_dir if split_name == 'test' else out_dir
+        df.drop(columns=[target_col]).to_csv(target_dir / f'{split_name}.csv', index=False)
         df.drop([target_col, 'numeric_label'], axis=1).to_csv(
-            out_dir / f'{split_name}.no_label.csv', index=False
+            target_dir / f'{split_name}.no_label.csv', index=False
         )
     
     # Generate dataset description file
@@ -347,11 +350,6 @@ def prepare_dataset(dataset_dir, target_col,
         meta['label_to_scalar'] = json_safe_label_map
 
     (out_dir / 'metadata.json').write_text(json.dumps(meta, indent=4))
-
-    non_sensitive_files = ['dataset_description.md', 'train.csv', 'train.no_label.csv']
-    for file in out_dir.iterdir():
-        if file.name not in non_sensitive_files:
-            subprocess.run(["chmod", "o-rwx", file], check=True)
 
 def setup_nonsensitive_dataset_files_for_agent(prepared_datasets_dir: Path, agent_datasets_dir: Path, dataset_name: str):
     """
