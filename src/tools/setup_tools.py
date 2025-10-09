@@ -12,8 +12,7 @@ def create_tools(config):
                 timeout=config.bash_tool_timeout, 
                 autoconda=True,
                 max_retries=config.max_tool_retries,
-                proxy=config.use_proxy,
-                root_privileges=config.root_privileges),
+                proxy=config.use_proxy),
             create_write_python_tool( #Tries to create the same-name conda environment
                 agent_id=config.agent_id, 
                 max_retries=config.max_tool_retries,
@@ -23,8 +22,7 @@ def create_tools(config):
                 runs_dir=config.runs_dir,
                 timeout=config.run_python_tool_timeout,
                 proxy=config.use_proxy,
-                max_retries=config.max_tool_retries,
-                root_privileges=config.root_privileges),
+                max_retries=config.max_tool_retries),
         ]
     # wrap each tool.run with @weave.op
     for tool in tools:
