@@ -80,7 +80,7 @@ def print_datasets_table(datasets: List[Dict], title: str = "Dataset Preparation
     
     console.print(table)
 
-def prepare_all_datasets(datasets_dir: str, prepared_datasets_dir: str) -> None:
+def prepare_all_datasets(datasets_dir: str, prepared_datasets_dir: str, prepared_test_sets_dir: str) -> None:
     """
     Prepare multiple datasets with Rich progress display.
     
@@ -159,6 +159,7 @@ def prepare_all_datasets(datasets_dir: str, prepared_datasets_dir: str) -> None:
                     negative_class=None, #auto-detected inside
                     task_type=None, #auto-detected inside
                     output_dir=prepared_datasets_dir,
+                    test_sets_output_dir=prepared_test_sets_dir
                 )
                 success = True
             except Exception as e:
