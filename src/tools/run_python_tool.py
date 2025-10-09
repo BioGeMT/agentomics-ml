@@ -2,14 +2,13 @@ from pydantic_ai import Tool
 from pathlib import Path
 from .bash_tool import BashProcess
 
-def create_run_python_tool(agent_id, runs_dir, timeout, max_retries, proxy, root_privileges):
+def create_run_python_tool(agent_id, runs_dir, timeout, max_retries, proxy):
     bash = BashProcess(
         agent_id=agent_id,
         runs_dir=runs_dir,
         autoconda=False,
         timeout=timeout,
-        proxy = proxy,
-        root_privileges=root_privileges,
+        proxy = proxy
     )
 
     def _run_python(python_file_path: str):

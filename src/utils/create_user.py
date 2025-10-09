@@ -1,4 +1,3 @@
-import subprocess
 import sys
 from hrid import HRID
 
@@ -7,14 +6,7 @@ def create_new_user_and_rundir(config):
     run_dir = config.runs_dir / run_id
     snapshot_dir = config.snapshots_dir / run_id
 
-    if config.root_privileges:
-        subprocess.run(
-            ["useradd", "-d", run_dir, "-m", "-U", run_id],
-            check=True
-        )
-    else:
-        run_dir.mkdir(parents=True, exist_ok=True)
-    
+    run_dir.mkdir(parents=True, exist_ok=True)
     snapshot_dir.mkdir(parents=True, exist_ok=True)
     
     return run_id
