@@ -13,6 +13,13 @@ TEST_MODE=false
 CPU_ONLY=false
 OLLAMA=false
 
+# if docker container named 'temp_agentomics_volume' exists, delete it
+VOLUME_NAME="temp_agentomics_volume"
+if docker volume ls --format '{{.Name}}' | grep -wq "$VOLUME_NAME"; then
+    echo "Deleting temporary volume from previous interrupted run. Volume: '$VOLUME_NAME'..."
+    docker volume rm "$VOLUME_NAME"
+fi
+
 while [[ $# -gt 0 ]]; do
     case $1 in
         --model)
