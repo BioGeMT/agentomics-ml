@@ -25,6 +25,7 @@ class Config:
     user_prompt: str
 
     agent_id: Optional[str] = None # assigned after user creation
+    wandb_run_id: Optional[str] = None
     # static defaults
     temperature: float = 1.0
     max_steps: int = 100 #TODO rename, this is per-step limit

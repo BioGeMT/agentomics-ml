@@ -6,9 +6,11 @@ from utils.config import Config
 from utils.report_logger import add_final_test_metrics_to_best_report
 from run_logging.evaluate_log_run import run_inference_and_log
 from run_logging.logging_helpers import log_inference_stage_and_metrics
+from run_logging.wandb_setup import resume_wandb_run
 
 def run_test_evaluation(workspace_dir):
     config = load_run_config(workspace_dir)
+    resume_wandb_run(config)
 
     print("\nRunning final test evaluation...")
     try:
@@ -40,6 +42,7 @@ def load_run_config(workspace_dir):
      
     config = Config(**config_constructor_params)
     config.agent_id = config_dict['agent_id']
+    config.wandb_run_id = config_dict.get('wandb_run_id')
 
     return config
 
