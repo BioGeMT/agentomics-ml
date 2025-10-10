@@ -84,8 +84,8 @@ def add_final_test_metrics_to_best_report(config):
     best_iteration = get_best_iteration(config)
 
     output_dir = Path(config.runs_dir) / config.agent_id
-    report_dir = config.reports_dir / config.agent_id
-    best_report = report_dir / f"run_report_iter_{best_iteration}.txt"
+    agent_snapshots_dir = config.snapshots_dir / config.agent_id
+    best_report = agent_snapshots_dir / f"run_report_iter_{best_iteration}_BEST.txt"
     #TODO we write this at final test stage to the agent's run dir - change to a better location for clarity
     test_metrics_file = output_dir / "test_metrics.txt"
     if not test_metrics_file.exists():

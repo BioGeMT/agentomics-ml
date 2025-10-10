@@ -13,6 +13,7 @@ class Config:
     tags: List[str]
     val_metric: str
     prepared_dataset_dir: Path
+    prepared_test_set_dir: Path
     agent_dataset_dir: Path
     workspace_dir: Path
     snapshots_dir: Path
@@ -48,6 +49,7 @@ class Config:
         root_privileges: bool,
         workspace_dir: Path,
         prepared_datasets_dir: Path,
+        prepared_test_sets_dir: Path,
         agent_dataset_dir: Path,
         user_prompt: str,
         max_steps: Optional[int] = None,
@@ -60,6 +62,7 @@ class Config:
         self.val_metric = val_metric
         self.root_privileges = root_privileges
         self.prepared_dataset_dir = prepared_datasets_dir / dataset
+        self.prepared_test_set_dir = prepared_test_sets_dir / dataset
         self.agent_dataset_dir = agent_dataset_dir / dataset
         self.workspace_dir = workspace_dir
         self.runs_dir = workspace_dir / "runs"

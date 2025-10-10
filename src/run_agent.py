@@ -7,9 +7,9 @@ import os
 import wandb
 
 from run_logging.evaluate_log_run import run_inference_and_log
-from run_logging.logging_helpers import log_inference_stage_and_metrics, log_serial_metrics
-from run_logging.wandb import setup_logging
-from run_logging.log_files import log_files
+from run_logging.logging_helpers import log_serial_metrics
+from run_logging.wandb_setup import setup_logging
+from run_logging.log_files import log_files, export_config_to_workspace
 from utils.env_utils import are_wandb_vars_available
 from utils.create_user import create_new_user_and_rundir
 from utils.dataset_utils import setup_nonsensitive_dataset_files_for_agent
@@ -18,14 +18,14 @@ from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics, rep
 from utils.workspace_setup import ensure_workspace_folders
 from agents.architecture import run_iteration
 from utils.metrics import get_classification_metrics_names, get_regression_metrics_names
-from utils.report_logger import add_metrics_to_report, add_summary_to_report, add_final_test_metrics_to_best_report, rename_and_snapshot_best_iteration_report
+from utils.report_logger import add_metrics_to_report, add_summary_to_report, rename_and_snapshot_best_iteration_report
 from utils.providers.provider import Provider, get_provider_from_string
 from feedback.feedback_agent import get_feedback, aggregate_feedback
 from tools.setup_tools import create_tools
 
 
 async def main(model_name, feedback_model_name, dataset, tags, val_metric, root_privileges, 
-               workspace_dir, prepared_datasets_dir, agent_dataset_dir, iterations, user_prompt, provider_name):
+               workspace_dir, prepared_datasets_dir, prepared_test_sets_dir, agent_dataset_dir, iterations, user_prompt, provider_name):
     # Initialize configuration 
     config = Config(
         model_name=model_name, 
@@ -36,6 +36,7 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric, root_
         root_privileges=root_privileges,
         workspace_dir=Path(workspace_dir),
         prepared_datasets_dir=Path(prepared_datasets_dir),
+        prepared_test_sets_dir=Path(prepared_test_sets_dir),
         agent_dataset_dir=Path(agent_dataset_dir),
         iterations=iterations,
         user_prompt=user_prompt,
@@ -128,18 +129,11 @@ async def run_agentomics(config: Config, default_model, feedback_model):
         add_metrics_to_report(config, run_index)
         await add_summary_to_report(default_model, config, run_index)
         log_files(config, iteration=run_index)
-        
-    print("\nRunning final test evaluation...")
-    try:
-        run_inference_and_log(config, iteration=None, evaluation_stage='test', use_best_snapshot=True)
-        add_final_test_metrics_to_best_report(config)
-    except Exception as e:
-        print('FINAL TEST EVAL FAIL', str(e))
-        log_inference_stage_and_metrics(1, task_type=config.task_type)
 
     replace_snapshot_path_with_relative(snapshot_dir = config.snapshots_dir / config.agent_id)
     rename_and_snapshot_best_iteration_report(config)
     log_files(config)
+    export_config_to_workspace(config)
 
 
 def parse_args():
@@ -150,6 +144,7 @@ def parse_args():
     parser.add_argument('--no-root-privileges', action='store_true', help='Flag to run without root privileges. This is not recommended, since it decreases security by not preventing the agent from accessing/modifying files outside of its own workspace.')
     parser.add_argument('--workspace-dir', type=Path, default=Path('../workspace').resolve(), help='Path to a directory which will store agent runs, snapshots, and reports')
     parser.add_argument('--prepared-datasets-dir', type=Path, default=Path('../repository/prepared_datasets').resolve(), help='Path to a directory which contains prepared datasets.')
+    parser.add_argument('--prepared-test-sets-dir', type=Path, default=Path('../repository/prepared_test_sets').resolve(), help='Path to a directory which contains prepared test sets.')
     parser.add_argument('--agent-datasets-dir', type=Path, default=Path('../workspace/datasets').resolve(), help='Path to a directory which contains non-test data accessible by agents.')
     parser.add_argument('--tags', nargs='*', default=[], help='(Optional) Tags for a wandb run logging')
     parser.add_argument('--iterations', type=int, default=5, help='Number of training iterations to run')
@@ -160,7 +155,7 @@ def parse_args():
 
     return parser.parse_args()
 
-async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, agent_datasets_dir,
+async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir,
                           workspace_dir, tags, no_root_privileges, iterations, user_prompt, provider):
     setup_nonsensitive_dataset_files_for_agent(
         prepared_datasets_dir=Path(prepared_datasets_dir),
@@ -177,6 +172,7 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
         root_privileges=not no_root_privileges, 
         workspace_dir=workspace_dir, 
         prepared_datasets_dir=prepared_datasets_dir, 
+        prepared_test_sets_dir=prepared_test_sets_dir,
         agent_dataset_dir=agent_datasets_dir,
         iterations=iterations,
         user_prompt=user_prompt,
@@ -191,6 +187,7 @@ async def run_experiment_from_terminal():
         dataset_name=args.dataset_name, 
         val_metric=args.val_metric, 
         prepared_datasets_dir=args.prepared_datasets_dir, 
+        prepared_test_sets_dir=args.prepared_test_sets_dir,
         agent_datasets_dir=args.agent_datasets_dir, 
         workspace_dir=args.workspace_dir, 
         tags=args.tags,
