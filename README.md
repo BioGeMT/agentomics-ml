@@ -83,14 +83,19 @@ When getting predictions on new data, make sure the data file has the same colum
 
 The output will be a csv file containing a single columns called 'predictions' in the same order as your data.
 
-The `agent_id` is the name of the finished run (same as a folder name in `outputs/`)
-
 ```
-cd outputs/best_run_files/<run_name>
-conda activate .conda/envs/<run_name>_env 
-python inference.py --input <path_to_inference_data_csv> --output <path_to_output_csv>
+./inference.sh --agent-dir outputs/<agent_id> --input <test_data_file>.csv --output <prediction_file>.csv
 ```
 
+The `<agent_id>` is the name of the finished run (same as a folder name in `outputs/`)
+
+Optionally pass `--cpu-only` flag if you wish to only run the inference with CPU.
+
+If you wish to run the inference locally and not inside a docker container, use the `--local` flag.
+
+To customize or directly access the inference code, use artifacts in the `outputs/<run_name>/best_run_files` folder.
+- `.conda` folder contains the conda environment with packages necessary for the inference
+- `inference.py` contains the inference code, and might depend on other artifacts in the folder (like `model.joblib`, tokenizer files, etc..)
 
 # Advanced run parameters
 ## Providers

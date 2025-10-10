@@ -14,7 +14,7 @@ from utils.env_utils import is_wandb_key_available
 from utils.create_user import create_new_user_and_rundir
 from utils.dataset_utils import setup_nonsensitive_dataset_files_for_agent
 from utils.config import Config
-from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics
+from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics, replace_snapshot_path_with_relative
 from utils.workspace_setup import ensure_workspace_folders
 from agents.architecture import run_iteration
 from utils.metrics import get_classification_metrics_names, get_regression_metrics_names
@@ -138,6 +138,7 @@ async def run_agentomics(config: Config, default_model, feedback_model):
         print('FINAL TEST EVAL FAIL', str(e))
         log_inference_stage_and_metrics(1, task_type=config.task_type)
 
+    replace_snapshot_path_with_relative(snapshot_dir = config.snapshots_dir / config.agent_id)
     rename_and_snapshot_best_iteration_report(config)
     log_files(config)
 

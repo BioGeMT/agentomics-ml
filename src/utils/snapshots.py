@@ -122,7 +122,7 @@ def snapshot(config, iteration, delete_old_snapshot=True):
                     replace_workspace_path_with_snapshots(run_dir, snapshot_dir, absolute_path_snapshot_file=file_path)
         
     with open(snapshot_dir / "iteration_number.txt", "w") as f:
-        print(f"Snapshotting iteration number")
+        # print(f"Snapshotting iteration number")
         f.write(str(iteration))
 
 def get_best_iteration(config):
@@ -139,6 +139,17 @@ def replace_workspace_path_with_snapshots(run_dir, snapshot_dir, absolute_path_s
         old_content = f.read()
     new_content = old_content.replace(str(run_dir), str(snapshot_dir))
     if(old_content != new_content):
-        print(f"Replaced {run_dir} with {snapshot_dir} in {absolute_path_snapshot_file}")
+        # print(f"Replaced {run_dir} with {snapshot_dir} in {absolute_path_snapshot_file}")
         with open(absolute_path_snapshot_file, "w") as f:
+            f.write(new_content)
+
+def replace_snapshot_path_with_relative(snapshot_dir):
+    for file_path in snapshot_dir.rglob('*.py'):
+        if '.conda' in file_path.parts:
+            # Don't check installed packages scripts
+            continue
+        with open(file_path, "r") as f:
+            old_content = f.read()
+        new_content = old_content.replace(str(snapshot_dir), ".")
+        with open(file_path, "w") as f:
             f.write(new_content)

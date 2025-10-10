@@ -169,7 +169,7 @@ else
         GREEN='\033[0;32m'
         NOCOLOR='\033[0m'
         echo -e "${GREEN}Run finished. Report and files can be found in outputs/${RUN_NAME}${NOCOLOR}"
-        echo -e "${GREEN}To run inference on new data, use the run_inference.sh --agent ${RUN_NAME} --input <path_to_input_csv> --output <path_to_output_csv>${NOCOLOR}"
+        echo -e "${GREEN}To run inference on new data, use ./inference.sh --agent-dir outputs/${RUN_NAME} --input <path_to_input_csv> --output <path_to_output_csv>${NOCOLOR}"
 
     fi
 
