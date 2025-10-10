@@ -58,6 +58,7 @@ def main():
     paths = {
         "datasets_dir": str(repository_dir / "datasets"),
         "prepared_datasets_dir": str(repository_dir / "prepared_datasets"),
+        "prepared_test_sets_dir": str(repository_dir / "prepared_test_sets"),
         "workspace_dir": str(repository_parent_dir / "workspace"), 
         "agent_datasets_dir": str(repository_parent_dir / "workspace" / "datasets")
     }
@@ -123,6 +124,7 @@ def main():
         dataset_name=dataset,
         val_metric=val_metric,
         prepared_datasets_dir=paths["prepared_datasets_dir"],
+        prepared_test_sets_dir=paths["prepared_test_sets_dir"],
         agent_datasets_dir=paths["agent_datasets_dir"],
         workspace_dir=paths["workspace_dir"],
         tags=None,

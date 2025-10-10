@@ -84,10 +84,12 @@ if [ "$LOCAL_MODE" = true ]; then
     eval "$(conda shell.bash hook)"
     conda activate agentomics-env
     python src/run_agent_interactive.py ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
+    export PYTHONPATH=./src
+    python src/run_logging/evaluate_log_test.py --workspace-dir ../workspace
 
     mkdir -p outputs/best_run_files outputs/reports
-    cp -r workspace/snapshots/. outputs/best_run_files/
-    cp -r workspace/reports/. outputs/reports/
+    cp -r ../workspace/snapshots/. outputs/best_run_files/
+    cp -r ../workspace/reports/. outputs/reports/
 else
     echo "Building the data preparation image"
     docker build --progress=quiet -t agentomics_prepare_img -f Dockerfile.prepare .
@@ -153,6 +155,19 @@ else
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
             -v temp_agentomics_volume:/workspace \
             agentomics_img ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
+
+        echo "Running final evaluation on test set"
+        docker run \
+            --rm \
+            --name agentomics_test_eval_cont \
+            --env-file $(pwd)/.env \
+            -e PYTHONPATH=/repository/src \
+            -v "$(pwd)/src":/repository/src:ro \
+            -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
+            -v "$(pwd)/prepared_test_sets":/repository/prepared_test_sets:ro \
+            -v temp_agentomics_volume:/workspace \
+            --entrypoint /opt/conda/envs/agentomics-env/bin/python \
+            agentomics_img src/run_logging/evaluate_log_test.py
 
 
         # Pick the latest run from the volume

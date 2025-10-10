@@ -49,18 +49,15 @@ class TestAgentPermissions(BaseAgentTest):
         self.assertNotIn("Permission denied", result, "Agent should read its dataset content")
         self.assertNotIn("Command failed", result, "head command should succeed")
     
-    def test_agent_access_to_prepared_datasets(self):
-        non_sensitive_files = ['dataset_description.md', 'train.csv', 'train.no_label.csv']
+    def test_agent_access_to_datasets(self):
+        """Test that agent can access all files in prepared_datasets and not the ones in prepared_test_sets."""
         for file in self.config.prepared_dataset_dir.iterdir():
-            if file.name not in non_sensitive_files:
-                result = self.bash_tool.function(f"head -5 {self.config.prepared_dataset_dir}/{file.name} 2>&1")
-                self.assertIn("Permission denied", result, f"Agent should not access its dataset directory {file.name} file")
-                self.assertIn("Command failed", result, "ls command should not succeed")
+            result = self.bash_tool.function(f"head -5 {self.config.prepared_dataset_dir}/{file.name} 2>&1")
+            self.assertNotIn("Permission denied", result, f"Agent should access the {file.name} file in prepared_datasets")
 
-        for filename in non_sensitive_files:
-            result = self.bash_tool.function(f"head -5 {self.config.prepared_dataset_dir}/{filename} 2>&1")
-            self.assertNotIn("Permission denied", result, f"Agent should read file {filename} in dataset folder")
-            self.assertNotIn("Command failed", result, "head command should succeed")
+        test_set_dir = self.config.prepared_test_set_dir
+        result = self.bash_tool.function(f"ls {test_set_dir} 2>&1")
+        self.assertIn("No such file or directory", result, "Agent should not have access to prepared_test_sets directory")
 
     def test_agent_access_to_repository_datasets(self):
         self.assertFalse(Path("/repository/datasets/").is_dir())
