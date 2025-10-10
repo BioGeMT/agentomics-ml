@@ -90,7 +90,8 @@ def main():
         return 1
     
     if not is_wandb_key_available():
-        console.print("WANDB_API_KEY not set. Logging to WANDB is disabled.", style="yellow")
+        console.print("Wandb env variables not set. Logging to WANDB is disabled.", style="yellow")
+        console.print("To setup wandb, provide WANDB_API_KEY, WANDB_PROJECT_NAME, and WANDB_ENTITY env variables", style="yellow")
     
     # Go to interactive selection if dataset/model/val_metric not provided
     print_welcome()

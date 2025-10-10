@@ -39,7 +39,7 @@ def print_datasets_table(datasets: List[Dict], title: str = "Dataset Preparation
         if dataset['validation_rows'] > 0:
             val_display = f"[yellow]{dataset['validation_rows']:,}[/yellow]"
         else:
-            val_display = "[dim]Agent Generated[/dim]"
+            val_display = "[dim]N/A (Will be created by agent)[/dim]"
             
         if dataset['test_rows'] > 0:
             test_display = f"[blue]{dataset['test_rows']:,}[/blue]"
