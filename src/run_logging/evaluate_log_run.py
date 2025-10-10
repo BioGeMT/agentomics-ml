@@ -1,6 +1,7 @@
 import json
 import subprocess
 import traceback
+from pathlib import Path
 
 from pydantic_ai import ModelRetry
 from eval.evaluate_result import get_metrics
@@ -12,6 +13,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
 
     run_dir = config.runs_dir / config.agent_id
     snapshot_dir = config.snapshots_dir / config.agent_id
+    test_files_dir = config.prepared_test_set_dir
     source_folder = 'snapshot' if use_best_snapshot else 'run'
     if use_best_snapshot:
         print('USING BEST SNAPSHOT')
@@ -34,7 +36,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
     stage_to_input = {
         'dry_run': config.prepared_dataset_dir / "train.no_label.csv",
         'validation': validation_input,
-        'test': config.prepared_dataset_dir / "test.no_label.csv",
+        'test': test_files_dir / "test.no_label.csv",
         'train': train_input
     }
     stage_to_output = {
@@ -54,7 +56,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
     command = f"{command_prefix} python {inference_path[source_folder]} --input {stage_to_input[evaluation_stage]} --output {stage_to_output[evaluation_stage]}"
     inference_out = subprocess.run(command, shell=True, executable="/bin/bash", capture_output=True)
     if evaluation_stage == 'test':
-        test_file_path = config.prepared_dataset_dir / "test.csv"
+        test_file_path = test_files_dir / "test.csv"
         if not test_file_path.exists():
             print('TEST EVAL SKIPPED - NO TEST SET')
             return

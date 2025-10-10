@@ -1,5 +1,8 @@
 import wandb
+import json
+from dataclasses import asdict
 from pathlib import Path
+
 from run_logging.logging_helpers import is_wandb_active
 
 def log_files(config, files=None, iteration=None):
@@ -25,3 +28,13 @@ def get_python_files(path):
             py_files.append(element)
 
     return py_files
+
+def export_config_to_workspace(config):
+    config_dict = asdict(config)
+
+    for key, value in config_dict.items():
+        if isinstance(value, Path):
+            config_dict[key] = str(value)
+
+    config_path = config.workspace_dir.resolve() / "config.json"
+    config_path.write_text(json.dumps(config_dict, indent=2))
