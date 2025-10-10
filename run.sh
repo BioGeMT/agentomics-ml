@@ -82,7 +82,9 @@ if [ "$LOCAL_MODE" = true ]; then
     cp -r workspace/snapshots/. outputs/best_run_files/
     cp -r workspace/reports/. outputs/reports/
 else
-    docker build -t agentomics_prepare_img -f Dockerfile.prepare .
+    echo "Building the data preparation image"
+    docker build --progress=quiet -t agentomics_prepare_img -f Dockerfile.prepare .
+    echo "Build done"
     docker run \
         -u $(id -u):$(id -g) \
         --rm \
@@ -91,7 +93,9 @@ else
         -v "$(pwd)":/repository \
         agentomics_prepare_img
 
-    docker build -t agentomics_img .
+    echo "Building the run image"
+    docker build --progress=quiet -t agentomics_img .
+    echo "Build done"
     docker volume create temp_agentomics_volume
 
     GPU_FLAGS=()
@@ -131,12 +135,23 @@ else
             -v temp_agentomics_volume:/workspace \
             agentomics_img ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
 
+
+        # Pick the latest run from the volume
+        RUN_NAME=$(docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume:/source busybox sh -c 'ls -1t /source/snapshots | head -n 1')
+
+        mkdir -p outputs/${RUN_NAME}/best_run_files outputs/${RUN_NAME}/reports
+
         # Copy best-run files and report
-        mkdir -p outputs/best_run_files outputs/reports
-        docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume:/source -v $(pwd)/outputs:/dest busybox cp -r /source/snapshots/. /dest/best_run_files/
+        docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume:/source -v $(pwd)/outputs/${RUN_NAME}:/dest busybox cp -r /source/snapshots/${RUN_NAME}/. /dest/best_run_files/
 
         # Copy reports from all iterations
-        docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume:/source -v $(pwd)/outputs:/dest busybox cp -r /source/reports/. /dest/reports/
+        docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume:/source -v $(pwd)/outputs/${RUN_NAME}:/dest busybox cp -r /source/reports/${RUN_NAME}/. /dest/reports/
+        
+        GREEN='\033[0;32m'
+        NOCOLOR='\033[0m'
+        echo -e "${GREEN}Run finished. Report and files can be found in outputs/${RUN_NAME}${NOCOLOR}"
+        echo -e "${GREEN}To run inference on new data, use the run_inference.sh --agent ${RUN_NAME} --input <path_to_input_csv> --output <path_to_output_csv>${NOCOLOR}"
+
     fi
 
     docker volume rm temp_agentomics_volume

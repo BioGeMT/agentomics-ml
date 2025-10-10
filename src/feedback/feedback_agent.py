@@ -42,6 +42,7 @@ async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, 
     {prompt_suffix}.
     """
     
+    print("CONSTRUCTING ITERATION FEEDBACK...")
     feedback = await agent.run(
         user_prompt = feedback_prompt,
         output_type=None,

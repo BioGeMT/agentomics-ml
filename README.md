@@ -37,10 +37,10 @@ cd Agentomics-ML
 - **Docker mode (recommended)**: [Docker](https://docs.docker.com/get-docker/) must be installed.
 - **Local mode**: Conda must be installed.
 
-## Quick Start
+## Quick Start (using a sample dataset)
 
 ```bash
-# 1. Set your API key (get from https://openrouter.ai)
+# 1. Set your API key (see the PROVIDERS readme section for more API key options)
 export OPENROUTER_API_KEY="your-key-here"
 # OR create a .env file (see .env.example) 
 
@@ -48,6 +48,7 @@ export OPENROUTER_API_KEY="your-key-here"
 ./run.sh
 ```
 
+## Run outputs
 After the run is finished, the `outputs` folder contains 
 - Generated files (training script, inference script, model files, ...)
 - Final report (Summary of the model, train/valid/test metrics, ...)
@@ -66,10 +67,24 @@ The csv files must contain a column for the classification or regression labels 
 
 See the `datasets` folder for examples
 
+After you've added your dataset folder and files, run agentomics:
+
+```bash
+# 1. Set your API key (see the PROVIDERS readme section for more API key options)
+export OPENROUTER_API_KEY="your-key-here"
+# OR create a .env file (see .env.example) 
+
+# 2. Run the agent and select your dataset
+./run.sh
+```
+
 ## Predictions
-When getting predictions on new data, make sure the data file has the same column names as your training data. There's no need to provide the class/target column, as this will be predicted.
+When getting predictions on new data, make sure the data file has the same column names as your training data (except the class/target column).
 
 The output will be a csv file containing a single columns called 'predictions' in the same order as your data.
+
+The `agent_id` is the name of the finished run (same as a folder name in `outputs/`)
+
 ```
 cd outputs/best_run_files/<run_name>
 conda activate .conda/envs/<run_name>_env 
