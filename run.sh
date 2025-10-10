@@ -108,6 +108,16 @@ else
         OLLAMA_FLAGS+=(--add-host=host.docker.internal:host-gateway)
     fi
 
+    PROVIDERS_CONFIG_FILE="src/utils/providers/configured_providers.yaml"
+    API_KEY_NAMES=$(grep -E 'apikey:' "$PROVIDERS_CONFIG_FILE" | grep -o '\${[^}]*}' | tr -d '${}' | sort -u)
+    DOCKER_API_KEY_ENV_VARS=()
+    for KEY_NAME in $API_KEY_NAMES; do
+        if [ -n "${!KEY_NAME:-}" ]; then
+            DOCKER_API_KEY_ENV_VARS+=(-e "$KEY_NAME=${!KEY_NAME}")
+            echo "Adding API key env var to docker: $KEY_NAME"
+        fi
+    done
+
     if [ "$TEST_MODE" = true ]; then
         docker run \
             -it \
@@ -115,6 +125,7 @@ else
             --name agentomics_test_cont \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
+            ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/test":/repository/test:ro \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
@@ -129,6 +140,7 @@ else
             --name agentomics_cont \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
+            ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
             -v "$(pwd)/.env":/repository/.env:ro \
