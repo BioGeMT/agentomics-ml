@@ -78,13 +78,41 @@ python inference.py --input <path_to_inference_data_csv> --output <path_to_outpu
 
 
 # Advanced run parameters
+## Providers
+We support various providers out-of-the-box. Below is a list of providers, with the specific environment variables names we check for. Those should be provided in the `.env` file, or exported.
+- OpenRouter (OPENROUTER_API_KEY)
+- OpenAI (OPENAI_API_KEY)
+- Anthropic (ANTHROPIC_API_KEY)
+
+If you wish to use other providers, add them to the `src/utils/providers/configured_providers.yaml` configuration. For those, we won't support a "nice" interactive model selection, and you will need to provide the `--model` parameter explicitly.
+
+### Local LLM (Ollama)
+We support Ollama for running with local models
+
+If youre running agentomics in docker mode (recommended), additional steps are needed:
+
+- Run `systemctl edit ollama.service`  and add the following lines to allow Ollama to listen the requests coming from the container: 
+  ```
+  [Service]
+  Environment="OLLAMA_HOST=172.17.0.1:11434"
+  ```
+
+- Restart Ollama to propagate this change
+  ```
+  systemctl daemon-reload
+  systemctl restart ollama.service
+  ```
+-  Add the `--ollama` flag when executing the `./run.sh` script.
+
+If youre running agentomics in local mode (unsafe), `OLLAMA_BASE_URL` environment variable needs to be provided (either in the `.env` file or exported, typically `BASE_OLLAMA_URL=http://localhost:11434/v1`). 
+
 ## Explicit parameters
 Running `./run.sh` with no parameters will prompt you to select them interactively.
 
 You can also supply them directly to skip the interactive selection
 ```
 .run.sh \
-  --model gpt-5-nano \
+  --model gpt-5-nano \ # provider-specific
   --dataset human_ocr_ensembl \
   --iterations 5 \
   --val-metric ACC \

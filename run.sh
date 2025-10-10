@@ -11,6 +11,7 @@ AGENTOMICS_ARGS=()
 LOCAL_MODE=false
 TEST_MODE=false
 CPU_ONLY=false
+OLLAMA=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -36,6 +37,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --local)
             LOCAL_MODE=true
+            shift
+            ;;
+        --ollama)
+            OLLAMA=true
             shift
             ;;
         --test)
@@ -94,6 +99,10 @@ else
         GPU_FLAGS+=(--gpus all)
         GPU_FLAGS+=(--env NVIDIA_VISIBLE_DEVICES=all)
     fi
+    OLLAMA_FLAGS=()
+    if [ "$OLLAMA" = true ]; then
+        OLLAMA_FLAGS+=(--add-host=host.docker.internal:host-gateway)
+    fi
 
     if [ "$TEST_MODE" = true ]; then
         docker run \
@@ -101,6 +110,7 @@ else
             --rm \
             --name agentomics_test_cont \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
+            ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/test":/repository/test:ro \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
@@ -114,6 +124,7 @@ else
             --rm \
             --name agentomics_cont \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
+            ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
             -v "$(pwd)/.env":/repository/.env:ro \
