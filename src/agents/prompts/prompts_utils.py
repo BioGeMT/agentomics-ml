@@ -1,10 +1,14 @@
 def get_system_prompt(config):
+    import json
     train_csv_path = config.agent_dataset_dir / "train.csv"
     validation_csv_path = config.agent_dataset_dir / "validation.csv"
     dataset_knowledge_path = config.agent_dataset_dir / "dataset_description.md"
-    
+
     with open(dataset_knowledge_path) as f:
         dataset_knowledge = f.read()
+    if config.task_type == "classification":
+        metadata = json.loads((config.prepared_dataset_dir / "metadata.json").read_text())
+        dataset_knowledge += f"\n\nLabel mapping: {metadata.get('label_to_scalar', {})}"
     dataset_paths = f"Dataset path:\n    {train_csv_path}"
     if validation_csv_path.exists():
         dataset_paths += f"\n    Validation path:\n    {validation_csv_path}"
