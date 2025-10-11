@@ -152,6 +152,7 @@ def prepare_all_datasets(datasets_dir: str, prepared_datasets_dir: str) -> None:
             task = progress.add_task(f"Preparing {dataset_info['name']}...", total=None)
             try:
                 console.print(f"[yellow]Preparing dataset '{dataset_info['name']}'[/yellow]")
+                progress.stop()
                 prepare_dataset(
                     dataset_dir=dataset_info['path'],
                     target_col=None, #auto-detected inside
@@ -159,7 +160,9 @@ def prepare_all_datasets(datasets_dir: str, prepared_datasets_dir: str) -> None:
                     negative_class=None, #auto-detected inside
                     task_type=None, #auto-detected inside
                     output_dir=prepared_datasets_dir,
+                    interactive=True,
                 )
+                progress.start()
                 success = True
             except Exception as e:
                 console.print(f"[red]Error preparing dataset '{dataset_info['name']}': {e}[/red]")

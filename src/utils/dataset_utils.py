@@ -153,16 +153,23 @@ def check_dataset_prepared(dataset_dir: str, prepared_datasets_dir: str) -> bool
     train_file = prepared_path / "train.csv"
     return metadata_file.exists() and train_file.exists()
 
-def auto_detect_target_col(train_df):
+def auto_detect_target_col(train_df, interactive=False):
     """Auto-detect target column"""
     possible_target_cols = ['class', 'target', 'label', 'y']
     for col in possible_target_cols:
         if col in train_df.columns:
             print(f'INFO: Auto-detected target column: {col}')
             return col
-        
-    print(f'INFO: Using last column as target: {train_df.columns[-1]}')
-    return train_df.columns[-1]
+
+    if interactive:
+        print(f"\nCould not auto-detect target column. Expected one of {possible_target_cols}")
+        while True:
+            target_col = input("Enter the name of the target/label column: ").strip()
+            if target_col in train_df.columns:
+                return target_col
+            print(f"Column '{target_col}' not found. Please try again.")
+
+    raise ValueError(f"Could not auto-detect target column. Expected one of {possible_target_cols}, but found columns: {train_df.columns.tolist()}. Please specify --target-col explicitly.")
 
 def get_task_type_from_prepared_dataset(prepared_dataset_dir: str) -> str:
     metadata_path = prepared_dataset_dir / "metadata.json"
@@ -248,8 +255,8 @@ def get_label_to_number_map(train_df, test_df, target_col, positive_class=None, 
 
     return label_map
 
-def prepare_dataset(dataset_dir, target_col, 
-                   positive_class, negative_class, task_type, output_dir):
+def prepare_dataset(dataset_dir, target_col,
+                   positive_class, negative_class, task_type, output_dir, interactive=False):
     """
     Preprocesses dataset files to a format digestable by the agent code
     If target_col and/or task_type is None, it will be auto-detected and printed out
@@ -269,7 +276,7 @@ def prepare_dataset(dataset_dir, target_col,
     validation_df = pd.read_csv(validation) if validation else None
     
     if target_col is None:
-        target_col = auto_detect_target_col(train_df)
+        target_col = auto_detect_target_col(train_df, interactive=interactive)
     if task_type is None:
         task_type = auto_detect_task_type(train_df, target_col)
     
@@ -302,7 +309,7 @@ def prepare_dataset(dataset_dir, target_col,
         except KeyError as e:
             raise KeyError(f"Target column '{target_col}' not found in {split_name} dataset. Available columns: {df.columns}") from e
 
-        df.to_csv(out_dir / f'{split_name}.csv', index=False)
+        df.drop(columns=[target_col]).to_csv(out_dir / f'{split_name}.csv', index=False)
         df.drop([target_col, 'numeric_label'], axis=1).to_csv(
             out_dir / f'{split_name}.no_label.csv', index=False
         )

@@ -53,7 +53,7 @@ def generate_mirbench_files():
             df = pd.read_csv(download_path/'miRBench', sep="\t")
             df = df.rename(columns={"label": class_col})
             df[numeric_label_col] = df[class_col].map(dataset_label_to_scalar[dataset_name])
-            df.to_csv(f"{local_dset_path}/{split}.csv", index=False)
+            df.drop(columns=[class_col]).to_csv(f"{local_dset_path}/{split}.csv", index=False)
             df.drop(columns=[class_col, numeric_label_col]).to_csv(f"{local_dset_path}/{split}.no_label.csv", index=False)
 
 def generate_genomic_benchmarks_files():
@@ -107,7 +107,7 @@ def generate_genomic_benchmarks_files():
                     data.append({"sequence": seq, class_col: label})
             df = pd.DataFrame(data)
             df[numeric_label_col] = df[class_col].map(dataset_label_to_scalar[dataset_name])
-            df.to_csv(f"{local_dset_path}/{split}.csv", index=False)
+            df.drop(columns=[class_col]).to_csv(f"{local_dset_path}/{split}.csv", index=False)
             df.drop(columns=[class_col, numeric_label_col]).to_csv(f"{local_dset_path}/{split}.no_label.csv", index=False)
 
 def generate_dataset_files():
