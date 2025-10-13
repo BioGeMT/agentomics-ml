@@ -10,10 +10,11 @@ from run_logging.evaluate_log_run import run_inference_and_log
 from run_logging.logging_helpers import log_inference_stage_and_metrics, log_serial_metrics
 from run_logging.wandb import setup_logging
 from run_logging.log_files import log_files
+from utils.env_utils import are_wandb_vars_available
 from utils.create_user import create_new_user_and_rundir
 from utils.dataset_utils import setup_nonsensitive_dataset_files_for_agent
 from utils.config import Config
-from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics
+from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics, replace_snapshot_path_with_relative
 from utils.workspace_setup import ensure_workspace_folders
 from agents.architecture import run_iteration
 from utils.metrics import get_classification_metrics_names, get_regression_metrics_names
@@ -44,9 +45,13 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric, root_
     agent_id = create_new_user_and_rundir(config)
     config.agent_id = agent_id
     config.print_summary()
-
-    # initialize logging and LLMs
-    wandb_logged_in = setup_logging(config)
+    
+    # initialize logging
+    if are_wandb_vars_available():
+        wandb_logged_in = setup_logging(config)
+    else:
+        wandb_logged_in = False
+    # initialize LLMs
     default_model = provider.create_model(config.model_name, config)
     feedback_model = provider.create_model(config.feedback_model_name, config)
     #TODO Instantiate report logger model and pass it to add_summary_to_report
@@ -133,6 +138,7 @@ async def run_agentomics(config: Config, default_model, feedback_model):
         print('FINAL TEST EVAL FAIL', str(e))
         log_inference_stage_and_metrics(1, task_type=config.task_type)
 
+    replace_snapshot_path_with_relative(snapshot_dir = config.snapshots_dir / config.agent_id)
     rename_and_snapshot_best_iteration_report(config)
     log_files(config)
 

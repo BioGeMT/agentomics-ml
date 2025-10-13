@@ -37,10 +37,10 @@ cd Agentomics-ML
 - **Docker mode (recommended)**: [Docker](https://docs.docker.com/get-docker/) must be installed.
 - **Local mode**: Conda must be installed.
 
-## Quick Start
+## Quick Start (using a sample dataset)
 
 ```bash
-# 1. Set your API key (get from https://openrouter.ai)
+# 1. Set your API key (see the PROVIDERS readme section for more API key options)
 export OPENROUTER_API_KEY="your-key-here"
 # OR create a .env file (see .env.example) 
 
@@ -48,6 +48,7 @@ export OPENROUTER_API_KEY="your-key-here"
 ./run.sh
 ```
 
+## Run outputs
 After the run is finished, the `outputs` folder contains 
 - Generated files (training script, inference script, model files, ...)
 - Final report (Summary of the model, train/valid/test metrics, ...)
@@ -66,25 +67,72 @@ The csv files must contain a column for the classification or regression labels 
 
 See the `datasets` folder for examples
 
+After you've added your dataset folder and files, run agentomics:
+
+```bash
+# 1. Set your API key (see the PROVIDERS readme section for more API key options)
+export OPENROUTER_API_KEY="your-key-here"
+# OR create a .env file (see .env.example) 
+
+# 2. Run the agent and select your dataset
+./run.sh
+```
+
 ## Predictions
-When getting predictions on new data, make sure the data file has the same column names as your training data. There's no need to provide the class/target column, as this will be predicted.
+When getting predictions on new data, make sure the data file has the same column names as your training data (except the class/target column).
 
 The output will be a csv file containing a single columns called 'predictions' in the same order as your data.
+
 ```
-cd outputs/best_run_files/<run_name>
-conda activate .conda/envs/<run_name>_env 
-python inference.py --input <path_to_inference_data_csv> --output <path_to_output_csv>
+./inference.sh --agent-dir outputs/<agent_id> --input <test_data_file>.csv --output <prediction_file>.csv
 ```
 
+The `<agent_id>` is the name of the finished run (same as a folder name in `outputs/`)
+
+Optionally pass `--cpu-only` flag if you wish to only run the inference with CPU.
+
+If you wish to run the inference locally and not inside a docker container, use the `--local` flag.
+
+To customize or directly access the inference code, use artifacts in the `outputs/<run_name>/best_run_files` folder.
+- `.conda` folder contains the conda environment with packages necessary for the inference
+- `inference.py` contains the inference code, and might depend on other artifacts in the folder (like `model.joblib`, tokenizer files, etc..)
 
 # Advanced run parameters
+## Providers
+We support various providers out-of-the-box. Below is a list of providers, with the specific environment variables names we check for. Those should be provided in the `.env` file, or exported.
+- OpenRouter (OPENROUTER_API_KEY)
+- OpenAI (OPENAI_API_KEY)
+- Anthropic (ANTHROPIC_API_KEY)
+
+If you wish to use other providers, add them to the `src/utils/providers/configured_providers.yaml` configuration. For those, we won't support a "nice" interactive model selection, and you will need to provide the `--model` parameter explicitly.
+
+### Local LLM (Ollama)
+We support Ollama for running with local models
+
+If youre running agentomics in docker mode (recommended), additional steps are needed:
+
+- Run `systemctl edit ollama.service`  and add the following lines to allow Ollama to listen the requests coming from the container: 
+  ```
+  [Service]
+  Environment="OLLAMA_HOST=172.17.0.1:11434"
+  ```
+
+- Restart Ollama to propagate this change
+  ```
+  systemctl daemon-reload
+  systemctl restart ollama.service
+  ```
+-  Add the `--ollama` flag when executing the `./run.sh` script.
+
+If youre running agentomics in local mode (unsafe), `OLLAMA_BASE_URL` environment variable needs to be provided (either in the `.env` file or exported, typically `BASE_OLLAMA_URL=http://localhost:11434/v1`). 
+
 ## Explicit parameters
 Running `./run.sh` with no parameters will prompt you to select them interactively.
 
 You can also supply them directly to skip the interactive selection
 ```
 .run.sh \
-  --model gpt-5-nano \
+  --model gpt-5-nano \ # provider-specific
   --dataset human_ocr_ensembl \
   --iterations 5 \
   --val-metric ACC \

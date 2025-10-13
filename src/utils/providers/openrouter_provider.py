@@ -14,47 +14,23 @@ class OpenRouterProvider(Provider):
     def is_byok_model(self, model: Dict) -> bool:
         """Check if model requires separate API key (BYOK)."""
         description = model.get("description", "").lower()
-        model_id = model.get("id", "").lower()
         
         # Check for BYOK indicators
         byok_indicators = ["byok", "requires api key", "add your api key", "bring your own key"]
         if any(indicator in description for indicator in byok_indicators):
-            self.console.print(f"Detected BYOK model: {model_id}")
             return True
-        
-        # Check for suspiciously low pricing
-        pricing = model.get("pricing", {})
-        try:
-            prompt_cost = float(pricing.get("prompt", "0"))
-            completion_cost = float(pricing.get("completion", "0"))
-            if prompt_cost < 0.0000001 or completion_cost < 0.0000001:
-                return True
-        except (ValueError, TypeError):
-            pass
-        
+
         return False
     
     def is_coding_model(self, model: Dict) -> bool:
-        """Check if model is suitable for coding/reasoning tasks."""
         model_id = model.get("id", "").lower()
         description = model.get("description", "").lower()
         
-        # Coding/reasoning keywords
-        coding_keywords = ["code", "coding", "instruct", "reasoning", "o1", "preview"]
-        if any(keyword in f"{model_id} {description}" for keyword in coding_keywords):
-            return True
-        
-        # Major coding models
-        coding_models = ["gpt-4", "claude-3", "gemini", "llama-3", "deepseek", "qwen", "mistral"]
-        if any(pattern in model_id for pattern in coding_models):
-            return True
-        
-        # Exclude non-coding models
         exclude_patterns = ["whisper", "dall-e", "tts", "embedding", "vision", "image", "audio"]
         if any(pattern in f"{model_id} {description}" for pattern in exclude_patterns):
             return False
         
-        return False
+        return True
     
     def supports_tool_use(self, model: Dict) -> bool:
         """Check if model supports tool use/function calling."""
@@ -102,10 +78,6 @@ class OpenRouterProvider(Provider):
                 if prompt_cost == 0 and completion_cost == 0:
                     continue
                 
-                # Skip suspiciously cheap models
-                if prompt_cost < 0.000001:
-                    continue
-                
                 # Format model data
                 provider = model_id.split("/")[0] if "/" in model_id else "unknown"
                 model_data = {
@@ -122,29 +94,6 @@ class OpenRouterProvider(Provider):
             except (ValueError, TypeError):
                 continue
         
-        # Sort by popularity (provider priority + model quality)
-        def popularity_score(model):
-            provider = model["provider"]
-            model_id = model["id"].lower()
-            
-            provider_priority = {
-                "openai": 0, "anthropic": 1, "google": 2, "meta-llama": 3, 
-                "deepseek": 4, "mistralai": 5, "qwen": 6
-            }
-            
-            model_priority = 0
-            if any(pattern in model_id for pattern in ["gpt-4o", "claude-3.5-sonnet", "o1-preview"]):
-                model_priority = 0
-            elif any(pattern in model_id for pattern in ["gpt-4-turbo", "claude-3-opus", "gemini-1.5-pro"]):
-                model_priority = 1
-            elif any(pattern in model_id for pattern in ["gpt-4", "claude-3-sonnet"]):
-                model_priority = 2
-            else:
-                model_priority = 3
-            
-            return (provider_priority.get(provider, 99), model_priority)
-        
-        filtered.sort(key=popularity_score)
         return filtered[:limit]
 
     def display_models(self, models: List[Dict] = None) -> None:
@@ -190,10 +139,6 @@ class OpenRouterProvider(Provider):
             provider_display = provider_names.get(provider, provider.title())
             
             for model in provider_models:
-                # Highlight flagship models
-                style = {"style": "bold"} if any(pattern in model["id"].lower() 
-                    for pattern in ["gpt-4o", "claude-3.5", "o1-preview", "gemini-1.5-pro"]) else {}
-                
                 # Clean model name
                 clean_name = model["id"].split("/", 1)[1] if "/" in model["id"] else model["id"]
                 
@@ -210,7 +155,7 @@ class OpenRouterProvider(Provider):
                     "Yes" if model.get("supports_tools", False) else "No"
                 ]
                 
-                table.add_row(*row, **style)
+                table.add_row(*row)
                 global_index += 1
         
         self.console.print(table)
