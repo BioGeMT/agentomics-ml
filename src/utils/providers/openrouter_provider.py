@@ -128,16 +128,22 @@ class OpenRouterProvider(Provider):
             max_width = 0
             for model in provider_models:
                 clean_name = model["id"].split("/", 1)[1] if "/" in model["id"] else model["id"]
-                context = f"{model['context_length']//1000}K" if model['context_length'] >= 1000 else str(model['context_length'])
-                cost = f"{model['prompt_cost_per_million']:.1f}/{model['completion_cost_per_million']:.1f}"
+                ctx_len = model['context_length']
+                if ctx_len >= 1_000_000:
+                    context = f"{ctx_len//1_000_000}M"
+                elif ctx_len >= 1000:
+                    context = f"{ctx_len//1000}K"
+                else:
+                    context = str(ctx_len)
+                input_cost = f"${model['prompt_cost_per_million']:.1f}/M"
+                output_cost = f"${model['completion_cost_per_million']:.1f}/M"
 
-                name_line_len = len(clean_name) + 5
-                cost_line_len = 6 + len(cost) + 1 + len(context)
-                max_width = max(max_width, name_line_len, cost_line_len)
+                cost_line_len = len(f"   Input: {input_cost}  Output: {output_cost}  Context: {context}")
+                max_width = max(max_width, cost_line_len)
 
-                model_data.append((clean_name, cost, context))
+                model_data.append((clean_name, input_cost, output_cost, context))
 
-            panel_width = min(max_width + 6, 50)
+            panel_width = min(max_width + 8, 60)
             company_boxes.append((box_height, panel_width, model_data, provider_display))
 
         num_cols = 4
@@ -156,13 +162,15 @@ class OpenRouterProvider(Provider):
         
         col_renderables = []
         global_index = 1
+        max_num_width = len(str(len(models)))
         for col_idx, col in enumerate(columns):
             panels = []
             for model_data, provider_display in col:
                 lines = []
-                for clean_name, cost, context in model_data:
-                    lines.append(f"[dim]{global_index}.[/dim] [cyan]{clean_name}[/cyan]")
-                    lines.append(f"   [yellow]${cost}[/yellow] [magenta]{context}[/magenta]")
+                for clean_name, input_cost, output_cost, context in model_data:
+                    num_str = str(global_index).rjust(max_num_width)
+                    lines.append(f"[dim]{num_str}.[/dim] [cyan]{clean_name}[/cyan]")
+                    lines.append(f"   Input: [yellow]{input_cost}[/yellow]  Output: [yellow]{output_cost}[/yellow]  Context: [magenta]{context}[/magenta]")
                     global_index += 1
                 panel = Panel("\n".join(lines), title=f"[bold green]{provider_display}[/bold green]",
                              title_align="left", border_style="green", width=col_max_widths[col_idx])
@@ -170,7 +178,7 @@ class OpenRouterProvider(Provider):
             col_renderables.append(Group(*panels))
 
         self.console.print(Columns(col_renderables, padding=(0, 1), expand=False))
-        self.console.print("\n[dim]Cost: Prompt/Output $/M  Ctx: Context length[/dim]")
+        self.console.print("\n[dim]Prices per million tokens[/dim]")
     
     def interactive_model_selection(self, limit: int = 20) -> Optional[str]:
         """Ovveriding method in Provider class. Interactive model selection for OpenRouter models."""
