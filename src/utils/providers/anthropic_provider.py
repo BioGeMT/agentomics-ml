@@ -4,8 +4,7 @@ from typing import List, Dict
 
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.providers.anthropic import AnthropicProvider as PydanticAnthropicProvider # would clash with our class name
-from rich.table import Table
-from rich import box
+from rich.panel import Panel
 
 from utils.config import Config
 from .provider import Provider
@@ -20,15 +19,20 @@ class AnthropicProvider(Provider):
         if models is None:
             models = self.fetch_models()
 
-        table = Table(title=f"Available Anthropic Models ({len(models)} found)", box=box.ROUNDED)
-        table.add_column("#", style="cyan", no_wrap=True, width=4)
-        table.add_column("Model", style="green")
-        
+        self.console.print(f"[bold blue]Available Models[/bold blue] ({len(models)} models)\n")
+
+        lines = []
+        max_num_width = len(str(len(models)))
+        max_name_width = max(len(model.get('display_name', '')) for model in models)
+
         for i, model in enumerate(models, 1):
-            display_name = model.get("display_name")
-            table.add_row(str(i), display_name)
-        
-        self.console.print(table)
+            num_str = str(i).rjust(max_num_width)
+            lines.append(f"[dim]{num_str}.[/dim] [cyan]{model.get('display_name', '')}[/cyan]")
+
+        panel_width = max_num_width + max_name_width + 10
+        panel = Panel("\n".join(lines), title="[bold green]Anthropic[/bold green]",
+                     title_align="left", border_style="green", width=panel_width)
+        self.console.print(panel)
 
     def create_model(self, model_name: str, config: Config) -> AnthropicModel:
         """Ovveriding method in Provider class. Create Anthropic model instance."""
