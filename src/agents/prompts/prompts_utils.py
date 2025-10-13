@@ -1,5 +1,6 @@
+import json
+
 def get_system_prompt(config):
-    import json
     train_csv_path = config.agent_dataset_dir / "train.csv"
     validation_csv_path = config.agent_dataset_dir / "validation.csv"
     dataset_knowledge_path = config.agent_dataset_dir / "dataset_description.md"
