@@ -56,8 +56,7 @@ class OllamaProvider(Provider):
 
         families = {}
         for model in models:
-            model_name = model.get("model")
-            family = model_name.split(":")[0] if ":" in model_name else model_name.split("-")[0]
+            family = model.get("details", {}).get("family", "unknown")
             if family not in families:
                 families[family] = []
             families[family].append(model)
