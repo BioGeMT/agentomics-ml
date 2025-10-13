@@ -21,16 +21,36 @@ for arg in "$@"; do
     fi
 done
 
-while [[ "$#" -gt 0 ]]; do
-    case $1 in
-        --agent-dir) AGENT_DIR="$2"; shift ;;
-        --input) INPUT_PATH="$2"; shift ;;
-        --output) OUTPUT_PATH="$2"; shift ;;
-        --cpu-only) CPU_ONLY=true; shift ;;
-        --local) DOCKER_MODE=false ;;
-        *) ARGS+=("$1") ;;
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --agent-dir)
+            AGENT_DIR="$2"
+            shift 2
+            ;;
+        --input)
+            INPUT_PATH="$2"
+            shift 2
+            ;;
+        --output)
+            OUTPUT_PATH="$2"
+            shift 2
+            ;;
+        --cpu-only)
+            CPU_ONLY=true
+            shift
+            ;;
+        --local)
+            DOCKER_MODE=false
+            shift
+            ;;
+        --help)
+            show_help
+            ;;
+        *)
+            ARGS+=("$1")
+            shift
+            ;;
     esac
-    shift
 done
 
 # ensure all required args are provided
@@ -59,6 +79,7 @@ if [ "$CPU_ONLY" = false ]; then
 fi
 
 if [[ "$DOCKER_MODE" == true ]]; then
+    echo "Running inference in Docker..."
     AGENT_DIR_ABS="$(cd "$(dirname "$AGENT_DIR")" && pwd)/$(basename "$AGENT_DIR")"
     INPUT_PATH_ABS="$(cd "$(dirname "$INPUT_PATH")" && pwd)/$(basename "$INPUT_PATH")"
     OUTPUT_PATH_ABS="$(cd "$(dirname "$OUTPUT_PATH")" && pwd)/$(basename "$OUTPUT_PATH")"
@@ -72,10 +93,13 @@ if [[ "$DOCKER_MODE" == true ]]; then
         condaforge/mambaforge:23.3.1-0 \
         python inference.py \
         --input "/input_dir/$(basename "$INPUT_PATH_ABS")" \
-        --output "/output_dir/$(basename "$OUTPUT_PATH_ABS")" "${ARGS[@]}"
+        --output "/output_dir/$(basename "$OUTPUT_PATH_ABS")" "${ARGS[@]}" \
+        > /dev/null 2>&1
 else
+    echo "Running inference locally..."
     conda run -p "$ENV_PATH" \
         python "$INFERENCE_PATH" \
         --input "$INPUT_PATH" \
-        --output "$OUTPUT_PATH" "${ARGS[@]}"
+        --output "$OUTPUT_PATH" "${ARGS[@]}" \
+        > /dev/null 2>&1
 fi
