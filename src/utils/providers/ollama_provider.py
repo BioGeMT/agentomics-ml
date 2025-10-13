@@ -1,8 +1,9 @@
 import requests
 from typing import List, Optional, Dict
 
-from rich.table import Table
-from rich import box
+from rich.panel import Panel
+from rich.columns import Columns
+from rich.console import Group
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.models.openai import OpenAIModel
 
@@ -52,21 +53,50 @@ class OllamaProvider(Provider):
         """Ovveriding method in Provider class. Display Ollama available models in a table format."""
         if models is None:
             models = self.fetch_models()
-        
-        table = Table(title=f"Available Ollama Models ({len(models)} found)", box=box.ROUNDED)
-        table.add_column("#", style="cyan", no_wrap=True, width=4)
-        table.add_column("Model Name", style="green")
-        table.add_column("Parameter Size", style="yellow")
-        table.add_column("Quantization", style="blue")
-        
-        for i, model in enumerate(models, 1):
+
+        families = {}
+        for model in models:
             model_name = model.get("model")
-            parameter_size = model.get("details", {}).get("parameter_size", "N/A")
-            quantization_level = model.get("details", {}).get("quantization_level", "N/A")
-            
-            table.add_row(str(i), model_name, parameter_size, quantization_level)
-        
-        self.console.print(table)
+            family = model_name.split(":")[0] if ":" in model_name else model_name.split("-")[0]
+            if family not in families:
+                families[family] = []
+            families[family].append(model)
+
+        self.console.print(f"[bold blue]Available Models[/bold blue] ({len(models)} models from {len(families)} families)\n")
+
+        family_boxes = []
+        global_index = 1
+        max_num_width = len(str(len(models)))
+
+        for family, family_models in families.items():
+            lines = []
+            for model in family_models:
+                model_name = model.get("model")
+                parameter_size = model.get("details", {}).get("parameter_size", "N/A")
+                quantization_level = model.get("details", {}).get("quantization_level", "N/A")
+
+                num_str = str(global_index).rjust(max_num_width)
+                lines.append(f"[dim]{num_str}.[/dim] [cyan]{model_name}[/cyan]")
+                lines.append(f"   Size: [yellow]{parameter_size}[/yellow]  Quant: [blue]{quantization_level}[/blue]")
+                global_index += 1
+
+            panel = Panel("\n".join(lines), title=f"[bold green]{family.title()}[/bold green]",
+                         title_align="left", border_style="green")
+            family_boxes.append((len(family_models) * 2, panel))
+
+        num_cols = 4
+        columns = [[] for _ in range(num_cols)]
+        col_heights = [0] * num_cols
+
+        sorted_boxes = sorted(family_boxes, key=lambda x: x[0], reverse=True)
+
+        for box_height, panel in sorted_boxes:
+            min_col = col_heights.index(min(col_heights))
+            columns[min_col].append(panel)
+            col_heights[min_col] += box_height
+
+        col_renderables = [Group(*col) for col in columns if col]
+        self.console.print(Columns(col_renderables, padding=(0, 1), expand=False))
 
     def create_model(self, model_name: str, config: Config) -> OpenAIModel:
           """Ovveriding method in Provider class. Create OpenAI model instance (Ollama compatible)."""
