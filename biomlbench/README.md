@@ -2,6 +2,7 @@
 This can be done outside of our repository completely
 
 ## Install with uv
+Note: Currently running on python <= 3.12 is recommended due to uv package issues
 ```
 git clone https://github.com/science-machine/biomlbench.git
 cd biomlbench
