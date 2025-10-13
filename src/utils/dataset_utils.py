@@ -6,6 +6,9 @@ import pandas as pd
 from pathlib import Path
 from typing import List, Dict
 import subprocess
+from rich.console import Console
+from rich.table import Table
+from rich import box
 
 def count_csv_rows(csv_file: str) -> int:
     """
@@ -162,7 +165,18 @@ def auto_detect_target_col(train_df, interactive=False):
             return col
 
     if interactive:
+        console = Console()
         print(f"\nCould not auto-detect target column. Expected one of {possible_target_cols}")
+        cols = train_df.columns.tolist()
+        table = Table(show_header=False, box=box.ROUNDED, padding=(0, 1))
+        num_cols = 5
+        for _ in range(num_cols):
+            table.add_column(style="cyan", no_wrap=True)
+        for i in range(0, len(cols), num_cols):
+            table.add_row(*cols[i:i+num_cols])
+        console.print(f"\n[bold]Available columns ({len(cols)} total):[/bold]")
+        console.print(table)
+        console.print()
         while True:
             target_col = input("Enter the name of the target/label column: ").strip()
             if target_col in train_df.columns:
