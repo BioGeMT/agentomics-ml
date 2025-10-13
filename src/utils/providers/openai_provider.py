@@ -8,14 +8,13 @@ class OpenAiProvider(Provider):
         super().__init__(name="OpenAI", api_key=api_key, base_url=base_url, list_models_endpoint=list_models_endpoint)
         self.headers = {"Authorization": f"Bearer {api_key}"}
         
-    def filter_models(self) -> List[str]:
+    def filter_models(self) -> List:
         """Fetch and filter models from OpenAI API."""
         models = self.fetch_models()
         if not models:
             return None
-
         # non-exhaustive list of patterns to exclude
-        exclude_patterns = ["whisper", "dall-e", "tts", "embedding", "vision", "image", "audio", "moderation"]
+        exclude_patterns = ["whisper", "dall-e", "tts", "embedding", "vision", "image", "audio", "moderation", "sora", "transcribe", "realtime"]
         
         filtered_models = []
         for model in models:
@@ -29,6 +28,9 @@ class OpenAiProvider(Provider):
     def interactive_model_selection(self, limit: int = None) -> Optional[str]:
         """Ovveriding method in Provider class. Interactive OpenAI model selection."""
         models = self.filter_models()
+        # sort descending by first digit in model name
+        models.sort(key=lambda m: int(''.join(filter(str.isdigit, m.get("id", "")))[:1]) if any(c.isdigit() for c in m.get("id", "")) else 0, reverse=True)
+
         if not models:
             return None
         
