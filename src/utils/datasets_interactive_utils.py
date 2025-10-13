@@ -2,6 +2,9 @@ import sys
 from typing import List, Dict, Optional
 from rich.console import Console
 from rich.table import Table
+from rich.panel import Panel
+from rich.columns import Columns
+from rich.console import Group
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from utils.user_input import get_user_input_for_int
 from utils.dataset_utils import prepare_dataset, get_all_datasets_info
@@ -11,7 +14,7 @@ console = Console()
 def print_datasets_table(datasets: List[Dict], title: str = "Dataset Preparation Status") -> None:
     """
     Display datasets in a Rich table for preparation.
-    
+
     Args:
         datasets: List of dataset dictionaries
         title: Table title
@@ -19,66 +22,59 @@ def print_datasets_table(datasets: List[Dict], title: str = "Dataset Preparation
     if not datasets:
         console.print("[red]No datasets found[/red]")
         return
-    
-    # Create table with preparation-focused styling
-    table = Table(title=title, show_header=True, header_style="bold blue", expand=False)
-    
-    table.add_column("#", style="dim", width=4)
-    table.add_column("Dataset Name", style="cyan", no_wrap=True, width=25)
-    table.add_column("Train Rows", justify="right", style="green", width=10)
-    table.add_column("Validation Rows", justify="right", style="yellow", width=30)
-    table.add_column("Test Rows", justify="right", style="green", width=10)
-    table.add_column("Status", style="magenta", width=12)
-    
+
+    console.print(f"[bold blue]{title}[/bold blue] ({len(datasets)} datasets)\n")
+
+    name_lines = []
+    train_lines = []
+    val_lines = []
+    test_lines = []
+    status_lines = []
+
+    max_num_width = len(str(len(datasets)))
+
     for i, dataset in enumerate(datasets, 1):
-        # Format row counts with colors
+        num_str = str(i).rjust(max_num_width)
+        name_lines.append(f"[white]{num_str}[/white] [bold cyan]{dataset['name']}[/bold cyan]")
+
         if dataset['train_rows'] > 0:
-            train_display = f"[green]{dataset['train_rows']:,}[/green]"
+            train_lines.append(f"[green]{dataset['train_rows']:,}[/green]")
         else:
-            train_display = "[dim]N/A[/dim]"
+            train_lines.append("[dim]N/A[/dim]")
+
         if dataset['validation_rows'] > 0:
-            val_display = f"[yellow]{dataset['validation_rows']:,}[/yellow]"
+            val_lines.append(f"[yellow]{dataset['validation_rows']:,}[/yellow]")
         else:
-            val_display = "[dim]N/A (Will be created by agent)[/dim]"
-            
+            val_lines.append("[dim]N/A (Will be created by agent)[/dim]")
+
         if dataset['test_rows'] > 0:
-            test_display = f"[blue]{dataset['test_rows']:,}[/blue]"
+            test_lines.append(f"[blue]{dataset['test_rows']:,}[/blue]")
         else:
-            test_display = "[dim]N/A[/dim]"
-        
-        # Color-code status with better styling
+            test_lines.append("[dim]N/A[/dim]")
+
         status = dataset["status"]
         if status == "Already prepared":
-            status_display = f"[bold green]✓ {status}[/bold green]"
-            style_override = {"style": "dim"}
+            status_lines.append(f"[bold green]✓ {status}[/bold green]")
         elif status == "Prepared":
-            status_display = f"[bold green]✓ {status}[/bold green]"
-            style_override = {"style": "bold"}
+            status_lines.append(f"[bold green]✓ {status}[/bold green]")
         elif status == "Ready to prepare":
-            status_display = f"[bold yellow]⏳ {status}[/bold yellow]"
-            style_override = {"style": "bold"}
+            status_lines.append(f"[bold yellow]⏳ {status}[/bold yellow]")
         elif status == "Failed":
-            status_display = f"[bold red]✗ {status}[/bold red]"
-            style_override = {}
+            status_lines.append(f"[bold red]✗ {status}[/bold red]")
         elif "Missing" in status or "Empty" in status:
-            status_display = f"[bold red]⚠ {status}[/bold red]"
-            style_override = {}
+            status_lines.append(f"[bold red]⚠ {status}[/bold red]")
         else:
-            status_display = f"[red]{status}[/red]"
-            style_override = {}
-        
-        row = [
-            f"[dim]{i}[/dim]",
-            f"[bold cyan]{dataset['name']}[/bold cyan]",
-            train_display,
-            val_display,
-            test_display,
-            status_display
-        ]
-        
-        table.add_row(*row, **style_override)
-    
-    console.print(table)
+            status_lines.append(f"[red]{status}[/red]")
+
+    boxes = [
+        Panel("\n".join(name_lines), title="[bold]Dataset Name[/bold]", border_style="cyan"),
+        Panel("\n".join(train_lines), title="[bold]Train Rows[/bold]", border_style="green"),
+        Panel("\n".join(val_lines), title="[bold]Validation Rows[/bold]", border_style="yellow"),
+        Panel("\n".join(test_lines), title="[bold]Test Rows[/bold]", border_style="blue"),
+        Panel("\n".join(status_lines), title="[bold]Status[/bold]", border_style="magenta")
+    ]
+
+    console.print(Columns(boxes, padding=(0, 1), expand=False))
 
 def prepare_all_datasets(datasets_dir: str, prepared_datasets_dir: str) -> None:
     """
