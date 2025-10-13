@@ -10,7 +10,7 @@ from run_logging.evaluate_log_run import run_inference_and_log
 from run_logging.logging_helpers import log_inference_stage_and_metrics, log_serial_metrics
 from run_logging.wandb import setup_logging
 from run_logging.log_files import log_files
-from utils.env_utils import is_wandb_key_available
+from utils.env_utils import are_wandb_vars_available
 from utils.create_user import create_new_user_and_rundir
 from utils.dataset_utils import setup_nonsensitive_dataset_files_for_agent
 from utils.config import Config
@@ -47,7 +47,7 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric, root_
     config.print_summary()
     
     # initialize logging
-    if is_wandb_key_available():
+    if are_wandb_vars_available():
         wandb_logged_in = setup_logging(config)
     else:
         wandb_logged_in = False

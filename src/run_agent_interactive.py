@@ -12,7 +12,7 @@ from utils.datasets_interactive_utils import interactive_dataset_selection, prin
 from utils.metrics_interactive_utils import display_metrics_table, interactive_metric_selection
 from utils.providers.provider import Provider, get_provider_and_api_key
 from utils.metrics import get_classification_metrics_names, get_regression_metrics_names
-from utils.env_utils import is_wandb_key_available
+from utils.env_utils import are_wandb_vars_available
 from utils.user_input import get_user_input_for_int
 from run_agent import run_experiment
 
@@ -89,7 +89,7 @@ def main():
         console.print("Example: python agentomics-entrypoint.py --dataset heart_disease --model 'openai/gpt-4' --val-metric 'ACC'", style="cyan")
         return 1
     
-    if not is_wandb_key_available():
+    if not are_wandb_vars_available():
         console.print("Wandb env variables not set. Logging to WANDB is disabled.", style="yellow")
         console.print("To setup wandb, provide WANDB_API_KEY, WANDB_PROJECT_NAME, and WANDB_ENTITY env variables", style="yellow")
     

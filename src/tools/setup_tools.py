@@ -4,6 +4,7 @@ from .run_python_tool import create_run_python_tool
 import weave
 
 def create_tools(config):
+    print(f"Initializing agent conda environment and tools...")
     tools =[
             create_bash_tool(
                 agent_id=config.agent_id,
