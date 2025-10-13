@@ -4,6 +4,7 @@ from rich.table import Table
 from rich import box
 from rich.panel import Panel
 from rich.columns import Columns
+from rich.console import Group
 
 from utils.user_input import get_user_input_for_int
 from .provider import Provider
@@ -152,7 +153,7 @@ class OpenRouterProvider(Provider):
             col_heights[min_col] += box_height
             col_max_widths[min_col] = max(col_max_widths[min_col], panel_width)
 
-        from rich.console import Group
+        
         col_renderables = []
         global_index = 1
         for col_idx, col in enumerate(columns):
