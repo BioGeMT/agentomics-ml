@@ -7,7 +7,6 @@
 docker: Error response from daemon: could not select device driver "" with capabilities: [[gpu]]
 ```
 
-**What happens:**
 - Running `./run.sh --ollama` fails immediately after building Docker images
 - The script unconditionally adds `--gpus all` flag when `CPU_ONLY` is false
 - The `--gpus` flag is NVIDIA-specific and doesn't exist on macOS
@@ -18,14 +17,12 @@ docker: Error response from daemon: could not select device driver "" with capab
 
 ## Issue 2: README Ollama Instructions are Linux-Only
 
-**What's in the README:**
 ```bash
 systemctl edit ollama.service
 systemctl daemon-reload
 systemctl restart ollama.service
 ```
 
-**What's wrong:**
 - `systemctl` is a Linux-specific command (systemd)
 - macOS doesn't use systemd
 - No alternative instructions provided for macOS users
@@ -37,7 +34,7 @@ systemctl restart ollama.service
 
 ## Issue 3: Ollama Doesn't Appear in Provider List
 
-**What happens:**
+
 - Ollama is installed and running with `ollama serve`
 - `./run.sh --ollama --cpu-only` executes successfully
 - Provider selection menu shows: OpenAI, Anthropic, OpenRouter
@@ -78,7 +75,7 @@ Confusion:
 
 ## Issue 5: Missing macOS-Specific Documentation
 
-**What's not documented:**
+
 - How to start Ollama on macOS to accept connections from Docker
 - That `export OLLAMA_HOST=0.0.0.0:11434` is needed before `ollama serve`
 - That Docker containers on macOS cannot access GPU/Metal (architecture limitation)
@@ -90,7 +87,7 @@ Confusion:
 
 ## Additional Context: macOS Docker Architecture
 
-**How it works:**
+
 - Docker containers run natively on ARM architecture (Apple Silicon M1/M2/M3/M4)
 - Uses ARM-optimized packages from conda-forge
 - Cannot access Metal/Apple Silicon GPU (Docker Desktop limitation)
