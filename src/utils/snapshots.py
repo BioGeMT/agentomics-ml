@@ -141,6 +141,11 @@ def replace_workspace_path_with_snapshots(run_dir, snapshot_dir, absolute_path_s
             f.write(new_content)
 
 def replace_snapshot_path_with_relative(snapshot_dir):
+    print('________')
+    for file_path in Path(snapshot_dir).iterdir():
+        print(file_path)
+    print('________')
+
     for file_path in snapshot_dir.rglob('*.py'):
         if '.conda' in file_path.parts:
             # Don't check installed packages scripts
