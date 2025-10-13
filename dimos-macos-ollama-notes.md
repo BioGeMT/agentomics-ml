@@ -43,14 +43,13 @@ systemctl restart ollama.service
 - Provider selection menu shows: OpenAI, Anthropic, OpenRouter
 - Ollama is missing from the list
 
-**Why it happens:**
 The code in `src/utils/providers/provider.py` checks for `OLLAMA_BASE_URL` environment variable:
 ```python
 if (api_key_env and os.getenv(api_key_env)) or (provider_name.lower() == "ollama" and os.getenv("OLLAMA_BASE_URL")):
     provided_keys[provider_name] = os.getenv(api_key_env, "")
 ```
 
-**The confusion:**
+Confusion:
 - Ollama's base URL is hardcoded in `configured_providers.yaml`: `base_url: "http://host.docker.internal:11434/v1"`
 - The hardcoded URL is used for connecting, but `OLLAMA_BASE_URL` env var is required for *detection*
 - The README says `OLLAMA_BASE_URL` is only needed for "local mode (unsafe)"
@@ -67,7 +66,7 @@ if (api_key_env and os.getenv(api_key_env)) or (provider_name.lower() == "ollama
 >
 > If you're running agentomics in local mode (unsafe), `OLLAMA_BASE_URL` environment variable needs to be provided
 
-**Why it's misleading:**
+
 - Implies `OLLAMA_BASE_URL` is only for local/unsafe mode
 - Actually needed for *both* Docker and local modes (for provider detection to work)
 - The hardcoded URL in `configured_providers.yaml` is only used *after* selection
