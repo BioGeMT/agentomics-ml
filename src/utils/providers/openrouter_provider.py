@@ -2,6 +2,8 @@ from typing import Dict, List, Optional
 
 from rich.table import Table
 from rich import box
+from rich.panel import Panel
+from rich.columns import Columns
 
 from utils.user_input import get_user_input_for_int
 from .provider import Provider
@@ -97,68 +99,77 @@ class OpenRouterProvider(Provider):
         return filtered[:limit]
 
     def display_models(self, models: List[Dict] = None) -> None:
-        """Ovveriding method in Provider class. Display OpenRouter models in a unified table format."""
         if models is None:
             models = self.get_filtered_models()
-        
-        # Group by provider for ordering
+
         providers = {}
         for model in models:
             provider = model.get("provider", "unknown")
             if provider not in providers:
                 providers[provider] = []
             providers[provider].append(model)
-        
-        # Summary
-        summary = Table(show_header=False, box=box.SIMPLE, padding=(0, 1))
-        summary.add_column("", style="bold blue", width=70)
-        summary.add_row("Coding & Reasoning AI Models with Tool Support")
-        summary.add_row(f"{len(models)} models from {len(providers)} companies")
-        self.console.print(summary)
-        self.console.print()
-        
-        # Main table
-        table = Table(show_header=True, header_style="bold blue", expand=False, box=box.ROUNDED, padding=(0, 1))
-        table.add_column("#", style="dim", width=4, justify="center")
-        table.add_column("Company", style="green", no_wrap=True, width=12)
-        table.add_column("Model", style="cyan", no_wrap=True, width=35)
-        table.add_column("Prompt $/M", justify="right", style="yellow", width=12)
-        table.add_column("Output $/M", justify="right", style="yellow", width=12)
-        table.add_column("Context", justify="right", style="magenta", width=10)
-        table.add_column("Tools", justify="center", style="blue", width=8)
-        
-        # Provider display names
+
+        self.console.print(f"[bold blue]Available Models[/bold blue] ({len(models)} models from {len(providers)} companies)\n")
+
         provider_names = {
             "openai": "OpenAI", "anthropic": "Anthropic", "google": "Google",
             "meta-llama": "Meta", "deepseek": "DeepSeek", "mistralai": "Mistral AI",
             "qwen": "Qwen", "cohere": "Cohere"
         }
-        
-        global_index = 1
+
+        company_boxes = []
+
         for provider, provider_models in providers.items():
             provider_display = provider_names.get(provider, provider.title())
-            
+            box_height = len(provider_models) * 2
+
+            model_data = []
+            max_width = 0
             for model in provider_models:
-                # Clean model name
                 clean_name = model["id"].split("/", 1)[1] if "/" in model["id"] else model["id"]
-                
-                # Format context
                 context = f"{model['context_length']//1000}K" if model['context_length'] >= 1000 else str(model['context_length'])
-                
-                row = [
-                    str(global_index),
-                    provider_display,
-                    clean_name,
-                    f"${model['prompt_cost_per_million']:.2f}",
-                    f"${model['completion_cost_per_million']:.2f}",
-                    context,
-                    "Yes" if model.get("supports_tools", False) else "No"
-                ]
-                
-                table.add_row(*row)
-                global_index += 1
-        
-        self.console.print(table)
+                cost = f"{model['prompt_cost_per_million']:.1f}/{model['completion_cost_per_million']:.1f}"
+
+                name_line_len = len(clean_name) + 5
+                cost_line_len = 6 + len(cost) + 1 + len(context)
+                max_width = max(max_width, name_line_len, cost_line_len)
+
+                model_data.append((clean_name, cost, context))
+
+            panel_width = min(max_width + 6, 50)
+            company_boxes.append((box_height, panel_width, model_data, provider_display))
+
+        num_cols = 4
+        columns = [[] for _ in range(num_cols)]
+        col_heights = [0] * num_cols
+        col_max_widths = [0] * num_cols
+
+        sorted_boxes = sorted(company_boxes, key=lambda x: x[0], reverse=True)
+
+        for box_height, panel_width, model_data, provider_display in sorted_boxes:
+            min_col = col_heights.index(min(col_heights))
+            columns[min_col].append((model_data, provider_display))
+            col_heights[min_col] += box_height
+            col_max_widths[min_col] = max(col_max_widths[min_col], panel_width)
+
+        from rich.console import Group
+        col_renderables = []
+        global_index = 1
+        for col_idx, col in enumerate(columns):
+            panels = []
+            for model_data, provider_display in col:
+                lines = []
+                for clean_name, cost, context in model_data:
+                    lines.append(f"[dim]{global_index}.[/dim] [cyan]{clean_name}[/cyan]")
+                    lines.append(f"   [yellow]${cost}[/yellow] [magenta]{context}[/magenta]")
+                    global_index += 1
+                panel = Panel("\n".join(lines), title=f"[bold green]{provider_display}[/bold green]",
+                             title_align="left", border_style="green", width=col_max_widths[col_idx])
+                panels.append(panel)
+            col_renderables.append(Group(*panels))
+
+        self.console.print(Columns(col_renderables, padding=(0, 1), expand=False))
+        self.console.print("\n[dim]Cost: Prompt/Output $/M  Ctx: Context length[/dim]")
     
     def interactive_model_selection(self, limit: int = 20) -> Optional[str]:
         """Ovveriding method in Provider class. Interactive model selection for OpenRouter models."""
