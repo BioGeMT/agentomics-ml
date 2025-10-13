@@ -61,6 +61,20 @@ def extract_dataset_name_from_description(description_path):
         first_line = f.readline()
         return first_line.lstrip('#').strip()
 
+def copy_dir(source_dir, dest_dir):
+    if not os.path.exists(source_dir):
+        raise FileNotFoundError(f"Source directory does not exist: {source_dir}")
+
+    os.makedirs(dest_dir, exist_ok=True)
+    for item in os.listdir(source_dir):
+        src_path = os.path.join(source_dir, item)
+        dst_path = os.path.join(dest_dir, item)
+
+        if os.path.isdir(src_path):
+            copy_dir(src_path, dst_path)
+        else:
+            shutil.copy2(src_path, dst_path)
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str, help='Model id to use (depends on provider)')
@@ -128,3 +142,4 @@ if __name__ == '__main__':
         preds_dest_path=submission_path,
         target_col=args.target_col
     )
+    copy_dir(source_dir='/home/workspace/snapshots', dest_dir=CODE_DIR)
