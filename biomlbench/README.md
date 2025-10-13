@@ -33,6 +33,10 @@ Setup run parameters in `biomlbench/agents/agentomics-ml/start.sh`
 `./scripts/build_agent.sh agentomics-ml`
 
 ## Run the agent on the prepared task
+Change `gpus` from `0` to `1` in `biomlbench/environment/config/container_configs/default.json` 
+
+Then run
+
 `biomlbench run-agent --agent agentomics-ml --task-id polarishub/tdcommons-caco2-wang`
 
 If you run into Errors, explore the run error log. If there is an issue with not having enough CPU cores, try changing `biomlbench/environment/config/container_configs/default.json` parameter `nano_cpus` from 12000000000 to for example 8000000000 (for 8 cores)
