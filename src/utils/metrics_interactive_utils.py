@@ -1,5 +1,5 @@
-from rich.table import Table
-from rich import box
+from rich.panel import Panel
+from rich.columns import Columns
 from rich.console import Console
 
 from utils.metrics import get_classification_metrics_names, get_regression_metrics_names
@@ -9,33 +9,55 @@ def display_metrics_table(task_type=None):
     """Display available validation metrics in a rich table format."""
     console = Console()
 
-    if(not task_type):
-        # Displaying all metrics
+    if not task_type:
         clf_metrics = get_classification_metrics_names()
         reg_metrics = get_regression_metrics_names()
 
-        clf_metric_task_types = {metric : "Classification" for metric in clf_metrics}
-        reg_metric_task_types = {metric : "Regression" for metric in reg_metrics}
+        console.print(f"[bold blue]Available Validation Metrics[/bold blue]\n")
 
-        metrics_to_show = clf_metrics + reg_metrics
-        metric_task_types = {**clf_metric_task_types, **reg_metric_task_types}
-    if(task_type == "classification"):
+        metric_lines_clf = []
+        max_num_width = len(str(len(clf_metrics) + len(reg_metrics)))
+
+        for i, metric in enumerate(clf_metrics, 1):
+            num_str = str(i).rjust(max_num_width)
+            metric_lines_clf.append(f"[white]{num_str}[/white] [green]{metric}[/green]")
+
+        metric_lines_reg = []
+        for i, metric in enumerate(reg_metrics, len(clf_metrics) + 1):
+            num_str = str(i).rjust(max_num_width)
+            metric_lines_reg.append(f"[white]{num_str}[/white] [green]{metric}[/green]")
+
+        boxes = [
+            Panel("\n".join(metric_lines_clf), title="[bold]Metric for Classification[/bold]", border_style="cyan"),
+            Panel("\n".join(metric_lines_reg), title="[bold]Metric for Regression[/bold]", border_style="yellow")
+        ]
+
+        console.print(Columns(boxes, padding=(0, 1), expand=False))
+        return clf_metrics + reg_metrics
+
+    if task_type == "classification":
         metrics_to_show = get_classification_metrics_names()
-        metric_task_types = {metric : "Classification" for metric in metrics_to_show}
-    if(task_type == "regression"):
+        title = "[bold]Metric for Classification[/bold]"
+        border_style = "cyan"
+    elif task_type == "regression":
         metrics_to_show = get_regression_metrics_names()
-        metric_task_types = {metric : "Regression" for metric in metrics_to_show}
+        title = "[bold]Metric for Regression[/bold]"
+        border_style = "yellow"
 
-    title = "Available Validation Metrics"
-    table = Table(title=title, box=box.ROUNDED)
-    table.add_column("#", style="cyan", no_wrap=True)
-    table.add_column("Metric", style="green")
-    table.add_column("Task Type", style="yellow")
-    
+    console.print(f"[bold blue]Available Validation Metrics[/bold blue]\n")
+
+    metric_lines = []
+    max_num_width = len(str(len(metrics_to_show)))
+
     for i, metric in enumerate(metrics_to_show, 1):
-        table.add_row(str(i), metric, metric_task_types[metric])
-    
-    console.print(table)
+        num_str = str(i).rjust(max_num_width)
+        metric_lines.append(f"[white]{num_str}[/white] [green]{metric}[/green]")
+
+    boxes = [
+        Panel("\n".join(metric_lines), title=title, border_style=border_style)
+    ]
+
+    console.print(Columns(boxes, padding=(0, 1), expand=False))
     return metrics_to_show
 
 def interactive_metric_selection(task_type=None, default=None):
