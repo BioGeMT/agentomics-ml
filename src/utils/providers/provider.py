@@ -9,8 +9,7 @@ from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from openai import AsyncOpenAI
 from rich.console import Console
-from rich.table import Table
-from rich import box
+from rich.panel import Panel
 
 from utils.config import Config
 from utils.user_input import get_user_input_for_int
@@ -169,15 +168,20 @@ def get_provided_api_keys() -> Dict[str, str]:
 def choose_provider(available_keys) -> int:
     """Prompt user to choose a provider when multiple API keys are given."""
     console = Console()
-    table = Table(title="Available API Providers", box=box.ROUNDED)
-    table.add_column("#", style="cyan", no_wrap=True)
-    table.add_column("Provider", style="green")
 
+    console.print(f"[bold blue]Available API Providers[/bold blue]\n")
+
+    lines = []
+    max_num_width = len(str(len(available_keys)))
     keys_list = list(available_keys.keys())
-    for i, key in enumerate(keys_list, 1):
-        table.add_row(str(i), key)
 
-    console.print(table)
+    for i, key in enumerate(keys_list, 1):
+        num_str = str(i).rjust(max_num_width)
+        lines.append(f"[white]{num_str}[/white] [green]{key}[/green]")
+
+    panel = Panel("\n".join(lines), title="[bold]Provider[/bold]", border_style="cyan")
+    console.print(panel)
+
     prompt = "Multiple provider API keys found. Select the provider to use:"
     return get_user_input_for_int(prompt, default=1, valid_options=list(range(1, len(available_keys)+1)))
 
