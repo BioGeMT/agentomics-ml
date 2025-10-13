@@ -25,7 +25,7 @@ from tools.setup_tools import create_tools
 
 
 async def main(model_name, feedback_model_name, dataset, tags, val_metric, root_privileges, 
-               workspace_dir, prepared_datasets_dir, agent_dataset_dir, iterations, user_prompt, provider):
+               workspace_dir, prepared_datasets_dir, agent_dataset_dir, iterations, user_prompt, provider_name):
     # Initialize configuration 
     config = Config(
         model_name=model_name, 
@@ -52,6 +52,7 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric, root_
     else:
         wandb_logged_in = False
     # initialize LLMs
+    provider = get_provider_from_string(provider_name)
     default_model = provider.create_model(config.model_name, config)
     feedback_model = provider.create_model(config.feedback_model_name, config)
     #TODO Instantiate report logger model and pass it to add_summary_to_report
@@ -181,7 +182,7 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
         agent_dataset_dir=agent_datasets_dir,
         iterations=iterations,
         user_prompt=user_prompt,
-        provider=provider
+        provider_name=provider
     )
 
 async def run_experiment_from_terminal():

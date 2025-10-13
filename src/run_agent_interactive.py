@@ -129,7 +129,7 @@ def main():
         no_root_privileges=args.root_privileges,
         iterations=iterations,
         user_prompt=args.user_prompt,
-        provider=provider
+        provider=provider_name
     ))
     return 0
         
