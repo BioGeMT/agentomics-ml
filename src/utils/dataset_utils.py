@@ -155,7 +155,7 @@ def check_dataset_prepared(dataset_dir: str, prepared_datasets_dir: str) -> bool
 
 def auto_detect_target_col(train_df, interactive=False):
     """Auto-detect target column"""
-    possible_target_cols = ['class', 'target', 'label', 'y']
+    possible_target_cols = ['class', 'target', 'label', 'y', 'CLASS', 'TARGET', 'LABEL', 'Y']
     for col in possible_target_cols:
         if col in train_df.columns:
             print(f'INFO: Auto-detected target column: {col}')
