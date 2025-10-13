@@ -1,4 +1,4 @@
-# macOS Issues Found in Agentomics-ML
+# macOS and ollama Issues 
 
 ## Issue 1: Docker GPU Detection Failure
 
