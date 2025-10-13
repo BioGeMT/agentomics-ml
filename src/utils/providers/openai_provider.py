@@ -1,5 +1,7 @@
 from typing import List, Optional
 
+from rich.panel import Panel
+
 from .provider import Provider
 from utils.user_input import get_user_input_for_int
 
@@ -24,7 +26,28 @@ class OpenAiProvider(Provider):
             filtered_models.append(model)
     
         return filtered_models
-    
+
+    def display_models(self, models: List = None) -> None:
+        if models is None:
+            models = self.filter_models()
+        if not models:
+            return
+
+        self.console.print(f"[bold blue]Available Models[/bold blue] ({len(models)} models)\n")
+
+        lines = []
+        max_num_width = len(str(len(models)))
+        max_name_width = max(len(model.get('id', '')) for model in models)
+
+        for i, model in enumerate(models, 1):
+            num_str = str(i).rjust(max_num_width)
+            lines.append(f"[dim]{num_str}.[/dim] [cyan]{model.get('id', '')}[/cyan]")
+
+        panel_width = max_num_width + max_name_width + 10
+        panel = Panel("\n".join(lines), title="[bold green]OpenAI[/bold green]",
+                     title_align="left", border_style="green", width=panel_width)
+        self.console.print(panel)
+
     def interactive_model_selection(self, limit: int = None) -> Optional[str]:
         """Ovveriding method in Provider class. Interactive OpenAI model selection."""
         models = self.filter_models()
