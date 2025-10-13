@@ -106,7 +106,9 @@ else
     docker volume create temp_agentomics_volume
 
     GPU_FLAGS=()
-    if [ "$CPU_ONLY" = false ]; then
+    # Only use NVIDIA GPU flags on Linux with NVIDIA GPUs
+    # macOS (Darwin) uses Metal/Apple Silicon which doesn't support --gpus flag
+    if [ "$CPU_ONLY" = false ] && [ "$(uname)" != "Darwin" ]; then
         GPU_FLAGS+=(--gpus all)
         GPU_FLAGS+=(--env NVIDIA_VISIBLE_DEVICES=all)
     fi
