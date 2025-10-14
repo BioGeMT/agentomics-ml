@@ -83,25 +83,30 @@ def delete_snapshot(snapshot_dir):
         shutil.rmtree(snapshot_dir)
 
 def file_fingerprint(path, sample_size=65536):
-    try:
-        stat = os.stat(path)
-        # Use file size + mtime + small content hash to detect changes
-        hasher = hashlib.sha256()
-        with open(path, "rb") as f:
-            sample = f.read(sample_size)
-            hasher.update(sample)
-        fingerprint = f"{stat.st_size}-{stat.st_mtime}-{hasher.hexdigest()}"
-        return fingerprint
-    except FileNotFoundError as e:
-        raise e #TODO implement anything??
+    stat = os.stat(path)
+    # Use file size + mtime + small content hash to detect changes
+    hasher = hashlib.sha256()
+    with open(path, "rb") as f:
+        sample = f.read(sample_size)
+        hasher.update(sample)
+    fingerprint = f"{stat.st_size}-{stat.st_mtime}-{hasher.hexdigest()}"
+    return fingerprint
 
 def create_split_fingerprint(config):
     train_csv = config.runs_dir / config.agent_id / 'train.csv'
     valid_csv = config.runs_dir / config.agent_id / 'validation.csv'
-    return file_fingerprint(train_csv) + file_fingerprint(valid_csv)
+    try:
+        return file_fingerprint(train_csv) + file_fingerprint(valid_csv)
+    except FileNotFoundError:
+        return None
 
 def reset_snapshot_if_val_split_changed(config, iteration, old_fingerprint, new_fingerprint):
-    if old_fingerprint != new_fingerprint:
+    if(old_fingerprint == None): #old fingerprint is none - split didnt exist,
+        if is_wandb_active():
+            wandb.log({"snapshot_reset":False}, step=iteration)
+        return
+    
+    if new_fingerprint == None or old_fingerprint != new_fingerprint: #new_fingerprint is none - agent deleted the split
         if is_wandb_active():
             wandb.log({"snapshot_reset":True}, step=iteration)
         snapshot_dir = config.snapshots_dir / config.agent_id
