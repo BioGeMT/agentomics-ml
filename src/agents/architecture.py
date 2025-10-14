@@ -4,6 +4,7 @@ import json
 from pydantic_ai import Agent, ModelRetry
 import weave
 import pandas as pd
+from pathlib import Path
 
 from agents.agent_utils import run_agent
 from agents.prompts.prompts_utils import get_iteration_prompt, get_user_prompt, get_system_prompt
@@ -14,6 +15,7 @@ from agents.steps.data_representation import DataRepresentation, get_data_repres
 from agents.steps.data_exploration import DataExploration, get_data_exploration_prompt
 from agents.steps.model_training import ModelTraining, get_model_training_prompt
 from agents.steps.prediction_exploration import PredictionExploration, get_prediction_exploration_prompt
+from utils.snapshots import reset_snapshot_if_val_split_changed, create_split_fingerprint
 from utils.config import Config
 from utils.report_logger import save_step_output
 from run_logging.evaluate_log_run import run_inference_and_log
@@ -55,6 +57,18 @@ def create_agents(config: Config, model, tools):
     async def validate_split_dataset(result: DataSplit) -> DataSplit:
         if not os.path.exists(result.train_path) or not os.path.exists(result.val_path):
             raise ModelRetry("Split dataset files do not exist.")
+        
+        train_path = Path(result.train_path)
+        val_path = Path(result.val_path)
+        if(train_path.name != 'train.csv' or val_path.name != 'validation.csv'):
+            # Care to not delete original training data
+            original_train_csv_path = config.agent_dataset_dir / "train.csv"
+            if (train_path.resolve() != original_train_csv_path.resolve()):
+                train_path.unlink()
+            if (val_path.resolve() != original_train_csv_path.resolve()):
+                val_path.unlink()
+
+            raise ModelRetry("Files must be called exactly train.csv and validation.csv")
         
         target_col = 'numeric_label' #TODO generalize and take from metadata.json or config
         for path in [result.train_path, result.val_path]:
@@ -100,7 +114,7 @@ async def run_architecture(text_output_agent: Agent, inference_agent: Agent, spl
     if not config.explicit_valid_set_provided:
         messages_split, data_split = await run_agent(
             agent=split_dataset_agent,
-            user_prompt=get_data_split_prompt(config),
+            user_prompt=get_data_split_prompt(config, iteration),
             max_steps=config.max_steps,
             message_history=messages_data_exploration,
             )
@@ -168,6 +182,7 @@ async def run_iteration(config: Config, model, iteration, feedback, tools):
     else:
         base_prompt = get_iteration_prompt(config, iteration, feedback)
 
+    split_fingerprint_before_iteration = create_split_fingerprint(config)
     messages = await run_architecture(
         text_output_agent=agents_dict["text_output_agent"],
         split_dataset_agent=agents_dict["split_dataset_agent"],
@@ -176,5 +191,12 @@ async def run_iteration(config: Config, model, iteration, feedback, tools):
         config=config,
         base_prompt=base_prompt,
         iteration=iteration,
+    )
+    split_fingerprint_after_iteration = create_split_fingerprint(config)
+    reset_snapshot_if_val_split_changed(
+        config,
+        iteration, 
+        old_fingerprint=split_fingerprint_before_iteration, 
+        new_fingerprint=split_fingerprint_after_iteration,
     )
     return messages

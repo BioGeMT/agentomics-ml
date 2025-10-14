@@ -1,7 +1,11 @@
 import re
 import shutil
+import hashlib
+import os
+import wandb
 from pathlib import Path
 from utils.metrics import get_classification_metrics_functions, get_higher_is_better_map, get_regression_metrics_functions
+from run_logging.logging_helpers import is_wandb_active
 
 def get_metrics_from_file(file_path):
     metrics = {}
@@ -77,6 +81,35 @@ def is_new_best(config):
 def delete_snapshot(snapshot_dir):
     if snapshot_dir.exists():
         shutil.rmtree(snapshot_dir)
+
+def file_fingerprint(path, sample_size=65536):
+    try:
+        stat = os.stat(path)
+        # Use file size + mtime + small content hash to detect changes
+        hasher = hashlib.sha256()
+        with open(path, "rb") as f:
+            sample = f.read(sample_size)
+            hasher.update(sample)
+        fingerprint = f"{stat.st_size}-{stat.st_mtime}-{hasher.hexdigest()}"
+        return fingerprint
+    except FileNotFoundError as e:
+        raise e #TODO implement anything??
+
+def create_split_fingerprint(config):
+    train_csv = config.runs_dir / config.agent_id / 'train.csv'
+    valid_csv = config.runs_dir / config.agent_id / 'validation.csv'
+    return file_fingerprint(train_csv) + file_fingerprint(valid_csv)
+
+def reset_snapshot_if_val_split_changed(config, iteration, old_fingerprint, new_fingerprint):
+    if old_fingerprint != new_fingerprint:
+        if is_wandb_active():
+            wandb.log({"snapshot_reset":True}, step=iteration)
+        snapshot_dir = config.snapshots_dir / config.agent_id
+        delete_snapshot(snapshot_dir)
+        snapshot_dir.mkdir(parents=True, exist_ok=True)
+    else:
+        if is_wandb_active():
+            wandb.log({"snapshot_reset":False}, step=iteration)
 
 def snapshot(config, iteration, delete_old_snapshot=True):
     run_dir = config.runs_dir / config.agent_id
