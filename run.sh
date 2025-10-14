@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+
 # Ensure we are running under bash even if invoked via sh/zsh
 if [ -z "${BASH_VERSION:-}" ]; then
   exec /usr/bin/env bash "$0" "$@"
@@ -13,6 +14,51 @@ TEST_MODE=false
 CPU_ONLY=false
 OLLAMA=false
 
+# ------------------------------------------
+# ADDED FUNCTION: Display usage and options
+show_help() {
+    cat << EOF
+Usage: ./run.sh [OPTIONS]
+
+Orchestrates the Agentomics training and evaluation process. By default, it runs in Docker containers.
+Use --local to run with a local Conda environment.
+
+Required Arguments (for non-interactive runs):
+  --model <name>      The LLM model name (e.g., 'openai/gpt-4').
+                      Use '--model' in combination with '--list-models' to check
+                      compatibility with your configured provider.
+  --dataset <name>    The short identifier for the prepared dataset (e.g., 'breast_cancer').
+                      Use '--list-datasets' to see available options.
+  --iterations <N>    Number of iterations to run the agent (e.g., 5).
+  --val-metric <name> The metric to optimize (e.g., 'ACC').
+                      Use '--list-metrics' to see available options.
+  --user-prompt <str> The main prompt/goal for the agent.
+                      (Default: "Create the best possible machine learning model that will generalize to new unseen data.")
+
+Operational Flags:
+  --local             Run the project using local Conda environments instead of Docker.
+  --test              Run the project's integrated test suite.
+  --cpu-only          Force Docker/Conda to run using CPU only (skip GPU configuration).
+  --ollama            Enable support for an Ollama server running on the host machine.
+  -h, --help          Show this help message and exit.
+
+Listing Flags (Run the script with only one of these):
+  --list-models       List models available via the configured provider.
+  --list-datasets     List all prepared datasets.
+  --list-metrics      List all available validation metrics.
+
+Environment:
+  API keys read from 'src/utils/providers/configured_providers.yaml' must be set as
+  environment variables in your host environment (e.g., in a shell session or .env file)
+  to be injected into the Docker container.
+
+Output:
+  Results are copied from the temporary workspace to the local 'outputs/<RUN_NAME>' directory.
+EOF
+}
+# END ADDED FUNCTION
+# ------------------------------------------
+
 # if docker volume named 'temp_agentomics_volume' exists, delete it
 VOLUME_NAME="temp_agentomics_volume"
 if docker volume ls --format '{{.Name}}' | grep -wq "$VOLUME_NAME"; then
@@ -22,6 +68,27 @@ fi
 
 while [[ $# -gt 0 ]]; do
     case $1 in
+    # ADDED CASE: Handle Help Flag
+        -h|--help)
+            show_help
+            exit 0
+            ;;
+        --list-models) # New flags added here from python script for documentation
+            AGENTOMICS_ARGS+=(--list-models)
+            shift
+            ;;
+        --list-datasets)
+            AGENTOMICS_ARGS+=(--list-datasets)
+            shift
+            ;;
+        --list-metrics)
+            AGENTOMICS_ARGS+=(--list-metrics)
+            shift
+            ;;
+        --root-privileges)
+            AGENTOMICS_ARGS+=(--root-privileges)
+            shift
+            ;;
         --model)
             AGENTOMICS_ARGS+=(--model "$2")
             shift 2
@@ -59,6 +126,14 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         *)
+          # CHANGE HERE: Catch unrecognized arguments
+          if [[ "$1" == -* ]]; then
+                RED='\033[0;31m'
+                NOCOLOR='\033[0m'
+                echo -e "${RED}Error: Unrecognized argument or flag: $1${NOCOLOR}" >&2
+                show_help # Show help manual on error
+                exit 1 # Exit with an error code
+            fi
             shift
             ;;
     esac
