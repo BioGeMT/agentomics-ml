@@ -97,6 +97,7 @@ if [[ "$DOCKER_MODE" == true ]]; then
         > /dev/null 2>&1
 else
     echo "Running inference locally..."
+    cd "$(dirname "$INFERENCE_PATH")"
     conda run -p "$ENV_PATH" \
         python "$INFERENCE_PATH" \
         --input "$INPUT_PATH" \

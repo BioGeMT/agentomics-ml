@@ -42,8 +42,9 @@ def run_inference_on_test_data(test_data_path):
     input_path = test_data_path
     output_path = f'{snapshots_dir}/{run_name}/predictions.csv'
 
+    command_dir_ensurance = f"cd {os.path.dirname(inference_path)} && "
     command_prefix=f"conda run -p {env_path} --no-capture-output"
-    command = f"{command_prefix} python {inference_path} --input {input_path} --output {output_path}"
+    command = f"{command_dir_ensurance} {command_prefix} python {inference_path} --input {input_path} --output {output_path}"
     inference_out = subprocess.run(command, shell=True, executable="/bin/bash", capture_output=True, check=False)
     if inference_out.returncode != 0:
         print("Error during inference:")
@@ -60,6 +61,20 @@ def extract_dataset_name_from_description(description_path):
     with open(description_path, 'r') as f:
         first_line = f.readline()
         return first_line.lstrip('#').strip()
+
+def copy_dir(source_dir, dest_dir):
+    if not os.path.exists(source_dir):
+        raise FileNotFoundError(f"Source directory does not exist: {source_dir}")
+
+    os.makedirs(dest_dir, exist_ok=True)
+    for item in os.listdir(source_dir):
+        src_path = os.path.join(source_dir, item)
+        dst_path = os.path.join(dest_dir, item)
+
+        if os.path.isdir(src_path):
+            copy_dir(src_path, dst_path)
+        else:
+            shutil.copy2(src_path, dst_path)
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -121,7 +136,7 @@ if __name__ == '__main__':
         no_root_privileges=True, # because of sudo create user restrictions due to biomlbench container not being run as root 
         provider=args.provider,
     ))
-
+    copy_dir(source_dir='/home/workspace/snapshots', dest_dir=CODE_DIR)
     predictions_path = run_inference_on_test_data(test_no_label)
     copy_and_format_predictions_for_biomlbench(
         preds_source_path=predictions_path,
