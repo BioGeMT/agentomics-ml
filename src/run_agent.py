@@ -130,7 +130,6 @@ async def run_agentomics(config: Config, default_model, feedback_model):
         await add_summary_to_report(default_model, config, run_index)
         log_files(config, iteration=run_index)
 
-    replace_snapshot_path_with_relative(snapshot_dir = config.snapshots_dir / config.agent_id)
     rename_and_snapshot_best_iteration_report(config)
     log_files(config)
     export_config_to_workspace(config)

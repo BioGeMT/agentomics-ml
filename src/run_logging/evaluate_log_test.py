@@ -7,6 +7,7 @@ from utils.report_logger import add_final_test_metrics_to_best_report
 from run_logging.evaluate_log_run import run_inference_and_log
 from run_logging.logging_helpers import log_inference_stage_and_metrics
 from run_logging.wandb_setup import resume_wandb_run
+from utils.snapshots import replace_snapshot_path_with_relative
 
 def run_test_evaluation(workspace_dir):
     config = load_run_config(workspace_dir)
@@ -19,6 +20,8 @@ def run_test_evaluation(workspace_dir):
     except Exception as e:
         print('FINAL TEST EVAL FAIL', str(e))
         log_inference_stage_and_metrics(1, task_type=config.task_type)
+
+    replace_snapshot_path_with_relative(snapshot_dir = config.snapshots_dir / config.agent_id)
 
 def load_run_config(workspace_dir):
     config_path = workspace_dir.resolve() / "config.json"
