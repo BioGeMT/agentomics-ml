@@ -18,7 +18,7 @@ from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics, rep
 from utils.workspace_setup import ensure_workspace_folders
 from agents.architecture import run_iteration
 from utils.metrics import get_classification_metrics_names, get_regression_metrics_names
-from utils.report_logger import add_metrics_to_report, add_summary_to_report, rename_and_snapshot_best_iteration_report
+from utils.report_logger import add_metrics_to_report, add_summary_to_report, rename_best_iteration_report
 from utils.providers.provider import Provider, get_provider_from_string
 from feedback.feedback_agent import get_feedback, aggregate_feedback
 from tools.setup_tools import create_tools
@@ -130,7 +130,7 @@ async def run_agentomics(config: Config, default_model, feedback_model):
         await add_summary_to_report(default_model, config, run_index)
         log_files(config, iteration=run_index)
 
-    rename_and_snapshot_best_iteration_report(config)
+    rename_best_iteration_report(config)
     log_files(config)
     export_config_to_workspace(config)
 

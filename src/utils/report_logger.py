@@ -84,9 +84,9 @@ def add_final_test_metrics_to_best_report(config):
     best_iteration = get_best_iteration(config)
 
     output_dir = Path(config.runs_dir) / config.agent_id
-    agent_snapshots_dir = config.snapshots_dir / config.agent_id
-    best_report = agent_snapshots_dir / f"run_report_iter_{best_iteration}_BEST.txt"
-    #TODO we write this at final test stage to the agent's run dir - change to a better location for clarity
+    agent_reports_dir = config.reports_dir / config.agent_id
+    best_report = agent_reports_dir / f"run_report_iter_{best_iteration}_BEST.txt"
+    
     test_metrics_file = output_dir / "test_metrics.txt"
     if not test_metrics_file.exists():
         print('No test metrics file found to add to best report.')
@@ -104,18 +104,11 @@ def add_final_test_metrics_to_best_report(config):
     with open(best_report, 'w') as f:
         f.write('\n'.join(lines))
 
-def rename_and_snapshot_best_iteration_report(config):
+def rename_best_iteration_report(config):
     best_iteration = get_best_iteration(config)
     report_dir = config.reports_dir / config.agent_id
-    snapshot_dir = Path(config.snapshots_dir) / config.agent_id
     
     old_file = report_dir / f"run_report_iter_{best_iteration}.txt"
     new_file = report_dir / f"run_report_iter_{best_iteration}_BEST.txt"
-    snapshot_file = snapshot_dir / f"run_report_iter_{best_iteration}_BEST.txt"
     
     old_file.rename(new_file)
-    
-    snapshot_dir.mkdir(parents=True, exist_ok=True)
-    with open(new_file, 'r') as src:
-        with open(snapshot_file, 'w') as dst:
-            dst.write(src.read())
