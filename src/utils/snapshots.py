@@ -103,18 +103,20 @@ def create_split_fingerprint(config):
 def reset_snapshot_if_val_split_changed(config, iteration, old_fingerprint, new_fingerprint):
     if(old_fingerprint == None): #old fingerprint is none - split didnt exist,
         if is_wandb_active():
-            wandb.log({"snapshot_reset":False}, step=iteration)
-        return
+            wandb.log({"snapshot_reset":0}, step=iteration)
+        return False
     
     if new_fingerprint == None or old_fingerprint != new_fingerprint: #new_fingerprint is none - agent deleted the split
         if is_wandb_active():
-            wandb.log({"snapshot_reset":True}, step=iteration)
+            wandb.log({"snapshot_reset":1}, step=iteration)
         snapshot_dir = config.snapshots_dir / config.agent_id
         delete_snapshot(snapshot_dir)
         snapshot_dir.mkdir(parents=True, exist_ok=True)
+        return True
     else:
         if is_wandb_active():
-            wandb.log({"snapshot_reset":False}, step=iteration)
+            wandb.log({"snapshot_reset":0}, step=iteration)
+        return False
 
 def snapshot(config, iteration, delete_old_snapshot=True):
     run_dir = config.runs_dir / config.agent_id

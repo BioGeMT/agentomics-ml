@@ -22,6 +22,7 @@ from utils.report_logger import add_metrics_to_report, add_summary_to_report, re
 from utils.providers.provider import Provider, get_provider_from_string
 from feedback.feedback_agent import get_feedback, aggregate_feedback
 from tools.setup_tools import create_tools
+from utils.snapshots import reset_snapshot_if_val_split_changed, create_split_fingerprint
 
 
 async def main(model_name, feedback_model_name, dataset, tags, val_metric, 
@@ -70,12 +71,23 @@ async def run_agentomics(config: Config, default_model, feedback_model):
     print(f"Starting training loop with {config.iterations} iterations")
     for run_index in range(config.iterations):
         print(f"\n=== ITERATION {run_index + 1} / {config.iterations} ===")
+        split_fingerprint_before_iteration = create_split_fingerprint(config)
         try:
             current_run_messages = await run_iteration(config=config, model=default_model, iteration=run_index, feedback=feedback, tools=tools)
         except Exception as e:
             log_serial_metrics(prefix='validation', metrics=None, iteration=run_index, task_type=config.task_type)
             log_serial_metrics(prefix='train', metrics=None, iteration=run_index, task_type=config.task_type)
+            # reset here? no, failed run -> fallback to old split? split propagated from the failed run already
+            snapshot_deleted = reset_snapshot_if_val_split_changed( #TODO here?
+                config,
+                iteration=run_index, 
+                old_fingerprint=split_fingerprint_before_iteration, 
+                new_fingerprint=create_split_fingerprint(config),
+            )
             new_metrics, best_metrics = get_new_and_best_metrics(config)
+            if(snapshot_deleted):
+                #TODO delete this check
+                assert is_new_best(config) 
             all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far: {best_metrics}")) # append feedback from last iteration before to process it
             feedback = await get_feedback(
                 context=e.context_messages,
@@ -91,6 +103,15 @@ async def run_agentomics(config: Config, default_model, feedback_model):
             log_files(config, iteration=run_index)
             continue
 
+        snapshot_deleted = reset_snapshot_if_val_split_changed(
+            config,
+            iteration=run_index, 
+            old_fingerprint=split_fingerprint_before_iteration, 
+            new_fingerprint=create_split_fingerprint(config),
+        )
+        if(snapshot_deleted):
+            #TODO delete this check
+            assert is_new_best(config) 
         print("Starting evaluation phase")
         print("  Running validation inference...")
         run_inference_and_log(config, iteration=run_index, evaluation_stage='validation')

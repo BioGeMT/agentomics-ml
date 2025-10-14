@@ -15,7 +15,6 @@ from agents.steps.data_representation import DataRepresentation, get_data_repres
 from agents.steps.data_exploration import DataExploration, get_data_exploration_prompt
 from agents.steps.model_training import ModelTraining, get_model_training_prompt
 from agents.steps.prediction_exploration import PredictionExploration, get_prediction_exploration_prompt
-from utils.snapshots import reset_snapshot_if_val_split_changed, create_split_fingerprint
 from utils.config import Config
 from utils.report_logger import save_step_output
 from run_logging.evaluate_log_run import run_inference_and_log
@@ -182,7 +181,6 @@ async def run_iteration(config: Config, model, iteration, feedback, tools):
     else:
         base_prompt = get_iteration_prompt(config, iteration, feedback)
 
-    split_fingerprint_before_iteration = create_split_fingerprint(config)
     messages = await run_architecture(
         text_output_agent=agents_dict["text_output_agent"],
         split_dataset_agent=agents_dict["split_dataset_agent"],
@@ -191,12 +189,5 @@ async def run_iteration(config: Config, model, iteration, feedback, tools):
         config=config,
         base_prompt=base_prompt,
         iteration=iteration,
-    )
-    split_fingerprint_after_iteration = create_split_fingerprint(config)
-    reset_snapshot_if_val_split_changed(
-        config,
-        iteration, 
-        old_fingerprint=split_fingerprint_before_iteration, 
-        new_fingerprint=split_fingerprint_after_iteration,
     )
     return messages
