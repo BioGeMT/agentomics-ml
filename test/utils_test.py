@@ -1,8 +1,9 @@
 import unittest
 from pathlib import Path
+import os
 
 from src.tools.setup_tools import create_tools
-from src.utils.create_user import create_new_user_and_rundir
+from src.utils.create_user import create_run_and_snapshot_dirs
 from src.utils.config import Config
 from src.utils.workspace_setup import ensure_workspace_folders
 from src.utils.dataset_utils import setup_nonsensitive_dataset_files_for_agent
@@ -12,8 +13,11 @@ _shared_test_resources = None
 def get_shared_test_resources():
     global _shared_test_resources
 
+    agent_id = os.getenv('AGENT_ID')
+
     if _shared_test_resources is None:
         config = Config(
+              agent_id=agent_id,
               model_name="openai/gpt-3.5-turbo",
               feedback_model_name="openai/gpt-3.5-turbo",
               dataset="AGO2_CLASH_Hejret",
@@ -34,8 +38,7 @@ def get_shared_test_resources():
             dataset_name=config.dataset,
         )
         ensure_workspace_folders(config)
-        agent_id = create_new_user_and_rundir(config)
-        config.agent_id = agent_id
+        create_run_and_snapshot_dirs(config)
         print(f"Created shared test agent: {agent_id}")
 
         print("Setting up tools for testing (including conda env creation, might take a moment)\n")
