@@ -42,8 +42,9 @@ def run_inference_on_test_data(test_data_path):
     input_path = test_data_path
     output_path = f'{snapshots_dir}/{run_name}/predictions.csv'
 
+    command_dir_ensurance = f"cd {os.path.dirname(inference_path)} && "
     command_prefix=f"conda run -p {env_path} --no-capture-output"
-    command = f"{command_prefix} python {inference_path} --input {input_path} --output {output_path}"
+    command = f"{command_dir_ensurance} {command_prefix} python {inference_path} --input {input_path} --output {output_path}"
     inference_out = subprocess.run(command, shell=True, executable="/bin/bash", capture_output=True, check=False)
     if inference_out.returncode != 0:
         print("Error during inference:")
@@ -135,6 +136,7 @@ if __name__ == '__main__':
         no_root_privileges=True, # because of sudo create user restrictions due to biomlbench container not being run as root 
         provider=args.provider,
     ))
+    copy_dir(source_dir='/home/workspace/snapshots', dest_dir=CODE_DIR)
 
     predictions_path = run_inference_on_test_data(test_no_label)
     copy_and_format_predictions_for_biomlbench(
@@ -142,4 +144,3 @@ if __name__ == '__main__':
         preds_dest_path=submission_path,
         target_col=args.target_col
     )
-    copy_dir(source_dir='/home/workspace/snapshots', dest_dir=CODE_DIR)
