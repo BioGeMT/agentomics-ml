@@ -13,6 +13,7 @@ from agents.steps.model_architecture import ModelArchitecture, get_model_archite
 from agents.steps.data_representation import DataRepresentation, get_data_representation_prompt
 from agents.steps.data_exploration import DataExploration, get_data_exploration_prompt
 from agents.steps.model_training import ModelTraining, get_model_training_prompt
+from agents.steps.prediction_exploration import PredictionExploration, get_prediction_exploration_prompt
 from utils.config import Config
 from utils.report_logger import save_step_output
 from run_logging.evaluate_log_run import run_inference_and_log
@@ -95,7 +96,8 @@ async def run_architecture(text_output_agent: Agent, inference_agent: Agent, spl
     )
     save_step_output(config, 'data_exploration', data_exploration_output, iteration)
 
-    if iteration == 0 and not config.explicit_valid_set_provided:
+    # TODO validation set can now change between iterations -> snapshotting is not objective anymore, worse number can just mean better val set
+    if not config.explicit_valid_set_provided:
         messages_split, data_split = await run_agent(
             agent=split_dataset_agent,
             user_prompt=get_data_split_prompt(config),
@@ -132,13 +134,28 @@ async def run_architecture(text_output_agent: Agent, inference_agent: Agent, spl
     )
     save_step_output(config, 'model_training', model_training, iteration)
 
-    _messages, final_outcome = await run_agent(
+    #TODO rename final outcome to inference
+    messages_inference, final_outcome = await run_agent(
         agent=inference_agent, 
         user_prompt=get_final_outcome_prompt(config), 
         max_steps=config.max_steps,
         message_history=messages_training,
     )
     save_step_output(config, 'final_outcome', final_outcome, iteration)
+
+    if not config.explicit_valid_set_provided:
+        val_path = data_split.val_path
+    else:
+        val_path = config.agent_dataset_dir / config.dataset / "validation.csv"
+
+    _messages, prediction_exploration = await run_agent(
+        agent=text_output_agent,
+        user_prompt=get_prediction_exploration_prompt(validation_path=val_path,inference_path=final_outcome.path_to_inference_file),
+        max_steps=config.max_steps,
+        output_type=PredictionExploration,
+        message_history=messages_inference,
+    )
+    save_step_output(config, 'prediction_exploration', prediction_exploration, iteration)
 
     return _messages
 

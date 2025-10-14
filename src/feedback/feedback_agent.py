@@ -27,17 +27,20 @@ async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, 
     
     prompt_suffix += extra_info
 
+    #TODO only give advice on splitting if val set is not provided explicitly
     feedback_prompt = f"""
     Summarize the current state and provide detailed feedback on how to fix errors and improve the steps executed:
     1. Data exploration: describe the data and the features you explored.
-    2. Data representation: any transformations, encodings, normalizations, features
-    3. Model architecture: the machine learning model type and architecture for your task.
-    4. Model training: the training process, including hyperparameters and optimizers.
+    2. Data splitting: describe how was the data split.
+    3. Data representation: any transformations, encodings, normalizations, features
+    4. Model architecture: the machine learning model type and architecture for your task.
+    5. Model training: the training process, including hyperparameters and optimizers.
+    6. Prediction exploration: insights about the prediction biases.
 
     The current iteration returned the following metrics: {new_metrics}.
     Metrics from the past best run are: {best_metrics}.
 
-    Provide insights on how to improve the model generalization performance.
+    Provide insights on how to improve the model generalization performance in the listed steps. You may skip steps that don't need changed.
 
     {prompt_suffix}.
     """

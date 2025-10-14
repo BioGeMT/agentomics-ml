@@ -25,4 +25,6 @@ def get_data_split_prompt(config):
         {extra_instructions}
         - Save 'train.csv' and 'validation.csv' in {config.runs_dir / config.agent_id}.
         Return the absolute paths to these files.
+
+        If the split already exists and you don't want to use a different splitting strategy, you can choose to return the already existing split files immediately.
         """
