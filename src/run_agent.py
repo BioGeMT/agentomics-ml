@@ -11,7 +11,7 @@ from run_logging.logging_helpers import log_serial_metrics
 from run_logging.wandb_setup import setup_logging
 from run_logging.log_files import log_files, export_config_to_workspace
 from utils.env_utils import are_wandb_vars_available
-from utils.create_user import create_new_user_and_rundir
+from utils.create_user import create_run_and_snapshot_dirs
 from utils.dataset_utils import setup_nonsensitive_dataset_files_for_agent
 from utils.config import Config
 from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics, replace_snapshot_path_with_relative
@@ -26,8 +26,10 @@ from tools.setup_tools import create_tools
 
 async def main(model_name, feedback_model_name, dataset, tags, val_metric, root_privileges, 
                workspace_dir, prepared_datasets_dir, prepared_test_sets_dir, agent_dataset_dir, iterations, user_prompt, provider_name):
+    agent_id = os.getenv('AGENT_ID')
     # Initialize configuration 
     config = Config(
+        agent_id=agent_id,
         model_name=model_name, 
         feedback_model_name=feedback_model_name, 
         dataset=dataset, 
@@ -42,9 +44,7 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric, root_
         user_prompt=user_prompt,
     )
     ensure_workspace_folders(config)
-    # Create a user for the agent
-    agent_id = create_new_user_and_rundir(config)
-    config.agent_id = agent_id
+    create_run_and_snapshot_dirs(config)
     config.print_summary()
     
     # initialize logging

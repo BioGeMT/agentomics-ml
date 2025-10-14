@@ -7,6 +7,7 @@ from .dataset_utils import get_task_type_from_prepared_dataset
 @dataclass
 class Config:
     # defined at runtime
+    agent_id: str
     model_name: str
     feedback_model_name: str
     dataset: str
@@ -24,7 +25,6 @@ class Config:
     task_type: str
     user_prompt: str
 
-    agent_id: Optional[str] = None # assigned after user creation
     wandb_run_id: Optional[str] = None
     # static defaults
     temperature: float = 1.0
@@ -38,10 +38,10 @@ class Config:
     run_python_tool_timeout: int = 60 * 60 * 6 #This affects max training time
     credit_budget: int = 30 # Only applies when using a provisioning openrouter key #TODO
     max_tool_retries: int = 5
-    agent_id: str = None
 
     def __init__(
         self,
+        agent_id: str,
         model_name: str,
         feedback_model_name: str,
         dataset: str,
@@ -56,6 +56,7 @@ class Config:
         max_steps: Optional[int] = None,
         iterations: Optional[int] = 5,
     ):
+        self.agent_id = agent_id
         self.model_name = model_name
         self.feedback_model_name = feedback_model_name
         self.dataset = dataset

@@ -28,7 +28,8 @@ def load_run_config(workspace_dir):
     with open(config_path, 'r') as f:
         config_dict = json.load(f)
 
-    config_constructor_params = {                                                                                           
+    config_constructor_params = {      
+          'agent_id': config_dict['agent_id'],                                                                                      
           'model_name': config_dict['model_name'],
           'feedback_model_name': config_dict['feedback_model_name'],
           'dataset': config_dict['dataset'],
@@ -37,14 +38,13 @@ def load_run_config(workspace_dir):
           'root_privileges': config_dict['root_privileges'],
           'workspace_dir': Path(config_dict['workspace_dir']),
           'prepared_datasets_dir': Path(config_dict['prepared_dataset_dir']).parent,
-          'prepared_test_sets_dir': Path(config_dict['prepared_test_set_dir']).parent, #revert to this -> ,
+          'prepared_test_sets_dir': Path(config_dict['prepared_test_set_dir']).parent,
           'agent_dataset_dir': Path(config_dict['agent_dataset_dir']).parent,
           'user_prompt': config_dict['user_prompt'],
           'iterations': config_dict['iterations'],
       }
      
     config = Config(**config_constructor_params)
-    config.agent_id = config_dict['agent_id']
     config.wandb_run_id = config_dict.get('wandb_run_id')
 
     return config

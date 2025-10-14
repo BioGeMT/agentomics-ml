@@ -13,13 +13,6 @@ TEST_MODE=false
 CPU_ONLY=false
 OLLAMA=false
 
-# if docker volume named 'temp_agentomics_volume' exists, delete it
-VOLUME_NAME="temp_agentomics_volume"
-if docker volume ls --format '{{.Name}}' | grep -wq "$VOLUME_NAME"; then
-    echo "Deleting temporary volume from previous interrupted run. Volume: '$VOLUME_NAME'..."
-    docker volume rm "$VOLUME_NAME"
-fi
-
 while [[ $# -gt 0 ]]; do
     case $1 in
         --model)
@@ -83,14 +76,23 @@ if [ "$LOCAL_MODE" = true ]; then
 
     eval "$(conda shell.bash hook)"
     conda activate agentomics-env
+
+    AGENT_ID=$(python src/utils/create_user.py)
+    export AGENT_ID
     python src/run_agent_interactive.py ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
     export PYTHONPATH=./src
     python src/run_logging/evaluate_log_test.py --workspace-dir ../workspace
 
-    mkdir -p outputs/best_run_files outputs/reports
-    cp -r ../workspace/snapshots/. outputs/best_run_files/
-    cp -r ../workspace/reports/. outputs/reports/
+    mkdir -p outputs/${AGENT_ID}/best_run_files outputs/${AGENT_ID}/reports
+    cp -r ../workspace/snapshots/${AGENT_ID}/. outputs/${AGENT_ID}/best_run_files/
+    cp -r ../workspace/reports/${AGENT_ID}/. outputs/${AGENT_ID}/reports/
 else
+    echo "Building the run image"
+    docker build --progress=quiet -t agentomics_img -f Dockerfile .
+    echo "Build done"
+    AGENT_ID=$(docker run --rm -u $(id -u):$(id -g) -v "$(pwd)":/repository --entrypoint \
+               /opt/conda/envs/agentomics-env/bin/python agentomics_img /repository/src/utils/create_user.py)
+
     echo "Building the data preparation image"
     docker build --progress=quiet -t agentomics_prepare_img -f Dockerfile.prepare .
     echo "Build done"
@@ -98,14 +100,11 @@ else
         -u $(id -u):$(id -g) \
         --rm \
         -it \
-        --name agentomics_prepare_cont \
+        --name agentomics_prepare_cont_${AGENT_ID} \
         -v "$(pwd)":/repository \
         agentomics_prepare_img
 
-    echo "Building the run image"
-    docker build --progress=quiet -t agentomics_img .
-    echo "Build done"
-    docker volume create temp_agentomics_volume
+    docker volume create temp_agentomics_volume_${AGENT_ID}
 
     GPU_FLAGS=()
     if [ "$CPU_ONLY" = false ]; then
@@ -131,62 +130,61 @@ else
         docker run \
             -it \
             --rm \
-            --name agentomics_test_cont \
+            --name agentomics_test_cont_${AGENT_ID} \
             --env-file $(pwd)/.env \
+            -e AGENT_ID=${AGENT_ID} \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
             ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/test":/repository/test:ro \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
-            -v temp_agentomics_volume:/workspace \
+            -v temp_agentomics_volume_${AGENT_ID}:/workspace \
             --entrypoint /opt/conda/envs/agentomics-env/bin/python \
             agentomics_img -m test.run_all_tests
     else
         docker run \
             -it \
             --rm \
-            --name agentomics_cont \
+            --name agentomics_cont_${AGENT_ID} \
             --env-file $(pwd)/.env \
+            -e AGENT_ID=${AGENT_ID} \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
             ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
-            -v temp_agentomics_volume:/workspace \
+            -v temp_agentomics_volume_${AGENT_ID}:/workspace \
             agentomics_img ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
 
         echo "Running final evaluation on test set"
         docker run \
             --rm \
-            --name agentomics_test_eval_cont \
+            --name agentomics_test_eval_cont_${AGENT_ID} \
             --env-file $(pwd)/.env \
+            -e AGENT_ID=${AGENT_ID} \
             -e PYTHONPATH=/repository/src \
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
             -v "$(pwd)/prepared_test_sets":/repository/prepared_test_sets:ro \
-            -v temp_agentomics_volume:/workspace \
+            -v temp_agentomics_volume_${AGENT_ID}:/workspace \
             --entrypoint /opt/conda/envs/agentomics-env/bin/python \
             agentomics_img src/run_logging/evaluate_log_test.py
 
-
-        # Pick the latest run from the volume
-        RUN_NAME=$(docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume:/source busybox sh -c 'ls -1t /source/snapshots | head -n 1')
-
-        mkdir -p outputs/${RUN_NAME}/best_run_files outputs/${RUN_NAME}/reports
+        mkdir -p outputs/${AGENT_ID}/best_run_files outputs/${AGENT_ID}/reports
 
         # Copy best-run files and report
-        docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume:/source -v $(pwd)/outputs/${RUN_NAME}:/dest busybox cp -r /source/snapshots/${RUN_NAME}/. /dest/best_run_files/
+        docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox cp -r /source/snapshots/${AGENT_ID}/. /dest/best_run_files/
 
         # Copy reports from all iterations
-        docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume:/source -v $(pwd)/outputs/${RUN_NAME}:/dest busybox cp -r /source/reports/${RUN_NAME}/. /dest/reports/
+        docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox cp -r /source/reports/${AGENT_ID}/. /dest/reports/
         
         GREEN='\033[0;32m'
         NOCOLOR='\033[0m'
-        echo -e "${GREEN}Run finished. Report and files can be found in outputs/${RUN_NAME}${NOCOLOR}"
-        echo -e "${GREEN}To run inference on new data, use ./inference.sh --agent-dir outputs/${RUN_NAME} --input <path_to_input_csv> --output <path_to_output_csv>${NOCOLOR}"
+        echo -e "${GREEN}Run finished. Report and files can be found in outputs/${AGENT_ID}${NOCOLOR}"
+        echo -e "${GREEN}To run inference on new data, use ./inference.sh --agent-dir outputs/${AGENT_ID} --input <path_to_input_csv> --output <path_to_output_csv>${NOCOLOR}"
 
     fi
 
-    docker volume rm temp_agentomics_volume
+    docker volume rm temp_agentomics_volume_${AGENT_ID}
 fi
