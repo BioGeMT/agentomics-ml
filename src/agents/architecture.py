@@ -157,7 +157,7 @@ async def run_architecture(text_output_agent: Agent, inference_agent: Agent, spl
     save_step_output(config, 'final_outcome', final_outcome, iteration)
 
     if not config.explicit_valid_set_provided:
-        val_path = data_split.val_path
+        val_path = config.runs_dir / config.agent_id / 'validation.csv'
     else:
         val_path = config.agent_dataset_dir / config.dataset / "validation.csv"
 
