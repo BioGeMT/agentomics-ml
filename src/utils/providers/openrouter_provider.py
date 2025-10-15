@@ -99,7 +99,7 @@ class OpenRouterProvider(Provider):
         
         return filtered[:limit]
 
-    def display_models(self, models: List[Dict] = None) -> None:
+    def display_models(self, models: List[Dict] = None) -> List[Dict]:
         if models is None:
             models = self.get_filtered_models()
 
@@ -144,7 +144,7 @@ class OpenRouterProvider(Provider):
                 model_data.append((clean_name, input_cost, output_cost, context))
 
             panel_width = min(max_width + 8, 60)
-            company_boxes.append((box_height, panel_width, model_data, provider_display))
+            company_boxes.append((box_height, panel_width, model_data, provider_display, provider_models))
 
         num_cols = 4
         columns = [[] for _ in range(num_cols)]
@@ -152,12 +152,14 @@ class OpenRouterProvider(Provider):
         col_max_widths = [0] * num_cols
 
         sorted_boxes = sorted(company_boxes, key=lambda x: x[0], reverse=True)
-
-        for box_height, panel_width, model_data, provider_display in sorted_boxes:
+        model_columns = [[] for _ in range(num_cols)]
+        for box_height, panel_width, model_data, provider_display, provider_models in sorted_boxes:
             min_col = col_heights.index(min(col_heights))
             columns[min_col].append((model_data, provider_display))
+            model_columns[min_col].extend(provider_models)
             col_heights[min_col] += box_height
             col_max_widths[min_col] = max(col_max_widths[min_col], panel_width)
+        display_order_models = [model for col in model_columns for model in col]
 
         
         col_renderables = []
@@ -179,6 +181,7 @@ class OpenRouterProvider(Provider):
 
         self.console.print(Columns(col_renderables, padding=(0, 1), expand=False))
         self.console.print("\n[dim]Prices per million tokens[/dim]")
+        return display_order_models
     
     def interactive_model_selection(self, limit: int = 20) -> Optional[str]:
         """Ovveriding method in Provider class. Interactive model selection for OpenRouter models."""
@@ -188,15 +191,15 @@ class OpenRouterProvider(Provider):
             self.console.print("Could not fetch models")
             return None
         
-        self.display_models(models)
+        display_order_models = self.display_models(models)
         
         choice = get_user_input_for_int(
-          prompt_text=f"Select model (1-{len(models)}) or Enter for first",
+          prompt_text=f"Select model (1-{len(display_order_models)}) or Enter for first",
           default=1,
-          valid_options=list(range(1, len(models) + 1))
+          valid_options=list(range(1, len(display_order_models) + 1))
         )
 
         if choice:
-            return models[choice - 1].get("id")
+            return display_order_models[choice - 1].get("id")
         
         return None
