@@ -58,6 +58,8 @@ class BashProcess:
                     output += result.stderr
 
                 if result.returncode != 0:
+                    if(len(output) > 5000):
+                        output = f"output truncated, too long, showing first 5000 and last 5000 characters. First 5000:\n{output[:5000]}\n...\nLast 5000:\n{output[-5000:]}"
                     return f"Command failed with error code {result.returncode}:\n{output}"
 
                 return self.process_output(output, command)
