@@ -59,12 +59,16 @@ class OpenRouterProvider(Provider):
         models = self.fetch_models()
         if not models:
             return None
-        
+        excluded_providers = ["nousresearch"]
+        excluded_models = []
         filtered = []
         for model in models:
             model_id = model.get("id", "")
             pricing = model.get("pricing", {})
-            
+            if model_id in excluded_models:
+                continue
+            if any(f"{provider}/" in model_id for provider in excluded_providers):
+                continue
             # Skip unwanted models
             if (not pricing or 
                 model_id.startswith("openrouter/") or
