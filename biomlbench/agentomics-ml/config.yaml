@@ -2,6 +2,7 @@ agentomics-ml:
   start: agentomics-ml/start.sh
   dockerfile: agentomics-ml/Dockerfile
   env_vars:
+    NVIDIA_VISIBLE_DEVICES: all
     OPENROUTER_API_KEY: "TODO:YOUR_API_KEY"
     # OPENROUTER_API_KEY: "${OPENROUTER_API_KEY}" # alternatively, use env var
     # pass wandb keys for logging

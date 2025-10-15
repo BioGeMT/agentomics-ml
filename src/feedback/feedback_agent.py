@@ -29,7 +29,7 @@ async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, 
 
     #TODO only give advice on splitting if val set is not provided explicitly
     feedback_prompt = f"""
-    Summarize the current state and provide detailed feedback on how to fix errors and improve the steps executed:
+    Summarize the current state and provide detailed feedback on how to fix errors and improve generalization to a future unseen test set by changing any of the steps:
     1. Data exploration: describe the data and the features you explored.
     2. Data splitting: describe how was the data split.
     3. Data representation: any transformations, encodings, normalizations, features
@@ -41,6 +41,7 @@ async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, 
     Metrics from the past best run are: {best_metrics}.
 
     Provide insights on how to improve the model generalization performance in the listed steps. You may skip steps that don't need changed.
+    If you choose step 2 (Data splitting) needs change, never suggest cross-validations split or any other split that would result in more than two files (train.csv and validation.csv).
 
     {prompt_suffix}.
     """
