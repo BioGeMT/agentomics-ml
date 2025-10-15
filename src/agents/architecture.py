@@ -109,8 +109,8 @@ async def run_architecture(text_output_agent: Agent, inference_agent: Agent, spl
     )
     save_step_output(config, 'data_exploration', data_exploration_output, iteration)
 
-    # TODO validation set can now change between iterations -> snapshotting is not objective anymore, worse number can just mean better val set
-    if not config.explicit_valid_set_provided:
+    # Disallow the choice to split in the very last iteration
+    if not config.explicit_valid_set_provided and iteration < (config.iterations -1):
         messages_split, data_split = await run_agent(
             agent=split_dataset_agent,
             user_prompt=get_data_split_prompt(config, iteration),
