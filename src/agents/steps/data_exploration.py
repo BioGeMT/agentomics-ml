@@ -18,5 +18,12 @@ class DataExploration(BaseModel):
     )
 
 
-def get_data_exploration_prompt():
-    return "\nYour first task: explore the dataset."
+def get_data_exploration_prompt(iteration):
+    if(iteration != 0):
+        extra_info = "Note: If you gathered enough information from your previous exploration and don't need to explore the data further, return 'Exploration skipped' in all fields."
+    else:
+        extra_info = ""    
+    return f"""
+    Your first task: explore the dataset.
+    {extra_info}
+    """

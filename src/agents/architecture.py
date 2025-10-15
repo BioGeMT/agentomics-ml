@@ -102,7 +102,7 @@ def create_agents(config: Config, model, tools):
 async def run_architecture(text_output_agent: Agent, inference_agent: Agent, split_dataset_agent: Agent, training_agent: Agent, config: Config, base_prompt: str, iteration: int):
     messages_data_exploration, data_exploration_output = await run_agent(
         agent=text_output_agent,
-        user_prompt=base_prompt + get_data_exploration_prompt(),
+        user_prompt=base_prompt + get_data_exploration_prompt(iteration),
         max_steps=config.max_steps,
         output_type=DataExploration, # this is overriding the output_type
         message_history=None,
