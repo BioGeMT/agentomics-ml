@@ -42,6 +42,7 @@ async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, 
 
     Provide feedback on how to fix errors and improve generalization to a future unseen test set by changing any of the steps.
     Provide only feedback that you expect to be impactful.
+    Your feedback can suggest anything from small changes up to completelly changing the strategy of a step.
     You may skip steps that don't need changed.
     If you choose step 2 (Data splitting) needs change, never suggest cross-validations split or any other split that would result in more than two files (train.csv and validation.csv).
     You're providing feedback to another LLM, never offer that you will take any actions to fix or implement fixes yourself.
