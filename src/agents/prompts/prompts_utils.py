@@ -45,5 +45,6 @@ def get_iteration_prompt(config, run_index, feedback):
     You have already completed {run_index} runs of your task.
     Here is the feedback from your past runs:
     {feedback}
+    During your tasks, take actions to address issues mentioned in the feedback, especially from the last iteration.
     Files from your past run are still in your workspace.
     """

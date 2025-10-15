@@ -29,20 +29,23 @@ async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, 
 
     #TODO only give advice on splitting if val set is not provided explicitly
     feedback_prompt = f"""
-    Summarize the current state and provide detailed feedback on how to fix errors and improve generalization to a future unseen test set by changing any of the steps:
-    1. Data exploration: describe the data and the features you explored.
+    Summarize the current iteration steps:
+    1. Data exploration: describe the data and the features explored.
     2. Data splitting: describe how was the data split.
-    3. Data representation: any transformations, encodings, normalizations, features
-    4. Model architecture: the machine learning model type and architecture for your task.
+    3. Data representation: any transformations, encodings, normalizations, features.
+    4. Model architecture: the machine learning model type and architecture.
     5. Model training: the training process, including hyperparameters and optimizers.
     6. Prediction exploration: insights about the prediction biases.
 
     The current iteration returned the following metrics: {new_metrics}.
     Metrics from the past best run are: {best_metrics}.
 
-    Provide insights on how to improve the model generalization performance in the listed steps. You may skip steps that don't need changed.
+    Provide feedback on how to fix errors and improve generalization to a future unseen test set by changing any of the steps.
+    Provide only feedback that you expect to be impactful.
+    You may skip steps that don't need changed.
     If you choose step 2 (Data splitting) needs change, never suggest cross-validations split or any other split that would result in more than two files (train.csv and validation.csv).
-
+    You're providing feedback to another LLM, never offer that you will take any actions to fix or implement fixes yourself.
+    
     {prompt_suffix}.
     """
     
