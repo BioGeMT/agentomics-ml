@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-
 # Ensure we are running under bash even if invoked via sh/zsh
 if [ -z "${BASH_VERSION:-}" ]; then
   exec /usr/bin/env bash "$0" "$@"
@@ -8,14 +7,17 @@ fi
 
 set -euo pipefail
 
+# Color definitions
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NOCOLOR='\033[0m'
+
 AGENTOMICS_ARGS=()
 LOCAL_MODE=false
 TEST_MODE=false
 CPU_ONLY=false
 OLLAMA=false
 
-# ------------------------------------------
-# ADDED FUNCTION: Display usage and options
 show_help() {
     cat << EOF
 Usage: ./run.sh [OPTIONS]
@@ -25,27 +27,24 @@ Use --local to run with a local Conda environment.
 
 Required Arguments (for non-interactive runs):
   --model <name>      The LLM model name (e.g., 'openai/gpt-4').
-                      Use '--model' in combination with '--list-models' to check
-                      compatibility with your configured provider.
   --dataset <name>    The short identifier for the prepared dataset (e.g., 'breast_cancer').
-                      Use '--list-datasets' to see available options.
   --iterations <N>    Number of iterations to run the agent (e.g., 5).
   --val-metric <name> The metric to optimize (e.g., 'ACC').
-                      Use '--list-metrics' to see available options.
   --user-prompt <str> The main prompt/goal for the agent.
                       (Default: "Create the best possible machine learning model that will generalize to new unseen data.")
 
 Operational Flags:
   --local             Run the project using local Conda environments instead of Docker.
   --test              Run the project's integrated test suite.
+                      (Note: Only supported in Docker mode, not in local Conda mode.)
   --cpu-only          Force Docker/Conda to run using CPU only (skip GPU configuration).
   --ollama            Enable support for an Ollama server running on the host machine.
   -h, --help          Show this help message and exit.
 
 Listing Flags (Run the script with only one of these):
-  --list-models       List models available via the configured provider.
-  --list-datasets     List all prepared datasets.
-  --list-metrics      List all available validation metrics.
+  --list-models       List models available via the configured provider and exit.
+  --list-datasets     List all prepared datasets and exit.
+  --list-metrics      List all available validation metrics and exit.
 
 Environment:
   API keys read from 'src/utils/providers/configured_providers.yaml' must be set as
@@ -56,8 +55,6 @@ Output:
   Results are copied from the temporary workspace to the local 'outputs/<RUN_NAME>' directory.
 EOF
 }
-# END ADDED FUNCTION
-# ------------------------------------------
 
 # if docker volume named 'temp_agentomics_volume' exists, delete it
 VOLUME_NAME="temp_agentomics_volume"
@@ -68,12 +65,11 @@ fi
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-    # ADDED CASE: Handle Help Flag
         -h|--help)
             show_help
             exit 0
             ;;
-        --list-models) # New flags added here from python script for documentation
+        --list-models)
             AGENTOMICS_ARGS+=(--list-models)
             shift
             ;;
@@ -126,13 +122,11 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         *)
-          # CHANGE HERE: Catch unrecognized arguments
+          # Catch unrecognized arguments
           if [[ "$1" == -* ]]; then
-                RED='\033[0;31m'
-                NOCOLOR='\033[0m'
                 echo -e "${RED}Error: Unrecognized argument or flag: $1${NOCOLOR}" >&2
-                show_help # Show help manual on error
-                exit 1 # Exit with an error code
+                echo "Please run ./run.sh --help for the available arguments." >&2
+                exit 1
             fi
             shift
             ;;
@@ -140,8 +134,6 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ "$LOCAL_MODE" = true ]; then
-    RED='\033[0;31m'
-    NOCOLOR='\033[0m'
     echo -e "${RED}Running in local mode - this is only recommended if you run in a non-vulnerable environment!${NOCOLOR}"
     echo "For Docker mode (secure run), re-run without the --local flag."
     
@@ -241,8 +233,6 @@ else
         # Copy reports from all iterations
         docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume:/source -v $(pwd)/outputs/${RUN_NAME}:/dest busybox cp -r /source/reports/${RUN_NAME}/. /dest/reports/
         
-        GREEN='\033[0;32m'
-        NOCOLOR='\033[0m'
         echo -e "${GREEN}Run finished. Report and files can be found in outputs/${RUN_NAME}${NOCOLOR}"
         echo -e "${GREEN}To run inference on new data, use ./inference.sh --agent-dir outputs/${RUN_NAME} --input <path_to_input_csv> --output <path_to_output_csv>${NOCOLOR}"
 
