@@ -20,7 +20,6 @@ class Config:
     snapshots_dir: Path
     runs_dir: Path
     reports_dir: Path
-    root_privileges: bool
     iterations: int
     task_type: str
     user_prompt: str
@@ -47,7 +46,6 @@ class Config:
         dataset: str,
         tags: List[str],
         val_metric: str,
-        root_privileges: bool,
         workspace_dir: Path,
         prepared_datasets_dir: Path,
         prepared_test_sets_dir: Path,
@@ -62,7 +60,6 @@ class Config:
         self.dataset = dataset
         self.tags = tags
         self.val_metric = val_metric
-        self.root_privileges = root_privileges
         self.prepared_dataset_dir = prepared_datasets_dir / dataset
         self.prepared_test_set_dir = prepared_test_sets_dir / dataset
         self.agent_dataset_dir = agent_dataset_dir / dataset
