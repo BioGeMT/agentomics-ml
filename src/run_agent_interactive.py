@@ -128,7 +128,6 @@ def main():
         agent_datasets_dir=paths["agent_datasets_dir"],
         workspace_dir=paths["workspace_dir"],
         tags=None,
-        no_root_privileges=args.root_privileges,
         iterations=iterations,
         user_prompt=args.user_prompt,
         provider=provider_name

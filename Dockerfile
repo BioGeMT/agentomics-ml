@@ -11,9 +11,6 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
 RUN apt-get update && rm -rf /var/lib/apt/lists/*
 
-# Agent user cannot change to root
-RUN echo 'root:ACWDBBXmbvjbxWHcjvri' | chpasswd
-
 # Copy & create your conda environment\ using environment.yaml (with mamba for speed and memory efficiency)
 COPY environment.yaml .
 RUN mamba env create -f environment.yaml \

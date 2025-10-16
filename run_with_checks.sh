@@ -1059,7 +1059,6 @@ SHOW_VOLUMES=false
 PREPARE_ONLY=false
 CONDA_ENV="agentomics-env"
 
-NO_ROOT_PRIVILEGES="true"
 WORKSPACE_DIR=""
 
 # Store original arguments for positional parsing
@@ -1111,10 +1110,6 @@ while [[ $# -gt 0 ]]; do
                 exit 1
             fi
             shift 2
-            ;;
-        --no-root-privileges)
-            NO_ROOT_PRIVILEGES="true"
-            shift
             ;;
         --workspace-dir)
             WORKSPACE_DIR="$2"

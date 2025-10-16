@@ -35,7 +35,6 @@ def load_run_config(workspace_dir):
           'dataset': config_dict['dataset'],
           'tags': config_dict['tags'],
           'val_metric': config_dict['val_metric'],
-          'root_privileges': config_dict['root_privileges'],
           'workspace_dir': Path(config_dict['workspace_dir']),
           'prepared_datasets_dir': Path(config_dict['prepared_dataset_dir']).parent,
           'prepared_test_sets_dir': Path(config_dict['prepared_test_set_dir']).parent,

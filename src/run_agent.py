@@ -24,7 +24,7 @@ from feedback.feedback_agent import get_feedback, aggregate_feedback
 from tools.setup_tools import create_tools
 
 
-async def main(model_name, feedback_model_name, dataset, tags, val_metric, root_privileges, 
+async def main(model_name, feedback_model_name, dataset, tags, val_metric, 
                workspace_dir, prepared_datasets_dir, prepared_test_sets_dir, agent_dataset_dir, iterations, user_prompt, provider_name):
     agent_id = os.getenv('AGENT_ID')
     # Initialize configuration 
@@ -35,7 +35,6 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric, root_
         dataset=dataset, 
         tags=tags, 
         val_metric=val_metric,
-        root_privileges=root_privileges,
         workspace_dir=Path(workspace_dir),
         prepared_datasets_dir=Path(prepared_datasets_dir),
         prepared_test_sets_dir=Path(prepared_test_sets_dir),
@@ -140,7 +139,6 @@ def parse_args():
     parser.add_argument('--dataset-name', required=True, help='Name of the folder containing dataset files')
     parser.add_argument('--model', help='LLM model to use', required=True)
     parser.add_argument('--provider', required=True, help=f'API provider to use. Available: {Provider.get_available_providers()}.')
-    parser.add_argument('--no-root-privileges', action='store_true', help='Flag to run without root privileges. This is not recommended, since it decreases security by not preventing the agent from accessing/modifying files outside of its own workspace.')
     parser.add_argument('--workspace-dir', type=Path, default=Path('../workspace').resolve(), help='Path to a directory which will store agent runs, snapshots, and reports')
     parser.add_argument('--prepared-datasets-dir', type=Path, default=Path('../repository/prepared_datasets').resolve(), help='Path to a directory which contains prepared datasets.')
     parser.add_argument('--prepared-test-sets-dir', type=Path, default=Path('../repository/prepared_test_sets').resolve(), help='Path to a directory which contains prepared test sets.')
@@ -155,7 +153,7 @@ def parse_args():
     return parser.parse_args()
 
 async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir,
-                          workspace_dir, tags, no_root_privileges, iterations, user_prompt, provider):
+                          workspace_dir, tags, iterations, user_prompt, provider):
     setup_nonsensitive_dataset_files_for_agent(
         prepared_datasets_dir=Path(prepared_datasets_dir),
         agent_datasets_dir=Path(agent_datasets_dir),
@@ -168,7 +166,6 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
         dataset=dataset_name, 
         tags=tags,
         val_metric=val_metric, 
-        root_privileges=not no_root_privileges, 
         workspace_dir=workspace_dir, 
         prepared_datasets_dir=prepared_datasets_dir, 
         prepared_test_sets_dir=prepared_test_sets_dir,
@@ -190,7 +187,6 @@ async def run_experiment_from_terminal():
         agent_datasets_dir=args.agent_datasets_dir, 
         workspace_dir=args.workspace_dir, 
         tags=args.tags,
-        no_root_privileges=args.no_root_privileges,
         iterations=args.iterations,
         user_prompt=args.user_prompt,
         provider=args.provider

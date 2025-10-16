@@ -23,7 +23,6 @@ def get_shared_test_resources():
               dataset="AGO2_CLASH_Hejret",
               tags=[],
               val_metric="ACC",
-              root_privileges=True,
               workspace_dir=Path("/workspace").resolve(),
               prepared_datasets_dir=Path('../repository/prepared_datasets').resolve(),
               prepared_test_sets_dir=Path('../repository/prepared_test_sets').resolve(),

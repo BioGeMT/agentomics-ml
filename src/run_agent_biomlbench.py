@@ -133,7 +133,6 @@ if __name__ == '__main__':
         prepared_datasets_dir= '/home/agent/prepared_datasets',
         agent_datasets_dir= '/home/workspace/datasets',
         tags=[],
-        no_root_privileges=True, # because of sudo create user restrictions due to biomlbench container not being run as root 
         provider=args.provider,
     ))
     copy_dir(source_dir='/home/workspace/snapshots', dest_dir=CODE_DIR)
