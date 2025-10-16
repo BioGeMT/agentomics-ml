@@ -105,6 +105,7 @@ else
         agentomics_prepare_img
 
     docker volume create temp_agentomics_volume_${AGENT_ID}
+    trap "docker volume rm temp_agentomics_volume_${AGENT_ID}" EXIT
 
     GPU_FLAGS=()
     if [ "$CPU_ONLY" = false ]; then
@@ -180,8 +181,6 @@ else
         docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox cp -r /source/reports/${AGENT_ID}/. /dest/reports/
 
     fi
-
-    docker volume rm temp_agentomics_volume_${AGENT_ID}
 fi
 
 GREEN='\033[0;32m'
