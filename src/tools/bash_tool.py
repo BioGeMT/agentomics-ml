@@ -90,8 +90,8 @@ def create_bash_tool(agent_id, runs_dir, timeout, max_retries, autoconda=True, p
 
         def _bash(command: str):
             """
-            A persistent bash. 
-            Use this to execute bash commands. 
+            A persistent bash.
+            Use this to execute bash commands.
             Input should be a valid bash command.
             Do not use sudo commands, as you don't have sudo access.
 
@@ -101,13 +101,45 @@ def create_bash_tool(agent_id, runs_dir, timeout, max_retries, autoconda=True, p
             \"mkdir test\"
             \"echo "hello world" > test.txt\"
             \"conda create -n my_env python=3.8 matplotlib -c conda-forge -y\"
-            \"source activate my_env\"            
+            \"source activate my_env\"
             \"python /workspace/numpy_test.py\"
 
             Args:
                 command: A valid bash command.
-            """  
+            """
+            # Auto-fix GPU package installations
+            original_command = command
+
+            # TensorFlow GPU fix - match pip install with any flags, then tensorflow
+            if re.search(r'\b(pip|conda)\s+install.*\btensorflow\b(?!\[and-cuda\])', command):
+                # Replace tensorflow with tensorflow[and-cuda], preserving all flags for pip
+                if 'pip install' in command:
+                    command = re.sub(r'(\bpip\s+install(?:\s+[^\s]+)*\s+)tensorflow\b', r'\1tensorflow[and-cuda]', command)
+                elif 'conda install' in command:
+                    # For conda, replace entire command with pip
+                    command = re.sub(r'conda\s+install.*tensorflow.*', 'pip install tensorflow[and-cuda]', command)
+
+            # PyTorch GPU fix (if using pip/conda without CUDA specification)
+            if re.search(r'\b(pip|conda)\s+install.*\btorch\b', command) and 'cu11' not in command and 'cu12' not in command and 'index-url' not in command:
+                # For PyTorch, we need to replace the entire package list since we're adding index-url
+                command = re.sub(r'(pip\s+install)(\s+[^\n]+)', r'\1 torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118', command)
+                if 'conda install' in command:
+                    command = re.sub(r'conda\s+install.*torch.*', 'pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118', command)
+
+            # JAX GPU fix - match pip install with any flags, then jax
+            if re.search(r'\bpip\s+install.*\bjax\b(?!\[cuda)', command):
+                command = re.sub(r'(\bpip\s+install(?:\s+[^\s]+)*\s+)jax\b', r'\1jax[cuda12]', command)
+
+            if command != original_command:
+                print(f"[Auto-fixed GPU package installation]\nOriginal: {original_command}\nFixed: {command}")
+
             env_path = runs_dir / agent_id / ".conda" / "envs" / f"{agent_id}_env"
+
+            # Ensure conda environment exists (recreate if missing)
+            if not env_path.exists():
+                print(f"[Conda environment not found, recreating: {env_path}]")
+                bash.create_conda_env()
+
             command_parsed = shlex.quote(command)
             command = f"conda run -p {env_path} --no-capture-output bash -c {command_parsed}"
             out = bash.run(command)
