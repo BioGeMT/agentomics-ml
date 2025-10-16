@@ -150,7 +150,11 @@ class OpenRouterProvider(Provider):
             panel_width = min(max_width + 8, 60)
             company_boxes.append((box_height, panel_width, model_data, provider_display, provider_models))
 
-        num_cols = 4
+        terminal_width = self.console.width
+        avg_panel_width = sum(box[1] for box in company_boxes) / len(company_boxes) if company_boxes else 60
+        padding_per_col = 2
+        num_cols = max(1, min(4, int(terminal_width / (avg_panel_width + padding_per_col))))
+
         columns = [[] for _ in range(num_cols)]
         col_heights = [0] * num_cols
         col_max_widths = [0] * num_cols
