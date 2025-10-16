@@ -93,14 +93,15 @@ if [[ "$DOCKER_MODE" == true ]]; then
         condaforge/mambaforge:23.3.1-0 \
         python inference.py \
         --input "/input_dir/$(basename "$INPUT_PATH_ABS")" \
-        --output "/output_dir/$(basename "$OUTPUT_PATH_ABS")" "${ARGS[@]}" \
-        > /dev/null 2>&1
+        --output "/output_dir/$(basename "$OUTPUT_PATH_ABS")" "${ARGS[@]}" 
+    echo "Inference done"
 else
     echo "Running inference locally..."
     cd "$(dirname "$INFERENCE_PATH")"
     conda run -p "$ENV_PATH" \
         python "$INFERENCE_PATH" \
         --input "$INPUT_PATH" \
-        --output "$OUTPUT_PATH" "${ARGS[@]}" \
-        > /dev/null 2>&1
+        --output "$OUTPUT_PATH" "${ARGS[@]}"
+    echo "Inference done"
+    
 fi
