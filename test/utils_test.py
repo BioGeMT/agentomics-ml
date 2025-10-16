@@ -26,7 +26,7 @@ def get_shared_test_resources():
               workspace_dir=Path("/workspace").resolve(),
               prepared_datasets_dir=Path('../repository/prepared_datasets').resolve(),
               prepared_test_sets_dir=Path('../repository/prepared_test_sets').resolve(),
-              agent_dataset_dir=Path('../workspace/datasets').resolve(),
+              agent_datasets_dir=Path('../workspace/datasets').resolve(),
               iterations=5,
               user_prompt="Create the best possible machine learning model that will generalize to new unseen data."
           )
