@@ -90,7 +90,7 @@ else
     echo "Building the run image"
     docker build --progress=quiet -t agentomics_img -f Dockerfile .
     echo "Build done"
-    AGENT_ID=$(docker run --rm -u $(id -u):$(id -g) -v "$(pwd)":/repository --entrypoint \
+    AGENT_ID=$(docker run --rm -u $(id -u):$(id -g) -v "$(pwd)":/repository:ro --entrypoint \
                /opt/conda/envs/agentomics-env/bin/python agentomics_img /repository/src/utils/create_user.py)
 
     echo "Building the data preparation image"
