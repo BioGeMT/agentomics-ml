@@ -87,7 +87,7 @@ def main():
     if (not dataset or not model or not args.val_metric) and not check_tty_available():
         console.print("Interactive terminal required for dataset/model/val_metric selection but not available", style="red")
         console.print("For non-interactive use, specify --dataset, --model, and --val-metric arguments", style="cyan")
-        console.print("Example: python agentomics-entrypoint.py --dataset heart_disease --model 'openai/gpt-4' --val-metric 'ACC'", style="cyan")
+        console.print("Example: python agentomics-entrypoint.py --dataset breast_cancer --model 'openai/gpt-4' --val-metric 'ACC'", style="cyan")
         return 1
     
     if not are_wandb_vars_available():
