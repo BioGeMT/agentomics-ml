@@ -49,7 +49,7 @@ class Config:
         workspace_dir: Path,
         prepared_datasets_dir: Path,
         prepared_test_sets_dir: Path,
-        agent_dataset_dir: Path,
+        agent_datasets_dir: Path,
         user_prompt: str,
         max_steps: Optional[int] = None,
         iterations: Optional[int] = 5,
@@ -62,7 +62,7 @@ class Config:
         self.val_metric = val_metric
         self.prepared_dataset_dir = prepared_datasets_dir / dataset
         self.prepared_test_set_dir = prepared_test_sets_dir / dataset
-        self.agent_dataset_dir = agent_dataset_dir / dataset
+        self.agent_dataset_dir = agent_datasets_dir / dataset
         self.workspace_dir = workspace_dir
         self.runs_dir = workspace_dir / "runs"
         self.snapshots_dir = workspace_dir / "snapshots"
@@ -70,7 +70,7 @@ class Config:
         self.iterations = iterations
         self.task_type = get_task_type_from_prepared_dataset(prepared_datasets_dir / dataset)
         self.user_prompt = user_prompt
-        self.explicit_valid_set_provided = (agent_dataset_dir / dataset / "validation.csv").exists()
+        self.explicit_valid_set_provided = (agent_datasets_dir / dataset / "validation.csv").exists()
 
         if max_steps is not None:
             self.max_steps = max_steps

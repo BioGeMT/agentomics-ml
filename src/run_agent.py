@@ -25,7 +25,7 @@ from tools.setup_tools import create_tools
 
 
 async def main(model_name, feedback_model_name, dataset, tags, val_metric, 
-               workspace_dir, prepared_datasets_dir, prepared_test_sets_dir, agent_dataset_dir, iterations, user_prompt, provider_name):
+               workspace_dir, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir, iterations, user_prompt, provider_name):
     agent_id = os.getenv('AGENT_ID')
     # Initialize configuration 
     config = Config(
@@ -38,7 +38,7 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric,
         workspace_dir=Path(workspace_dir),
         prepared_datasets_dir=Path(prepared_datasets_dir),
         prepared_test_sets_dir=Path(prepared_test_sets_dir),
-        agent_dataset_dir=Path(agent_dataset_dir),
+        agent_datasets_dir=Path(agent_datasets_dir),
         iterations=iterations,
         user_prompt=user_prompt,
     )
@@ -169,7 +169,7 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
         workspace_dir=workspace_dir, 
         prepared_datasets_dir=prepared_datasets_dir, 
         prepared_test_sets_dir=prepared_test_sets_dir,
-        agent_dataset_dir=agent_datasets_dir,
+        agent_datasets_dir=agent_datasets_dir,
         iterations=iterations,
         user_prompt=user_prompt,
         provider_name=provider

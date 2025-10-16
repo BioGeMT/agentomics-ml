@@ -38,7 +38,7 @@ def load_run_config(workspace_dir):
           'workspace_dir': Path(config_dict['workspace_dir']),
           'prepared_datasets_dir': Path(config_dict['prepared_dataset_dir']).parent,
           'prepared_test_sets_dir': Path(config_dict['prepared_test_set_dir']).parent,
-          'agent_dataset_dir': Path(config_dict['agent_dataset_dir']).parent,
+          'agent_datasets_dir': Path(config_dict['agent_dataset_dir']).parent,
           'user_prompt': config_dict['user_prompt'],
           'iterations': config_dict['iterations'],
       }
