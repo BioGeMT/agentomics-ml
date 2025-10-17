@@ -29,6 +29,7 @@ def setup_agentomics_folder_structure_and_files(description_path, train_data_pat
         negative_class=None,
         task_type=task_type,
         output_dir='/home/agent/prepared_datasets',
+        test_sets_output_dir='/home/agent/prepared_test_sets',
     )
 
 def run_inference_on_test_data(test_data_path):
