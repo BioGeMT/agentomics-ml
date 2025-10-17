@@ -26,7 +26,8 @@ from utils.snapshots import reset_snapshot_if_val_split_changed, create_split_fi
 
 
 async def main(model_name, feedback_model_name, dataset, tags, val_metric, 
-               workspace_dir, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir, iterations, user_prompt, provider_name, on_new_best_callbacks):
+               workspace_dir, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir, iterations, 
+               user_prompt, provider_name, on_new_best_callbacks, split_allowed_iterations):
     agent_id = os.getenv('AGENT_ID')
     # Initialize configuration 
     config = Config(
@@ -42,6 +43,7 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric,
         agent_datasets_dir=Path(agent_datasets_dir),
         iterations=iterations,
         user_prompt=user_prompt,
+        split_allowed_iterations=split_allowed_iterations,
     )
     ensure_workspace_folders(config)
     create_run_and_snapshot_dirs(config)
@@ -168,6 +170,8 @@ def parse_args():
     parser.add_argument('--agent-datasets-dir', type=Path, default=Path('../workspace/datasets').resolve(), help='Path to a directory which contains non-test data accessible by agents.')
     parser.add_argument('--tags', nargs='*', default=[], help='(Optional) Tags for a wandb run logging')
     parser.add_argument('--iterations', type=int, default=5, help='Number of training iterations to run')
+    parser.add_argument('--split-allowed-iterations', type=int, default=1, help='Number of initial iterations that allow the agent to split the data into training and validation sets')
+
     parser.add_argument('--user-prompt', type=str, default="Create the best possible machine learning model that will generalize to new unseen data.", help='(Optional) Text to overwrite the default user prompt')
 
     val_metric_choices = get_classification_metrics_names() + get_regression_metrics_names()
@@ -176,7 +180,8 @@ def parse_args():
     return parser.parse_args()
 
 async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, agent_datasets_dir,
-                          workspace_dir, tags, no_root_privileges, iterations, user_prompt, provider, on_new_best_callbacks=[]):
+                          workspace_dir, tags, no_root_privileges, iterations, user_prompt, provider, 
+                          split_allowed_iterations, on_new_best_callbacks=[]):
     setup_nonsensitive_dataset_files_for_agent(
         prepared_datasets_dir=Path(prepared_datasets_dir),
         agent_datasets_dir=Path(agent_datasets_dir),
@@ -197,6 +202,7 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
         user_prompt=user_prompt,
         provider_name=provider,
         on_new_best_callbacks=on_new_best_callbacks,
+        split_allowed_iterations=split_allowed_iterations,
     )
 
 
@@ -214,7 +220,8 @@ async def run_experiment_from_terminal():
         tags=args.tags,
         iterations=args.iterations,
         user_prompt=args.user_prompt,
-        provider=args.provider
+        provider=args.provider,
+        split_allowed_iterations=args.split_allowed_iterations,
     )
 
 if __name__ == "__main__":

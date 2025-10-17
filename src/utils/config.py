@@ -23,6 +23,7 @@ class Config:
     iterations: int
     task_type: str
     user_prompt: str
+    split_allowed_iterations: int
 
     wandb_run_id: Optional[str] = None
     # static defaults
@@ -53,6 +54,7 @@ class Config:
         user_prompt: str,
         max_steps: Optional[int] = None,
         iterations: Optional[int] = 5,
+        split_allowed_iterations: Optional[int] = 1,
     ):
         self.agent_id = agent_id
         self.model_name = model_name
@@ -68,6 +70,7 @@ class Config:
         self.snapshots_dir = workspace_dir / "snapshots"
         self.reports_dir = workspace_dir / "reports"
         self.iterations = iterations
+        self.split_allowed_iterations = split_allowed_iterations
         self.task_type = get_task_type_from_prepared_dataset(prepared_datasets_dir / dataset)
         self.user_prompt = user_prompt
         self.explicit_valid_set_provided = (agent_datasets_dir / dataset / "validation.csv").exists()

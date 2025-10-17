@@ -109,8 +109,8 @@ async def run_architecture(text_output_agent: Agent, inference_agent: Agent, spl
     )
     save_step_output(config, 'data_exploration', data_exploration_output, iteration)
 
-    # Disallow the choice to split in the very last iteration
-    if not config.explicit_valid_set_provided and iteration < (config.iterations -1):
+    split_allowed_iterations = config.split_allowed_iterations
+    if not config.explicit_valid_set_provided and iteration < split_allowed_iterations:
         messages_split, data_split = await run_agent(
             agent=split_dataset_agent,
             user_prompt=get_data_split_prompt(config, iteration),
