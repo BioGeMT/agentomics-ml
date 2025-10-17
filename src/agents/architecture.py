@@ -8,7 +8,7 @@ from pathlib import Path
 
 from agents.agent_utils import run_agent
 from agents.prompts.prompts_utils import get_iteration_prompt, get_user_prompt, get_system_prompt
-from agents.steps.final_outcome import FinalOutcome, get_final_outcome_prompt
+from agents.steps.model_inference import ModelInference, get_model_inference_prompt
 from agents.steps.data_split import DataSplit, get_data_split_prompt
 from agents.steps.model_architecture import ModelArchitecture, get_model_architecture_prompt
 from agents.steps.data_representation import DataRepresentation, get_data_representation_prompt
@@ -20,7 +20,7 @@ from utils.report_logger import save_step_output
 from run_logging.evaluate_log_run import run_inference_and_log
 
 def create_agents(config: Config, model, tools):
-    text_output_agent = Agent( # this is data exploration, representation, architecture reasoning agent
+    text_output_agent = Agent( # this is data exploration, representation, architecture reasoning, prediction exploration agent
         model=model,
         system_prompt=get_system_prompt(config),
         tools=tools,
@@ -49,7 +49,7 @@ def create_agents(config: Config, model, tools):
         model=model,
         tools=tools,
         model_settings={'temperature':config.temperature},
-        output_type= FinalOutcome,
+        output_type= ModelInference,
         result_retries=config.max_validation_retries,
     )
     @split_dataset_agent.output_validator
@@ -67,7 +67,7 @@ def create_agents(config: Config, model, tools):
             if (val_path.resolve() != original_train_csv_path.resolve()):
                 val_path.unlink()
 
-            raise ModelRetry("Files must be called exactly train.csv and validation.csv")
+            raise ModelRetry(f"The files must be called exactly 'train.csv' and 'validation.csv'. Files ({train_path.name} and {val_path.name}) have been deleted.")
         
         target_col = 'numeric_label' #TODO generalize and take from metadata.json or config
         for path in [result.train_path, result.val_path]:
@@ -85,7 +85,7 @@ def create_agents(config: Config, model, tools):
         return result
 
     @inference_agent.output_validator
-    async def validate_inference(result: FinalOutcome) -> FinalOutcome:
+    async def validate_inference(result: ModelInference) -> ModelInference:
         if not os.path.exists(result.path_to_inference_file):
             raise ModelRetry("Inference file does not exist.")
         run_inference_and_log(config, iteration=-1, evaluation_stage='dry_run') 
@@ -147,14 +147,13 @@ async def run_architecture(text_output_agent: Agent, inference_agent: Agent, spl
     )
     save_step_output(config, 'model_training', model_training, iteration)
 
-    #TODO rename final outcome to inference
-    messages_inference, final_outcome = await run_agent(
+    messages_inference, model_inference = await run_agent(
         agent=inference_agent, 
-        user_prompt=get_final_outcome_prompt(config), 
+        user_prompt=get_model_inference_prompt(config), 
         max_steps=config.max_steps,
         message_history=messages_training,
     )
-    save_step_output(config, 'final_outcome', final_outcome, iteration)
+    save_step_output(config, 'model_inference', model_inference, iteration)
 
     if not config.explicit_valid_set_provided:
         val_path = config.runs_dir / config.agent_id / 'validation.csv'
@@ -163,7 +162,7 @@ async def run_architecture(text_output_agent: Agent, inference_agent: Agent, spl
 
     _messages, prediction_exploration = await run_agent(
         agent=text_output_agent,
-        user_prompt=get_prediction_exploration_prompt(validation_path=val_path,inference_path=final_outcome.path_to_inference_file),
+        user_prompt=get_prediction_exploration_prompt(validation_path=val_path,inference_path=model_inference.path_to_inference_file),
         max_steps=config.max_steps,
         output_type=PredictionExploration,
         message_history=messages_inference,

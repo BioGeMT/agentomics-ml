@@ -2,12 +2,12 @@ from pydantic import BaseModel, Field
 
 from utils.dataset_utils import get_classes_integers
 
-class FinalOutcome(BaseModel):
+class ModelInference(BaseModel):
     path_to_inference_file: str = Field(
         description="Absolute path to the generated inference.py"
     )
 
-def get_final_outcome_prompt(config):
+def get_model_inference_prompt(config):
     """
     Generate the final outcome prompt with specific target classes.
     
