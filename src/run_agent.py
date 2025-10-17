@@ -172,7 +172,7 @@ def parse_args():
 
     return parser.parse_args()
 
-async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, agent_datasets_dir,
+async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir,
                           workspace_dir, tags, iterations, user_prompt, provider, 
                           split_allowed_iterations=1, on_new_best_callbacks=[]):
     setup_nonsensitive_dataset_files_for_agent(
@@ -189,12 +189,13 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
         val_metric=val_metric, 
         workspace_dir=workspace_dir, 
         prepared_datasets_dir=prepared_datasets_dir, 
-        agent_dataset_dir=agent_datasets_dir,
+        agent_datasets_dir=agent_datasets_dir,
         iterations=iterations,
         user_prompt=user_prompt,
         provider_name=provider,
         on_new_best_callbacks=on_new_best_callbacks,
         split_allowed_iterations=split_allowed_iterations,
+        prepared_test_sets_dir=prepared_test_sets_dir,
     )
 
 
