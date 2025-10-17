@@ -173,7 +173,7 @@ def parse_args():
     return parser.parse_args()
 
 async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, agent_datasets_dir,
-                          workspace_dir, tags, no_root_privileges, iterations, user_prompt, provider, 
+                          workspace_dir, tags, iterations, user_prompt, provider, 
                           split_allowed_iterations=1, on_new_best_callbacks=[]):
     setup_nonsensitive_dataset_files_for_agent(
         prepared_datasets_dir=Path(prepared_datasets_dir),
@@ -187,7 +187,6 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
         dataset=dataset_name, 
         tags=tags,
         val_metric=val_metric, 
-        root_privileges=not no_root_privileges, 
         workspace_dir=workspace_dir, 
         prepared_datasets_dir=prepared_datasets_dir, 
         agent_dataset_dir=agent_datasets_dir,
