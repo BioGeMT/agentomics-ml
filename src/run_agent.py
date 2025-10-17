@@ -79,17 +79,13 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
         except Exception as e:
             log_serial_metrics(prefix='validation', metrics=None, iteration=run_index, task_type=config.task_type)
             log_serial_metrics(prefix='train', metrics=None, iteration=run_index, task_type=config.task_type)
-            # reset here? no, failed run -> fallback to old split? split propagated from the failed run already
-            snapshot_deleted = reset_snapshot_if_val_split_changed( #TODO here?
+            snapshot_deleted = reset_snapshot_if_val_split_changed(
                 config,
                 iteration=run_index, 
                 old_fingerprint=split_fingerprint_before_iteration, 
                 new_fingerprint=create_split_fingerprint(config),
             )
             new_metrics, best_metrics = get_new_and_best_metrics(config)
-            if(snapshot_deleted):
-                #TODO delete this check
-                assert is_new_best(config) 
             all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far: {best_metrics}")) # append feedback from last iteration before to process it
             feedback = await get_feedback(
                 context=e.context_messages,
@@ -111,9 +107,6 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
             old_fingerprint=split_fingerprint_before_iteration, 
             new_fingerprint=create_split_fingerprint(config),
         )
-        if(snapshot_deleted):
-            #TODO delete this check
-            assert is_new_best(config) 
         print("Starting evaluation phase")
         print("  Running validation inference...")
         run_inference_and_log(config, iteration=run_index, evaluation_stage='validation')
@@ -181,7 +174,7 @@ def parse_args():
 
 async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, agent_datasets_dir,
                           workspace_dir, tags, no_root_privileges, iterations, user_prompt, provider, 
-                          split_allowed_iterations, on_new_best_callbacks=[]):
+                          split_allowed_iterations=1, on_new_best_callbacks=[]):
     setup_nonsensitive_dataset_files_for_agent(
         prepared_datasets_dir=Path(prepared_datasets_dir),
         agent_datasets_dir=Path(agent_datasets_dir),
