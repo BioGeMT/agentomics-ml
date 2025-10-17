@@ -2,11 +2,21 @@ agentomics-ml:
   start: agentomics-ml/start.sh
   dockerfile: agentomics-ml/Dockerfile
   env_vars:
-    NVIDIA_VISIBLE_DEVICES: all
+    MODEL: openai/gpt-5-nano
+    VAL_METRIC: MSE
+    ITERATIONS: 1
+    TARGET_COL: Y #TODO not necessary?
+    TASK_TYPE: regression
+    USER_PROMPT: "Create the best possible machine learning model that will generalize to new unseen data."
+    SPLIT_ALLOWED_ITERATIONS: 1
+
     OPENROUTER_API_KEY: "TODO:YOUR_API_KEY"
     # OPENROUTER_API_KEY: "${OPENROUTER_API_KEY}" # alternatively, use env var
     # pass wandb keys for logging
     # WANDB_API_KEY: ""
     # WANDB_PROJECT_NAME: ""
     # WANDB_ENTITY: ""
+    # nvidia optional (biomlbench default is CPU-only for non-image tasks)
+    # NVIDIA_VISIBLE_DEVICES: all
+
 

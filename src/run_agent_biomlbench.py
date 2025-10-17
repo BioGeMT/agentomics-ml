@@ -85,6 +85,8 @@ def parse_args():
     parser.add_argument('--task-type', type=str, help='Task type: classification or regression')
     parser.add_argument('--provider', type=str, default='openrouter', help='Provider name (e.g., openai, openrouter)')
     parser.add_argument('--user-prompt', type=str, default=None, help='Custom user prompt to guide the agent')
+    parser.add_argument('--split-allowed-iterations', type=int, help='Number of initial iterations that allow the agent to split the data into training and validation sets')
+
     args = parser.parse_args()
     return args
 
@@ -158,5 +160,6 @@ if __name__ == '__main__':
         agent_datasets_dir= '/home/workspace/datasets',
         tags=[],
         provider=args.provider,
+        split_allowed_iterations=args.split_allowed_iterations,
         on_new_best_callbacks=[generate_preds_for_biomlbench],
     ))
