@@ -158,6 +158,7 @@ if __name__ == '__main__':
         # user_prompt="Create only small CPU-only model like linear regression with small amounts of parameters and epochs",
         workspace_dir = '/home/workspace',
         prepared_datasets_dir= '/home/agent/prepared_datasets',
+        prepared_test_sets_dir= '/home/agent/prepared_test_sets',
         agent_datasets_dir= '/home/workspace/datasets',
         tags=[],
         provider=args.provider,
