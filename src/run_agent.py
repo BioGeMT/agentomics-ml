@@ -26,7 +26,7 @@ from utils.snapshots import reset_snapshot_if_val_split_changed, create_split_fi
 
 
 async def main(model_name, feedback_model_name, dataset, tags, val_metric, 
-               workspace_dir, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir, iterations, user_prompt, provider_name):
+               workspace_dir, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir, iterations, user_prompt, provider_name, on_new_best_callbacks):
     agent_id = os.getenv('AGENT_ID')
     # Initialize configuration 
     config = Config(
@@ -58,12 +58,12 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric,
     feedback_model = provider.create_model(config.feedback_model_name, config)
     #TODO Instantiate report logger model and pass it to add_summary_to_report
 
-    await run_agentomics(config=config, default_model=default_model, feedback_model=feedback_model)
+    await run_agentomics(config=config, default_model=default_model, feedback_model=feedback_model, on_new_best_callbacks=on_new_best_callbacks)
 
     if(wandb_logged_in):
         wandb.finish()
 
-async def run_agentomics(config: Config, default_model, feedback_model):
+async def run_agentomics(config: Config, default_model, feedback_model, on_new_best_callbacks):
     tools = create_tools(config)
     
     all_feedbacks = []
@@ -134,6 +134,8 @@ async def run_agentomics(config: Config, default_model, feedback_model):
             )
 
             snapshot(config, run_index)  # Snapshotting overrides the previous snapshot, influencing the get_new_and_best_metrics function
+            for callback in on_new_best_callbacks:
+                callback(config)
         else:
             feedback =await get_feedback(
                 current_run_messages, 
@@ -173,8 +175,8 @@ def parse_args():
 
     return parser.parse_args()
 
-async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir,
-                          workspace_dir, tags, iterations, user_prompt, provider):
+async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, agent_datasets_dir,
+                          workspace_dir, tags, no_root_privileges, iterations, user_prompt, provider, on_new_best_callbacks=[]):
     setup_nonsensitive_dataset_files_for_agent(
         prepared_datasets_dir=Path(prepared_datasets_dir),
         agent_datasets_dir=Path(agent_datasets_dir),
@@ -187,14 +189,16 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
         dataset=dataset_name, 
         tags=tags,
         val_metric=val_metric, 
+        root_privileges=not no_root_privileges, 
         workspace_dir=workspace_dir, 
         prepared_datasets_dir=prepared_datasets_dir, 
-        prepared_test_sets_dir=prepared_test_sets_dir,
-        agent_datasets_dir=agent_datasets_dir,
+        agent_dataset_dir=agent_datasets_dir,
         iterations=iterations,
         user_prompt=user_prompt,
-        provider_name=provider
+        provider_name=provider,
+        on_new_best_callbacks=on_new_best_callbacks,
     )
+
 
 async def run_experiment_from_terminal():
     args = parse_args()

@@ -101,15 +101,12 @@ if __name__ == '__main__':
     # Not extracted
     AGENT_DIR= os.getenv('AGENT_DIR')
     # For agent prediction extraction
-    SUBMISSION_DIR = os.getenv('SUBMISSION_DIR', '')
 
     # Locations of data (passed by biomlbench docker image)
     description_path = '/home/data/description.md'
     train_data = '/home/data/train.csv'
-    test_no_label = '/home/data/test_features.csv'
     sample_submission = '/home/data/sample_submission.csv'
     # Where to output predictions for biomlbench
-    submission_path = os.path.join(SUBMISSION_DIR, 'submission.csv')
 
     dataset_name = extract_dataset_name_from_description(description_path)
 
@@ -120,6 +117,33 @@ if __name__ == '__main__':
         task_type=args.task_type,
         dataset_name=dataset_name
     )
+
+    def generate_preds_for_biomlbench(config):
+        print('---------------------------------')
+        print('-GENERATING PREDS FOR BIOMLBENCH-')
+        print('---------------------------------')
+
+        test_no_label = '/home/data/test_features.csv'
+        SUBMISSION_DIR = os.getenv('SUBMISSION_DIR', '')
+        submission_path = os.path.join(SUBMISSION_DIR, 'submission.csv')
+
+        try:
+            predictions_path = run_inference_on_test_data(test_no_label)
+            copy_and_format_predictions_for_biomlbench(
+                preds_source_path=predictions_path,
+                preds_dest_path=submission_path,
+                target_col=args.target_col #passed from outside the fn, refactor into reading prepared yaml metadata
+            )
+            copy_dir(source_dir='/home/workspace/snapshots', dest_dir=CODE_DIR)
+        except Exception as e:
+            import traceback
+            print('-------TRACEBACK------TRACEBACK------')
+            print(traceback.format_exc())
+            print('-------TRACEBACK------TRACEBACK------')
+
+        print('---------------------------------')
+        print('- FINISHED PREDS FOR BIOMLBENCH -')
+        print('---------------------------------')
 
     asyncio.run(run_experiment(
         model=args.model,
@@ -134,11 +158,5 @@ if __name__ == '__main__':
         agent_datasets_dir= '/home/workspace/datasets',
         tags=[],
         provider=args.provider,
+        on_new_best_callbacks=[generate_preds_for_biomlbench],
     ))
-    copy_dir(source_dir='/home/workspace/snapshots', dest_dir=CODE_DIR)
-    predictions_path = run_inference_on_test_data(test_no_label)
-    copy_and_format_predictions_for_biomlbench(
-        preds_source_path=predictions_path,
-        preds_dest_path=submission_path,
-        target_col=args.target_col
-    )
