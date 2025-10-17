@@ -14,6 +14,7 @@ from utils.env_utils import are_wandb_vars_available
 from utils.create_user import create_run_and_snapshot_dirs
 from utils.dataset_utils import setup_nonsensitive_dataset_files_for_agent
 from utils.config import Config
+from utils.exceptions import IterationRunFailed
 from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics, replace_snapshot_path_with_relative
 from utils.workspace_setup import ensure_workspace_folders
 from agents.architecture import run_iteration
@@ -76,7 +77,7 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
         split_fingerprint_before_iteration = create_split_fingerprint(config)
         try:
             current_run_messages = await run_iteration(config=config, model=default_model, iteration=run_index, feedback=feedback, tools=tools)
-        except Exception as e:
+        except IterationRunFailed as e:
             log_serial_metrics(prefix='validation', metrics=None, iteration=run_index, task_type=config.task_type)
             log_serial_metrics(prefix='train', metrics=None, iteration=run_index, task_type=config.task_type)
             snapshot_deleted = reset_snapshot_if_val_split_changed(
