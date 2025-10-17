@@ -8,6 +8,7 @@ from pathlib import Path
 
 from utils.dataset_utils import prepare_dataset
 from run_agent import run_experiment
+from utils.create_user import create_agent_id
 
 def setup_agentomics_folder_structure_and_files(description_path, train_data_path, target_col, task_type, dataset_name):
     os.mkdir('/home/workspace')
@@ -104,6 +105,7 @@ if __name__ == '__main__':
     # Not extracted
     AGENT_DIR= os.getenv('AGENT_DIR')
     # For agent prediction extraction
+    os.environ['AGENT_ID'] = create_agent_id()
 
     # Locations of data (passed by biomlbench docker image)
     description_path = '/home/data/description.md'
