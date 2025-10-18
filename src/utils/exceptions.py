@@ -8,3 +8,7 @@ class IterationRunFailed(Exception):
 class FeedbackAgentFailed(IterationRunFailed):
     def __init__(self, message, context_messages, exception_trace):
         super().__init__(message, context_messages, exception_trace)
+
+class AgentScriptFailed(Exception):
+    def __init__(self, message):
+        super().__init__(message)

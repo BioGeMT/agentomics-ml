@@ -14,7 +14,7 @@ from utils.env_utils import are_wandb_vars_available
 from utils.create_user import create_run_and_snapshot_dirs
 from utils.dataset_utils import setup_nonsensitive_dataset_files_for_agent
 from utils.config import Config
-from utils.exceptions import IterationRunFailed, FeedbackAgentFailed
+from utils.exceptions import IterationRunFailed, FeedbackAgentFailed, AgentScriptFailed
 from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics, replace_snapshot_path_with_relative
 from utils.workspace_setup import ensure_workspace_folders
 from agents.architecture import run_iteration
@@ -112,11 +112,19 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
             old_fingerprint=split_fingerprint_before_iteration, 
             new_fingerprint=create_split_fingerprint(config),
         )
+
+        extra_info = ""
         print("Starting evaluation phase")
-        print("  Running validation inference...")
-        run_inference_and_log(config, iteration=run_index, evaluation_stage='validation')
-        print("  Running training inference...")
-        run_inference_and_log(config, iteration=run_index, evaluation_stage='train')
+        try:
+            print("  Running validation inference...")
+            run_inference_and_log(config, iteration=run_index, evaluation_stage='validation')
+        except AgentScriptFailed:
+            extra_info = f"Inference on validation data failed. Traceback:{traceback.format_exc()}"
+        try:
+            print("  Running training inference...")
+            run_inference_and_log(config, iteration=run_index, evaluation_stage='train')
+        except AgentScriptFailed:
+            extra_info = f"Inference on train data failed. Traceback:{traceback.format_exc()}"
 
         new_metrics, best_metrics = get_new_and_best_metrics(config)
         all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far: {best_metrics}"))
@@ -131,7 +139,8 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
                     is_new_best=True, 
                     model=feedback_model,
                     iteration=run_index,
-                    aggregated_feedback=aggregate_feedback(all_feedbacks)
+                    aggregated_feedback=aggregate_feedback(all_feedbacks),
+                    extra_info=extra_info,
                 )
             except FeedbackAgentFailed as e:
                 feedback = "This was the run with best validation metrics so far. No feedback available."
@@ -150,7 +159,8 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
                     is_new_best=False, 
                     model=feedback_model,
                     iteration=run_index,
-                    aggregated_feedback=aggregate_feedback(all_feedbacks)
+                    aggregated_feedback=aggregate_feedback(all_feedbacks),
+                    extra_info=extra_info,
                 )
             except FeedbackAgentFailed as e:
                 feedback = "This was NOT the run with best validation metrics so far. No feedback available."
