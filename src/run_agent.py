@@ -165,7 +165,7 @@ def parse_args():
     parser.add_argument('--prepared-datasets-dir', type=Path, default=Path('../repository/prepared_datasets').resolve(), help='Path to a directory which contains prepared datasets.')
     parser.add_argument('--prepared-test-sets-dir', type=Path, default=Path('../repository/prepared_test_sets').resolve(), help='Path to a directory which contains prepared test sets.')
     parser.add_argument('--agent-datasets-dir', type=Path, default=Path('../workspace/datasets').resolve(), help='Path to a directory which contains non-test data accessible by agents.')
-    parser.add_argument('--tags', nargs='*', default=[], help='(Optional) Tags for a wandb run logging')
+    parser.add_argument('--tags', action='append', help='(Optional) Tags for a wandb run logging (can be specified multiple times)')
     parser.add_argument('--iterations', type=int, default=5, help='Number of training iterations to run')
     parser.add_argument('--user-prompt', type=str, default="Create the best possible machine learning model that will generalize to new unseen data.", help='(Optional) Text to overwrite the default user prompt')
     parser.add_argument('--steps-to-skip', nargs='*', default=[], help='(Optional) List of steps to skip. Available steps: data_exploration, data_split, data_representation, model_architecture, model_training, final_outcome')
@@ -173,7 +173,13 @@ def parse_args():
     val_metric_choices = get_classification_metrics_names() + get_regression_metrics_names()
     parser.add_argument('--val-metric', help='Validation metric to use for the best model selection', required=True, choices=val_metric_choices)
 
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    # Handle tags default value (action='append' returns None if never used)
+    if args.tags is None:
+        args.tags = []
+
+    return args
 
 async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir, 
                           workspace_dir, tags, iterations, user_prompt, provider, steps_to_skip):
