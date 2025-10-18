@@ -2,7 +2,7 @@ import os
 import json
 
 from pydantic_ai import Agent, ModelRetry
-import weave
+#import weave
 import pandas as pd
 
 from agents.agent_utils import run_agent
@@ -16,7 +16,8 @@ from agents.steps.model_training import ModelTraining, get_model_training_prompt
 from utils.config import Config
 from utils.report_logger import save_step_output
 from run_logging.evaluate_log_run import run_inference_and_log
-from run_logging.log_agent_results import log_agent_step_result_to_file
+from run_logging.log_agent_results import log_agent_step_result_to_file, log_failed_step_to_file
+from utils.exceptions import IterationRunFailed
 
 def create_agents(config: Config, model, tools):
     text_output_agent = Agent( # this is data exploration, representation, architecture reasoning agent
@@ -89,6 +90,7 @@ def create_agents(config: Config, model, tools):
 async def run_ablation_architecture(text_output_agent: Agent, inference_agent: Agent, split_dataset_agent: Agent, training_agent: Agent, config: Config, base_prompt: str, iteration: int, steps_to_skip: list):
     messages = None
     if 'data_exploration' not in steps_to_skip:
+        complete_output = None
         try:
             complete_output, messages, data_exploration_output = await run_agent(
                 agent=text_output_agent,
@@ -98,11 +100,15 @@ async def run_ablation_architecture(text_output_agent: Agent, inference_agent: A
                 message_history=messages,
             )
             save_step_output(config, 'data_exploration', data_exploration_output, iteration)
-        finally:
             log_agent_step_result_to_file('data_exploration', complete_output, iteration, config)
+        except IterationRunFailed as e:
+            # Log partial messages from failed run
+            log_failed_step_to_file('data_exploration', e.context_messages, iteration, config, e.message)
+            raise
 
     if iteration == 0 and not config.explicit_valid_set_provided:
         if 'data_split' not in steps_to_skip:
+            complete_output = None
             try:
                 prompt = (base_prompt + get_data_split_prompt(config)) if messages is None else get_data_split_prompt(config)
                 complete_output, messages, data_split = await run_agent(
@@ -112,10 +118,14 @@ async def run_ablation_architecture(text_output_agent: Agent, inference_agent: A
                     message_history=messages,
                     )
                 save_step_output(config, 'data_split', data_split, iteration)
-            finally:
                 log_agent_step_result_to_file('data_split', complete_output, iteration, config)
+            except IterationRunFailed as e:
+                # Log partial messages from failed run
+                log_failed_step_to_file('data_split', e.context_messages, iteration, config, e.message)
+                raise
 
     if 'data_representation' not in steps_to_skip:
+        complete_output = None
         try:
             prompt = (base_prompt + get_data_representation_prompt()) if messages is None else get_data_representation_prompt()
             complete_output, messages, data_representation = await run_agent(
@@ -126,10 +136,14 @@ async def run_ablation_architecture(text_output_agent: Agent, inference_agent: A
                 message_history=messages,
             )
             save_step_output(config, 'data_representation', data_representation, iteration)
-        finally:
             log_agent_step_result_to_file('data_representation', complete_output, iteration, config)
+        except IterationRunFailed as e:
+            # Log partial messages from failed run
+            log_failed_step_to_file('data_representation', e.context_messages, iteration, config, e.message)
+            raise
 
     if 'model_architecture' not in steps_to_skip:
+        complete_output = None
         try:
             complete_output, messages, model_architecture = await run_agent(
                 agent=text_output_agent,
@@ -139,10 +153,14 @@ async def run_ablation_architecture(text_output_agent: Agent, inference_agent: A
                 message_history=messages,
             )
             save_step_output(config, 'model_architecture', model_architecture, iteration)
-        finally:
             log_agent_step_result_to_file('model_architecture', complete_output, iteration, config)
+        except IterationRunFailed as e:
+            # Log partial messages from failed run
+            log_failed_step_to_file('model_architecture', e.context_messages, iteration, config, e.message)
+            raise
 
     if 'model_training' not in steps_to_skip:
+        complete_output = None
         try:
             complete_output, messages, model_training = await run_agent(
                 agent=training_agent,
@@ -151,10 +169,14 @@ async def run_ablation_architecture(text_output_agent: Agent, inference_agent: A
                 message_history=messages,
             )
             save_step_output(config, 'model_training', model_training, iteration)
-        finally:
             log_agent_step_result_to_file('model_training', complete_output, iteration, config)
+        except IterationRunFailed as e:
+            # Log partial messages from failed run
+            log_failed_step_to_file('model_training', e.context_messages, iteration, config, e.message)
+            raise
 
     if 'final_outcome' not in steps_to_skip:
+        complete_output = None
         try:
             complete_output, messages, final_outcome = await run_agent(
                 agent=inference_agent,
@@ -163,12 +185,15 @@ async def run_ablation_architecture(text_output_agent: Agent, inference_agent: A
                 message_history=messages,
             )
             save_step_output(config, 'final_outcome', final_outcome, iteration)
-        finally:
             log_agent_step_result_to_file('final_outcome', complete_output, iteration, config)
+        except IterationRunFailed as e:
+            # Log partial messages from failed run
+            log_failed_step_to_file('final_outcome', e.context_messages, iteration, config, e.message)
+            raise
 
     return messages
 
-@weave.op(call_display_name=lambda call: f"Iteration {call.inputs.get('iteration', 0) + 1}")
+#@weave.op(call_display_name=lambda call: f"Iteration {call.inputs.get('iteration', 0) + 1}")
 async def run_iteration(config: Config, model, iteration, feedback, tools, steps_to_skip):
     agents_dict = create_agents(config=config, model=model, tools=tools)
 

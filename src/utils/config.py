@@ -23,6 +23,7 @@ class Config:
     iterations: int
     task_type: str
     user_prompt: str
+    steps_to_skip: List[str]
 
     wandb_run_id: Optional[str] = None
     # static defaults
@@ -51,6 +52,7 @@ class Config:
         prepared_test_sets_dir: Path,
         agent_datasets_dir: Path,
         user_prompt: str,
+        steps_to_skip: List[str] = None,
         max_steps: Optional[int] = None,
         iterations: Optional[int] = 5,
     ):
@@ -70,6 +72,7 @@ class Config:
         self.iterations = iterations
         self.task_type = get_task_type_from_prepared_dataset(prepared_datasets_dir / dataset)
         self.user_prompt = user_prompt
+        self.steps_to_skip = steps_to_skip if steps_to_skip is not None else []
         self.explicit_valid_set_provided = (agent_datasets_dir / dataset / "validation.csv").exists()
 
         if max_steps is not None:
