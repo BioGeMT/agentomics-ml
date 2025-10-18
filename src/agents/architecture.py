@@ -5,6 +5,7 @@ from pydantic_ai import Agent, ModelRetry
 import weave
 import pandas as pd
 from pathlib import Path
+from pydantic_ai.messages import ToolCallPart
 
 from agents.agent_utils import run_agent
 from agents.prompts.prompts_utils import get_iteration_prompt, get_user_prompt, get_system_prompt
@@ -20,9 +21,11 @@ from utils.report_logger import save_step_output
 from run_logging.evaluate_log_run import run_inference_and_log
 
 def create_agents(config: Config, model, tools):
+    # From pydantic ai docs:
+    # If message_history is set and not empty, a new system prompt is not generated — we assume the existing message history includes a system prompt.
     text_output_agent = Agent( # this is data exploration, representation, architecture reasoning, prediction exploration agent
         model=model,
-        system_prompt=get_system_prompt(config),
+        system_prompt=get_system_prompt(config), #this is passed only to the empty message history agent (first one) per above reasons
         tools=tools,
         model_settings={'temperature': config.temperature},
         retries=config.max_run_retries,
@@ -99,6 +102,20 @@ def create_agents(config: Config, model, tools):
     } 
 
 
+def get_final_result_messages(all_messages):
+    final_result_response = all_messages[-2]
+    final_result_tool_output_msg = all_messages[-1]
+    assert any([isinstance(part, ToolCallPart) and part.tool_name=='final_result' for part in final_result_response.parts]) #TODO delete or move to tests
+    return [final_result_response,final_result_tool_output_msg]
+
+def get_sytem_and_user_prompt_messages(all_messages, to_remove):
+    first_message = all_messages[0]
+    assert any([part.part_kind=='system-prompt' for part in first_message.parts]) #TODO delete or move to tests
+    assert any([part.part_kind=='user-prompt' for part in first_message.parts]) #TODO delete or move to tests
+    user_prompt_part = [part for part in first_message.parts if part.part_kind=='user-prompt'][0]
+    user_prompt_part.content = user_prompt_part.content.replace(to_remove, "") #Remove a non-global part of the prompt
+    return [first_message]
+
 async def run_architecture(text_output_agent: Agent, inference_agent: Agent, split_dataset_agent: Agent, training_agent: Agent, config: Config, base_prompt: str, iteration: int):
     messages_data_exploration, data_exploration_output = await run_agent(
         agent=text_output_agent,
@@ -171,6 +188,92 @@ async def run_architecture(text_output_agent: Agent, inference_agent: Agent, spl
 
     return _messages
 
+async def run_architecture_compressed(text_output_agent: Agent, inference_agent: Agent, split_dataset_agent: Agent, training_agent: Agent, config: Config, base_prompt: str, iteration: int):
+    persistent_messages = []
+    ctx_replacer_msg = "\nSummarized outputs from your previous steps are in previous messages."
+
+    messages_data_exploration, data_exploration_output = await run_agent(
+        agent=text_output_agent,
+        user_prompt=base_prompt + get_data_exploration_prompt(iteration), #base prompt has feedback (if non-0 iter) and user prompt
+        max_steps=config.max_steps,
+        output_type=DataExploration, # this is overriding the output_type
+        message_history=None,
+    )
+    persistent_messages+=get_sytem_and_user_prompt_messages(messages_data_exploration, to_remove=get_data_exploration_prompt(iteration))
+    persistent_messages+=get_final_result_messages(messages_data_exploration)
+    save_step_output(config, 'data_exploration', data_exploration_output, iteration)
+    
+    split_allowed_iterations = config.split_allowed_iterations
+    if not config.explicit_valid_set_provided and iteration < split_allowed_iterations:
+        messages_split, data_split = await run_agent(
+            agent=split_dataset_agent,
+            user_prompt=get_data_split_prompt(config, iteration)+ctx_replacer_msg,
+            max_steps=config.max_steps,
+            message_history=persistent_messages,
+        )
+        persistent_messages+=get_final_result_messages(messages_split)
+        save_step_output(config, 'data_split', data_split, iteration)
+    # else:
+        # messages_split = messages_data_exploration
+
+    messages_representation, data_representation = await run_agent(
+        agent=text_output_agent,
+        user_prompt=get_data_representation_prompt()+ctx_replacer_msg,
+        max_steps=config.max_steps,
+        output_type=DataRepresentation, # this is overriding the output_type
+        message_history=persistent_messages,
+    )
+    persistent_messages+=get_final_result_messages(messages_representation)
+    save_step_output(config, 'data_representation', data_representation, iteration)
+
+    messages_architecture, model_architecture = await run_agent(
+        agent=text_output_agent,
+        user_prompt=get_model_architecture_prompt()+ctx_replacer_msg,
+        max_steps=config.max_steps,
+        output_type=ModelArchitecture, # this is overriding the output_type
+        message_history=persistent_messages,
+    )
+    persistent_messages+=get_final_result_messages(messages_architecture)
+    save_step_output(config, 'model_architecture', model_architecture, iteration)
+
+    messages_training, model_training = await run_agent(
+        agent=training_agent, 
+        user_prompt=get_model_training_prompt()+ctx_replacer_msg, 
+        max_steps=config.max_steps,
+        message_history=persistent_messages,
+    )
+    persistent_messages+=get_final_result_messages(messages_training)
+    save_step_output(config, 'model_training', model_training, iteration)
+
+    messages_inference, model_inference = await run_agent(
+        agent=inference_agent, 
+        user_prompt=get_model_inference_prompt(config)+ctx_replacer_msg, 
+        max_steps=config.max_steps,
+        message_history=persistent_messages,
+    )
+    persistent_messages+=get_final_result_messages(messages_inference)
+    save_step_output(config, 'model_inference', model_inference, iteration)
+
+    if not config.explicit_valid_set_provided:
+        val_path = config.runs_dir / config.agent_id / 'validation.csv'
+    else:
+        val_path = config.agent_dataset_dir / config.dataset / "validation.csv"
+
+    prediction_messages, prediction_exploration = await run_agent(
+        agent=text_output_agent,
+        user_prompt=get_prediction_exploration_prompt(validation_path=val_path,inference_path=model_inference.path_to_inference_file)+ctx_replacer_msg,
+        max_steps=config.max_steps,
+        output_type=PredictionExploration,
+        message_history=persistent_messages,
+    )
+    persistent_messages+=get_final_result_messages(prediction_messages)
+    save_step_output(config, 'prediction_exploration', prediction_exploration, iteration)
+
+    #TODO messages for feedback -> should be compressed or whole context?
+
+    #TODO return usage and append it?
+    return persistent_messages
+
 @weave.op(call_display_name=lambda call: f"Iteration {call.inputs.get('iteration', 0) + 1}")
 async def run_iteration(config: Config, model, iteration, feedback, tools):
     agents_dict = create_agents(config=config, model=model, tools=tools)
@@ -180,7 +283,8 @@ async def run_iteration(config: Config, model, iteration, feedback, tools):
     else:
         base_prompt = get_iteration_prompt(config, iteration, feedback)
 
-    messages = await run_architecture(
+    #TODO parametrize compressed vs normal runs
+    messages = await run_architecture_compressed(
         text_output_agent=agents_dict["text_output_agent"],
         split_dataset_agent=agents_dict["split_dataset_agent"],
         training_agent=agents_dict["training_agent"],
