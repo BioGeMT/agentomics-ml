@@ -45,4 +45,11 @@ def log_serial_metrics(prefix, task_type, metrics=None, iteration=None):
     else:
         metrics = {f"{prefix}/{k}": v for k,v in metrics.items()}
         wandb.log(metrics, step=iteration)
+
+def log_feedback_failure(message, iteration):
+    if not is_wandb_active():
+        return
+    
+    else:
+        wandb.log({'feedback_exception_msg':message}, step=iteration)
    

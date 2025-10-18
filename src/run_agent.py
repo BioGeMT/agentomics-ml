@@ -7,14 +7,14 @@ import os
 import wandb
 
 from run_logging.evaluate_log_run import run_inference_and_log
-from run_logging.logging_helpers import log_serial_metrics
+from run_logging.logging_helpers import log_serial_metrics, log_feedback_failure
 from run_logging.wandb_setup import setup_logging
 from run_logging.log_files import log_files, export_config_to_workspace
 from utils.env_utils import are_wandb_vars_available
 from utils.create_user import create_run_and_snapshot_dirs
 from utils.dataset_utils import setup_nonsensitive_dataset_files_for_agent
 from utils.config import Config
-from utils.exceptions import IterationRunFailed
+from utils.exceptions import IterationRunFailed, FeedbackAgentFailed
 from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics, replace_snapshot_path_with_relative
 from utils.workspace_setup import ensure_workspace_folders
 from agents.architecture import run_iteration
@@ -88,17 +88,21 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
             )
             new_metrics, best_metrics = get_new_and_best_metrics(config)
             all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far: {best_metrics}")) # append feedback from last iteration before to process it
-            feedback = await get_feedback(
-                context=e.context_messages,
-                extra_info=f"{e.message} {e.exception_trace}",
-                config=config, 
-                new_metrics=new_metrics, 
-                model=feedback_model,
-                best_metrics=best_metrics,
-                is_new_best=False,
-                aggregated_feedback=aggregate_feedback(all_feedbacks),
-                iteration=run_index
-            )
+            try:
+                feedback = await get_feedback(
+                    context=e.context_messages,
+                    extra_info=f"{e.message} {e.exception_trace}",
+                    config=config, 
+                    new_metrics=new_metrics, 
+                    model=feedback_model,
+                    best_metrics=best_metrics,
+                    is_new_best=False,
+                    aggregated_feedback=aggregate_feedback(all_feedbacks),
+                    iteration=run_index
+                )
+            except FeedbackAgentFailed:
+                feedback = "Iteration failed. No feedback available."
+                log_feedback_failure(e.exception_trace, iteration=run_index)
             log_files(config, iteration=run_index)
             continue
 
@@ -118,31 +122,39 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
         all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far: {best_metrics}"))
         
         if is_new_best(config):
-            feedback = await get_feedback(
-                context=current_run_messages, 
-                config=config, 
-                new_metrics=new_metrics, 
-                best_metrics=best_metrics, 
-                is_new_best=True, 
-                model=feedback_model,
-                iteration=run_index,
-                aggregated_feedback=aggregate_feedback(all_feedbacks)
-            )
+            try:
+                feedback = await get_feedback(
+                    context=current_run_messages, 
+                    config=config, 
+                    new_metrics=new_metrics, 
+                    best_metrics=best_metrics, 
+                    is_new_best=True, 
+                    model=feedback_model,
+                    iteration=run_index,
+                    aggregated_feedback=aggregate_feedback(all_feedbacks)
+                )
+            except FeedbackAgentFailed as e:
+                feedback = "This was the run with best validation metrics so far. No feedback available."
+                log_feedback_failure(e.exception_trace, iteration=run_index)
 
             snapshot(config, run_index)  # Snapshotting overrides the previous snapshot, influencing the get_new_and_best_metrics function
             for callback in on_new_best_callbacks:
                 callback(config)
         else:
-            feedback =await get_feedback(
-                current_run_messages, 
-                config, 
-                new_metrics, 
-                best_metrics, 
-                is_new_best=False, 
-                model=feedback_model,
-                iteration=run_index,
-                aggregated_feedback=aggregate_feedback(all_feedbacks)
-            )
+            try:
+                feedback =await get_feedback(
+                    current_run_messages, 
+                    config, 
+                    new_metrics, 
+                    best_metrics, 
+                    is_new_best=False, 
+                    model=feedback_model,
+                    iteration=run_index,
+                    aggregated_feedback=aggregate_feedback(all_feedbacks)
+                )
+            except FeedbackAgentFailed as e:
+                feedback = "This was NOT the run with best validation metrics so far. No feedback available."
+                log_feedback_failure(e.exception_trace, iteration=run_index)
 
         add_metrics_to_report(config, run_index)
         await add_summary_to_report(default_model, config, run_index)

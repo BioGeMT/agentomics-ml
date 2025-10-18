@@ -1,6 +1,8 @@
 from pydantic_ai import Agent
 import time
 import weave
+import traceback
+from utils.exceptions import FeedbackAgentFailed
 
 def create_feedback_agent(model, config):
     feedback_agent = Agent(
@@ -50,13 +52,24 @@ async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, 
     """
     
     print("CONSTRUCTING ITERATION FEEDBACK...")
-    feedback = await agent.run(
-        user_prompt = feedback_prompt,
-        output_type=None,
-        message_history=context #TODO remove system prompt from context?
-    )
-    time.sleep(3)
-    return feedback.data
+    try:
+        feedback = await agent.run(
+            user_prompt = feedback_prompt,
+            output_type=None,
+            message_history=context #TODO remove system prompt from context?
+        )
+        time.sleep(3)
+        return feedback.data
+    except Exception as e:
+        trace = traceback.format_exc()
+        print('--------------- ERROR TRACEBACK ---------------')
+        print('Feedback agent failed', trace)
+        print('--------------- ERROR TRACEBACK ---------------')
+        raise FeedbackAgentFailed(
+            message="Feedback didnt finish properly", 
+            context_messages=[],
+            exception_trace=trace,
+        )
 
 def aggregate_feedback(feedback_list):
     if len(feedback_list) == 1: #TODO first iteration list contains None
