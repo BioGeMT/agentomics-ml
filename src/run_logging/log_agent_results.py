@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, List
 
 def log_agent_step_result_to_file(step_name: str, result: Any, iteration: int, config):
     """
@@ -34,6 +34,39 @@ def log_agent_step_result_to_file(step_name: str, result: Any, iteration: int, c
             "total_tokens": usage_data.total_tokens if hasattr(usage_data, 'total_tokens') else None,
         },
         "output_data": str(result.data),
+    }
+
+    with open(filepath, 'w') as f:
+        json.dump(log_data, f, indent=2)
+
+    return log_data
+
+
+def log_failed_step_to_file(step_name: str, messages: List, iteration: int, config, error_message: str = None):
+    """
+    Log a failed agent step with partial messages captured before failure.
+
+    Args:
+        step_name: Name of the step (e.g., 'data_exploration', 'model_training')
+        messages: List of messages captured before failure
+        iteration: The current iteration number
+        config: The Config object with run directory info
+        error_message: Optional error message describing the failure
+    """
+    logs_dir = config.runs_dir / config.agent_id / "agent_logs"
+    logs_dir.mkdir(exist_ok=True, parents=True)
+
+    filename = f"iteration_{iteration}_step_{step_name}_FAILED.json"
+    filepath = logs_dir / filename
+
+    log_data = {
+        "step_name": step_name,
+        "iteration": iteration,
+        "status": "failed",
+        "messages": messages,
+        "error_message": error_message,
+        "usage": None,  # Not available for failed runs
+        "output_data": None,  # Not available for failed runs
     }
 
     with open(filepath, 'w') as f:
