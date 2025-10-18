@@ -1,30 +1,20 @@
-from pydantic_ai import Agent
 import time
-import weave
+#import weave
+from pydantic_ai.messages import ModelRequest, SystemPromptPart, UserPromptPart
+from pydantic_ai.models import ModelRequestParameters
 
-def create_feedback_agent(model, config):
-    feedback_agent = Agent(
-        model=model,
-        model_settings={'temperature': config.temperature},
-        result_retries=config.max_validation_retries
-    )
-    
-    return feedback_agent
-
-@weave.op(call_display_name="Get Feedback")
+#@weave.op(call_display_name="Get Feedback")
 async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, model, iteration, aggregated_feedback=None, extra_info="") -> str:
     if iteration == config.iterations - 1 : return "Last iteration, no feedback needed"
-    
-    agent = create_feedback_agent(model, config)
-    
+
     if is_new_best:
         prompt_suffix = "This is the best run so far. "
     else:
-        prompt_suffix = "This is not the best run so far. " 
-    
+        prompt_suffix = "This is not the best run so far. "
+
     if aggregated_feedback:
         prompt_suffix += f"The aggregated feedback from the previous iterations is: {aggregated_feedback}."
-    
+
     prompt_suffix += extra_info
 
     feedback_prompt = f"""
@@ -41,15 +31,25 @@ async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, 
 
     {prompt_suffix}.
     """
-    
+
     print("CONSTRUCTING ITERATION FEEDBACK...")
-    feedback = await agent.run(
-        user_prompt = feedback_prompt,
-        output_type=None,
-        message_history=context #TODO remove system prompt from context?
+
+    # Prepare messages: context (message history) + feedback prompt
+    messages = list(context) if context else []
+    messages.append(ModelRequest(parts=[
+        UserPromptPart(content=feedback_prompt)
+    ]))
+
+    # Direct model request without Agent (no tool calling)
+    response = await model.request(
+        messages=messages,
+        model_settings={'temperature': config.temperature},
+        model_request_parameters=ModelRequestParameters(
+            allow_text_output=True,
+        )
     )
-    time.sleep(3)
-    return feedback.data
+
+    return response.parts[0].content
 
 def aggregate_feedback(feedback_list):
     if len(feedback_list) == 1: #TODO first iteration list contains None
