@@ -107,8 +107,11 @@ def add_final_test_metrics_to_best_report(config):
 def rename_best_iteration_report(config):
     best_iteration = get_best_iteration(config)
     report_dir = config.reports_dir / config.agent_id
-    
+
     old_file = report_dir / f"run_report_iter_{best_iteration}.txt"
     new_file = report_dir / f"run_report_iter_{best_iteration}_BEST.txt"
-    
-    old_file.rename(new_file)
+
+    if old_file.exists():
+        old_file.rename(new_file)
+    else:
+        print(f"WARNING: No report found at {old_file} to rename")
