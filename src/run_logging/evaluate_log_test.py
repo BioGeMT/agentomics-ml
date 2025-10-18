@@ -13,6 +13,15 @@ def run_test_evaluation(workspace_dir):
     config = load_run_config(workspace_dir)
     resume_wandb_run(config)
 
+    snapshot_dir = config.snapshots_dir / config.agent_id
+    snapshot_inference_script = snapshot_dir / "inference.py"
+
+    if not snapshot_inference_script.exists():
+        print("TEST EVAL SKIPPED: No snapshot found from previous runs.")
+        print(f"Expected snapshot at: {snapshot_dir}")
+        log_inference_stage_and_metrics(1, task_type=config.task_type)
+        return
+
     print("\nRunning final test evaluation...")
     try:
         run_inference_and_log(config, iteration=None, evaluation_stage='test', use_best_snapshot=True)
