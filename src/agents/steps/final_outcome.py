@@ -15,7 +15,6 @@ def get_final_outcome_prompt(config):
         target_classes: List of target class values for classification tasks (e.g., ['0', '1', '2']).
                        Should be None or empty for regression tasks.
     """
-
     if config.task_type == 'classification':
         columns_desc = "\n\t\t".join([
             "- 'prediction': the predicted class (int)",
@@ -27,11 +26,21 @@ def get_final_outcome_prompt(config):
     else:
         raise ValueError(f"Unknown task type: {config.task_type}. Supported types are 'classification' and 'regression'.")
     
+    if 'final_outcome' in config.steps_to_skip:
+        message = f"""
+            Your final deliverable is to create an inference.py file.
+            If your model can be accelerated by GPU, implement the code to use GPU.
+            The inference script will be taking the following named arguments:
+            --input (an input file path). This file is of the same format as your training data (except the target column)
+            --output (the output file path). {output_file_description}
+        """
+    else:
+        message = f"""
+            Next task: create inference.py file.
+            If your model can be accelerated by GPU, implement the code to use GPU.
+            The inference script will be taking the following named arguments:
+            --input (an input file path). This file is of the same format as your training data (except the target column)
+            --output (the output file path). {output_file_description}
+        """
     #TODO "Except the target column" - use target/class/numeric_label?
-    return f"""
-    Next task: create inference.py file.
-    If your model can be accelerated by GPU, implement the code to use GPU.
-    The inference script will be taking the following named arguments:
-    --input (an input file path). This file is of the same format as your training data (except the target column)
-    --output (the output file path). {output_file_description}
-    """
+    return message

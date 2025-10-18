@@ -1,4 +1,6 @@
 import json
+from agents.steps.final_outcome import get_final_outcome_prompt
+
 
 def get_system_prompt(config):
     train_csv_path = config.agent_dataset_dir / "train.csv"
@@ -36,7 +38,13 @@ def get_system_prompt(config):
     # return load_prompts(config["prompt"])["system_prompt"]
 
 def get_user_prompt(config):
-    return config.user_prompt
+    user_prompt = config.user_prompt
+
+    # If final_outcome step is skipped, add its requirements to the user prompt
+    if 'final_outcome' in config.steps_to_skip:
+        user_prompt += "\n\n" + get_final_outcome_prompt(config)
+        
+    return user_prompt
 
 def get_iteration_prompt(config, run_index, feedback):
     return f"""
