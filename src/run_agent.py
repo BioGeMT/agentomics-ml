@@ -20,6 +20,7 @@ from agents.architecture import run_iteration
 from utils.metrics import get_classification_metrics_names, get_regression_metrics_names
 from utils.report_logger import add_metrics_to_report, add_summary_to_report, rename_best_iteration_report
 from utils.providers.provider import Provider, get_provider_from_string
+from utils.exceptions import IterationRunFailed
 from feedback.feedback_agent import get_feedback, aggregate_feedback
 from tools.setup_tools import create_tools
 
@@ -30,10 +31,10 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric,
     # Initialize configuration 
     config = Config(
         agent_id=agent_id,
-        model_name=model_name, 
-        feedback_model_name=feedback_model_name, 
-        dataset=dataset, 
-        tags=tags, 
+        model_name=model_name,
+        feedback_model_name=feedback_model_name,
+        dataset=dataset,
+        tags=tags,
         val_metric=val_metric,
         workspace_dir=Path(workspace_dir),
         prepared_datasets_dir=Path(prepared_datasets_dir),
@@ -41,6 +42,7 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric,
         agent_datasets_dir=Path(agent_datasets_dir),
         iterations=iterations,
         user_prompt=user_prompt,
+        steps_to_skip=steps_to_skip,
     )
     ensure_workspace_folders(config)
     create_run_and_snapshot_dirs(config)
@@ -71,8 +73,8 @@ async def run_agentomics(config: Config, default_model, feedback_model, steps_to
     for run_index in range(config.iterations):
         print(f"\n=== ITERATION {run_index + 1} / {config.iterations} ===")
         try:
-            current_run_messages = await run_iteration(config=config, model=default_model, iteration=run_index, feedback=feedback, steps_to_skip=steps_to_skip)
-        except Exception as e:
+            current_run_messages = await run_iteration(config=config, model=default_model, iteration=run_index, feedback=feedback, tools=tools, steps_to_skip=steps_to_skip)
+        except IterationRunFailed as e:
             log_serial_metrics(prefix='validation', metrics=None, iteration=run_index, task_type=config.task_type)
             log_serial_metrics(prefix='train', metrics=None, iteration=run_index, task_type=config.task_type)
             new_metrics, best_metrics = get_new_and_best_metrics(config)
@@ -92,21 +94,41 @@ async def run_agentomics(config: Config, default_model, feedback_model, steps_to
             continue
 
         print("Starting evaluation phase")
-        print("  Running validation inference...")
-        run_inference_and_log(config, iteration=run_index, evaluation_stage='validation')
-        print("  Running training inference...")
-        run_inference_and_log(config, iteration=run_index, evaluation_stage='train')
+        try:
+            print("  Running validation inference...")
+            run_inference_and_log(config, iteration=run_index, evaluation_stage='validation')
+            print("  Running training inference...")
+            run_inference_and_log(config, iteration=run_index, evaluation_stage='train')
+        except Exception as e:
+            print(f"Evaluation failed: {str(e)}")
+            log_serial_metrics(prefix='validation', metrics=None, iteration=run_index, task_type=config.task_type)
+            log_serial_metrics(prefix='train', metrics=None, iteration=run_index, task_type=config.task_type)
+            new_metrics, best_metrics = get_new_and_best_metrics(config)
+            all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far: {best_metrics}"))
+            feedback = await get_feedback(
+                context=current_run_messages,
+                extra_info=f"Evaluation failed with error: {str(e)}",
+                config=config,
+                new_metrics=new_metrics,
+                model=feedback_model,
+                best_metrics=best_metrics,
+                is_new_best=False,
+                aggregated_feedback=aggregate_feedback(all_feedbacks),
+                iteration=run_index
+            )
+            log_files(config, iteration=run_index)
+            continue
 
         new_metrics, best_metrics = get_new_and_best_metrics(config)
         all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far: {best_metrics}"))
-        
+
         if is_new_best(config):
             feedback = await get_feedback(
-                context=current_run_messages, 
-                config=config, 
-                new_metrics=new_metrics, 
-                best_metrics=best_metrics, 
-                is_new_best=True, 
+                context=current_run_messages,
+                config=config,
+                new_metrics=new_metrics,
+                best_metrics=best_metrics,
+                is_new_best=True,
                 model=feedback_model,
                 iteration=run_index,
                 aggregated_feedback=aggregate_feedback(all_feedbacks)
@@ -115,11 +137,11 @@ async def run_agentomics(config: Config, default_model, feedback_model, steps_to
             snapshot(config, run_index)  # Snapshotting overrides the previous snapshot, influencing the get_new_and_best_metrics function
         else:
             feedback =await get_feedback(
-                current_run_messages, 
-                config, 
-                new_metrics, 
-                best_metrics, 
-                is_new_best=False, 
+                current_run_messages,
+                config,
+                new_metrics,
+                best_metrics,
+                is_new_best=False,
                 model=feedback_model,
                 iteration=run_index,
                 aggregated_feedback=aggregate_feedback(all_feedbacks)
