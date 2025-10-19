@@ -115,9 +115,9 @@ async def get_feedback(structured_outputs, config, new_metrics, best_metrics, is
         Due to this, the older iterations are no longer concidered for best-iteration candidates.
         """
 
-    #TODO enforce experimentation when stagnant? 
-    #TODO balance exploration vs exploitation based on remaining iterations?
     #TODO Emphasize that old split metric should not be concidered much unless the split is better - should prioritize TEST metric and be representative/difficult
+    #TODO never say youre doing well etc.. -> just try to optimize further???
+    #TODO allow fallbacking to previous experiments?
 
     feedback_prompt = f"""
     Previous iterations summaries:
@@ -135,7 +135,9 @@ async def get_feedback(structured_outputs, config, new_metrics, best_metrics, is
     Main goal: Provide feedback to the current iteration on how to improve generalization to a future unseen test set by changing any of the steps.
     
     Your feedback can suggest anything from small changes up to completelly changing the strategy of a step.
+    Make your suggestions concrete, don't offer various choice branches.
     Use the information from previous iterations and their metrics to improve your suggestions.
+    Balance exploration with exploitation, as only the best val metrics model will be judged using the final test set.
     You may skip steps that don't need changed.
     {'If you choose data splitting needs change, never suggest cross-validations split or any other split that would result in more than two files (train.csv and validation.csv).' if not config.explicit_valid_set_provided else ''}
     You're providing feedback to another LLM, never offer that you will take any actions to fix or implement fixes yourself.

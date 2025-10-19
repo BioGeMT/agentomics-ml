@@ -81,11 +81,13 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
         split_fingerprint_before_iteration = create_split_fingerprint(config)
         try:
             # Not using feedback from failed iterations
-            feedback = iter_to_feedback[last_successful_iter] if last_successful_iter else "No feedback available"
+            feedback = iter_to_feedback[last_successful_iter] if (last_successful_iter is not None) else "No feedback available"
+            last_iter_summary = iter_to_summary[last_successful_iter] if (last_successful_iter is not None) else "No summary available"
             structured_outputs = await run_iteration(
-                config=config, 
+                config=config,
                 model=default_model, 
                 iteration=run_index, 
+                summary=last_iter_summary,
                 feedback=feedback, 
                 tools=tools,
                 last_split_strategy=last_split_strategy,
