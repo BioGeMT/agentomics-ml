@@ -3,8 +3,9 @@ from pydantic import BaseModel, Field
 class DataSplit(BaseModel):
     train_path: str = Field(description="Path to generated train.csv file")
     val_path: str = Field(description="Path to generated validation.csv file")
+    splitting_strategy: str = Field(description="The description of the how the splitting was done")
 
-def get_data_split_prompt(config, iteration):
+def get_data_split_prompt(config, iteration, last_split_strategy="Split does not exist"):
     """
     Generate the data split prompt with class representation requirements.
     
@@ -20,7 +21,10 @@ def get_data_split_prompt(config, iteration):
         raise ValueError(f"Unknown task type: {config.task_type}. Supported types are 'classification' and 'regression'.")
 
     if(iteration != 0):
-        extra_info = "Note: Train and validation split files from past iteration already exist. If you don't have a reason to change the splitting strategy, return the already existing split files paths immediately."
+        extra_info = f"""
+        Note: Train and validation split files from past iteration already exist. 
+        If you don't have a reason to change the splitting strategy, return the already existing split files paths immediately and return this text as the splitting strategy: [START]\n{last_split_strategy}\n[END].
+        """
     else:
         extra_info = ""
     

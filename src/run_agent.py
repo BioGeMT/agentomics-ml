@@ -13,6 +13,7 @@ from run_logging.log_files import log_files, export_config_to_workspace
 from utils.env_utils import are_wandb_vars_available
 from utils.create_user import create_run_and_snapshot_dirs
 from utils.dataset_utils import setup_nonsensitive_dataset_files_for_agent
+from utils.fallbacks import save_splits_to_fallback, load_fallbacks_to_rundir
 from utils.config import Config
 from utils.exceptions import IterationRunFailed, FeedbackAgentFailed, AgentScriptFailed
 from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics, replace_snapshot_path_with_relative
@@ -21,10 +22,10 @@ from agents.architecture import run_iteration
 from utils.metrics import get_classification_metrics_names, get_regression_metrics_names
 from utils.report_logger import add_metrics_to_report, add_summary_to_report, rename_best_iteration_report
 from utils.providers.provider import Provider, get_provider_from_string
-from feedback.feedback_agent import get_feedback, aggregate_feedback
+from feedback.feedback_agent import get_feedback, get_iteration_summary
 from tools.setup_tools import create_tools
 from utils.snapshots import reset_snapshot_if_val_split_changed, create_split_fingerprint
-
+from agents.steps.data_split import DataSplit
 
 async def main(model_name, feedback_model_name, dataset, tags, val_metric, 
                workspace_dir, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir, iterations, 
@@ -69,44 +70,49 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric,
 async def run_agentomics(config: Config, default_model, feedback_model, on_new_best_callbacks):
     tools = create_tools(config)
     
-    all_feedbacks = []
-    feedback = None
+    iter_to_summary = {}
+    iter_to_metrics = {}
+    iter_to_feedback = {}
+    last_successful_iter = None
+    last_split_strategy = None
     print(f"Starting training loop with {config.iterations} iterations")
     for run_index in range(config.iterations):
         print(f"\n=== ITERATION {run_index + 1} / {config.iterations} ===")
         split_fingerprint_before_iteration = create_split_fingerprint(config)
         try:
-            current_run_messages = await run_iteration(config=config, model=default_model, iteration=run_index, feedback=feedback, tools=tools)
+            # Not using feedback from failed iterations
+            feedback = iter_to_feedback[last_successful_iter] if last_successful_iter else "No feedback available"
+            structured_outputs = await run_iteration(
+                config=config, 
+                model=default_model, 
+                iteration=run_index, 
+                feedback=feedback, 
+                tools=tools,
+                last_split_strategy=last_split_strategy,
+            )
+            last_split_strategy = next((step.splitting_strategy for step in structured_outputs if isinstance(step, DataSplit)), None)
+            save_splits_to_fallback(config)
+            last_successful_iter = run_index
         except IterationRunFailed as e:
             log_serial_metrics(prefix='validation', metrics=None, iteration=run_index, task_type=config.task_type)
             log_serial_metrics(prefix='train', metrics=None, iteration=run_index, task_type=config.task_type)
-            snapshot_deleted = reset_snapshot_if_val_split_changed(
+            #TODO also files in run dir should revert?
+            load_fallbacks_to_rundir(config)
+            val_split_changed = reset_snapshot_if_val_split_changed(
                 config,
                 iteration=run_index, 
                 old_fingerprint=split_fingerprint_before_iteration, 
                 new_fingerprint=create_split_fingerprint(config),
             )
+            assert not val_split_changed #TODO delete
             new_metrics, best_metrics = get_new_and_best_metrics(config)
-            all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far: {best_metrics}")) # append feedback from last iteration before to process it
-            try:
-                feedback = await get_feedback(
-                    context=e.context_messages,
-                    extra_info=f"{e.message} {e.exception_trace}",
-                    config=config, 
-                    new_metrics=new_metrics, 
-                    model=feedback_model,
-                    best_metrics=best_metrics,
-                    is_new_best=False,
-                    aggregated_feedback=aggregate_feedback(all_feedbacks),
-                    iteration=run_index
-                )
-            except FeedbackAgentFailed:
-                feedback = "Iteration failed. No feedback available."
-                log_feedback_failure(e.exception_trace, iteration=run_index)
+            iter_to_metrics[run_index] = new_metrics
+            iter_to_feedback[run_index] = "Iteration failed, no feedback available."
+            iter_to_summary[run_index] = "Iteration failed, no summary available."
             log_files(config, iteration=run_index)
             continue
 
-        snapshot_deleted = reset_snapshot_if_val_split_changed(
+        val_split_changed = reset_snapshot_if_val_split_changed(
             config,
             iteration=run_index, 
             old_fingerprint=split_fingerprint_before_iteration, 
@@ -119,52 +125,43 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
             print("  Running validation inference...")
             run_inference_and_log(config, iteration=run_index, evaluation_stage='validation')
         except AgentScriptFailed:
-            extra_info = f"Inference on validation data failed. Traceback:{traceback.format_exc()}"
+            extra_info += f"Inference on validation data failed. Traceback:{traceback.format_exc()}"
         try:
             print("  Running training inference...")
             run_inference_and_log(config, iteration=run_index, evaluation_stage='train')
         except AgentScriptFailed:
-            extra_info = f"Inference on train data failed. Traceback:{traceback.format_exc()}"
+            extra_info += f"Inference on train data failed. Traceback:{traceback.format_exc()}"
 
         new_metrics, best_metrics = get_new_and_best_metrics(config)
-        all_feedbacks.append((feedback, f"Metrics after feedback incorporation: {new_metrics}", f"Best metrics so far: {best_metrics}"))
-        
-        if is_new_best(config):
-            try:
-                feedback = await get_feedback(
-                    context=current_run_messages, 
-                    config=config, 
-                    new_metrics=new_metrics, 
-                    best_metrics=best_metrics, 
-                    is_new_best=True, 
-                    model=feedback_model,
-                    iteration=run_index,
-                    aggregated_feedback=aggregate_feedback(all_feedbacks),
-                    extra_info=extra_info,
-                )
-            except FeedbackAgentFailed as e:
-                feedback = "This was the run with best validation metrics so far. No feedback available."
-                log_feedback_failure(e.exception_trace, iteration=run_index)
+        iter_to_metrics[run_index] = new_metrics
+        try:
+            iter_to_summary[run_index] = await get_iteration_summary(
+                structured_outputs=structured_outputs,
+                model=feedback_model,
+                config=config,
+            )
+            iter_to_feedback[run_index] = await get_feedback(
+                structured_outputs=structured_outputs,
+                config=config, 
+                new_metrics=new_metrics, 
+                best_metrics=best_metrics, 
+                is_new_best=is_new_best(config), 
+                model=feedback_model,
+                iteration=run_index,
+                extra_info=extra_info,
+                iter_to_summary=iter_to_summary,
+                iter_to_metrics=iter_to_metrics,
+                val_split_changed=val_split_changed,
+            )
+        except FeedbackAgentFailed as e:
+            iter_to_summary[run_index] = "No summary available."
+            iter_to_feedback[run_index] = f"This was the {'not' if not is_new_best(config) else ''} run with best validation metrics so far. No feedback available."
+            log_feedback_failure(e.exception_trace, iteration=run_index)
 
+        if(is_new_best(config)):
             snapshot(config, run_index)  # Snapshotting overrides the previous snapshot, influencing the get_new_and_best_metrics function
             for callback in on_new_best_callbacks:
                 callback(config)
-        else:
-            try:
-                feedback =await get_feedback(
-                    current_run_messages, 
-                    config, 
-                    new_metrics, 
-                    best_metrics, 
-                    is_new_best=False, 
-                    model=feedback_model,
-                    iteration=run_index,
-                    aggregated_feedback=aggregate_feedback(all_feedbacks),
-                    extra_info=extra_info,
-                )
-            except FeedbackAgentFailed as e:
-                feedback = "This was NOT the run with best validation metrics so far. No feedback available."
-                log_feedback_failure(e.exception_trace, iteration=run_index)
 
         add_metrics_to_report(config, run_index)
         await add_summary_to_report(default_model, config, run_index)

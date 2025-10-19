@@ -14,11 +14,16 @@ def get_system_prompt(config):
     if validation_csv_path.exists():
         dataset_paths += f"\n    Validation path:\n    {validation_csv_path}"
     
+    gpu_available = config.check_gpu_availability() is not None
+
+    available_resources = "CPU and GPU" if gpu_available else "CPU"
+
+    #TODO don't limit your models and training concepts because of the lack of GPU
     return f"""
     Your goal is to create a robust machine learning model that will generalize to new unseen data. Use tools and follow instructions to reach this goal.
     You are using a linux system.
-    You have access to both CPU and GPU resources. Use them efficiently to train models.
-    If a model architecture is fit for being accelerated by GPU, ensure your code uses GPU correctly before you run training.
+    You have access to {available_resources} resources. Use them efficiently to train models.
+    {'If a model architecture is fit for being accelerated by GPU, ensure your code uses GPU correctly before you run training.' if gpu_available else ''}
     You are provided with your own already activated environment
     Use this environment to install any packages you need (use non-verbose mode for installations, run conda installations with -y option).
     Don't delete this environment.
@@ -45,6 +50,6 @@ def get_iteration_prompt(config, run_index, feedback):
     You have already completed {run_index} runs of your task.
     Here is the feedback from your past runs:
     {feedback}
-    During your tasks, take actions to address issues mentioned in the feedback, especially from the last iteration.
+    During your tasks, take actions to address tasks mentioned in the feedback.
     Files from your past run are still in your workspace.
     """

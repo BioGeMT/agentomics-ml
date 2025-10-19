@@ -68,6 +68,7 @@ class Config:
         self.workspace_dir = workspace_dir
         self.runs_dir = workspace_dir / "runs"
         self.snapshots_dir = workspace_dir / "snapshots"
+        self.fallbacks_dir = workspace_dir / "fallbacks"
         self.reports_dir = workspace_dir / "reports"
         self.iterations = iterations
         self.split_allowed_iterations = split_allowed_iterations
@@ -78,7 +79,7 @@ class Config:
         if max_steps is not None:
             self.max_steps = max_steps
 
-    def _check_gpu_availability(self) -> Optional[str]:
+    def check_gpu_availability(self) -> Optional[str]:
         try:
             result = subprocess.run(['nvidia-smi', '--list-gpus'], capture_output=True, text=True)
 
@@ -104,7 +105,7 @@ class Config:
         print('ITERATIONS:', self.iterations)
         print('USER PROMPT:', self.user_prompt)
 
-        gpu_info = self._check_gpu_availability()
+        gpu_info = self.check_gpu_availability()
         if gpu_info:
             print(f'GPU: Available ({gpu_info})')
         else:

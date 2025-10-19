@@ -188,8 +188,9 @@ async def run_architecture(text_output_agent: Agent, inference_agent: Agent, spl
 
     return _messages
 
-async def run_architecture_compressed(text_output_agent: Agent, inference_agent: Agent, split_dataset_agent: Agent, training_agent: Agent, config: Config, base_prompt: str, iteration: int):
+async def run_architecture_compressed(text_output_agent: Agent, inference_agent: Agent, split_dataset_agent: Agent, training_agent: Agent, config: Config, base_prompt: str, iteration: int, last_split_strategy: str):
     persistent_messages = []
+    structured_outputs = []
     ctx_replacer_msg = "\nSummarized outputs from your previous steps are in previous messages."
 
     messages_data_exploration, data_exploration_output = await run_agent(
@@ -201,20 +202,28 @@ async def run_architecture_compressed(text_output_agent: Agent, inference_agent:
     )
     persistent_messages+=get_sytem_and_user_prompt_messages(messages_data_exploration, to_remove=get_data_exploration_prompt(iteration))
     persistent_messages+=get_final_result_messages(messages_data_exploration)
+    structured_outputs.append(data_exploration_output)
     save_step_output(config, 'data_exploration', data_exploration_output, iteration)
     
     split_allowed_iterations = config.split_allowed_iterations
     if not config.explicit_valid_set_provided and iteration < split_allowed_iterations:
         messages_split, data_split = await run_agent(
             agent=split_dataset_agent,
-            user_prompt=get_data_split_prompt(config, iteration)+ctx_replacer_msg,
+            user_prompt=get_data_split_prompt(config=config, iteration=iteration, last_split_strategy=last_split_strategy)+ctx_replacer_msg,
             max_steps=config.max_steps,
             message_history=persistent_messages,
         )
         persistent_messages+=get_final_result_messages(messages_split)
+        structured_outputs.append(data_split)
         save_step_output(config, 'data_split', data_split, iteration)
-    # else:
-        # messages_split = messages_data_exploration
+    else:
+        manual_data_split_step = DataSplit(
+            train_path = str(config.runs_dir / config.agent_id / 'train.csv'),
+            val_path = str(config.runs_dir / config.agent_id / 'validation.csv'),
+            splitting_strategy = last_split_strategy,
+        )
+        # No messages appended
+        structured_outputs.append(manual_data_split_step)
 
     messages_representation, data_representation = await run_agent(
         agent=text_output_agent,
@@ -224,6 +233,7 @@ async def run_architecture_compressed(text_output_agent: Agent, inference_agent:
         message_history=persistent_messages,
     )
     persistent_messages+=get_final_result_messages(messages_representation)
+    structured_outputs.append(data_representation)
     save_step_output(config, 'data_representation', data_representation, iteration)
 
     messages_architecture, model_architecture = await run_agent(
@@ -234,6 +244,7 @@ async def run_architecture_compressed(text_output_agent: Agent, inference_agent:
         message_history=persistent_messages,
     )
     persistent_messages+=get_final_result_messages(messages_architecture)
+    structured_outputs.append(model_architecture)
     save_step_output(config, 'model_architecture', model_architecture, iteration)
 
     messages_training, model_training = await run_agent(
@@ -243,6 +254,7 @@ async def run_architecture_compressed(text_output_agent: Agent, inference_agent:
         message_history=persistent_messages,
     )
     persistent_messages+=get_final_result_messages(messages_training)
+    structured_outputs.append(model_training)
     save_step_output(config, 'model_training', model_training, iteration)
 
     messages_inference, model_inference = await run_agent(
@@ -252,6 +264,7 @@ async def run_architecture_compressed(text_output_agent: Agent, inference_agent:
         message_history=persistent_messages,
     )
     persistent_messages+=get_final_result_messages(messages_inference)
+    structured_outputs.append(model_inference)
     save_step_output(config, 'model_inference', model_inference, iteration)
 
     if not config.explicit_valid_set_provided:
@@ -266,16 +279,16 @@ async def run_architecture_compressed(text_output_agent: Agent, inference_agent:
         output_type=PredictionExploration,
         message_history=persistent_messages,
     )
-    persistent_messages+=get_final_result_messages(prediction_messages)
+    persistent_messages+=get_final_result_messages(prediction_messages) #not used
+    structured_outputs.append(prediction_exploration)
     save_step_output(config, 'prediction_exploration', prediction_exploration, iteration)
 
     #TODO messages for feedback -> should be compressed or whole context?
 
-    #TODO return usage and append it?
-    return persistent_messages
+    return structured_outputs
 
 @weave.op(call_display_name=lambda call: f"Iteration {call.inputs.get('iteration', 0) + 1}")
-async def run_iteration(config: Config, model, iteration, feedback, tools):
+async def run_iteration(config: Config, model, iteration, feedback, tools, last_split_strategy):
     agents_dict = create_agents(config=config, model=model, tools=tools)
 
     if iteration == 0:
@@ -284,7 +297,7 @@ async def run_iteration(config: Config, model, iteration, feedback, tools):
         base_prompt = get_iteration_prompt(config, iteration, feedback)
 
     #TODO parametrize compressed vs normal runs
-    messages = await run_architecture_compressed(
+    structured_outputs = await run_architecture_compressed(
         text_output_agent=agents_dict["text_output_agent"],
         split_dataset_agent=agents_dict["split_dataset_agent"],
         training_agent=agents_dict["training_agent"],
@@ -292,5 +305,6 @@ async def run_iteration(config: Config, model, iteration, feedback, tools):
         config=config,
         base_prompt=base_prompt,
         iteration=iteration,
+        last_split_strategy=last_split_strategy,
     )
-    return messages
+    return structured_outputs
