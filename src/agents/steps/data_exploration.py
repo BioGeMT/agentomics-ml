@@ -20,7 +20,7 @@ class DataExploration(BaseModel):
 
 def get_data_exploration_prompt(iteration):
     if(iteration != 0):
-        extra_info = "Note: If you gathered enough information from your previous exploration and don't need to explore the data further, return 'Exploration skipped' in all fields."
+        extra_info = "Note: If you gathered enough information from your previous exploration and don't need to explore the data further, return 'Exploration skipped' in all the json fields (data_description, feature_analysis, reasoning)."
     else:
         extra_info = ""    
     return f"""

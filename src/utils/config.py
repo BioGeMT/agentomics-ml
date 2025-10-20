@@ -54,7 +54,7 @@ class Config:
         user_prompt: str,
         max_steps: Optional[int] = None,
         iterations: Optional[int] = 5,
-        split_allowed_iterations: Optional[int] = 1,
+        split_allowed_iterations: int = 1,
     ):
         self.agent_id = agent_id
         self.model_name = model_name
@@ -71,11 +71,11 @@ class Config:
         self.fallbacks_dir = workspace_dir / "fallbacks"
         self.reports_dir = workspace_dir / "reports"
         self.iterations = iterations
-        self.split_allowed_iterations = split_allowed_iterations
         self.task_type = get_task_type_from_prepared_dataset(prepared_datasets_dir / dataset)
         self.user_prompt = user_prompt
         self.explicit_valid_set_provided = (agent_datasets_dir / dataset / "validation.csv").exists()
-
+        self.split_allowed_iterations = split_allowed_iterations if not self.explicit_valid_set_provided else 0
+        
         if max_steps is not None:
             self.max_steps = max_steps
 

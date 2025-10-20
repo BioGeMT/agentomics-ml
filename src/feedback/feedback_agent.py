@@ -137,8 +137,10 @@ async def get_feedback(structured_outputs, config, new_metrics, best_metrics, is
 
     {extra_info}
 
-    Best metrics (out of any iteration) so far: {best_metrics}.
     The current iteration resulted in the following metrics: {new_metrics} and is {'not' if not is_new_best else ''} the best iteration run so far. 
+
+    Best metrics (out of any iteration) so far: {best_metrics}.
+
     The most important metric for this task is {config.val_metric}. 
 
     Main goal: Provide feedback to the current iteration on how to improve generalization to a future unseen test set by changing any of the steps.
@@ -146,7 +148,6 @@ async def get_feedback(structured_outputs, config, new_metrics, best_metrics, is
     Your feedback can suggest anything from small changes up to completelly changing the strategy of a step.
     Make your suggestions concrete, don't offer various choice branches.
     Use the information from previous iterations and their metrics to improve your suggestions.
-    Balance exploration with exploitation, as only the best val metrics model will be judged using the final test set.
     You may skip steps that don't need changed.
     {splitting_info}
     You're providing feedback to another LLM, never offer that you will take any actions to fix or implement fixes yourself.

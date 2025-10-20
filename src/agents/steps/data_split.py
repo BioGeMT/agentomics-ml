@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 class DataSplit(BaseModel):
     train_path: str = Field(description="Path to generated train.csv file")
     val_path: str = Field(description="Path to generated validation.csv file")
-    splitting_strategy: str = Field(description="The description of the how the splitting was done")
+    splitting_strategy: str = Field(description="Detailed description of the splitting strategy used")
 
 def get_data_split_prompt(config, iteration, last_split_strategy="Split does not exist"):
     """
