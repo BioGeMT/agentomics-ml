@@ -119,6 +119,14 @@ async def get_feedback(structured_outputs, config, new_metrics, best_metrics, is
     #TODO never say youre doing well etc.. -> just try to optimize further???
     #TODO allow fallbacking to previous experiments?
 
+    next_iteration_index = iteration + 1
+    if not config.explicit_valid_set_provided and next_iteration_index < config.split_allowed_iterations:
+        #agent can split next iter
+        splitting_info = 'If you choose data splitting needs change, never suggest cross-validations split or any other split that would result in more than two files (train.csv and validation.csv).'
+    else:
+        #agent can NOT split next iter
+        splitting_info = "Don't provide any feedback on how to change the train/validation split, as the next iteration agent cannot split the data."
+
     feedback_prompt = f"""
     Previous iterations summaries:
     {past_iters_aggregation}
@@ -139,7 +147,7 @@ async def get_feedback(structured_outputs, config, new_metrics, best_metrics, is
     Use the information from previous iterations and their metrics to improve your suggestions.
     Balance exploration with exploitation, as only the best val metrics model will be judged using the final test set.
     You may skip steps that don't need changed.
-    {'If you choose data splitting needs change, never suggest cross-validations split or any other split that would result in more than two files (train.csv and validation.csv).' if not config.explicit_valid_set_provided else ''}
+    {splitting_info}
     You're providing feedback to another LLM, never offer that you will take any actions to fix or implement fixes yourself.
     """
     
