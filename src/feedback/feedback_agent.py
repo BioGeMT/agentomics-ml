@@ -126,6 +126,7 @@ async def get_feedback(structured_outputs, config, new_metrics, best_metrics, is
     else:
         #agent can NOT split next iter
         splitting_info = "Don't provide any feedback on how to change the train/validation split, as the next iteration agent cannot split the data."
+    iterations_left = config.iterations - iteration - 1
 
     feedback_prompt = f"""
     Previous iterations summaries:
@@ -149,6 +150,7 @@ async def get_feedback(structured_outputs, config, new_metrics, best_metrics, is
     You may skip steps that don't need changed.
     {splitting_info}
     You're providing feedback to another LLM, never offer that you will take any actions to fix or implement fixes yourself.
+    Balance exploration with exploitation. There are {iterations_left} iterations left. Only the best iteration (based on validation {config.val_metric}) model will be judged using the final test set.
     """
     
     print("CONSTRUCTING ITERATION FEEDBACK...")
