@@ -31,6 +31,7 @@ def get_model_inference_prompt(config):
     return f"""
     Next task: create inference.py file.
     If your model can be accelerated by GPU, implement the code to use GPU.
+    The inference script must produce a prediction for every single input. Don't skip any samples.
     The inference script will be taking the following named arguments:
     --input (an input file path). This file is of the same format as your training data (except the target column)
     --output (the output file path). {output_file_description}

@@ -2,6 +2,7 @@ import json
 import subprocess
 import traceback
 from pathlib import Path
+import pandas as pd
 
 from pydantic_ai import ModelRetry
 from eval.evaluate_result import get_metrics
@@ -86,6 +87,10 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
         if inference_out.returncode != 0:
             print('DRY RUN EVAL FAIL during inference:', inference_out.stderr)
             raise ModelRetry(f'Inference script validation failed: {str(inference_out)}')
+        input_rows = len(pd.read_csv(config.prepared_dataset_dir / "train.csv"))
+        output_rows = len(pd.read_csv(stage_to_metrics_file[evaluation_stage]))
+        if(input_rows != output_rows):
+            raise ModelRetry(f'Inference script must produce prediction for each input sample. Input rows: {input_rows}. Predicted rows: {output_rows}')
         try:
             _ = get_metrics(
                 results_file=stage_to_output[evaluation_stage],

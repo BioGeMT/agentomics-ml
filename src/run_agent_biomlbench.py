@@ -53,6 +53,33 @@ def run_inference_on_test_data(test_data_path):
         print(inference_out.stderr.decode())
     return output_path
 
+def generate_preds_for_biomlbench(config):
+    print('---------------------------------')
+    print('-GENERATING PREDS FOR BIOMLBENCH-')
+    print('---------------------------------')
+
+    test_no_label = '/home/data/test_features.csv'
+    SUBMISSION_DIR = os.getenv('SUBMISSION_DIR', '')
+    submission_path = os.path.join(SUBMISSION_DIR, 'submission.csv')
+
+    try:
+        predictions_path = run_inference_on_test_data(test_no_label)
+        copy_and_format_predictions_for_biomlbench(
+            preds_source_path=predictions_path,
+            preds_dest_path=submission_path,
+            target_col=args.target_col #passed from outside the fn, refactor into reading prepared yaml metadata
+        )
+        copy_dir(source_dir='/home/workspace/snapshots', dest_dir=CODE_DIR)
+    except Exception as e:
+        import traceback
+        print('-------TRACEBACK------TRACEBACK------')
+        print(traceback.format_exc())
+        print('-------TRACEBACK------TRACEBACK------')
+
+    print('---------------------------------')
+    print('- FINISHED PREDS FOR BIOMLBENCH -')
+    print('---------------------------------')
+
 def copy_and_format_predictions_for_biomlbench(preds_source_path, preds_dest_path, target_col):
     preds_df = pd.read_csv(preds_source_path).reset_index()
     preds_df['id'] = preds_df.index
@@ -123,32 +150,7 @@ if __name__ == '__main__':
         dataset_name=dataset_name
     )
 
-    def generate_preds_for_biomlbench(config):
-        print('---------------------------------')
-        print('-GENERATING PREDS FOR BIOMLBENCH-')
-        print('---------------------------------')
 
-        test_no_label = '/home/data/test_features.csv'
-        SUBMISSION_DIR = os.getenv('SUBMISSION_DIR', '')
-        submission_path = os.path.join(SUBMISSION_DIR, 'submission.csv')
-
-        try:
-            predictions_path = run_inference_on_test_data(test_no_label)
-            copy_and_format_predictions_for_biomlbench(
-                preds_source_path=predictions_path,
-                preds_dest_path=submission_path,
-                target_col=args.target_col #passed from outside the fn, refactor into reading prepared yaml metadata
-            )
-            copy_dir(source_dir='/home/workspace/snapshots', dest_dir=CODE_DIR)
-        except Exception as e:
-            import traceback
-            print('-------TRACEBACK------TRACEBACK------')
-            print(traceback.format_exc())
-            print('-------TRACEBACK------TRACEBACK------')
-
-        print('---------------------------------')
-        print('- FINISHED PREDS FOR BIOMLBENCH -')
-        print('---------------------------------')
 
     asyncio.run(run_experiment(
         model=args.model,
