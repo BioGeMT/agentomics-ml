@@ -29,6 +29,7 @@ Required Arguments (for non-interactive runs):
   --model <name>      The LLM model name (e.g., 'openai/gpt-4').
   --dataset <name>    The short identifier for the prepared dataset (e.g., 'breast_cancer').
   --iterations <N>    Number of iterations to run the agent (e.g., 5).
+  --split-allowed-iterations <N>    Number of initial iterations that are allowed to (re)split the data into train/validation (e.g., 1).
   --val-metric <name> The metric to optimize (e.g., 'ACC').
   --user-prompt <str> The main prompt/goal for the agent.
                       (Default: "Create the best possible machine learning model that will generalize to new unseen data.")
@@ -52,7 +53,7 @@ Environment:
   to be injected into the Docker container.
 
 Output:
-  Results are copied from the temporary workspace to the local 'outputs/<RUN_NAME>' directory.
+  Results are copied from the temporary workspace to the local 'outputs/<AGENT_ID>' directory.
 EOF
 }
 
@@ -87,6 +88,10 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --iterations)
+            AGENTOMICS_ARGS+=(--iterations "$2")
+            shift 2
+            ;;
+        --split-allowed-iterations)
             AGENTOMICS_ARGS+=(--iterations "$2")
             shift 2
             ;;
@@ -225,6 +230,7 @@ else
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
             agentomics_img ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
 
+        #TODO only run this if test set exists
         echo "Running final evaluation on test set"
         docker run \
             --rm \
@@ -244,13 +250,12 @@ else
         # Copy best-run files and report
         docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox cp -r /source/snapshots/${AGENT_ID}/. /dest/best_run_files/
 
-        # Copy reports from all iterations
-        docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume:/source -v $(pwd)/outputs/${RUN_NAME}:/dest busybox cp -r /source/reports/${RUN_NAME}/. /dest/reports/
+        docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox cp -r /source/reports/${AGENT_ID}/. /dest/reports/
         
-        echo -e "${GREEN}Run finished. Report and files can be found in outputs/${RUN_NAME}${NOCOLOR}"
-        echo -e "${GREEN}To run inference on new data, use ./inference.sh --agent-dir outputs/${RUN_NAME} --input <path_to_input_csv> --output <path_to_output_csv>${NOCOLOR}"
+        echo -e "${GREEN}Run finished. Report and files can be found in outputs/${AGENT_ID}${NOCOLOR}"
+        echo -e "${GREEN}To run inference on new data, use ./inference.sh --agent-dir outputs/${AGENT_ID} --input <path_to_input_csv> --output <path_to_output_csv>${NOCOLOR}"
 
     fi
 
-    docker volume rm temp_agentomics_volume
+    docker volume rm temp_agentomics_volume_${AGENT_ID}
 fi

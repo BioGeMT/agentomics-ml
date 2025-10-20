@@ -103,6 +103,7 @@ class Config:
         print('VAL METRIC:', self.val_metric)
         print('AGENT ID:', self.agent_id)
         print('ITERATIONS:', self.iterations)
+        print('SPLIT ALLOWED ITERATIONS:', self.split_allowed_iterations)
         print('USER PROMPT:', self.user_prompt)
 
         gpu_info = self.check_gpu_availability()
