@@ -20,10 +20,10 @@ def get_data_split_prompt(config, iteration, last_split_strategy="Split does not
     else:
         raise ValueError(f"Unknown task type: {config.task_type}. Supported types are 'classification' and 'regression'.")
 
-    if(iteration != 0):
+    if(iteration != 0 and last_split_strategy is not None):
         extra_info = f"""
         Note: Train and validation split files from past iteration already exist. 
-        If you don't have a reason to change the splitting strategy, return the already existing split files paths immediately and return this text as the splitting strategy: [START]\n{last_split_strategy}\n[END].
+        If you don't have a reason to change the splitting strategy, return the already existing split files paths immediately and return this text as the splitting strategy:\n{last_split_strategy}\n.
         """
     else:
         extra_info = ""
