@@ -29,11 +29,19 @@ def load_fallbacks_to_rundir(config):
     train_name = 'train.csv'
     val_name = 'validation.csv'
 
+    failed_to_retrieve = False
     if (fallback_dir / train_name).exists():
         shutil.copy2(fallback_dir / train_name, run_dir / train_name)
     else:
         print("TRAIN CSV FALLBACK NOT FOUND")
+        failed_to_retrieve = True
+
     if (fallback_dir / val_name).exists():
         shutil.copy2(fallback_dir / val_name, run_dir / val_name)
     else:
         print("VALIDATION CSV FALLBACK NOT FOUND")
+        failed_to_retrieve = True
+
+    if(failed_to_retrieve):
+        # If no split was successful yet, increase the allowed split iteration budget
+        config.split_allowed_iterations = config.split_allowed_iterations + 1
