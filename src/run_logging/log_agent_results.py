@@ -63,7 +63,7 @@ def log_failed_step_to_file(step_name: str, messages: List, iteration: int, conf
         "step_name": step_name,
         "iteration": iteration,
         "status": "failed",
-        "messages": messages,
+        "messages":str(messages),
         "error_message": error_message,
         "usage": None,  # Not available for failed runs
         "output_data": None,  # Not available for failed runs
