@@ -70,6 +70,7 @@ def generate_preds_for_biomlbench(config):
             target_col=args.target_col #passed from outside the fn, refactor into reading prepared yaml metadata
         )
         copy_dir(source_dir='/home/workspace/snapshots', dest_dir=CODE_DIR)
+        copy_dir(source_dir='/home/workspace/reports', dest_dir=Path(str(CODE_DIR))/'reports')
     except Exception as e:
         import traceback
         print('-------TRACEBACK------TRACEBACK------')
