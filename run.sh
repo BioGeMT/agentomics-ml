@@ -92,7 +92,7 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --split-allowed-iterations)
-            AGENTOMICS_ARGS+=(--iterations "$2")
+            AGENTOMICS_ARGS+=(--split-allowed-iterations "$2")
             shift 2
             ;;
         --val-metric)
