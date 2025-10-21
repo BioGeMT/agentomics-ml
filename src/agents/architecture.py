@@ -21,11 +21,9 @@ from utils.report_logger import save_step_output
 from run_logging.evaluate_log_run import run_inference_and_log
 
 def create_agents(config: Config, model, tools):
-    # From pydantic ai docs:
-    # If message_history is set and not empty, a new system prompt is not generated — we assume the existing message history includes a system prompt.
     text_output_agent = Agent( # this is data exploration, representation, architecture reasoning, prediction exploration agent
         model=model,
-        system_prompt=get_system_prompt(config), #this is passed only to the empty message history agent (first one) per above reasons
+        system_prompt=get_system_prompt(config), # Passed only to first step when message history empty
         tools=tools,
         model_settings={'temperature': config.temperature},
         retries=config.max_run_retries,
@@ -63,11 +61,12 @@ def create_agents(config: Config, model, tools):
         train_path = Path(result.train_path)
         val_path = Path(result.val_path)
         if(train_path.name != 'train.csv' or val_path.name != 'validation.csv'):
-            # Care to not delete original training data
+            # Care to not delete original training or validation data
             original_train_csv_path = config.agent_dataset_dir / "train.csv"
-            if (train_path.resolve() != original_train_csv_path.resolve()):
+            original_valid_csv_path = config.agent_dataset_dir / "validation.csv"
+            if (train_path.resolve() != original_train_csv_path.resolve() and train_path.resolve() != original_valid_csv_path.resolve()):
                 train_path.unlink()
-            if (val_path.resolve() != original_train_csv_path.resolve()):
+            if (val_path.resolve() != original_train_csv_path.resolve() and val_path.resolve() != original_valid_csv_path.resolve()):
                 val_path.unlink()
 
             raise ModelRetry(f"The files must be called exactly 'train.csv' and 'validation.csv'. Files ({train_path.name} and {val_path.name}) have been deleted.")
