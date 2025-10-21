@@ -54,4 +54,5 @@ def get_iteration_prompt(config, run_index, summary, feedback):
     {feedback}
     During your tasks, take actions to address tasks mentioned in the feedback.
     Files from your past run are still in your workspace.
+    {"You must not modify the train.csv and validation.csv files this iteration." if not config.can_iteration_split_data(run_index) else ""}
     """

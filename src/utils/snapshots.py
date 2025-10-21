@@ -2,6 +2,7 @@ import re
 import shutil
 import hashlib
 import os
+import stat
 import wandb
 from pathlib import Path
 from utils.metrics import get_classification_metrics_functions, get_higher_is_better_map, get_regression_metrics_functions
@@ -117,6 +118,15 @@ def reset_snapshot_if_val_split_changed(config, iteration, old_fingerprint, new_
         if is_wandb_active():
             wandb.log({"validation/snapshot_reset":0}, step=iteration)
         return False
+
+def lock_split_files(config):
+    print("Locking split files")
+    train_split = config.runs_dir / config.agent_id / 'train.csv'
+    validation_split = config.runs_dir / config.agent_id / 'validation.csv'
+    
+    read_only_mode = stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH
+    os.chmod(train_split, read_only_mode)
+    os.chmod(validation_split, read_only_mode)
 
 def snapshot(config, iteration, delete_old_snapshot=True):
     run_dir = config.runs_dir / config.agent_id

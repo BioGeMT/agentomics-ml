@@ -79,6 +79,9 @@ class Config:
         if max_steps is not None:
             self.max_steps = max_steps
 
+    def can_iteration_split_data(self, iteration):
+        return not self.explicit_valid_set_provided and iteration < self.split_allowed_iterations
+
     def check_gpu_availability(self) -> Optional[str]:
         try:
             result = subprocess.run(['nvidia-smi', '--list-gpus'], capture_output=True, text=True)

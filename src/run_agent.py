@@ -16,7 +16,7 @@ from utils.dataset_utils import setup_nonsensitive_dataset_files_for_agent
 from utils.fallbacks import save_splits_to_fallback, load_fallbacks_to_rundir
 from utils.config import Config
 from utils.exceptions import IterationRunFailed, FeedbackAgentFailed, AgentScriptFailed
-from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics, replace_snapshot_path_with_relative
+from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics, replace_snapshot_path_with_relative, lock_split_files
 from utils.workspace_setup import ensure_workspace_folders
 from agents.architecture import run_iteration
 from utils.metrics import get_classification_metrics_names, get_regression_metrics_names
@@ -78,6 +78,8 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
     print(f"Starting training loop with {config.iterations} iterations")
     for run_index in range(config.iterations):
         print(f"\n=== ITERATION {run_index + 1} / {config.iterations} ===")
+        if(not config.can_iteration_split_data(run_index)):
+            lock_split_files(config)
         split_fingerprint_before_iteration = create_split_fingerprint(config)
         try:
             # Not using feedback from failed iterations
