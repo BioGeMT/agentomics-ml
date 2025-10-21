@@ -123,6 +123,7 @@ async def get_feedback(structured_outputs, config, new_metrics, best_metrics, is
     if not config.explicit_valid_set_provided and next_iteration_index < config.split_allowed_iterations:
         #agent can split next iter
         splitting_info = 'If you choose data splitting needs change, never suggest cross-validations split or any other split that would result in more than two files (train.csv and validation.csv).'
+        splitting_info += f"\nSplitting is allowed for the next {config.split_allowed_iterations - next_iteration_index} iteration/s. After that, the latest split will be used for all future iterations."
     else:
         #agent can NOT split next iter
         splitting_info = "Don't provide any feedback on how to change the train/validation split, as the next iteration agent cannot split the data."
