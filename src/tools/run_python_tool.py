@@ -1,3 +1,5 @@
+import time
+
 from pydantic_ai import Tool
 from pathlib import Path
 from .bash_tool import BashProcess
@@ -21,6 +23,7 @@ def create_run_python_tool(agent_id, runs_dir, timeout, max_retries, proxy):
         Args:
             python_file_path: A full absolute path to the python file to run
         """
+        start_time = time.time()
         # validate path is a file
         if not Path(python_file_path).is_file():
             return "python_file_path is not a valid python file path"
@@ -29,8 +32,8 @@ def create_run_python_tool(agent_id, runs_dir, timeout, max_retries, proxy):
         env_path = runs_dir / agent_id / ".conda" / "envs" / f"{agent_id}_env"
         command = f"conda run -p {env_path} --no-capture-output python {python_file_path}"
         out = bash.run(command)
-        
-        return out
+        timer_msg = f"\n[Tool call took {time.time() - start_time:.1f} seconds]"
+        return out + timer_msg
     
     run_python_tool = Tool(
         function=_run_python, 

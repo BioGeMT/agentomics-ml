@@ -1,4 +1,5 @@
 import traceback
+import time
 from pydantic_ai import Tool
 from pathlib import Path
 
@@ -17,6 +18,7 @@ def create_write_python_tool(agent_id, max_retries, runs_dir):
             code: A valid python code.
             file_path: A file path to write the code to.
         """
+        start_time = time.time()
         
         # Check if the file_path points to agents directory (we're not using bash, so we can't check privileges)
         necessary_prefix = str(runs_dir / agent_id)
@@ -36,7 +38,8 @@ def create_write_python_tool(agent_id, max_retries, runs_dir):
         # Write 
         with open(file_path, "w") as f:
             f.write(code)
-            return f"Code syntax OK, written to {file_path}"
+            timer_msg = f"\n[Tool call took {time.time() - start_time:.1f} seconds]"
+            return f"Code syntax OK, written to {file_path}" + timer_msg
 
     write_python_tool = Tool(
         function=_write_python, 
