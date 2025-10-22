@@ -30,8 +30,8 @@ for repetition in $(seq 1 $REPETITIONS); do
                 --iterations "$ITERATIONS" \
                 --split-allowed-iterations "$SPLIT_ALLOWED_ITERS" \
                 --val-metric "${metric_map[$dataset]}" \
-                --tags "${TAGS[@]}"
-                #----time-budget-h "$TIME_LIMIT" \
+                --tags "${TAGS[@]}" \
+                --time-budget-h "$TIME_BUDGET_H"
         done
     done
 done
