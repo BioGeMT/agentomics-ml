@@ -29,12 +29,12 @@ def get_python_files(path):
 
     return py_files
 
-def export_config_to_workspace(config):
+def export_config_to_snapshot(config):
     config_dict = asdict(config)
 
     for key, value in config_dict.items():
         if isinstance(value, Path):
             config_dict[key] = str(value)
 
-    config_path = config.workspace_dir.resolve() / "config.json"
+    config_path = (config.snapshots_dir / config.agent_id).resolve() / "config.json"
     config_path.write_text(json.dumps(config_dict, indent=2))
