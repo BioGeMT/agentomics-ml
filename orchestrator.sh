@@ -1,10 +1,10 @@
 MODELS=("openai/gpt-5" "openai/gpt-5-codex" "anthropic/claude-sonnet-4.5" "anthropic/claude-haiku-4.5")
 DATASETS=("AGO2_CLASH_Hejret")
-ITERATIONS=5
+ITERATIONS=100
 TIME_BUDGET_S=$(( 8 * 60 * 60 )) # 8 hours
-SPLIT_ALLOWED_ITERS=3
+SPLIT_ALLOWED_ITERS=4
 TAGS=("experiment_orchestrator" "test_run")
-REPETITIONS=1
+REPETITIONS=2
 
 DATASETS_VAL_METRICS=(
     "AGO2_CLASH_Hejret:AUPRC"
