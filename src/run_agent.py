@@ -101,7 +101,7 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
             log_serial_metrics(prefix='validation', metrics=None, iteration=run_index, task_type=config.task_type)
             log_serial_metrics(prefix='train', metrics=None, iteration=run_index, task_type=config.task_type)
             #TODO also files in run dir should revert?
-            load_fallbacks_to_rundir(config)
+            load_fallbacks_to_rundir(config, run_index)
             val_split_changed = reset_snapshot_if_val_split_changed(
                 config,
                 iteration=run_index, 
