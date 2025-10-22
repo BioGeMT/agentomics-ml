@@ -83,15 +83,17 @@ def delete_snapshot(snapshot_dir):
     if snapshot_dir.exists():
         shutil.rmtree(snapshot_dir)
 
-def file_fingerprint(path, sample_size=65536):
-    stat = os.stat(path)
-    # Use file size + mtime + small content hash to detect changes
+def file_fingerprint(path, chunk_size=65536):
     hasher = hashlib.sha256()
-    with open(path, "rb") as f:
-        sample = f.read(sample_size)
-        hasher.update(sample)
-    fingerprint = f"{stat.st_size}-{stat.st_mtime}-{hasher.hexdigest()}"
-    return fingerprint
+    try:
+        with open(path, 'rb') as f:
+            while chunk := f.read(chunk_size):
+                hasher.update(chunk)
+    except FileNotFoundError:
+        print(f"Error fingerprinting: File not found at {path}")
+        return path # mis-matches any different paths
+    
+    return hasher.hexdigest()
 
 def create_split_fingerprint(config):
     train_csv = config.runs_dir / config.agent_id / 'train.csv'

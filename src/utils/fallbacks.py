@@ -21,7 +21,7 @@ def save_splits_to_fallback(config):
     else:
         print("VALIDATION CSV TO SAVE AS FALLBACK NOT FOUND")
 
-def load_fallbacks_to_rundir(config):
+def load_fallbacks_to_rundir(config, iteration):
     runs_dir = config.runs_dir
     fallbacks_dir = config.fallbacks_dir
     run_dir = Path(runs_dir) / config.agent_id
@@ -44,4 +44,6 @@ def load_fallbacks_to_rundir(config):
 
     if(failed_to_retrieve):
         # If no split was successful yet, increase the allowed split iteration budget
-        config.split_allowed_iterations = config.split_allowed_iterations + 1
+        if(not config.can_iteration_split_data(iteration+1)): #check if next iter can split
+            print("Increasing split iteration budget due to a nonexisting split fallback")
+            config.split_allowed_iterations = config.split_allowed_iterations + 1
