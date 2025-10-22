@@ -91,7 +91,7 @@ def file_fingerprint(path, chunk_size=65536):
                 hasher.update(chunk)
     except FileNotFoundError:
         print(f"Error fingerprinting: File not found at {path}")
-        return path # mis-matches any different paths
+        return str(path) # mis-matches any different paths
     
     return hasher.hexdigest()
 
