@@ -1,3 +1,4 @@
+#!/bin/bash
 MODELS=("openai/gpt-5" "openai/gpt-5-codex" "anthropic/claude-sonnet-4.5" "anthropic/claude-haiku-4.5")
 DATASETS=("AGO2_CLASH_Hejret")
 ITERATIONS=100
