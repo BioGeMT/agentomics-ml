@@ -125,6 +125,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
         except Exception as e:
             log_serial_metrics(prefix="validation", metrics=None, iteration=iteration, task_type=config.task_type)
             message = "FAIL DURING VALIDATION METRICS COMPUTATION."
+            print(message)
             raise AgentScriptFailed(message) from e
         print('VALIDATION EVAL SUCCESS')
     if evaluation_stage == 'train':
@@ -146,6 +147,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
         except Exception as e:
             log_serial_metrics(prefix=evaluation_stage, metrics=None, iteration=iteration, task_type=config.task_type)
             message = "FAIL DURING TRAIN METRICS COMPUTATION."
+            print(message)
             raise AgentScriptFailed(message) from e
         print('TRAIN EVAL SUCCESS')
 

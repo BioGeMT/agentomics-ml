@@ -29,6 +29,7 @@ Required Arguments (for non-interactive runs):
   --model <name>      The LLM model name (e.g., 'openai/gpt-4').
   --dataset <name>    The short identifier for the prepared dataset (e.g., 'breast_cancer').
   --iterations <N>    Number of iterations to run the agent (e.g., 5).
+  --time-budget-h <float>           Amount of hours the agent is allowed to run for. This or --iterations will dictate the duration, whichever will expire first. 
   --split-allowed-iterations <N>    Number of initial iterations that are allowed to (re)split the data into train/validation (e.g., 1).
   --val-metric <name> The metric to optimize (e.g., 'ACC').
   --user-prompt <str> The main prompt/goal for the agent.
@@ -96,6 +97,10 @@ while [[ $# -gt 0 ]]; do
             AGENTOMICS_ARGS+=(--split-allowed-iterations "$2")
             shift 2
             ;;
+        --time-budget-h)
+            TIME_LIMIT_HOURS="$2"
+            shift 2
+            ;;
         --val-metric)
             AGENTOMICS_ARGS+=(--val-metric "$2")
             shift 2
@@ -140,6 +145,10 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+TIME_LIMIT_SECS=$(awk "BEGIN {print $TIME_LIMIT_HOURS * 3600}")
+echo "running with hour budget of $TIME_LIMIT_HOURS"
+echo "running with second budget of $TIME_LIMIT_SECS"
+
 if [ "$LOCAL_MODE" = true ]; then
     echo -e "${RED}Running in local mode - this is only recommended if you run in a non-vulnerable environment!${NOCOLOR}"
     echo "For Docker mode (secure run), re-run without the --local flag."
@@ -160,7 +169,10 @@ if [ "$LOCAL_MODE" = true ]; then
 
     AGENT_ID=$(python src/utils/create_user.py)
     export AGENT_ID
-    python src/run_agent_interactive.py ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
+    timeout $TIME_LIMIT_SECS python src/run_agent_interactive.py ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
+    if [ $? -eq 124 ]; then
+        echo "Timed out after $TIME_LIMIT_SECS"
+    fi
     export PYTHONPATH=./src
     python src/run_logging/evaluate_log_test.py --workspace-dir ../workspace
 
@@ -225,8 +237,7 @@ else
             --entrypoint /opt/conda/envs/agentomics-env/bin/python \
             agentomics_img -m test.run_all_tests
     else
-        docker run \
-            -it \
+        timeout $TIME_LIMIT_SECS docker run \
             --rm \
             --name agentomics_cont_${AGENT_ID} \
             --env-file $(pwd)/.env \
@@ -239,7 +250,9 @@ else
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
             agentomics_img ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
 
-        #TODO only run this if test set exists
+        if [ $? -eq 124 ]; then
+            echo "Timed out after $TIME_LIMIT_SECS"
+        fi
         echo "Running final evaluation on test set"
         docker run \
             --rm \

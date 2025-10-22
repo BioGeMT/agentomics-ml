@@ -10,7 +10,7 @@ from run_logging.wandb_setup import resume_wandb_run
 from utils.snapshots import replace_snapshot_path_with_relative
 
 def run_test_evaluation(workspace_dir):
-    config = load_run_config(workspace_dir)
+    config = load_run_config(snapshots_dir = Path(workspace_dir) / 'snapshots')
     resume_wandb_run(config)
 
     print("\nRunning final test evaluation...")
@@ -23,8 +23,11 @@ def run_test_evaluation(workspace_dir):
 
     replace_snapshot_path_with_relative(snapshot_dir = config.snapshots_dir / config.agent_id)
 
-def load_run_config(workspace_dir):
-    config_path = workspace_dir.resolve() / "config.json"
+def load_run_config(snapshots_dir):
+    subdirs = [d for d in snapshots_dir.iterdir() if d.is_dir()]
+    assert len(subdirs) == 1, 'More than 1 snapshot folder found, assuming only 1'
+    snapshot_dir = subdirs[0]
+    config_path = snapshot_dir.resolve() / "config.json"
     with open(config_path, 'r') as f:
         config_dict = json.load(f)
 

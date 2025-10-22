@@ -9,7 +9,7 @@ import wandb
 from run_logging.evaluate_log_run import run_inference_and_log
 from run_logging.logging_helpers import log_serial_metrics, log_feedback_failure
 from run_logging.wandb_setup import setup_logging
-from run_logging.log_files import log_files, export_config_to_workspace
+from run_logging.log_files import log_files, export_config_to_snapshot
 from utils.env_utils import are_wandb_vars_available
 from utils.create_user import create_run_and_snapshot_dirs
 from utils.dataset_utils import setup_nonsensitive_dataset_files_for_agent
@@ -20,7 +20,7 @@ from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics, rep
 from utils.workspace_setup import ensure_workspace_folders
 from agents.architecture import run_iteration
 from utils.metrics import get_classification_metrics_names, get_regression_metrics_names
-from utils.report_logger import add_metrics_to_report, add_summary_to_report, rename_best_iteration_report
+from utils.report_logger import add_metrics_to_report, add_summary_to_report
 from utils.providers.provider import Provider, get_provider_from_string
 from feedback.feedback_agent import get_feedback, get_iteration_summary
 from tools.setup_tools import create_tools
@@ -129,12 +129,16 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
             print("  Running validation inference...")
             run_inference_and_log(config, iteration=run_index, evaluation_stage='validation')
         except AgentScriptFailed:
-            extra_info += f"Inference on validation data failed. Traceback:{traceback.format_exc()}"
+            exception_trace = traceback.format_exc()
+            print("Validated Inference faied:\n",exception_trace)
+            extra_info += f"Inference on validation data failed. Traceback:{exception_trace}"
         try:
             print("  Running training inference...")
             run_inference_and_log(config, iteration=run_index, evaluation_stage='train')
         except AgentScriptFailed:
-            extra_info += f"Inference on train data failed. Traceback:{traceback.format_exc()}"
+            exception_trace = traceback.format_exc()
+            print("Validated Inference faied:\n",exception_trace)
+            extra_info += f"Inference on train data failed. Traceback:{exception_trace}"
 
         new_metrics, best_metrics = get_new_and_best_metrics(config)
         iter_to_metrics[run_index] = new_metrics
@@ -164,16 +168,13 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
 
         if(is_new_best(config)):
             snapshot(config, run_index)  # Snapshotting overrides the previous snapshot, influencing the get_new_and_best_metrics function
+            export_config_to_snapshot(config)
             for callback in on_new_best_callbacks:
                 callback(config)
 
         add_metrics_to_report(config, run_index)
         await add_summary_to_report(default_model, config, run_index)
         log_files(config, iteration=run_index)
-
-    rename_best_iteration_report(config)
-    log_files(config)
-    export_config_to_workspace(config)
 
 
 def parse_args():
