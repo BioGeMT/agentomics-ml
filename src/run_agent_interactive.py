@@ -40,6 +40,7 @@ def main():
     parser.add_argument("--dataset", help="Dataset name")
     parser.add_argument("--iterations", type=int, help="Number of iterations to run")
     parser.add_argument("--split-allowed-iterations", type=int, help="Number of initial iterations that are allowed to (re)split the data into train/validation", default=1)
+    parser.add_argument("--tags", nargs="*", default=[], help="(Optional) Comma-separated tags to associate with the run")
     parser.add_argument('--user-prompt', type=str, default="Create the best possible machine learning model that will generalize to new unseen data.", help='(Optional) Text to overwrite the default user prompt')
     parser.add_argument("--model", help="Model name. Should be compatible with the selected provider")
 
@@ -128,7 +129,7 @@ def main():
         prepared_test_sets_dir=paths["prepared_test_sets_dir"],
         agent_datasets_dir=paths["agent_datasets_dir"],
         workspace_dir=paths["workspace_dir"],
-        tags=None,
+        tags=args.tags,
         iterations=iterations,
         user_prompt=args.user_prompt,
         provider=provider_name,

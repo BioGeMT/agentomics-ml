@@ -40,6 +40,7 @@ Operational Flags:
                       (Note: Only supported in Docker mode, not in local Conda mode.)
   --cpu-only          Force Docker/Conda to run using CPU only (skip GPU configuration).
   --ollama            Enable support for an Ollama server running on the host machine.
+  --tags              (Optional) Space separated tags for Weights and Biases logging.
   -h, --help          Show this help message and exit.
 
 Listing Flags (Run the script with only one of these):
@@ -102,6 +103,14 @@ while [[ $# -gt 0 ]]; do
         --user-prompt)
             AGENTOMICS_ARGS+=(--user-prompt "$2")
             shift 2
+            ;;
+        --tags)
+            AGENTOMICS_ARGS+=(--tags)
+            shift
+            while [[ $# -gt 0 && "$1" != -* ]]; do
+                AGENTOMICS_ARGS+=("$1")
+                shift
+            done
             ;;
         --local)
             LOCAL_MODE=true
