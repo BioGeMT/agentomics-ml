@@ -1,7 +1,7 @@
 MODELS=("openai/gpt-5" "openai/gpt-5-codex" "anthropic/claude-sonnet-4.5" "anthropic/claude-haiku-4.5")
 DATASETS=("AGO2_CLASH_Hejret")
 ITERATIONS=5
-TIME_BUDGET_H=8
+TIME_BUDGET_S=$(( 8 * 60 * 60 )) # 8 hours
 SPLIT_ALLOWED_ITERS=3
 TAGS=("experiment_orchestrator" "test_run")
 REPETITIONS=1
@@ -31,7 +31,7 @@ for repetition in $(seq 1 $REPETITIONS); do
                 --split-allowed-iterations "$SPLIT_ALLOWED_ITERS" \
                 --val-metric "${metric_map[$dataset]}" \
                 --tags "${TAGS[@]}" \
-                --time-budget-h "$TIME_BUDGET_H"
+                --timeout "$TIME_BUDGET_S"
         done
     done
 done
