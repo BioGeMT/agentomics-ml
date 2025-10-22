@@ -43,6 +43,11 @@ def load_fallbacks_to_rundir(config, iteration):
         failed_to_retrieve = True
 
     if(failed_to_retrieve):
+        print('DELETING SPLIT FILES FROM THE CURRENT BROKEN ITERATION')
+        for split_path in [run_dir / train_name, run_dir / val_name]:
+            if split_path.exists():
+                shutil.rmtree(split_path)
+
         # If no split was successful yet, increase the allowed split iteration budget
         if(not config.can_iteration_split_data(iteration+1)): #check if next iter can split
             print("Increasing split iteration budget due to a nonexisting split fallback")
