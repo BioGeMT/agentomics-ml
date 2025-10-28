@@ -38,9 +38,9 @@ def generate_task(clone_dir: Path, dataset_root: Path, templates_dir: Path, comp
     (task_dir / "grade.py").write_text(grade_template)
 
     data_dir = competitors_dir / "data"
-    raw_dir = data_dir / name / "raw"
-    public_dir = data_dir / name / "prepared/public"
-    private_dir = data_dir / name / "prepared/private"
+    raw_dir = data_dir / "agentomics" / name / "raw"
+    public_dir = data_dir / "agentomics" / name / "prepared/public"
+    private_dir = data_dir / "agentomics" / name / "prepared/private"
     raw_dir.mkdir(parents=True, exist_ok=True)
     public_dir.mkdir(parents=True, exist_ok=True)
     private_dir.mkdir(parents=True, exist_ok=True)
