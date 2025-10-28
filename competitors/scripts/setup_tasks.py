@@ -31,9 +31,11 @@ def generate_task(clone_dir: Path, dataset_root: Path, templates_dir: Path, name
 
     prepare_template = (templates_dir / "prepare_template.py").read_text()
     config_template = (templates_dir / "config_template.yaml").read_text()
+    grade_template = (templates_dir / "grade_template.py").read_text()
 
     (task_dir / "prepare.py").write_text(prepare_template.format(target=target_col))
     (task_dir / "config.yaml").write_text(config_template.format(name=name))
+    (task_dir / "grade.py").write_text(grade_template)
 
     raw_dir = clone_dir / "data/agentomics" / name / "raw"
     public_dir = clone_dir / "data/agentomics" / name / "prepared/public"
