@@ -74,6 +74,7 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
     iter_to_summary = {}
     iter_to_metrics = {}
     iter_to_feedback = {}
+    iter_to_split_changed = {}
     last_successful_iter = None
     last_split_strategy = None
     print(f"Starting training loop with {config.iterations} iterations")
