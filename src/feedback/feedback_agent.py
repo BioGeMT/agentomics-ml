@@ -101,18 +101,18 @@ async def get_iteration_summary(structured_outputs, model, config) -> IterationS
 
 #TODO if agent fails -> we can construct feedback absed on context contains ALL messages from the failed step (long string of failures typically)
 @weave.op(call_display_name="Get Feedback")
-async def get_feedback(structured_outputs, config, new_metrics, best_metrics, is_new_best, model, iteration, iter_to_summary, iter_to_metrics, val_split_changed, extra_info="") -> str:
+async def get_feedback(structured_outputs, config, new_metrics, best_metrics, is_new_best, model, iteration, iter_to_summary, iter_to_metrics, iter_to_split_changed, val_split_changed, extra_info="") -> str:
     if iteration == config.iterations - 1 : return "Last iteration, no feedback needed"
     
     agent = create_feedback_agent(model, config)
-    past_iters_aggregation = aggregate_past_iterations(iter_to_summary=iter_to_summary, iter_to_metrics=iter_to_metrics)
+    past_iters_aggregation = aggregate_past_iterations(iter_to_summary=iter_to_summary, iter_to_metrics=iter_to_metrics, iter_to_split_changed=iter_to_split_changed)
     extra_info = f'Extra info for the current iteration: {extra_info}' if extra_info else ''
 
     if val_split_changed:
         extra_info+="""
         The train/validation split has been changed this iteration. 
         This renders older iterations' metrics non-comparable as they were measured on different splits. 
-        Due to this, the older iterations are no longer concidered for best-iteration candidates.
+        Due to this, the older iterations are no longer considered for best-iteration candidates.
         """
 
     #TODO Emphasize that old split metric should not be concidered much unless the split is better - should prioritize TEST metric and be representative/difficult
@@ -175,20 +175,41 @@ async def get_feedback(structured_outputs, config, new_metrics, best_metrics, is
             exception_trace=trace,
         )
 
-def aggregate_past_iterations(iter_to_summary, iter_to_metrics, ignore_last=True):
+def aggregate_past_iterations(iter_to_summary, iter_to_metrics, iter_to_split_changed, ignore_last=True):
     aggregation = ""
     num_of_iters = len(iter_to_summary)
+    iter_to_split_version = {} #has the most recent iteration as well
+    split_version = 0
+    for i in range(num_of_iters):
+        if(iter_to_split_changed[i]):
+            split_version+=1
+        iter_to_split_version[i] = split_version
+    split_version_to_iters = {}
+    for i, split_version in iter_to_split_version.items():
+        split_version_to_iters[split_version] = split_version_to_iters.get(split_version, []) + [i]
+    lastest_split_version = iter_to_split_version[num_of_iters-1]
+
     if(ignore_last):
         num_of_iters -=1 #Current iteration is already in the dicts, the feedback agent will get this info anyways
     for i in range(num_of_iters):
-        summary = iter_to_summary[i]
-        metrics = iter_to_metrics[i]
+        iter_split_version = iter_to_split_version[i]
+        iters_with_the_same_split = split_version_to_iters[iter_split_version]
+        iters_with_the_same_split.remove(i)
+
+        split_info = f"This iteration used train/validation split strategy version {iter_split_version}. "
+        if(len(iters_with_the_same_split) > 0):
+            split_info+=f"This is the same as itertations {iters_with_the_same_split}. "
+        if(iter_split_version != lastest_split_version):
+            split_info += "The split changed in this iteration, therefore older iterations are no longer considered for best-iteration candidates."
+        if(len(set(iter_to_split_version.values())) > 1):
+            split_info += "Note that metrics calculated from different split versions are not directly comparable. "
+        
         aggregation += f"""
         Iteration {i}
         Summary:
-        {summary}
+        {iter_to_summary[i]}
         Metrics: 
-        {metrics}
-
+        {iter_to_metrics[i]}
+        {split_info}
         """
     return aggregation

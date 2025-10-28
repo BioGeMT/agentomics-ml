@@ -123,6 +123,7 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
             old_fingerprint=split_fingerprint_before_iteration, 
             new_fingerprint=create_split_fingerprint(config),
         )
+        iter_to_split_changed[run_index] = val_split_changed
 
         extra_info = ""
         print("Starting evaluation phase")
@@ -160,6 +161,7 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
                 extra_info=extra_info,
                 iter_to_summary=iter_to_summary,
                 iter_to_metrics=iter_to_metrics,
+                iter_to_split_changed=iter_to_split_changed,
                 val_split_changed=val_split_changed,
             )
         except FeedbackAgentFailed as e:
