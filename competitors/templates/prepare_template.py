@@ -8,7 +8,7 @@ def prepare(raw: Path, public: Path, private: Path) -> None:
     train_df = pd.read_csv(raw / 'train.csv').copy()
     test_df = pd.read_csv(raw / 'test.csv').copy()
     if TARGET_COLUMN not in train_df.columns or TARGET_COLUMN not in test_df.columns:
-        raise ValueError(f"Missing target column '{TARGET_COLUMN}'")
+        raise ValueError(f"Missing target column '{{TARGET_COLUMN}}'")
     if 'id' not in train_df.columns:
         train_df.insert(0, 'id', range(len(train_df)))
     train_df.to_csv(public / 'train.csv', index=False)
@@ -16,6 +16,7 @@ def prepare(raw: Path, public: Path, private: Path) -> None:
     if 'id' not in features_df.columns:
         features_df.insert(0, 'id', range(len(features_df)))
     features_df.to_csv(public / 'test_features.csv', index=False)
-    # Double braces {{}} are for .format() - they become single braces in generated code
-    sample = pd.DataFrame({{"id": features_df['id'], TARGET_COLUMN: 0}})
+    # Create sample submission
+    sample = pd.DataFrame({{"id": features_df['id']}})
+    sample[TARGET_COLUMN] = 0
     sample.to_csv(public / 'sample_submission.csv', index=False)
