@@ -28,6 +28,6 @@ echo "[setup] Cloning and installing biomlbench"
 python "$COMPETITORS_DIR/scripts/setup_repo.py" --config "$CONFIG"
 
 echo "[setup] Setting up Agentomics tasks"
-python "$COMPETITORS_DIR/scripts/setup_tasks.py" --config "$CONFIG"
+python "$COMPETITORS_DIR/scripts/setup_tasks.py"
 
 echo "[setup] Done! Activate the environment with: conda activate $ENV_NAME"

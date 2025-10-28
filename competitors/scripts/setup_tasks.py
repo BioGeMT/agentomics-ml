@@ -52,12 +52,9 @@ def generate_task(clone_dir: Path, dataset_root: Path, templates_dir: Path, name
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Create Agentomics tasks inside biomlbench clone")
-    parser.add_argument("--config", required=True, help="Path to config.yaml")
-    args = parser.parse_args()
-
-    config_path = Path(args.config)
-    competitors_dir = config_path.parent
+    # Find directories relative to this script location
+    script_dir = Path(__file__).resolve().parent
+    competitors_dir = script_dir.parent
     clone_dir = competitors_dir / "biomlbench"
     dataset_root = competitors_dir.parent / "datasets"
     templates_dir = competitors_dir / "templates"
