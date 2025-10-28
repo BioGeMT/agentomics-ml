@@ -16,8 +16,8 @@ echo "[setup] Activating environment"
 eval "$(conda shell.bash hook)"
 conda activate "$ENV_NAME"
 
-echo "[setup] Installing pyarrow from conda-forge (if not present)"
-conda install -c conda-forge pyarrow -y
+echo "[setup] Installing basic dependencies"
+conda install -c conda-forge pyyaml pandas scikit-learn pyarrow -y
 
 echo "[setup] Cloning and installing biomlbench"
 python "$COMPETITORS_DIR/scripts/setup_repo.py" --config "$CONFIG"
