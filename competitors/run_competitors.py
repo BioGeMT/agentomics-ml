@@ -44,6 +44,8 @@ def run_agent(config, agent, dataset):
     env = build_env(os.environ, config, agent)
     output_subdir = RESULTS_DIR / f"{dataset}_{agent}"
     output_subdir.mkdir(parents=True, exist_ok=True)
+    log_file = output_subdir / "run.log"
+
     cmd = [
         "biomlbench",
         "run-agent",
@@ -54,7 +56,33 @@ def run_agent(config, agent, dataset):
         "--output-dir",
         str(output_subdir),
     ]
-    return subprocess.run(cmd, cwd=CLONE_DIR, env=env, capture_output=True, text=True)
+
+    # Stream output live while also saving to log file
+    with open(log_file, "w") as f:
+        process = subprocess.Popen(
+            cmd,
+            cwd=CLONE_DIR,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1
+        )
+
+        for line in process.stdout:
+            print(line, end='')
+            f.write(line)
+
+        process.wait()
+
+    # Return a result-like object for compatibility
+    class Result:
+        def __init__(self, returncode):
+            self.returncode = returncode
+            self.stdout = ""
+            self.stderr = ""
+
+    return Result(process.returncode)
 
 
 def main():
@@ -75,19 +103,6 @@ def main():
         for agent in agents:
             console.rule(f"{agent} on {dataset}")
             res = run_agent(config, agent, dataset)
-
-            log_file = RESULTS_DIR / f"{dataset}_{agent}" / "run.log"
-            with open(log_file, "w") as f:
-                f.write(f"=== {agent} on {dataset} ===\n\n")
-                f.write("STDOUT:\n")
-                f.write(res.stdout)
-                f.write("\n\nSTDERR:\n")
-                f.write(res.stderr)
-                f.write(f"\n\nEXIT CODE: {res.returncode}\n")
-
-            console.print(res.stdout)
-            if res.returncode != 0:
-                console.print(res.stderr, style="red")
             summary.append((dataset, agent, "success" if res.returncode == 0 else "failed"))
 
     table = Table(title="Benchmark Summary", box=box.SIMPLE_HEAVY)
