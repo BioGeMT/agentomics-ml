@@ -1,0 +1,7 @@
+id: agentomics/{name}
+name: "{name}"
+description: biomlbench/tasks/agentomics/{name}/description.md
+preparer: biomlbench.tasks.agentomics.{name}.prepare:prepare
+dataset:
+  answers: agentomics/{name}/prepared/private/answers.csv
+  sample_submission: agentomics/{name}/prepared/public/sample_submission.csv

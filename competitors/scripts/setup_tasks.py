@@ -1,0 +1,74 @@
+import argparse
+import shutil
+from importlib import util
+from pathlib import Path
+
+import pandas as pd
+import yaml
+
+
+def infer_target(train_df: pd.DataFrame) -> str:
+    return "target" if "target" in train_df.columns else train_df.columns[-1]
+
+
+def generate_task(clone_dir: Path, dataset_root: Path, templates_dir: Path, name: str) -> None:
+    src = dataset_root / name
+    train_df = pd.read_csv(src / "train.csv")
+    test_df = pd.read_csv(src / "test.csv")
+    target_col = infer_target(train_df)
+
+    tasks_pkg = clone_dir / "biomlbench/tasks/agentomics"
+    tasks_pkg.mkdir(parents=True, exist_ok=True)
+    (tasks_pkg / "__init__.py").write_text("# Agentomics task package\n")
+
+    task_dir = tasks_pkg / name
+    task_dir.mkdir(parents=True, exist_ok=True)
+    (task_dir / "__init__.py").write_text("")
+
+    desc_src = src / "dataset_description.md"
+    if desc_src.exists():
+        shutil.copy(desc_src, task_dir / "description.md")
+
+    prepare_template = (templates_dir / "prepare_template.py").read_text()
+    config_template = (templates_dir / "config_template.yaml").read_text()
+
+    (task_dir / "prepare.py").write_text(prepare_template.format(target=target_col))
+    (task_dir / "config.yaml").write_text(config_template.format(name=name))
+
+    raw_dir = clone_dir / "data/agentomics" / name / "raw"
+    public_dir = clone_dir / "data/agentomics" / name / "prepared/public"
+    private_dir = clone_dir / "data/agentomics" / name / "prepared/private"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    public_dir.mkdir(parents=True, exist_ok=True)
+    private_dir.mkdir(parents=True, exist_ok=True)
+
+    shutil.copy(src / "train.csv", raw_dir / "train.csv")
+    shutil.copy(src / "test.csv", raw_dir / "test.csv")
+
+    spec = util.spec_from_file_location("agentomics_prepare", task_dir / "prepare.py")
+    module = util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.prepare(raw_dir, public_dir, private_dir)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Create Agentomics tasks inside biomlbench clone")
+    parser.add_argument("--config", required=True, help="Path to config.yaml")
+    args = parser.parse_args()
+
+    config_path = Path(args.config)
+    cfg = yaml.safe_load(config_path.read_text())
+
+    competitors_dir = config_path.parent
+    clone_dir = competitors_dir / "biomlbench"
+    dataset_root = competitors_dir.parent / "datasets"
+    templates_dir = competitors_dir / "templates"
+
+    for name in cfg.get("datasets", []):
+        generate_task(clone_dir, dataset_root, templates_dir, name)
+
+    print("[setup_tasks] Generated Agentomics tasks")
+
+
+if __name__ == "__main__":
+    main()
