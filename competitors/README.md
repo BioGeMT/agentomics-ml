@@ -13,8 +13,9 @@ Utilities for benchmarking the BioMLBench agents on Agentomics datasets with Ope
 ## Workflow
 
 1. Edit `config.yaml` to set your OpenRouter key/model, execution limits, agent names, and dataset names.
-2. Run `./setup.sh` (idempotent) to clone BioMLBench, install it, and generate Agentomics task scaffolding + prepared data inside the clone.
-3. Execute `python run_competitors.py` to run all agents on all datasets specified in config.
+2. Run `./setup.sh` (idempotent) to create conda environment (`biomlbench`), clone BioMLBench, install dependencies, and generate Agentomics task scaffolding.
+3. Activate the environment: `conda activate biomlbench`
+4. Execute `python run_competitors.py` to run all agents on all datasets specified in config.
 
 ## Results Structure
 
