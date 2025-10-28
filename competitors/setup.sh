@@ -3,7 +3,7 @@ set -euo pipefail
 
 COMPETITORS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
 CONFIG="$COMPETITORS_DIR/config.yaml"
-ENV_NAME="biomlbench"
+ENV_NAME="biomlbench-agents"
 
 if conda env list | grep -q "^$ENV_NAME "; then
     echo "[setup] Conda environment '$ENV_NAME' already exists"
