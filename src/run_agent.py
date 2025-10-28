@@ -116,6 +116,7 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
             iter_to_feedback[run_index] = "Iteration failed, no feedback available."
             iter_to_summary[run_index] = "Iteration failed, no summary available."
             log_files(config, iteration=run_index)
+            iter_to_split_changed[run_index] = val_split_changed
             continue
 
         val_split_changed = reset_snapshot_if_val_split_changed(
