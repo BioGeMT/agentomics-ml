@@ -3,5 +3,10 @@ name: "{name}"
 description: biomlbench/tasks/agentomics/{name}/description.md
 preparer: biomlbench.tasks.agentomics.{name}.prepare:prepare
 dataset:
+  # Note: answers.csv path required by config schema but file not created (we do our own eval)
   answers: agentomics/{name}/prepared/private/answers.csv
   sample_submission: agentomics/{name}/prepared/public/sample_submission.csv
+# Note: grader required by Task.from_dict() but never used during run-agent (only for separate 'biomlbench grade' command)
+grader:
+  name: dummy-grader
+  grade_fn: biomlbench.tasks.agentomics.{name}.grade:grade
