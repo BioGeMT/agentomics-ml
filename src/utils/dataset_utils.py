@@ -169,7 +169,7 @@ def auto_detect_target_col(train_df, interactive=False):
         print(f"\nCould not auto-detect target column. Expected one of {possible_target_cols}")
         cols = train_df.columns.tolist()
         table = Table(show_header=False, box=box.ROUNDED, padding=(0, 1))
-        num_cols = 5
+        num_cols = min(5, len(cols))
         for _ in range(num_cols):
             table.add_column(style="cyan", no_wrap=True)
         for i in range(0, len(cols), num_cols):
