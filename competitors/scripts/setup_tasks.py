@@ -32,10 +32,12 @@ def generate_task(clone_dir: Path, dataset_root: Path, templates_dir: Path, comp
     prepare_template = (templates_dir / "prepare_template.py").read_text()
     config_template = (templates_dir / "config_template.yaml").read_text()
     grade_template = (templates_dir / "grade_template.py").read_text()
+    leaderboard_template = templates_dir / "leaderboard_template.csv"
 
     (task_dir / "prepare.py").write_text(prepare_template.format(target=target_col))
     (task_dir / "config.yaml").write_text(config_template.format(name=name))
     (task_dir / "grade.py").write_text(grade_template)
+    shutil.copy(leaderboard_template, task_dir / "leaderboard.csv")
 
     data_dir = competitors_dir / "data"
     raw_dir = data_dir / "agentomics" / name / "raw"
