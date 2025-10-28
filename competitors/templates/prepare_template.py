@@ -20,3 +20,6 @@ def prepare(raw: Path, public: Path, private: Path) -> None:
     sample = pd.DataFrame({{"id": features_df['id']}})
     sample[TARGET_COLUMN] = 0
     sample.to_csv(public / 'sample_submission.csv', index=False)
+    # Create dummy answers.csv (required by biomlbench but not used - we do our own eval)
+    answers = pd.DataFrame({{"id": features_df['id'], TARGET_COLUMN: test_df[TARGET_COLUMN].values}})
+    answers.to_csv(private / 'answers.csv', index=False)
