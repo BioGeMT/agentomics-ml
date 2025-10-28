@@ -14,6 +14,7 @@ HERE = Path(__file__).resolve().parent
 CONFIG_PATH = HERE / "config.yaml"
 CLONE_DIR = HERE / "biomlbench"
 RESULTS_DIR = HERE / "results"
+DATA_DIR = HERE / "data"
 
 
 def load_config():
@@ -55,6 +56,8 @@ def run_agent(config, agent, dataset):
         f"agentomics/{dataset}",
         "--output-dir",
         str(output_subdir),
+        "--data-dir",
+        str(DATA_DIR),
     ]
 
     # Stream output live while also saving to log file
