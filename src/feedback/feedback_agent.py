@@ -43,7 +43,7 @@ def create_feedback_agent(model, config):
     feedback_agent = Agent(
         model=model,
         model_settings={'temperature': config.temperature},
-        result_retries=config.max_validation_retries
+        retries=config.max_validation_retries
     )
     
     return feedback_agent
@@ -163,7 +163,7 @@ async def get_feedback(structured_outputs, config, new_metrics, best_metrics, is
             message_history=None
         )
         time.sleep(3)
-        return feedback.data
+        return feedback.output
     except Exception as e:
         trace = traceback.format_exc()
         print('--------------- ERROR TRACEBACK ---------------')

@@ -29,7 +29,6 @@ class Config:
     # static defaults
     temperature: float = 1.0
     max_steps: int = 100 #TODO rename, this is per-step limit
-    max_run_retries: int = 1
     max_validation_retries: int = 5
     use_proxy: bool = True
     llm_response_timeout: int = 60 * 15

@@ -26,8 +26,7 @@ def create_agents(config: Config, model, tools):
         system_prompt=get_system_prompt(config), # Passed only to first step when message history empty
         tools=tools,
         model_settings={'temperature': config.temperature},
-        retries=config.max_run_retries,
-        result_retries=config.max_validation_retries,
+        retries=config.max_validation_retries,
     )
 
     split_dataset_agent = Agent(
@@ -35,7 +34,7 @@ def create_agents(config: Config, model, tools):
         tools=tools,
         model_settings={'temperature': config.temperature},
         output_type=DataSplit,
-        result_retries=config.max_validation_retries,
+        retries=config.max_validation_retries,
     )
 
     training_agent = Agent(
@@ -43,7 +42,7 @@ def create_agents(config: Config, model, tools):
         tools=tools,
         model_settings={'temperature': config.temperature},
         output_type=ModelTraining,
-        result_retries=config.max_validation_retries,
+        retries=config.max_validation_retries,
     )
 
     inference_agent = Agent(
@@ -51,7 +50,7 @@ def create_agents(config: Config, model, tools):
         tools=tools,
         model_settings={'temperature':config.temperature},
         output_type= ModelInference,
-        result_retries=config.max_validation_retries,
+        retries=config.max_validation_retries,
     )
     @split_dataset_agent.output_validator
     async def validate_split_dataset(result: DataSplit) -> DataSplit:
