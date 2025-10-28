@@ -57,17 +57,19 @@ def main() -> None:
     args = parser.parse_args()
 
     config_path = Path(args.config)
-    cfg = yaml.safe_load(config_path.read_text())
-
     competitors_dir = config_path.parent
     clone_dir = competitors_dir / "biomlbench"
     dataset_root = competitors_dir.parent / "datasets"
     templates_dir = competitors_dir / "templates"
 
-    for name in cfg.get("datasets", []):
+    # Prepare ALL datasets found in datasets directory
+    dataset_names = [d.name for d in dataset_root.iterdir() if d.is_dir()]
+
+    for name in dataset_names:
+        print(f"[setup_tasks] Preparing dataset: {name}")
         generate_task(clone_dir, dataset_root, templates_dir, name)
 
-    print("[setup_tasks] Generated Agentomics tasks")
+    print(f"[setup_tasks] Generated {len(dataset_names)} Agentomics tasks")
 
 
 if __name__ == "__main__":
