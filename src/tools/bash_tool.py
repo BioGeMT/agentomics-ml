@@ -3,6 +3,7 @@ import re
 import threading
 import shlex    
 import os
+import time
 
 from pydantic_ai import Tool
 
@@ -58,6 +59,8 @@ class BashProcess:
                     output += result.stderr
 
                 if result.returncode != 0:
+                    if(len(output) > 5000):
+                        output = f"output truncated, too long, showing first 5000 and last 5000 characters. First 5000:\n{output[:5000]}\n...\nLast 5000:\n{output[-5000:]}"
                     return f"Command failed with error code {result.returncode}:\n{output}"
 
                 return self.process_output(output, command)
@@ -107,12 +110,13 @@ def create_bash_tool(agent_id, runs_dir, timeout, max_retries, autoconda=True, p
             Args:
                 command: A valid bash command.
             """  
+            start_time = time.time()
             env_path = runs_dir / agent_id / ".conda" / "envs" / f"{agent_id}_env"
             command_parsed = shlex.quote(command)
             command = f"conda run -p {env_path} --no-capture-output bash -c {command_parsed}"
             out = bash.run(command)
-
-            return out
+            timer_msg = f"\n[Tool call took {time.time() - start_time:.1f} seconds]"
+            return out + timer_msg
     
         bash_tool = Tool(
             function=_bash,

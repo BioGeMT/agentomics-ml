@@ -24,7 +24,7 @@ def create_tools(config):
                 proxy=config.use_proxy,
                 max_retries=config.max_tool_retries),
         ]
-    # wrap each tool.run with @weave.op
+    # wrap each tool.function with @weave.op
     for tool in tools:
-        tool.run = weave.op(tool.run, call_display_name=tool.name)
+        tool.function = weave.op(tool.function, call_display_name=tool.name)
     return tools

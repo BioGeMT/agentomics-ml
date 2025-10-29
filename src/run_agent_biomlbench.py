@@ -8,6 +8,7 @@ from pathlib import Path
 
 from utils.dataset_utils import prepare_dataset
 from run_agent import run_experiment
+from utils.create_user import create_agent_id
 
 def setup_agentomics_folder_structure_and_files(description_path, train_data_path, target_col, task_type, dataset_name):
     os.mkdir('/home/workspace')
@@ -29,6 +30,7 @@ def setup_agentomics_folder_structure_and_files(description_path, train_data_pat
         negative_class=None,
         task_type=task_type,
         output_dir='/home/agent/prepared_datasets',
+        test_sets_output_dir='/home/agent/prepared_test_sets',
     )
 
 def run_inference_on_test_data(test_data_path):
@@ -50,6 +52,34 @@ def run_inference_on_test_data(test_data_path):
         print("Error during inference:")
         print(inference_out.stderr.decode())
     return output_path
+
+def generate_preds_for_biomlbench(config):
+    print('---------------------------------')
+    print('-GENERATING PREDS FOR BIOMLBENCH-')
+    print('---------------------------------')
+
+    test_no_label = '/home/data/test_features.csv'
+    SUBMISSION_DIR = os.getenv('SUBMISSION_DIR', '')
+    submission_path = os.path.join(SUBMISSION_DIR, 'submission.csv')
+
+    try:
+        predictions_path = run_inference_on_test_data(test_no_label)
+        copy_and_format_predictions_for_biomlbench(
+            preds_source_path=predictions_path,
+            preds_dest_path=submission_path,
+            target_col=args.target_col #passed from outside the fn, refactor into reading prepared yaml metadata
+        )
+        copy_dir(source_dir='/home/workspace/snapshots', dest_dir=CODE_DIR)
+        copy_dir(source_dir='/home/workspace/reports', dest_dir=Path(str(CODE_DIR))/'reports')
+    except Exception as e:
+        import traceback
+        print('-------TRACEBACK------TRACEBACK------')
+        print(traceback.format_exc())
+        print('-------TRACEBACK------TRACEBACK------')
+
+    print('---------------------------------')
+    print('- FINISHED PREDS FOR BIOMLBENCH -')
+    print('---------------------------------')
 
 def copy_and_format_predictions_for_biomlbench(preds_source_path, preds_dest_path, target_col):
     preds_df = pd.read_csv(preds_source_path).reset_index()
@@ -85,6 +115,8 @@ def parse_args():
     parser.add_argument('--task-type', type=str, help='Task type: classification or regression')
     parser.add_argument('--provider', type=str, default='openrouter', help='Provider name (e.g., openai, openrouter)')
     parser.add_argument('--user-prompt', type=str, default=None, help='Custom user prompt to guide the agent')
+    parser.add_argument('--split-allowed-iterations', type=int, help='Number of initial iterations that allow the agent to split the data into training and validation sets')
+
     args = parser.parse_args()
     return args
 
@@ -101,15 +133,13 @@ if __name__ == '__main__':
     # Not extracted
     AGENT_DIR= os.getenv('AGENT_DIR')
     # For agent prediction extraction
-    SUBMISSION_DIR = os.getenv('SUBMISSION_DIR', '')
+    os.environ['AGENT_ID'] = create_agent_id()
 
     # Locations of data (passed by biomlbench docker image)
     description_path = '/home/data/description.md'
     train_data = '/home/data/train.csv'
-    test_no_label = '/home/data/test_features.csv'
     sample_submission = '/home/data/sample_submission.csv'
     # Where to output predictions for biomlbench
-    submission_path = os.path.join(SUBMISSION_DIR, 'submission.csv')
 
     dataset_name = extract_dataset_name_from_description(description_path)
 
@@ -121,6 +151,8 @@ if __name__ == '__main__':
         dataset_name=dataset_name
     )
 
+
+
     asyncio.run(run_experiment(
         model=args.model,
         dataset_name=dataset_name, # Name doesnt matter for biomlbench, has his own run structure, but matters for our logging
@@ -131,14 +163,10 @@ if __name__ == '__main__':
         # user_prompt="Create only small CPU-only model like linear regression with small amounts of parameters and epochs",
         workspace_dir = '/home/workspace',
         prepared_datasets_dir= '/home/agent/prepared_datasets',
+        prepared_test_sets_dir= '/home/agent/prepared_test_sets',
         agent_datasets_dir= '/home/workspace/datasets',
         tags=[],
         provider=args.provider,
+        split_allowed_iterations=args.split_allowed_iterations,
+        on_new_best_callbacks=[generate_preds_for_biomlbench],
     ))
-    copy_dir(source_dir='/home/workspace/snapshots', dest_dir=CODE_DIR)
-    predictions_path = run_inference_on_test_data(test_no_label)
-    copy_and_format_predictions_for_biomlbench(
-        preds_source_path=predictions_path,
-        preds_dest_path=submission_path,
-        target_col=args.target_col
-    )
