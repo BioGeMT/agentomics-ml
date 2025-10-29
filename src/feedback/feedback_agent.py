@@ -6,6 +6,7 @@ from utils.exceptions import FeedbackAgentFailed
 from pydantic import BaseModel, Field
 from agents.steps.model_inference import ModelInference
 from agents.steps.model_training import ModelTraining
+from utils.printing_utils import truncate_float
 from utils.snapshots import get_best_iteration
 
 class IterationSummary(BaseModel):
@@ -110,6 +111,8 @@ async def get_feedback(structured_outputs, config, new_metrics, best_metrics, is
     past_iters_aggregation = aggregate_past_iterations(iter_to_summary=iter_to_summary, iter_to_metrics=iter_to_metrics, iter_to_split_changed=iter_to_split_changed)
     best_metric_iteration = get_best_iteration(config)
     extra_info = f'Extra info for the current iteration: {extra_info}' if extra_info else ''
+    best_metrics = {k:truncate_float(v) for k,v in best_metrics.items()}
+    new_metrics = {k:truncate_float(v) for k,v in new_metrics.items()}
 
     if val_split_changed:
         extra_info+="""
@@ -149,7 +152,7 @@ async def get_feedback(structured_outputs, config, new_metrics, best_metrics, is
 
     {extra_info}
 
-    The current iteration resulted in the following metrics: {new_metrics} and is {'not' if not is_new_best else ''} the best iteration run so far{', therefore it is currently selected as the solution to your task' if is_new_best else '.'}
+    The current iteration resulted in the following metrics: {new_metrics} and is {'not ' if not is_new_best else ''}the best iteration run so far{', therefore it is currently selected as the solution to your task' if is_new_best else '.'}
 
     {best_metrics_info}
 

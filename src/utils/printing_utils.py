@@ -72,3 +72,7 @@ def pretty_print_node(node):
     else:
         pretty_print(f"DEVINFO: Unexpected node type: {type(node)}")
         pretty_print(node)
+
+def truncate_float(f, decimals=3):
+    factor = 10 ** decimals
+    return int(f * factor) / factor
