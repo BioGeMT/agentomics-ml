@@ -181,7 +181,7 @@ def get_best_iteration(config):
     if iteration_file.exists():
         with open(iteration_file, 'r') as f:
             return int(f.read().strip())
-    return 0
+    return None
 
 def replace_workspace_path_with_snapshots(run_dir, snapshot_dir, absolute_path_snapshot_file):
     # Replaces hard-coded paths in the files to point to the snapshot dir

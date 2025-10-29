@@ -6,6 +6,7 @@ from utils.exceptions import FeedbackAgentFailed
 from pydantic import BaseModel, Field
 from agents.steps.model_inference import ModelInference
 from agents.steps.model_training import ModelTraining
+from utils.snapshots import get_best_iteration
 
 class IterationSummary(BaseModel):
     data_exploration_summary: str = Field(
@@ -105,42 +106,52 @@ async def get_feedback(structured_outputs, config, new_metrics, best_metrics, is
     if iteration == config.iterations - 1 : return "Last iteration, no feedback needed"
     
     agent = create_feedback_agent(model, config)
+    next_iteration_index = iteration + 1
     past_iters_aggregation = aggregate_past_iterations(iter_to_summary=iter_to_summary, iter_to_metrics=iter_to_metrics, iter_to_split_changed=iter_to_split_changed)
+    best_metric_iteration = get_best_iteration(config)
     extra_info = f'Extra info for the current iteration: {extra_info}' if extra_info else ''
 
     if val_split_changed:
         extra_info+="""
         The train/validation split has been changed this iteration. 
         This renders older iterations' metrics non-comparable as they were measured on different splits. 
-        Due to this, the older iterations are no longer considered for best-iteration candidates.
+        Due to this, the metrics of older iterations are no longer considered for best-iteration candidates.
         """
 
-    #TODO Emphasize that old split metric should not be concidered much unless the split is better - should prioritize TEST metric and be representative/difficult
+    #TODO Emphasize that old split metric should not be considered much unless the split is better - should prioritize TEST metric and be representative/difficult
     #TODO never say youre doing well etc.. -> just try to optimize further???
     #TODO allow fallbacking to previous experiments?
 
-    next_iteration_index = iteration + 1
     if config.can_iteration_split_data(next_iteration_index):
         #agent can split next iter
-        splitting_info = 'If you choose data splitting needs change, never suggest cross-validations split or any other split that would result in more than two files (train.csv and validation.csv).'
+        splitting_info = 'If you choose data splitting needs change, never suggest cross-validations split or any other split that would result in more than two files (train.csv and validation.csv). Unless instructed to be changed, the current split will be re-used for the next iteration.'
         splitting_info += f"\nSplitting is allowed for the next {config.split_allowed_iterations - next_iteration_index} iteration/s. After that, the latest split will be used for all future iterations."
     else:
         #agent can NOT split next iter
         splitting_info = "Don't provide any feedback on how to change the train/validation split, as the next iteration agent cannot split the data."
     iterations_left = config.iterations - iteration - 1
 
+    if best_metric_iteration is not None:
+        best_metrics_info = f"Best iteration out of any previous iteration using the same data split is iteration {best_metric_iteration}. This is based on its {config.val_metric} metric. "
+        if(not is_new_best):
+            best_metrics_info += f"Iteration {best_metric_iteration} is still the best iteration, therefore it is currently selected as the solution to your task."
+        best_metrics_info += f"\nMetrics from iteration {best_metric_iteration}: {best_metrics}."
+
+    else:
+        best_metrics_info = ""
+
     feedback_prompt = f"""
     Previous iterations summaries:
     {past_iters_aggregation}
 
-    Current iteration outputs:
+    Iteration {iteration} (Current iteration) outputs:
     {structured_outputs}
 
     {extra_info}
 
-    The current iteration resulted in the following metrics: {new_metrics} and is {'not' if not is_new_best else ''} the best iteration run so far. 
+    The current iteration resulted in the following metrics: {new_metrics} and is {'not' if not is_new_best else ''} the best iteration run so far{', therefore it is currently selected as the solution to your task' if is_new_best else '.'}
 
-    Best metrics (out of any iteration) so far: {best_metrics}.
+    {best_metrics_info}
 
     The most important metric for this task is {config.val_metric}. 
 
@@ -189,26 +200,28 @@ def aggregate_past_iterations(iter_to_summary, iter_to_metrics, iter_to_split_ch
         split_version_to_iters[split_version] = split_version_to_iters.get(split_version, []) + [i]
     lastest_split_version = iter_to_split_version[num_of_iters-1]
 
-    if(ignore_last):
+    if(ignore_last): #Don't include the current iteration in the aggregation, as its outputs are passed separately to the feedback agent
         num_of_iters -=1 #Current iteration is already in the dicts, the feedback agent will get this info anyways
     for i in range(num_of_iters):
         iter_split_version = iter_to_split_version[i]
-        iters_with_the_same_split = split_version_to_iters[iter_split_version]
+        iters_with_the_same_split = split_version_to_iters[iter_split_version].copy()
         iters_with_the_same_split.remove(i)
 
         split_info = f"This iteration used train/validation split strategy version {iter_split_version}. "
         if(len(iters_with_the_same_split) > 0):
             split_info+=f"This is the same as itertations {iters_with_the_same_split}. "
         if(iter_split_version != lastest_split_version):
-            split_info += "The split changed in this iteration, therefore older iterations are no longer considered for best-iteration candidates."
+            split_info += f"This iteration's split (version {iter_split_version}) is different from the latest iteration's split ({lastest_split_version}), therefore this iteration metrics can no longer be considered for a best-iteration candidate. "
+        else:
+            split_info += f"This iteration's split (version {iter_split_version}) is the latest split version, therefore its metrics are considered for a best-iteration candidate. "
         if(len(set(iter_to_split_version.values())) > 1):
             split_info += "Note that metrics calculated from different split versions are not directly comparable. "
         
         aggregation += f"""
         Iteration {i}
-        Summary:
+        Steps summary:
         {iter_to_summary[i]}
-        Metrics: 
+        Metrics:
         {iter_to_metrics[i]}
         {split_info}
         """
