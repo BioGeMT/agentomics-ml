@@ -54,6 +54,8 @@ def generate_task(clone_dir: Path, dataset_root: Path, templates_dir: Path, comp
     module = util.module_from_spec(spec)
     spec.loader.exec_module(module)
     module.prepare(raw_dir, public_dir, private_dir)
+    if desc_src.exists():
+        shutil.copy(desc_src, public_dir / "description.md")
 
 
 def main() -> None:
