@@ -6,13 +6,6 @@ class DataSplit(BaseModel):
     splitting_strategy: str = Field(description="Detailed description of the splitting strategy used")
 
 def get_data_split_prompt(config, iteration, last_split_strategy="Split does not exist"):
-    """
-    Generate the data split prompt with class representation requirements.
-    
-    Args:
-        config: Configuration object
-    """
-
     if config.task_type == 'classification':
         extra_instructions = "Ensure that the validation split contains representative samples from ALL classes."
     elif config.task_type == 'regression':

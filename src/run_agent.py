@@ -168,11 +168,11 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
             )
         except FeedbackAgentFailed as e:
             iter_to_summary[run_index] = "No summary available."
-            iter_to_feedback[run_index] = f"This was the {'not' if not is_new_best(config) else ''} run with best validation metrics so far. No feedback available."
+            iter_to_feedback[run_index] = f"This was {'not ' if not is_new_best(config) else ''}the run with best validation metrics so far. No feedback available."
             log_feedback_failure(e.exception_trace, iteration=run_index)
 
         if(is_new_best(config)):
-            snapshot(config, run_index)  # Snapshotting overrides the previous snapshot, influencing the get_new_and_best_metrics function
+            snapshot(config, run_index)  # Snapshotting must be done after feedback - overrides the previous snapshot, influencing the get_new_and_best_metrics function
             export_config_to_snapshot(config)
             for callback in on_new_best_callbacks:
                 callback(config)

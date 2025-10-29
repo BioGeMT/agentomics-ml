@@ -1,6 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-git clone -b val_performance_feedback https://github.com/BioGeMT/agentomics-ml.git /home/agentomics-ml
+git clone https://github.com/BioGeMT/agentomics-ml.git /home/agentomics-ml
 
 cp -r /home/agentomics-ml/src /home/agent/src
 

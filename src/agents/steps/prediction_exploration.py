@@ -14,7 +14,6 @@ class PredictionExploration(BaseModel):
     )
 
 def get_prediction_exploration_prompt(validation_path, inference_path):
-    #TODO report needs updated with this output type
     return f"""
         Next task: Use the inference script ({inference_path}) to generate predictions of the validation set ({validation_path}). 
         Identify where those predictions succeed, fail, and prediction biases.
