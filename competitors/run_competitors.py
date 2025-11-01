@@ -34,10 +34,9 @@ def build_env(base, config, agent):
         }
     )
     if agent == "biomni":
-        env.setdefault("BIOMNI_SOURCE", "Custom")
-        env.setdefault("BIOMNI_CUSTOM_BASE_URL", config["openrouter_base_url"])
-        env.setdefault("BIOMNI_CUSTOM_API_KEY", config["openrouter_key"])
-        env.setdefault("BIOMNI_LLM_MODEL", env["OPENROUTER_MODEL"])
+        env.setdefault("LLM_SOURCE", "Custom")
+        env.setdefault("CUSTOM_MODEL_BASE_URL", config["openrouter_base_url"])
+        env.setdefault("CUSTOM_MODEL_API_KEY", config["openrouter_key"])
     return env
 
 
