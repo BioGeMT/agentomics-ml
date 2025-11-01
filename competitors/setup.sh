@@ -30,4 +30,21 @@ python "$COMPETITORS_DIR/scripts/setup_repo.py" --config "$CONFIG"
 echo "[setup] Setting up Agentomics tasks"
 python "$COMPETITORS_DIR/scripts/setup_tasks.py"
 
+echo "[setup] Building Docker images (this will take a while)..."
+cd "$COMPETITORS_DIR/biomlbench"
+
+# Build base environment first if it doesn't exist
+if ! docker images biomlbench-env | grep -q biomlbench-env; then
+    echo "[setup] Building base environment..."
+    bash scripts/build_base_env.sh
+fi
+
+# Build AIDE agent image
+echo "[setup] Building AIDE agent image..."
+bash scripts/build_agent.sh aide
+
+# Build BioMNI agent image (force rebuild to get latest Biomni)
+echo "[setup] Building BioMNI agent image..."
+bash scripts/build_agent.sh --force biomni
+
 echo "[setup] Done! Activate the environment with: conda activate $ENV_NAME"
