@@ -1,6 +1,8 @@
 
 import argparse
+import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -59,23 +61,42 @@ def run_agent(config, agent, dataset):
         str(DATA_DIR),
     ]
 
-    # Stream output live while also saving to log file
+    # Run the agent without streaming stdout; rely on copied artifacts instead
     with open(log_file, "w") as f:
         process = subprocess.Popen(
             cmd,
             cwd=CLONE_DIR,
             env=env,
-            stdout=subprocess.PIPE,
+            stdout=f,
             stderr=subprocess.STDOUT,
             text=True,
-            bufsize=1
+        )
+        process.wait()
+
+    # Try to copy the detailed biomlbench run artifacts for easier inspection
+    run_group_dir = None
+    runs_root = CLONE_DIR / "runs"
+    dataset_full_id = f"agentomics/{dataset}"
+
+    if runs_root.exists():
+        pattern = f"*run-group_{agent}"
+        candidates = sorted(
+            runs_root.glob(pattern),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
         )
 
-        for line in process.stdout:
-            print(line, end='')
-            f.write(line)
+        for candidate in candidates:
+            metadata = json.loads((candidate / "metadata.json").read_text())
+            if dataset_full_id in metadata["task_ids"]:
+                run_group_dir = candidate
+                break
 
-        process.wait()
+    if run_group_dir is not None:
+        artifact_dir = output_subdir / "run_artifacts"
+        if artifact_dir.exists():
+            shutil.rmtree(artifact_dir)
+        shutil.copytree(run_group_dir, artifact_dir)
 
     # Return a result-like object for compatibility
     class Result:
