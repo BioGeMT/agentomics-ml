@@ -36,6 +36,5 @@ def main() -> None:
     subprocess.run([sys.executable, "-m", "pip", "install", "-e", str(clone_dir)], check=True)
     print("[setup_repo] Done")
 
-
 if __name__ == "__main__":
     main()

@@ -47,8 +47,8 @@ bash scripts/build_agent.sh aide
 echo "[setup] Building BioMNI agent image..."
 bash scripts/build_agent.sh biomni
 
-# Build MLAgentBench image (force rebuild until verified working)
+# Build MLAgentBench image 
 echo "[setup] Building MLAgentBench agent image..."
-bash scripts/build_agent.sh --force mlagentbench
+bash scripts/build_agent.sh mlagentbench
 
 echo "[setup] Done! Activate the environment with: conda activate $ENV_NAME"
