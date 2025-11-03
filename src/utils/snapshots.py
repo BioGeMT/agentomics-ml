@@ -1,7 +1,12 @@
 import re
 import shutil
+import hashlib
+import os
+import stat
+import wandb
 from pathlib import Path
 from utils.metrics import get_classification_metrics_functions, get_higher_is_better_map, get_regression_metrics_functions
+from run_logging.logging_helpers import is_wandb_active
 
 def get_metrics_from_file(file_path):
     metrics = {}
@@ -78,6 +83,49 @@ def delete_snapshot(snapshot_dir):
     if snapshot_dir.exists():
         shutil.rmtree(snapshot_dir)
 
+def file_fingerprint(path, chunk_size=65536):
+    hasher = hashlib.sha256()
+    try:
+        with open(path, 'rb') as f:
+            while chunk := f.read(chunk_size):
+                hasher.update(chunk)
+    except FileNotFoundError:
+        return str(path) # mis-matches any different paths
+    
+    return hasher.hexdigest()
+
+def create_split_fingerprint(config):
+    train_csv = config.runs_dir / config.agent_id / 'train.csv'
+    valid_csv = config.runs_dir / config.agent_id / 'validation.csv'
+    return file_fingerprint(train_csv) + file_fingerprint(valid_csv)
+
+def reset_snapshot_if_val_split_changed(config, iteration, old_fingerprint, new_fingerprint):
+    if(old_fingerprint == None): #old fingerprint is none - split didnt exist,
+        if is_wandb_active():
+            wandb.log({"validation/snapshot_reset":0}, step=iteration)
+        return False
+    
+    if new_fingerprint == None or old_fingerprint != new_fingerprint: #new_fingerprint is none - agent deleted the split
+        if is_wandb_active():
+            wandb.log({"validation/snapshot_reset":1}, step=iteration)
+        snapshot_dir = config.snapshots_dir / config.agent_id
+        delete_snapshot(snapshot_dir)
+        snapshot_dir.mkdir(parents=True, exist_ok=True)
+        return True
+    else:
+        if is_wandb_active():
+            wandb.log({"validation/snapshot_reset":0}, step=iteration)
+        return False
+
+def lock_split_files(config):
+    print("Locking split files")
+    train_split = config.runs_dir / config.agent_id / 'train.csv'
+    validation_split = config.runs_dir / config.agent_id / 'validation.csv'
+    
+    read_only_mode = stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH
+    os.chmod(train_split, read_only_mode)
+    os.chmod(validation_split, read_only_mode)
+
 def snapshot(config, iteration, delete_old_snapshot=True):
     run_dir = config.runs_dir / config.agent_id
     snapshot_dir = config.snapshots_dir / config.agent_id
@@ -129,7 +177,7 @@ def get_best_iteration(config):
     if iteration_file.exists():
         with open(iteration_file, 'r') as f:
             return int(f.read().strip())
-    return 0
+    return None
 
 def replace_workspace_path_with_snapshots(run_dir, snapshot_dir, absolute_path_snapshot_file):
     # Replaces hard-coded paths in the files to point to the snapshot dir

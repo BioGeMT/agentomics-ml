@@ -71,13 +71,16 @@ def add_metrics_to_report(config, iteration):
         ('train_metrics.txt', 'Train Metrics', output_dir),
         ('validation_metrics.txt', 'Validation Metrics', output_dir)
     ]
-    
     with open(report_dir / f"run_report_iter_{iteration}.txt", 'a') as f:
         f.write("[METRICS]\n\n")
         for metric_file, display_name, file_dir in metrics:
-            with open(file_dir / metric_file, 'r') as file:
-                content = file.read().strip()
-                f.write(f"{display_name}:\n{content}\n\n")
+            try:
+                with open(file_dir / metric_file, 'r') as file:
+                    content = file.read().strip()
+                    f.write(f"{display_name}:\n{content}\n\n")
+            except FileNotFoundError:
+                f.write("METRIC NOT FOUND")
+
 
 
 def add_final_test_metrics_to_best_report(config):
@@ -85,7 +88,7 @@ def add_final_test_metrics_to_best_report(config):
 
     output_dir = Path(config.runs_dir) / config.agent_id
     agent_reports_dir = config.reports_dir / config.agent_id
-    best_report = agent_reports_dir / f"run_report_iter_{best_iteration}_BEST.txt"
+    best_report = agent_reports_dir / f"run_report_iter_{best_iteration}.txt"
     
     test_metrics_file = output_dir / "test_metrics.txt"
     if not test_metrics_file.exists():
@@ -104,11 +107,3 @@ def add_final_test_metrics_to_best_report(config):
     with open(best_report, 'w') as f:
         f.write('\n'.join(lines))
 
-def rename_best_iteration_report(config):
-    best_iteration = get_best_iteration(config)
-    report_dir = config.reports_dir / config.agent_id
-    
-    old_file = report_dir / f"run_report_iter_{best_iteration}.txt"
-    new_file = report_dir / f"run_report_iter_{best_iteration}_BEST.txt"
-    
-    old_file.rename(new_file)

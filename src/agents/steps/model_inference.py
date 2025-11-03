@@ -2,12 +2,12 @@ from pydantic import BaseModel, Field
 
 from utils.dataset_utils import get_classes_integers
 
-class FinalOutcome(BaseModel):
+class ModelInference(BaseModel):
     path_to_inference_file: str = Field(
         description="Absolute path to the generated inference.py"
     )
 
-def get_final_outcome_prompt(config):
+def get_model_inference_prompt(config):
     """
     Generate the final outcome prompt with specific target classes.
     
@@ -31,6 +31,7 @@ def get_final_outcome_prompt(config):
     return f"""
     Next task: create inference.py file.
     If your model can be accelerated by GPU, implement the code to use GPU.
+    The inference script must produce a prediction for every single input. Don't skip any samples.
     The inference script will be taking the following named arguments:
     --input (an input file path). This file is of the same format as your training data (except the target column)
     --output (the output file path). {output_file_description}

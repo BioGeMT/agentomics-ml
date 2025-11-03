@@ -23,12 +23,12 @@ class Config:
     iterations: int
     task_type: str
     user_prompt: str
+    split_allowed_iterations: int
 
     wandb_run_id: Optional[str] = None
     # static defaults
     temperature: float = 1.0
     max_steps: int = 100 #TODO rename, this is per-step limit
-    max_run_retries: int = 1
     max_validation_retries: int = 5
     use_proxy: bool = True
     llm_response_timeout: int = 60 * 15
@@ -53,6 +53,7 @@ class Config:
         user_prompt: str,
         max_steps: Optional[int] = None,
         iterations: Optional[int] = 5,
+        split_allowed_iterations: int = 1,
     ):
         self.agent_id = agent_id
         self.model_name = model_name
@@ -66,16 +67,21 @@ class Config:
         self.workspace_dir = workspace_dir
         self.runs_dir = workspace_dir / "runs"
         self.snapshots_dir = workspace_dir / "snapshots"
+        self.fallbacks_dir = workspace_dir / "fallbacks"
         self.reports_dir = workspace_dir / "reports"
         self.iterations = iterations
         self.task_type = get_task_type_from_prepared_dataset(prepared_datasets_dir / dataset)
         self.user_prompt = user_prompt
         self.explicit_valid_set_provided = (agent_datasets_dir / dataset / "validation.csv").exists()
-
+        self.split_allowed_iterations = split_allowed_iterations if not self.explicit_valid_set_provided else 0
+        
         if max_steps is not None:
             self.max_steps = max_steps
 
-    def _check_gpu_availability(self) -> Optional[str]:
+    def can_iteration_split_data(self, iteration):
+        return not self.explicit_valid_set_provided and iteration < self.split_allowed_iterations
+
+    def check_gpu_availability(self) -> Optional[str]:
         try:
             result = subprocess.run(['nvidia-smi', '--list-gpus'], capture_output=True, text=True)
 
@@ -99,9 +105,10 @@ class Config:
         print('VAL METRIC:', self.val_metric)
         print('AGENT ID:', self.agent_id)
         print('ITERATIONS:', self.iterations)
+        print('SPLIT ALLOWED ITERATIONS:', self.split_allowed_iterations)
         print('USER PROMPT:', self.user_prompt)
 
-        gpu_info = self._check_gpu_availability()
+        gpu_info = self.check_gpu_availability()
         if gpu_info:
             print(f'GPU: Available ({gpu_info})')
         else:
