@@ -198,3 +198,31 @@ def replace_snapshot_path_with_relative(snapshot_dir):
         new_content = old_content.replace(str(snapshot_dir), ".")
         with open(file_path, "w") as f:
             f.write(new_content)
+
+def replace_workspace_path_with_iteration_dir(run_dir, iteration_dir, absolute_path_iterdir_file):
+    with open(absolute_path_iterdir_file, "r") as f:
+        old_content = f.read()
+    new_content = old_content.replace(str(run_dir), str(iteration_dir))
+    if(old_content != new_content):
+        with open(absolute_path_iterdir_file, "w") as f:
+            f.write(new_content)
+
+def populate_iteration_dir(config, run_index):
+    run_dir = config.runs_dir / config.agent_id
+    iteration_dir = run_dir / f"iteration_{run_index}"
+    iteration_dir.mkdir()
+
+    files_to_copy = [
+        "train.csv",
+        "validation.csv"
+    ]
+
+    for element in run_dir.iterdir():
+        if element.is_dir() and element.namestartswith("iteration_"):
+            continue
+        if element.name in files_to_copy:
+            shutil.copy2(str(element), str(iteration_dir / element.name))
+        else:
+            shutil.move(str(element), str(iteration_dir / element.name))
+            if element.name.endswith(".py"):
+                replace_workspace_path_with_iteration_dir(run_dir, iteration_dir, absolute_path_workspace_file=iteration_dir / element.name)
