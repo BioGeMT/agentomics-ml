@@ -1,15 +1,18 @@
 biomlbench_repo: https://github.com/dimostzim/biomlbench.git
 biomlbench_branch: main
-openrouter_key: sk-or-your-key
+openrouter_key: sk-or-v1-...
 openrouter_base_url: https://openrouter.ai/api/v1
-model: openrouter/openai/gpt-4o-mini
-time_limit_secs: 21600
-step_limit: 999999  # Effectively unlimited - agents controlled by time_limit_secs only
+model: openai/gpt-5-codex #or whatever
+time_limit_secs: 900
+step_limit: 999999  # effectively unlimited - agents controlled by time_limit_secs only
 agents:
-  - aide
-  - biomni
-  - mlagentbench
-  - stella
+ # - aide
+ # - biomni
+ # - mlagentbench
+ # - stella
 datasets:
-  - ago2_clash_hejret
-  - human_enhancers_cohn
+ # - ago2_clash_hejret
+ # - drosophila_enhancers_stark
+ # - human_enhancers_cohn
+ # - human_enhancers_ensembl
+ # - human_ocr_ensembl
