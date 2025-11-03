@@ -17,7 +17,7 @@ from utils.dataset_utils import setup_nonsensitive_dataset_files_for_agent
 from utils.fallbacks import save_splits_to_fallback, load_fallbacks_to_rundir
 from utils.config import Config
 from utils.exceptions import IterationRunFailed, FeedbackAgentFailed, AgentScriptFailed
-from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics, replace_snapshot_path_with_relative, lock_split_files
+from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics, populate_iteration_dir, lock_split_files
 from utils.workspace_setup import ensure_workspace_folders
 from agents.architecture import run_iteration
 from utils.metrics import get_classification_metrics_names, get_regression_metrics_names
@@ -146,6 +146,7 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
 
         new_metrics, best_metrics = get_new_and_best_metrics(config)
         iter_to_metrics[run_index] = new_metrics
+        populate_iteration_dir(config, run_index)
         try:
             iter_to_summary[run_index] = await get_iteration_summary(
                 structured_outputs=structured_outputs,
