@@ -90,7 +90,6 @@ def file_fingerprint(path, chunk_size=65536):
             while chunk := f.read(chunk_size):
                 hasher.update(chunk)
     except FileNotFoundError:
-        print(f"Error fingerprinting: File not found at {path}")
         return str(path) # mis-matches any different paths
     
     return hasher.hexdigest()
@@ -98,10 +97,7 @@ def file_fingerprint(path, chunk_size=65536):
 def create_split_fingerprint(config):
     train_csv = config.runs_dir / config.agent_id / 'train.csv'
     valid_csv = config.runs_dir / config.agent_id / 'validation.csv'
-    try:
-        return file_fingerprint(train_csv) + file_fingerprint(valid_csv)
-    except FileNotFoundError:
-        return None
+    return file_fingerprint(train_csv) + file_fingerprint(valid_csv)
 
 def reset_snapshot_if_val_split_changed(config, iteration, old_fingerprint, new_fingerprint):
     if(old_fingerprint == None): #old fingerprint is none - split didnt exist,
