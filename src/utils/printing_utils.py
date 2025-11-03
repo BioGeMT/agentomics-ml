@@ -1,7 +1,7 @@
 import pprint
 import textwrap
 
-from pydantic_ai.messages import SystemPromptPart, UserPromptPart, TextPart, ToolCallPart, ToolReturnPart, RetryPromptPart
+from pydantic_ai.messages import SystemPromptPart, UserPromptPart, TextPart, ToolCallPart, ToolReturnPart, RetryPromptPart ,ThinkingPart
 from pydantic_ai import CallToolsNode, ModelRequestNode, UserPromptNode
 from pydantic_graph.nodes import End
 
@@ -38,6 +38,8 @@ def pretty_print_node(node):
                     continue
                     #dont print args since it will be printed 
                 pretty_print(part.args, color=bcolors.OKCYAN)
+            elif(isinstance(part, ThinkingPart)):
+                pretty_print(part.content)
             else:
                 pretty_print(f"DEVINFO: Unexpected part type (in CallToolsNode): {type(part)}")
                 pretty_print(part)
