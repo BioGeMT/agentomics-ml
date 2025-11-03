@@ -3,6 +3,7 @@ import shutil
 import hashlib
 import os
 import stat
+import subprocess
 import wandb
 from pathlib import Path
 from utils.metrics import get_classification_metrics_functions, get_higher_is_better_map, get_regression_metrics_functions
@@ -207,22 +208,44 @@ def replace_workspace_path_with_iteration_dir(run_dir, iteration_dir, absolute_p
         with open(absolute_path_iterdir_file, "w") as f:
             f.write(new_content)
 
-def populate_iteration_dir(config, run_index):
+def export_conda_to_iteration_dir(config, run_dir, iteration_dir, is_best=False):
+    if is_best:
+        conda_env = run_dir / ".conda"
+        shutil.copytree(str(conda_env), str(iteration_dir / ".conda"), symlinks=True, dirs_exist_ok=True)
+    else:
+        env_name = f"{config.agent_id}_env"
+        conda_env = run_dir / ".conda" / "envs" / env_name
+        if conda_env.exists():
+            subprocess.run(['conda', 'env', 'export', '-p', str(conda_env), '-f', str(iteration_dir / "conda_environment.yml")], check=True)
+
+def save_summary_to_iteration_dir(iteration_dir, summary):
+    summary_file = iteration_dir / "iteration_summary.txt"
+    with open(summary_file, "w") as f:
+        f.write(str(summary))
+
+def populate_iteration_dir(config, run_index, is_best=False, summary=None):
     run_dir = config.runs_dir / config.agent_id
     iteration_dir = run_dir / f"iteration_{run_index}"
     iteration_dir.mkdir()
 
-    files_to_copy = [
+    files_to_skip = [
         "train.csv",
         "validation.csv"
     ]
 
     for element in run_dir.iterdir():
-        if element.is_dir() and element.namestartswith("iteration_"):
+        if element.is_dir() and (element.name.startswith("iteration_") or element.name == ".conda"):
             continue
-        if element.name in files_to_copy:
-            shutil.copy2(str(element), str(iteration_dir / element.name))
+        if element.name in files_to_skip:
+            continue
+
+        shutil.move(str(element), str(iteration_dir / element.name))
+        if element.is_dir():
+            for file_path in (iteration_dir / element.name).rglob('*.py'):
+                replace_workspace_path_with_iteration_dir(run_dir, iteration_dir, file_path)
         else:
-            shutil.move(str(element), str(iteration_dir / element.name))
             if element.name.endswith(".py"):
-                replace_workspace_path_with_iteration_dir(run_dir, iteration_dir, absolute_path_workspace_file=iteration_dir / element.name)
+                replace_workspace_path_with_iteration_dir(run_dir, iteration_dir, iteration_dir / element.name)
+
+    export_conda_to_iteration_dir(config, run_dir, iteration_dir, is_best=is_best)
+    save_summary_to_iteration_dir(iteration_dir, summary)
