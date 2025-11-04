@@ -168,7 +168,7 @@ def save_summary_and_outputs_to_iteration_dir(iteration_dir, summary, structured
         f.write(str(structured_outputs))
 
 def purge_conda_from_all_folders(config):
-    for element in config.runs_dir.iterdir():
+    for element in (config.runs_dir / config.agent_id).iterdir():
         if element.is_dir() and element.name.startswith("iteration_"):
             conda_env = element / ".conda"
             if conda_env.exists():
