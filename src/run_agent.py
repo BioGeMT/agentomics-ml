@@ -25,7 +25,7 @@ from utils.report_logger import add_metrics_to_report, add_summary_to_report
 from utils.providers.provider import Provider, get_provider_from_string
 from feedback.feedback_agent import get_feedback
 from tools.setup_tools import create_tools
-from utils.snapshots import reset_snapshot_if_val_split_changed, create_split_fingerprint
+from utils.snapshots import reset_snapshot_if_val_split_changed, create_split_fingerprint, wipe_current_iter_files
 from agents.steps.data_split import DataSplit
 
 async def main(model_name, feedback_model_name, dataset, tags, val_metric, 
@@ -115,6 +115,7 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
             iter_to_outputs[run_index] = "Iteration failed, no outputs available."
             log_files(config, iteration=run_index)
             iter_to_split_changed[run_index] = val_split_changed
+            wipe_current_iter_files(config)
             continue
 
         val_split_changed = reset_snapshot_if_val_split_changed(

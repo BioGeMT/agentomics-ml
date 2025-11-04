@@ -195,6 +195,24 @@ def populate_iteration_dir(config, run_index, structured_outputs, is_best=False)
     export_conda_to_iteration_dir(config, run_dir, iteration_dir, is_best=is_best)
     save_outputs_to_iteration_dir(iteration_dir, structured_outputs)
 
+def wipe_current_iter_files(config):
+    run_dir = config.runs_dir / config.agent_id
+
+    files_to_skip = [
+        "train.csv",
+        "validation.csv",
+    ]
+    for element in run_dir.iterdir():
+        if element.is_dir() and (element.name.startswith("iteration_") or element.name == ".conda"):
+            continue
+        if element.name in files_to_skip:
+            continue
+
+        if element.is_dir():
+            shutil.rmtree(element)
+        else:
+            element.unlink()
+
 def replace_python_paths(folder_path, current_path, new_path):
     for element in folder_path.iterdir():
         if element.is_dir() and element.name.startswith('.'):
