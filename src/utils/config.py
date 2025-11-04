@@ -24,6 +24,7 @@ class Config:
     task_type: str
     user_prompt: str
     split_allowed_iterations: int
+    time_deadline: Optional[int] = None
 
     wandb_run_id: Optional[str] = None
     # static defaults
@@ -54,6 +55,7 @@ class Config:
         max_steps: Optional[int] = None,
         iterations: Optional[int] = 5,
         split_allowed_iterations: int = 1,
+        time_deadline: Optional[int] = None,
     ):
         self.agent_id = agent_id
         self.model_name = model_name
@@ -74,6 +76,7 @@ class Config:
         self.user_prompt = user_prompt
         self.explicit_valid_set_provided = (agent_datasets_dir / dataset / "validation.csv").exists()
         self.split_allowed_iterations = split_allowed_iterations if not self.explicit_valid_set_provided else 0
+        self.time_deadline = time_deadline
         
         if max_steps is not None:
             self.max_steps = max_steps

@@ -3,6 +3,7 @@ import traceback
 import argparse
 from pathlib import Path
 import os
+import time
 
 import wandb
 from timeout_function_decorator import timeout as timeout_decorator
@@ -28,9 +29,9 @@ from tools.setup_tools import create_tools
 from utils.snapshots import reset_snapshot_if_val_split_changed, create_split_fingerprint, wipe_current_iter_files
 from agents.steps.data_split import DataSplit
 
-async def main(model_name, feedback_model_name, dataset, tags, val_metric, 
+async def main(model_name, feedback_model_name, dataset, tags, val_metric,
                workspace_dir, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir, iterations, 
-               user_prompt, provider_name, on_new_best_callbacks, split_allowed_iterations):
+               user_prompt, provider_name, on_new_best_callbacks, split_allowed_iterations, time_deadline):
     agent_id = os.getenv('AGENT_ID')
     # Initialize configuration 
     config = Config(
@@ -47,6 +48,7 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric,
         iterations=iterations,
         user_prompt=user_prompt,
         split_allowed_iterations=split_allowed_iterations,
+        time_deadline=time_deadline,
     )
     ensure_workspace_folders(config)
     create_run_and_snapshot_dirs(config)
@@ -74,6 +76,7 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
     iter_to_outputs = {}
     iter_to_metrics = {}
     iter_to_feedback = {}
+    iter_to_duration = {}
     iter_to_split_changed = {}
     last_successful_iter = None
     last_split_strategy = None
@@ -83,6 +86,7 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
         if(not config.can_iteration_split_data(run_index)):
             lock_split_files(config)
         split_fingerprint_before_iteration = create_split_fingerprint(config)
+        start = time.time()
         try:
             # Not using feedback from failed iterations
             feedback = iter_to_feedback[last_successful_iter] if (last_successful_iter is not None) else "No feedback available"
@@ -94,10 +98,12 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
                 tools=tools,
                 last_split_strategy=last_split_strategy,
             )
+            iter_to_duration[run_index] = time.time() - start
             last_split_strategy = next((step.splitting_strategy for step in structured_outputs if isinstance(step, DataSplit)), None)
             save_splits_to_fallback(config)
             last_successful_iter = run_index
         except IterationRunFailed as e:
+            iter_to_duration[run_index] = time.time() - start
             log_serial_metrics(prefix='validation', metrics=None, iteration=run_index, task_type=config.task_type)
             log_serial_metrics(prefix='train', metrics=None, iteration=run_index, task_type=config.task_type)
             #TODO also files in run dir should revert?
@@ -159,6 +165,7 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
                 iter_to_metrics=iter_to_metrics,
                 iter_to_split_changed=iter_to_split_changed,
                 val_split_changed=val_split_changed,
+                iter_to_duration=iter_to_duration,
             )
         except FeedbackAgentFailed as e:
             iter_to_outputs[run_index] = "No outputs available."
@@ -209,12 +216,13 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
     )
     FEEDBACK_MODEL = model
     timeouted_main = timeout_decorator(timeout)(main)
+    time_deadline = time.time() + timeout if timeout is not None else None
     try:
         print(f'Starting a run with a {timeout} second timeout')
         await timeouted_main(
             model_name=model, 
             feedback_model_name=FEEDBACK_MODEL, 
-            dataset=dataset_name, 
+            dataset=dataset_name,
             tags=tags,
             val_metric=val_metric, 
             workspace_dir=workspace_dir, 
@@ -226,6 +234,7 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
             on_new_best_callbacks=on_new_best_callbacks,
             split_allowed_iterations=split_allowed_iterations,
             prepared_test_sets_dir=prepared_test_sets_dir,
+            time_deadline=time_deadline,
         )
     except TimeoutError:
         print('Timeout reached')
