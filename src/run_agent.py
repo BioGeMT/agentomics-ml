@@ -23,7 +23,7 @@ from agents.architecture import run_iteration
 from utils.metrics import get_classification_metrics_names, get_regression_metrics_names
 from utils.report_logger import add_metrics_to_report, add_summary_to_report
 from utils.providers.provider import Provider, get_provider_from_string
-from feedback.feedback_agent import get_feedback, get_iteration_summary
+from feedback.feedback_agent import get_feedback
 from tools.setup_tools import create_tools
 from utils.snapshots import reset_snapshot_if_val_split_changed, create_split_fingerprint
 from agents.steps.data_split import DataSplit
@@ -71,7 +71,7 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric,
 async def run_agentomics(config: Config, default_model, feedback_model, on_new_best_callbacks):
     tools = create_tools(config)
     
-    iter_to_summary = {}
+    iter_to_outputs = {}
     iter_to_metrics = {}
     iter_to_feedback = {}
     iter_to_split_changed = {}
@@ -86,12 +86,10 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
         try:
             # Not using feedback from failed iterations
             feedback = iter_to_feedback[last_successful_iter] if (last_successful_iter is not None) else "No feedback available"
-            last_iter_summary = iter_to_summary[last_successful_iter] if (last_successful_iter is not None) else "No summary available"
             structured_outputs = await run_iteration(
                 config=config,
                 model=default_model, 
                 iteration=run_index, 
-                summary=last_iter_summary,
                 feedback=feedback, 
                 tools=tools,
                 last_split_strategy=last_split_strategy,
@@ -114,7 +112,7 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
             new_metrics, best_metrics = get_new_and_best_metrics(config)
             iter_to_metrics[run_index] = new_metrics
             iter_to_feedback[run_index] = "Iteration failed, no feedback available."
-            iter_to_summary[run_index] = "Iteration failed, no summary available."
+            iter_to_outputs[run_index] = "Iteration failed, no outputs available."
             log_files(config, iteration=run_index)
             iter_to_split_changed[run_index] = val_split_changed
             continue
@@ -147,11 +145,6 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
         new_metrics, best_metrics = get_new_and_best_metrics(config)
         iter_to_metrics[run_index] = new_metrics
         try:
-            iter_to_summary[run_index] = await get_iteration_summary(
-                structured_outputs=structured_outputs,
-                model=feedback_model,
-                config=config,
-            )
             iter_to_feedback[run_index] = await get_feedback(
                 structured_outputs=structured_outputs,
                 config=config, 
@@ -161,18 +154,18 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
                 model=feedback_model,
                 iteration=run_index,
                 extra_info=extra_info,
-                iter_to_summary=iter_to_summary,
+                iter_to_outputs=iter_to_outputs,
                 iter_to_metrics=iter_to_metrics,
                 iter_to_split_changed=iter_to_split_changed,
                 val_split_changed=val_split_changed,
             )
         except FeedbackAgentFailed as e:
-            iter_to_summary[run_index] = "No summary available."
+            iter_to_outputs[run_index] = "No outputs available."
             iter_to_feedback[run_index] = f"This was {'not ' if not is_new_best(config) else ''}the run with best validation metrics so far. No feedback available."
             log_feedback_failure(e.exception_trace, iteration=run_index)
 
         is_current_new_best = is_new_best(config)
-        populate_iteration_dir(config, run_index, is_best=is_current_new_best, summary=iter_to_summary.get(run_index), structured_outputs=structured_outputs)
+        populate_iteration_dir(config, run_index, is_best=is_current_new_best, structured_outputs=structured_outputs)
         if(is_current_new_best):
             snapshot(config, run_index)  # Snapshotting must be done after feedback - overrides the previous snapshot, influencing the get_new_and_best_metrics function
             export_config_to_snapshot(config)

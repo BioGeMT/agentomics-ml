@@ -158,13 +158,8 @@ def export_conda_to_iteration_dir(config, run_dir, iteration_dir, is_best=False)
     if conda_env.exists():
         subprocess.run(['conda', 'env', 'export', '-p', str(conda_env), '-f', str(iteration_dir / "conda_environment.yml")], check=True)
 
-def save_summary_and_outputs_to_iteration_dir(iteration_dir, summary, structured_outputs):
-    summary_file = iteration_dir / "iteration_summary.txt"
-    structured_outputs_file = iteration_dir / "structured_outputs.txt"
-    with open(summary_file, "w") as f:
-        f.write(str(summary))
-
-    with open(structured_outputs_file, "w") as f:
+def save_outputs_to_iteration_dir(iteration_dir, structured_outputs):
+    with open(iteration_dir / "structured_outputs.txt", "w") as f:
         f.write(str(structured_outputs))
 
 def purge_conda_from_all_folders(config):
@@ -174,7 +169,7 @@ def purge_conda_from_all_folders(config):
             if conda_env.exists():
                 shutil.rmtree(conda_env)
 
-def populate_iteration_dir(config, run_index, summary, structured_outputs, is_best=False):
+def populate_iteration_dir(config, run_index, structured_outputs, is_best=False):
     run_dir = config.runs_dir / config.agent_id
     iteration_dir = run_dir / f"iteration_{run_index}"
     iteration_dir.mkdir()
@@ -198,7 +193,7 @@ def populate_iteration_dir(config, run_index, summary, structured_outputs, is_be
 
     purge_conda_from_all_folders(config)
     export_conda_to_iteration_dir(config, run_dir, iteration_dir, is_best=is_best)
-    save_summary_and_outputs_to_iteration_dir(iteration_dir, summary, structured_outputs)
+    save_outputs_to_iteration_dir(iteration_dir, structured_outputs)
 
 def replace_python_paths(folder_path, current_path, new_path):
     for element in folder_path.iterdir():

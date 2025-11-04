@@ -44,12 +44,10 @@ def get_system_prompt(config):
 def get_user_prompt(config):
     return config.user_prompt
 
-def get_iteration_prompt(config, run_index, summary, feedback):
+def get_iteration_prompt(config, run_index, feedback):
     return f"""
     Your original prompt: {config.user_prompt}
     You have already completed {run_index} runs of your task.
-    Here is the summary of your past iteration:
-    {summary}
     Here is the feedback from your past runs:
     {feedback}
     During your tasks, take actions to address tasks mentioned in the feedback.

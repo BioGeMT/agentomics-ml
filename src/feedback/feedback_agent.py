@@ -50,65 +50,15 @@ def create_feedback_agent(model, config):
     
     return feedback_agent
 
-async def get_iteration_summary(structured_outputs, model, config) -> IterationSummary:
-    agent = create_feedback_agent(model, config)
-
-    training_step_output = next((step for step in structured_outputs if isinstance(step, ModelTraining)), None)
-    inference_step_output = next((step for step in structured_outputs if isinstance(step, ModelInference)), None)
-
-    if(training_step_output):
-        with open(training_step_output.path_to_train_file) as f:
-            training_script_content = f.read()
-    else:
-        training_script_content = "No training script produced"
-
-    if(inference_step_output):
-        with open(inference_step_output.path_to_inference_file) as f:
-            inference_script_content = f.read()
-    else:
-        inference_script_content = "No inference script produced"
-
-    summary_prompt = f"""
-    Summarize the current iteration steps.
-
-    Step outputs:
-    {structured_outputs}
-
-    Contents of the training script:
-    [START]
-    {training_script_content}
-    [END]
-
-    Contents of the inference script:
-    [START]
-    {inference_script_content}
-    [END]
-    """
-    try:
-        summary = await agent.run(
-            user_prompt=summary_prompt,
-            output_type=IterationSummary,
-        )
-        return summary.output
-    except Exception as e:
-        trace = traceback.format_exc()
-        print('--------------- ERROR TRACEBACK ---------------')
-        print('Feedback agent failed', trace)
-        print('--------------- ERROR TRACEBACK ---------------')
-        raise FeedbackAgentFailed(
-            message="Feedback didnt finish properly", 
-            context_messages=[],
-            exception_trace=trace,
-        )
 
 #TODO if agent fails -> we can construct feedback absed on context contains ALL messages from the failed step (long string of failures typically)
 @weave.op(call_display_name="Get Feedback")
-async def get_feedback(structured_outputs, config, new_metrics, best_metrics, is_new_best, model, iteration, iter_to_summary, iter_to_metrics, iter_to_split_changed, val_split_changed, extra_info="") -> str:
+async def get_feedback(structured_outputs, config, new_metrics, best_metrics, is_new_best, model, iteration, iter_to_outputs, iter_to_metrics, iter_to_split_changed, val_split_changed, extra_info="") -> str:
     if iteration == config.iterations - 1 : return "Last iteration, no feedback needed"
     
     agent = create_feedback_agent(model, config)
     next_iteration_index = iteration + 1
-    past_iters_aggregation = aggregate_past_iterations(iter_to_summary=iter_to_summary, iter_to_metrics=iter_to_metrics, iter_to_split_changed=iter_to_split_changed)
+    past_iters_aggregation = aggregate_past_iterations(iter_to_outputs=iter_to_outputs, iter_to_metrics=iter_to_metrics, iter_to_split_changed=iter_to_split_changed)
     best_metric_iteration = get_best_iteration(config)
     extra_info = f'Extra info for the current iteration: {extra_info}' if extra_info else ''
     best_metrics = {k:truncate_float(v) for k,v in best_metrics.items()}
@@ -189,9 +139,9 @@ async def get_feedback(structured_outputs, config, new_metrics, best_metrics, is
             exception_trace=trace,
         )
 
-def aggregate_past_iterations(iter_to_summary, iter_to_metrics, iter_to_split_changed, ignore_last=True):
+def aggregate_past_iterations(iter_to_outputs, iter_to_metrics, iter_to_split_changed, ignore_last=True):
     aggregation = ""
-    num_of_iters = len(iter_to_summary)
+    num_of_iters = len(iter_to_outputs)
     iter_to_split_version = {} #has the most recent iteration as well
     split_version = 0
     for i in range(num_of_iters):
@@ -209,6 +159,7 @@ def aggregate_past_iterations(iter_to_summary, iter_to_metrics, iter_to_split_ch
         iter_split_version = iter_to_split_version[i]
         iters_with_the_same_split = split_version_to_iters[iter_split_version].copy()
         iters_with_the_same_split.remove(i)
+        truncated_iter_metrics = {k:truncate_float(v) for k,v in iter_to_metrics[i].items()}
 
         split_info = f"This iteration used train/validation split strategy version {iter_split_version}. "
         if(len(iters_with_the_same_split) > 0):
@@ -222,10 +173,10 @@ def aggregate_past_iterations(iter_to_summary, iter_to_metrics, iter_to_split_ch
         
         aggregation += f"""
         Iteration {i}
-        Steps summary:
-        {iter_to_summary[i]}
+        Steps' outputs:
+        {iter_to_outputs[i]}
         Metrics:
-        {iter_to_metrics[i]}
+        {truncated_iter_metrics}
         {split_info}
         """
     return aggregation
