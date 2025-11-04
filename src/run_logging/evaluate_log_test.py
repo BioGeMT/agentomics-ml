@@ -7,7 +7,7 @@ from utils.report_logger import add_final_test_metrics_to_best_report
 from run_logging.evaluate_log_run import run_inference_and_log
 from run_logging.logging_helpers import log_inference_stage_and_metrics
 from run_logging.wandb_setup import resume_wandb_run
-from utils.snapshots import replace_snapshot_path_with_relative
+from utils.snapshots import replace_python_paths
 
 def run_test_evaluation(workspace_dir):
     config = load_run_config(snapshots_dir = Path(workspace_dir) / 'snapshots')
@@ -21,7 +21,7 @@ def run_test_evaluation(workspace_dir):
         print('FINAL TEST EVAL FAIL', str(e))
         log_inference_stage_and_metrics(1, task_type=config.task_type)
 
-    replace_snapshot_path_with_relative(snapshot_dir = config.snapshots_dir / config.agent_id)
+    replace_python_paths(folder_path=config.snapshots_dir / config.agent_id,current_path=config.snapshots_dir / config.agent_id, new_path=".")
 
 def load_run_config(snapshots_dir):
     subdirs = [d for d in snapshots_dir.iterdir() if d.is_dir()]
