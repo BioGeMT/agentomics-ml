@@ -62,24 +62,31 @@ def save_step_output(config, step_name, step_data, iteration):
         f.write("\n")
 
 
-def add_metrics_to_report(config, iteration):
-    output_dir = Path(config.runs_dir) / config.agent_id
+def add_metrics_to_report(config, iteration, metrics_dict):
     report_dir = config.reports_dir / config.agent_id
     report_dir.mkdir(parents=True, exist_ok=True)
-    
-    metrics = [
-        ('train_metrics.txt', 'Train Metrics', output_dir),
-        ('validation_metrics.txt', 'Validation Metrics', output_dir)
-    ]
+
+    train_metrics = {k.replace('train/', ''): v for k, v in metrics_dict.items() if k.startswith('train/')}
+    validation_metrics = {k.replace('validation/', ''): v for k, v in metrics_dict.items() if k.startswith('validation/')}
+
     with open(report_dir / f"run_report_iter_{iteration}.txt", 'a') as f:
         f.write("[METRICS]\n\n")
-        for metric_file, display_name, file_dir in metrics:
-            try:
-                with open(file_dir / metric_file, 'r') as file:
-                    content = file.read().strip()
-                    f.write(f"{display_name}:\n{content}\n\n")
-            except FileNotFoundError:
-                f.write("METRIC NOT FOUND")
+
+        if train_metrics:
+            f.write("Train Metrics:\n")
+            for metric_name, value in train_metrics.items():
+                f.write(f"{metric_name}: {value}\n")
+            f.write("\n")
+        else:
+            f.write("Train Metrics: NOT FOUND\n\n")
+
+        if validation_metrics:
+            f.write("Validation Metrics:\n")
+            for metric_name, value in validation_metrics.items():
+                f.write(f"{metric_name}: {value}\n")
+            f.write("\n")
+        else:
+            f.write("Validation Metrics: NOT FOUND\n\n")
 
 
 

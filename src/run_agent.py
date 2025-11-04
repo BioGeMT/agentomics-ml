@@ -180,7 +180,7 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
             for callback in on_new_best_callbacks:
                 callback(config)
 
-        add_metrics_to_report(config, run_index)
+        add_metrics_to_report(config, run_index, new_metrics)
         await add_summary_to_report(default_model, config, run_index)
         log_files(config, iteration=run_index)
 
