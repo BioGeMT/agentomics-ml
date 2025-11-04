@@ -39,6 +39,9 @@ def build_env(base, config, agent):
         env.setdefault("LLM_SOURCE", "Custom")
         env.setdefault("CUSTOM_MODEL_BASE_URL", config["openrouter_base_url"])
         env.setdefault("CUSTOM_MODEL_API_KEY", config["openrouter_key"])
+        # Enable BioMNI self-critic mode for iterative refinement
+        env.setdefault("BIOMNI_SELF_CRITIC", str(config.get("biomni_self_critic", "false")).lower())
+        env.setdefault("BIOMNI_ITERATIONS", str(config.get("biomni_iterations", "0")))
     return env
 
 
