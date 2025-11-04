@@ -232,13 +232,13 @@ async def run_architecture_compressed(text_output_agent: Agent, inference_agent:
     return structured_outputs
 
 @weave.op(call_display_name=lambda call: f"Iteration {call.inputs.get('iteration', 0) + 1}")
-async def run_iteration(config: Config, model, iteration, summary, feedback, tools, last_split_strategy):
+async def run_iteration(config: Config, model, iteration, feedback, tools, last_split_strategy):
     agents_dict = create_agents(config=config, model=model, tools=tools)
 
     if iteration == 0:
         base_prompt = get_user_prompt(config)
     else:
-        base_prompt = get_iteration_prompt(config, iteration, summary, feedback)
+        base_prompt = get_iteration_prompt(config, iteration, feedback)
 
     #TODO parametrize compressed vs normal runs
     structured_outputs = await run_architecture_compressed(
