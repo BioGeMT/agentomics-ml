@@ -181,10 +181,18 @@ def populate_iteration_dir(config, run_index, structured_outputs, is_best=False)
         ".cache",
     ]
 
+    files_to_delete = [
+        "train_metrics.txt",
+        "validation_metrics.txt"
+    ]
+
     for element in run_dir.iterdir():
         if element.is_dir() and (element.name.startswith("iteration_") or element.name == ".conda"):
             continue
         if element.name in files_to_skip:
+            continue
+        if element.name in files_to_delete:
+            element.unlink()
             continue
 
         shutil.move(str(element), str(iteration_dir / element.name))
