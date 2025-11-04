@@ -119,7 +119,6 @@ def reset_snapshot_if_val_split_changed(config, iteration, old_fingerprint, new_
         return False
 
 def lock_split_files(config):
-    print("Locking split files")
     train_split = config.runs_dir / config.agent_id / 'train.csv'
     validation_split = config.runs_dir / config.agent_id / 'validation.csv'
     
@@ -128,7 +127,7 @@ def lock_split_files(config):
     os.chmod(validation_split, read_only_mode)
 
 def snapshot(config, iteration, delete_old_snapshot=True):
-    run_dir = config.runs_dir / config.agent_id
+    iteration_dir = config.runs_dir / config.agent_id / f"iteration_{iteration}"
     snapshot_dir = config.snapshots_dir / config.agent_id
 
     if delete_old_snapshot:
@@ -136,38 +135,7 @@ def snapshot(config, iteration, delete_old_snapshot=True):
 
     snapshot_dir.mkdir(parents=True, exist_ok=True)
 
-    files_to_skip = [
-        "train.csv",
-        "validation.csv",
-    ]
-    folders_to_skip = [
-        "__pycache__",
-        ".cache",
-    ]
-    # iterate the snapshot dir for all files
-    for element in run_dir.iterdir():
-        # if hidden file and not in a folder, skip it
-        if re.match(r"^\..*", element.name) and element.is_file():
-            continue
-        if element.is_file() and element.name in files_to_skip:
-            continue
-        if element.is_dir() and element.name in folders_to_skip:
-            continue
-        if element.is_file():
-            # hard copy the file into snapshot dir
-            # print(f"Snapshotting {element.name}")
-            absolute_dest = snapshot_dir / element.name
-            shutil.copy2(element, absolute_dest)
-            if element.name.endswith(".py"):
-                replace_workspace_path_with_snapshots(run_dir, snapshot_dir, absolute_path_snapshot_file=absolute_dest)
-        if element.is_dir():
-            # hard copy the folder into snapshot dir
-            # print(f"Snapshotting {element.name}")
-            shutil.copytree(element, snapshot_dir / element.name, dirs_exist_ok=True, symlinks=True)
-            # if dir is not hidden, replace the workspace path in python files
-            if(not re.match(r"^\..*", element.name)):
-                for file_path in (snapshot_dir / element.name).rglob('*.py'):
-                    replace_workspace_path_with_snapshots(run_dir, snapshot_dir, absolute_path_snapshot_file=file_path)
+    shutil.copytree(str(iteration_dir), str(snapshot_dir), dirs_exist_ok=True)
         
     with open(snapshot_dir / "iteration_number.txt", "w") as f:
         f.write(str(iteration))
@@ -180,57 +148,42 @@ def get_best_iteration(config):
             return int(f.read().strip())
     return None
 
-def replace_workspace_path_with_snapshots(run_dir, snapshot_dir, absolute_path_snapshot_file):
-    # Replaces hard-coded paths in the files to point to the snapshot dir
-    with open(absolute_path_snapshot_file, "r") as f:
-        old_content = f.read()
-    new_content = old_content.replace(str(run_dir), str(snapshot_dir))
-    if(old_content != new_content):
-        with open(absolute_path_snapshot_file, "w") as f:
-            f.write(new_content)
-
-def replace_snapshot_path_with_relative(snapshot_dir):
-    for file_path in snapshot_dir.rglob('*.py'):
-        if '.conda' in file_path.parts:
-            # Don't check installed packages scripts
-            continue
-        with open(file_path, "r") as f:
-            old_content = f.read()
-        new_content = old_content.replace(str(snapshot_dir), ".")
-        with open(file_path, "w") as f:
-            f.write(new_content)
-
-def replace_workspace_path_with_iteration_dir(run_dir, iteration_dir, absolute_path_iterdir_file):
-    with open(absolute_path_iterdir_file, "r") as f:
-        old_content = f.read()
-    new_content = old_content.replace(str(run_dir), str(iteration_dir))
-    if(old_content != new_content):
-        with open(absolute_path_iterdir_file, "w") as f:
-            f.write(new_content)
-
 def export_conda_to_iteration_dir(config, run_dir, iteration_dir, is_best=False):
     if is_best:
         conda_env = run_dir / ".conda"
         shutil.copytree(str(conda_env), str(iteration_dir / ".conda"), symlinks=True, dirs_exist_ok=True)
-    else:
-        env_name = f"{config.agent_id}_env"
-        conda_env = run_dir / ".conda" / "envs" / env_name
-        if conda_env.exists():
-            subprocess.run(['conda', 'env', 'export', '-p', str(conda_env), '-f', str(iteration_dir / "conda_environment.yml")], check=True)
+    
+    env_name = f"{config.agent_id}_env"
+    conda_env = run_dir / ".conda" / "envs" / env_name
+    if conda_env.exists():
+        subprocess.run(['conda', 'env', 'export', '-p', str(conda_env), '-f', str(iteration_dir / "conda_environment.yml")], check=True)
 
-def save_summary_to_iteration_dir(iteration_dir, summary):
+def save_summary_and_outputs_to_iteration_dir(iteration_dir, summary, structured_outputs):
     summary_file = iteration_dir / "iteration_summary.txt"
+    structured_outputs_file = iteration_dir / "structured_outputs.txt"
     with open(summary_file, "w") as f:
         f.write(str(summary))
 
-def populate_iteration_dir(config, run_index, is_best=False, summary=None):
+    with open(structured_outputs_file, "w") as f:
+        f.write(str(structured_outputs))
+
+def purge_conda_from_all_folders(config):
+    for element in config.runs_dir.iterdir():
+        if element.is_dir() and element.name.startswith("iteration_"):
+            conda_env = element / ".conda"
+            if conda_env.exists():
+                shutil.rmtree(conda_env)
+
+def populate_iteration_dir(config, run_index, summary, structured_outputs, is_best=False):
     run_dir = config.runs_dir / config.agent_id
     iteration_dir = run_dir / f"iteration_{run_index}"
     iteration_dir.mkdir()
 
     files_to_skip = [
         "train.csv",
-        "validation.csv"
+        "validation.csv",
+        "__pycache__",
+        ".cache",
     ]
 
     for element in run_dir.iterdir():
@@ -240,12 +193,23 @@ def populate_iteration_dir(config, run_index, is_best=False, summary=None):
             continue
 
         shutil.move(str(element), str(iteration_dir / element.name))
-        if element.is_dir():
-            for file_path in (iteration_dir / element.name).rglob('*.py'):
-                replace_workspace_path_with_iteration_dir(run_dir, iteration_dir, file_path)
-        else:
-            if element.name.endswith(".py"):
-                replace_workspace_path_with_iteration_dir(run_dir, iteration_dir, iteration_dir / element.name)
 
+    replace_python_paths(folder_path=iteration_dir, current_path=run_dir, new_path=iteration_dir)
+
+    purge_conda_from_all_folders(config)
     export_conda_to_iteration_dir(config, run_dir, iteration_dir, is_best=is_best)
-    save_summary_to_iteration_dir(iteration_dir, summary)
+    save_summary_and_outputs_to_iteration_dir(iteration_dir, summary, structured_outputs)
+
+def replace_python_paths(folder_path, current_path, new_path):
+    for element in folder_path.iterdir():
+        if element.is_dir() and element.name.startswith('.'):
+            continue
+        if element.is_dir():
+            replace_python_paths(element, current_path, new_path)
+        if element.is_file() and element.name.endswith('.py'):
+            with open(element, "r") as f:
+                old_content = f.read()
+            new_content = old_content.replace(str(current_path), str(new_path))
+            if(old_content != new_content):
+                with open(element, "w") as f:
+                    f.write(new_content)
