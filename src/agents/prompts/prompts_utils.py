@@ -45,12 +45,13 @@ def get_user_prompt(config):
     return config.user_prompt
 
 def get_iteration_prompt(config, run_index, feedback):
+    past_iterations_range = f"iteration_0 to iteration_{run_index-1}" if run_index > 1 else "iteration_0"
     return f"""
     Your original prompt: {config.user_prompt}
-    You have already completed {run_index} runs of your task.
-    Here is the feedback from your past runs:
+    You are at iteration {run_index}. Files from past iterations ({past_iterations_range}) are available in read-only folders: {config.runs_dir / config.agent_id}/iteration_0, iteration_1, etc.
+    If you want to reuse any code or files from past iterations, copy them into your current working directory ({config.runs_dir / config.agent_id}). Files in past iteration folders won't be accessible during final inference.
+    Feedback from your past runs:
     {feedback}
-    During your tasks, take actions to address tasks mentioned in the feedback.
-    Files from your past run are still in your workspace.
+    Address the feedback in your current iteration.
     {"You must not modify the train.csv and validation.csv files this iteration." if not config.can_iteration_split_data(run_index) else ""}
     """
