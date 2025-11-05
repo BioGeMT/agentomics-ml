@@ -8,6 +8,7 @@ def create_write_python_tool(agent_id, max_retries, runs_dir):
         """
         A tool to write python code into a single file.
         Input must be a valid python code and name of the file.
+        This tool can be used to overwrite existing files.
 
         Examples:
         code: "import numpy as np

@@ -94,11 +94,22 @@ class Config:
                 for line in result.stdout.strip().split('\n'):
                     line = line.split('(UUID:')[0].strip() # remove UUID part
                     line = line.split(':', 1)[1].strip() # get only device name
-                    gpus.append(line)
+                    gpu_max_memory = subprocess.run(
+                        ['nvidia-smi', '--query-gpu=memory.total', '--format=csv,noheader,nounits'],
+                        capture_output=True, text=True
+                    ).stdout.strip().split('\n')[len(gpus)-1]
+                    gpus.append(f'{line} (Memory: {gpu_max_memory} MB)')
                 return ', '.join(gpus)
             return None
         except:
             return None
+    
+    def get_resources_summary(self):
+        gpu_info = self.check_gpu_availability()
+        if gpu_info:
+            return f'GPU Resource Available ({gpu_info})'
+        else:
+            return 'CPU Resources Only'
 
     def print_summary(self):
         print('=== AGENTOMICS CONFIGURATION ===')

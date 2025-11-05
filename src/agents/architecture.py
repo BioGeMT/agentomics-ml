@@ -249,7 +249,7 @@ async def run_architecture_compressed(text_output_agent: Agent, inference_agent:
 
     return structured_outputs
 
-@weave.op(call_display_name=lambda call: f"Iteration {call.inputs.get('iteration', 0) + 1}")
+@weave.op(call_display_name=lambda call: f"Iteration {call.inputs.get('iteration', 0)}")
 async def run_iteration(config: Config, model, iteration, feedback, tools, last_split_strategy):
     agents_dict = create_agents(config=config, model=model, tools=tools)
 
