@@ -51,89 +51,74 @@ def create_feedback_agent(model, config):
     return feedback_agent
 
 
-#TODO if agent fails -> we can construct feedback absed on context contains ALL messages from the failed step (long string of failures typically)
 @weave.op(call_display_name="Get Feedback")
-async def get_feedback(structured_outputs, config, new_metrics, best_metrics, is_new_best, model, iteration, iter_to_outputs, iter_to_metrics, iter_to_split_changed, val_split_changed, iter_to_duration, extra_info="") -> str:
+async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, iter_to_metrics, iter_to_split_changed, val_split_changed, iter_to_duration, extra_info="") -> str:
     if iteration == config.iterations - 1 : return "Last iteration, no feedback needed"
     
     agent = create_feedback_agent(model, config)
     next_iteration_index = iteration + 1
-    all_iters_aggregation = aggregate_past_iterations(iter_to_outputs=iter_to_outputs, iter_to_metrics=iter_to_metrics, iter_to_split_changed=iter_to_split_changed, current_iter_val_split_changed=val_split_changed, current_iter_extra_info=extra_info, current_iter_is_new_best=is_new_best, iter_to_duration=iter_to_duration)
+    num_of_iters = len(iter_to_outputs)
+    iter_to_split_version, split_version_to_iters = get_iter_split_infos(iter_to_outputs, iter_to_split_changed)
+    lastest_split_version = iter_to_split_version[num_of_iters-1]
     best_metric_iteration = get_best_iteration(config)
-    extra_info = f'Extra info for the current iteration: {extra_info}' if extra_info else ''
-    best_metrics = {k:truncate_float(v) for k,v in best_metrics.items()}
-    new_metrics = {k:truncate_float(v) for k,v in new_metrics.items()}
-
-    if val_split_changed:
-        extra_info+="""
-        The train/validation split has been changed this iteration. 
-        This renders older iterations' metrics non-comparable as they were measured on different splits. 
-        Due to this, the metrics of older iterations are no longer considered for best-iteration candidates.
-        """
-
-    #TODO Emphasize that old split metric should not be considered much unless the split is better - should prioritize TEST metric and be representative/difficult
-    #TODO never say youre doing well etc.. -> just try to optimize further???
-    #TODO allow fallbacking to previous experiments?
+    all_iters_aggregation = aggregate_past_iterations(
+        iter_to_outputs=iter_to_outputs, 
+        iter_to_metrics=iter_to_metrics, 
+        current_iter_val_split_changed=val_split_changed, 
+        current_iter_extra_info=extra_info, 
+        current_iter_is_new_best=is_new_best, 
+        iter_to_duration=iter_to_duration,
+        iter_to_split_version=iter_to_split_version,
+        split_version_to_iters=split_version_to_iters,
+    )
 
     if config.can_iteration_split_data(next_iteration_index):
         #agent can split next iter
-        splitting_info = 'If you choose data splitting needs change, never suggest cross-validations split or any other split that would result in more than two files (train.csv and validation.csv). Unless instructed to be changed, the current split will be re-used for the next iteration.'
-        splitting_info += f"\nSplitting is allowed for the next {config.split_allowed_iterations - next_iteration_index} iteration/s. After that, the latest split will be used for all future iterations."
+        splitting_info = f"If you choose data splitting needs change, never suggest cross-validations split or any other split that would result in more than two files (train.csv and validation.csv). Keep in mind that using a more representative validation split will result in a better selected 'best iteration model' and therefore a better final hidden test set metrics."
+        splitting_info += f"If the split should stay the same (currently split version is {lastest_split_version}), instruct to 'Re-use the current split'."
+        splitting_info += f"\nSplitting is allowed for the next {config.split_allowed_iterations - next_iteration_index} iteration/s. After that, the latest split version will be used for all future iterations."
     else:
         #agent can NOT split next iter
-        splitting_info = "Don't provide any feedback on how to change the train/validation split, as the next iteration agent cannot split the data."
-    
+        splitting_info = "Instruct to skip the splitting step, as the next iteration agent cannot split the data."
 
-    if best_metric_iteration is not None:
-        best_metrics_info = f"Best iteration out of any previous iteration using the same data split is iteration {best_metric_iteration}. This is based on its {config.val_metric} metric. "
-        if(not is_new_best):
-            best_metrics_info += f"Iteration {best_metric_iteration} is still the best iteration, therefore it is currently selected as the solution to your task."
-        best_metrics_info += f"\nMetrics from iteration {best_metric_iteration}: {best_metrics}."
-
-    else:
-        best_metrics_info = ""
-
-    #TODO make feedback structured?
     time_info = ""
     time_left_in_seconds = config.time_deadline - time.time() if config.time_deadline is not None else None
     if time_left_in_seconds is not None:
-        time_info = f"There are {time_left_in_seconds / 3600:.2f} hours left."
+        time_info = f"{time_left_in_seconds / 3600:.2f} hours"
     else:
         iterations_left = config.iterations - iteration - 1
-        time_info = f"There are {iterations_left} iterations left."
+        time_info = f"{iterations_left} iterations"
         
-    #TODO dont refer to concrete files (paths have changed from rundir/file to rundir_iteration_x/file)
-    #TODO dont call it suggestions/feedback but commands?
-    #TODO adjust prompts if there's no best iteration yet
     feedback_prompt = f"""
-    Iterations summaries:
+    {len(iter_to_outputs)} iterations completed in the current run so far
+    [Iterations summaries (run history)]
     {all_iters_aggregation}
+    [End of iteration summaries]
 
-    MAIN GOAL
-    Main goal: Provide concrete feedback for the next iteration to improve generalization on an unseen test set by changing one or more steps.
-    
-    COMPARING ITERATIONS INFO
-    The most important metric for this task is {config.val_metric}. 
-    Use the information from previous iterations and their metrics to guide your recommendations.
+    The main goal of the run is to maximize the hidden test set generalization performance (main metric:{config.val_metric}) that will use the 'best iteration model' (currently model from iteration {best_metric_iteration}). Only models using the latest split are candidates for this 'best iteration model'.
+    There are {time_info} left before the run ends. Then, the 'best iteration model' will be extracted and automatically evaluated on the hidden test set.
+    Once an iteration produces a model with a better {config.val_metric} metric, that model will overwrite the 'best iteration model'.
 
-    GENERAL GUIDELINES [remove guidelines word]
-    You're providing feedback to an LLM agent, never offer that you will take any actions to fix or implement fixes yourself.
-    Provide only actionable feedback, don't include "Why this helps", "Expected outcomes", or any other non-actionable information.
+    Your task is to provide concrete instructions for the next iteration agent on what to do/implement/pursue in each step of the next iteration.
+    Use the information from previous iterations and their metrics to inform your instructions.
+    Your instructions can suggest anything from reusing a step from any iteration, making small changes to it, up to completelly changing the strategy of a step.
+    The iteration agent will always perform the steps in the same sequence.
+    Make your instructions concrete, don't offer various choice branches. The exception to this is that you might offer branching instructions for a specific step conditioned on the results of the previous steps of that iteration.
+    If you instruct the agent to re-use or partially re-use a step or code from a certain iteration, refer to that iteration by its number.
+    The iteration agent will have access to the code and steps' outputs from all the past iterations.
+    For example if you want to instruct to re-use the same data representation from iteration 5, instruct "Re-use the data representation from iteration 5".
+    The data exploration and splitting steps can be instructed to be skipped completely if they're not needed.
+    {splitting_info}
 
-    DIRECTIONS GUIDELINES
-    {time_info}. After that, only the best iteration based on validation {config.val_metric} model using the latest split (currently iteration {best_metric_iteration}) will be judged using the final hidden test set.
-    Balance exploration and exploitation based on the iteration history and remaining time/iterations. As the best model is saved, you can safely instruct the agent to experiment with more exploratory models, representaiton etc... if you decide to???
-    [TODO] IF you hit a wall with a certain approach, feel free to explore...
+    You're providing instructions to an LLM agent, never offer that you will take any actions to fix or implement fixes yourself.
+    Provide only actionable instructions, don't include "Why this helps", "Expected outcomes", or any other non-actionable information.
+    If you refer to concrete files, use their name, extension, and the iteration they're from. Don't refer to them by their full path.
 
-    RECOMMENDATIONS GUIDELINES
-    Your feedback can suggest anything from small changes up to completelly changing the strategy of a step.
-    Make your recommendations concrete, don't offer various choice branches.
-    If you instruct the agent to re-use a step from a certain iteration, refer to that iteration by its number.
-    You may skip steps that don't need changed.
-    [gpt] - Prefer practical, testable adjustments (data splits/quality, representation, model architecture, training hyperparams, evaluation).
-    [TODO] You can refer other iterations by their number in feedback, the agent will have acess to them + summaries on demand
-    {splitting_info} #TODO here?
-    
+    Balance exploration of new approaches and optimizing already working approaches based on the iteration history and remaining time/iterations. 
+    Remember that the goal is to maximize the hidden test set performance that will use the saved best model (currently iteration {best_metric_iteration}).
+    This 'best iteration model' is saved and will not be overridden by a worse model, therefore you can safely instruct the agent to experiment with more exploratory models, representaiton etc... if you choose to.
+
+    Once the next iteration finishes, the iterations summaries (run history) will be updated with its results and you will have an opportunity to provide another set of instructions etc.. until the run ends.
     """
     
     print("CONSTRUCTING ITERATION FEEDBACK...")
@@ -156,7 +141,7 @@ async def get_feedback(structured_outputs, config, new_metrics, best_metrics, is
             exception_trace=trace,
         )
 
-def aggregate_past_iterations(iter_to_outputs, iter_to_metrics, iter_to_split_changed, current_iter_val_split_changed, current_iter_extra_info, current_iter_is_new_best, iter_to_duration):
+def get_iter_split_infos(iter_to_outputs, iter_to_split_changed):
     num_of_iters = len(iter_to_outputs)
     iter_to_split_version = {} #has the most recent iteration as well
     split_version = 0
@@ -167,6 +152,10 @@ def aggregate_past_iterations(iter_to_outputs, iter_to_metrics, iter_to_split_ch
     split_version_to_iters = {}
     for i, split_version in iter_to_split_version.items():
         split_version_to_iters[split_version] = split_version_to_iters.get(split_version, []) + [i]
+    return iter_to_split_version, split_version_to_iters 
+
+def aggregate_past_iterations(iter_to_outputs, iter_to_metrics, current_iter_val_split_changed, current_iter_extra_info, current_iter_is_new_best, iter_to_duration, iter_to_split_version, split_version_to_iters):
+    num_of_iters = len(iter_to_outputs)
     lastest_split_version = iter_to_split_version[num_of_iters-1]
 
     aggregation = ""
@@ -184,9 +173,9 @@ def aggregate_past_iterations(iter_to_outputs, iter_to_metrics, iter_to_split_ch
         if(len(iters_with_the_same_split) > 0):
             split_info+=f"This is the same as itertations {iters_with_the_same_split}. "
         if(iter_split_version != lastest_split_version):
-            split_info += f"This iteration's split (version {iter_split_version}) is different from the latest iteration's split ({lastest_split_version}), therefore this iteration metrics can no longer be considered for a best-iteration candidate. "
+            split_info += f"This iteration's split (version {iter_split_version}) is different from the latest iteration's split ({lastest_split_version}), therefore this iteration metrics can no longer be considered for a 'best iteration model' candidate. "
         else:
-            split_info += f"This iteration's split (version {iter_split_version}) is the latest split version, therefore its metrics are considered for a best-iteration candidate. "
+            split_info += f"This iteration's split (version {iter_split_version}) is the latest split version, therefore its metrics are considered for a 'best iteration model' candidate. "
         if(len(set(iter_to_split_version.values())) > 1):
             split_info += "Note that metrics calculated from different split versions are not directly comparable. "
         
@@ -205,7 +194,7 @@ def aggregate_past_iterations(iter_to_outputs, iter_to_metrics, iter_to_split_ch
                 extra_info+="""
                 The train/validation split has been changed this iteration. 
                 This renders older iterations' metrics non-comparable as they were measured on different splits. 
-                Due to this, the metrics of older iterations are no longer considered for best-iteration candidates.
+                Due to this, the metrics of older iterations are no longer considered for 'best iteration model' candidates.
                 """
 
             is_best_info = f"The current iteration is {'not ' if not current_iter_is_new_best else ''}the best iteration run so far{', therefore it is currently selected as the solution to your task' if current_iter_is_new_best else '.'}"
@@ -219,6 +208,5 @@ def aggregate_past_iterations(iter_to_outputs, iter_to_metrics, iter_to_split_ch
             {is_best_info}
             {split_info}
             """
-            #TODO - [for each iter] this iteration took X seconds/minutes/hours.
 
     return aggregation

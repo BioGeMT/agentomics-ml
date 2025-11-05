@@ -154,10 +154,7 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
         iter_to_outputs[run_index] = structured_outputs
         try:
             iter_to_feedback[run_index] = await get_feedback(
-                structured_outputs=structured_outputs,
                 config=config, 
-                new_metrics=new_metrics, 
-                best_metrics=best_metrics, 
                 is_new_best=is_new_best(config), 
                 model=feedback_model,
                 iteration=run_index,
