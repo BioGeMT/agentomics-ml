@@ -18,7 +18,7 @@ class ModelTraining(BaseModel):
 
 def get_model_training_prompt():
     return """
-    Next task: implement any necessary code for training a model. Then train a single model.
+    Your next task: implement any necessary code for training a model. Then train a single model.
     The train script should save any files necessary to use the trained model for predictions (e.g. model file, tokenizers, ...).
     If your model can be accelerated by GPU, implement the code to use GPU.
     """

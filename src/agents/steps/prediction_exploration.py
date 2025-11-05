@@ -20,6 +20,6 @@ class PredictionExploration(BaseModel):
 
 def get_prediction_exploration_prompt(validation_path, inference_path):
     return f"""
-        Next task: Generate predictions on the validation set ({validation_path}) and identify where those predictions succeed, fail, and prediction biases.
+        Your next task: Generate predictions on the validation set ({validation_path}) and identify where those predictions succeed, fail, and prediction biases.
         You can use but not modify the inference script ({inference_path}). If you need to write code for prediction generation and/or analysis, create a separate script.
         """
