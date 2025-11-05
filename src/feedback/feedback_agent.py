@@ -93,10 +93,10 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
         iterations_left = config.iterations - iteration - 1
         time_info = f"{iterations_left} iterations"
 
-    if(len(config.foundational_model_to_desc) == 0):
+    if(len(config.foundation_model_to_desc) == 0):
         foundation_models_info = "No foundation models available"
     else:
-        foundation_models_info = "".join([f'model_id:{model_id}\ndescription:{desc}\n' for model_id, desc in config.foundational_model_to_desc.items()])
+        foundation_models_info = "".join([f'model_id:{model_id}\ndescription:{desc}\n' for model_id, desc in config.foundation_model_to_desc.items()])
         
     feedback_prompt = f"""
     {len(iter_to_outputs)} iterations completed in the current run so far
