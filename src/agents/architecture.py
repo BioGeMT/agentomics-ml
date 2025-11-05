@@ -10,7 +10,7 @@ from pydantic_ai.messages import ModelResponse, ToolCallPart, ToolReturnPart, Mo
 
 from agents.agent_utils import run_agent
 from agents.prompts.prompts_utils import get_iteration_prompt, get_user_prompt, get_system_prompt
-from agents.steps.model_inference import ModelInference, get_model_inference_prompt
+from agents.steps.model_inference import ModelInference, get_model_inference_prompt, lock_inference_file
 from agents.steps.data_split import DataSplit, get_data_split_prompt
 from agents.steps.model_architecture import ModelArchitecture, get_model_architecture_prompt
 from agents.steps.data_representation import DataRepresentation, get_data_representation_prompt
@@ -22,7 +22,7 @@ from utils.report_logger import save_step_output
 from run_logging.evaluate_log_run import run_inference_and_log
 
 def create_agents(config: Config, model, tools):
-    text_output_agent = Agent( # this is data exploration, representation, architecture reasoning, prediction exploration agent
+    text_output_agent = Agent( # this is data exploration, representation, architecture reasoning
         model=model,
         system_prompt=get_system_prompt(config), # Passed only to first step when message history empty
         tools=tools,
@@ -53,6 +53,15 @@ def create_agents(config: Config, model, tools):
         output_type= ModelInference,
         retries=config.max_validation_retries,
     )
+
+    prediction_exploration_agent = Agent(
+        model=model,
+        tools=tools,
+        model_settings={'temperature':config.temperature},
+        output_type= PredictionExploration,
+        retries=config.max_validation_retries,
+    )
+
     @split_dataset_agent.output_validator
     async def validate_split_dataset(result: DataSplit) -> DataSplit:
         if not os.path.exists(result.train_path) or not os.path.exists(result.val_path):
@@ -90,14 +99,23 @@ def create_agents(config: Config, model, tools):
     async def validate_inference(result: ModelInference) -> ModelInference:
         if not os.path.exists(result.path_to_inference_file):
             raise ModelRetry("Inference file does not exist.")
-        run_inference_and_log(config, iteration=-1, evaluation_stage='dry_run') 
+        run_inference_and_log(config, iteration=-1, evaluation_stage='dry_run')
+        lock_inference_file(result.path_to_inference_file)
         return result      
+    
+    @prediction_exploration_agent.output_validator
+    async def validate_prediction_exploration(result: PredictionExploration) -> PredictionExploration:
+        if not os.path.exists(config.runs_dir / config.agent_id / "inference.py"):
+            raise ModelRetry("Inference file does not exist.")
+        run_inference_and_log(config, iteration=-1, evaluation_stage='dry_run')
+        return result
 
     return {
         "text_output_agent": text_output_agent,
         "split_dataset_agent": split_dataset_agent,
         "training_agent": training_agent,
         "inference_agent": inference_agent,
+        "prediction_exploration_agent": prediction_exploration_agent,
     } 
 
 
@@ -137,7 +155,7 @@ def get_sytem_and_user_prompt_messages(all_messages, to_remove):
     user_prompt_part.content = user_prompt_part.content.replace(to_remove, "") #Remove a non-global part of the prompt
     return [first_message]
 
-async def run_architecture_compressed(text_output_agent: Agent, inference_agent: Agent, split_dataset_agent: Agent, training_agent: Agent, config: Config, base_prompt: str, iteration: int, last_split_strategy: str):
+async def run_architecture_compressed(text_output_agent: Agent, inference_agent: Agent, split_dataset_agent: Agent, training_agent: Agent, prediction_exploration_agent: Agent, config: Config, base_prompt: str, iteration: int, last_split_strategy: str):
     persistent_messages = []
     structured_outputs = []
     ctx_replacer_msg = "\nSummarized outputs from your previous steps are in previous messages."
@@ -217,10 +235,9 @@ async def run_architecture_compressed(text_output_agent: Agent, inference_agent:
         val_path = config.agent_dataset_dir / config.dataset / "validation.csv"
 
     prediction_messages, prediction_exploration = await run_agent(
-        agent=text_output_agent,
+        agent=prediction_exploration_agent,
         user_prompt=get_prediction_exploration_prompt(validation_path=val_path,inference_path=model_inference.path_to_inference_file)+ctx_replacer_msg,
         max_steps=config.max_steps,
-        output_type=PredictionExploration,
         message_history=persistent_messages,
     )
     persistent_messages+=get_final_result_messages(prediction_messages) #not used
@@ -246,6 +263,7 @@ async def run_iteration(config: Config, model, iteration, feedback, tools, last_
         split_dataset_agent=agents_dict["split_dataset_agent"],
         training_agent=agents_dict["training_agent"],
         inference_agent=agents_dict["inference_agent"],
+        prediction_exploration_agent=agents_dict["prediction_exploration_agent"],
         config=config,
         base_prompt=base_prompt,
         iteration=iteration,
