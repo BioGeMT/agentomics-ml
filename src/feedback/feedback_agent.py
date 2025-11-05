@@ -220,7 +220,7 @@ def aggregate_past_iterations(iter_to_outputs, iter_to_metrics, current_iter_val
                 Due to this, the metrics of older iterations are no longer considered for 'best iteration model' candidates.
                 """
 
-            is_best_info = f"The current iteration is {'not ' if not current_iter_is_new_best else ''}the best iteration run so far{', therefore it is currently selected as the \'best iteration model\'' if current_iter_is_new_best else '.'}"
+            is_best_info = f"The current iteration is {'not ' if not current_iter_is_new_best else ''}the best iteration run so far{', therefore it is currently selected as the best iteration model' if current_iter_is_new_best else '.'}"
             aggregation += f"""
             Iteration {i} (Current iteration) {f"(Duration: {iter_duration})" if iter_duration is not None else ""}
             Steps' outputs:
