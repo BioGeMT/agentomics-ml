@@ -8,9 +8,6 @@ from utils.printing_utils import truncate_float
 from utils.snapshots import get_best_iteration
 from agents.prompts.prompts_utils import get_dataset_knowledge
 
-#TODO revamp stepputputs to be good for feedback agent, reasoning may be due to instructions - more details on code etc, concrete files produced
-#TODO in step sumaries, output list of files/scripts that have been created to help achieve the output (use it in feedback prompt)
-#TODO in og agent - follow feedback , not STEP-prompts (invalidate them outside of the 1st iteration?)
 class IterationInstructions(BaseModel):
     data_exploration_instructions: str = Field(
         description="""
@@ -42,7 +39,11 @@ class IterationInstructions(BaseModel):
         Instructions for the prediction exploration step.
         """
     )
-    # TODO common overarching part ?
+    other_instructions: str = Field(
+        description="""
+        Any other instructions that don't fit only one step.
+        """
+    )
 
 def create_feedback_agent(model, config):
     feedback_agent = Agent(

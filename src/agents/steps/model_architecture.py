@@ -11,9 +11,9 @@ class ModelArchitecture(BaseModel):
         The hyperparameters you have chosen for your model.
         """
     )
-    reasoning: str = Field(
+    files_created: list[str] = Field(
         description="""
-        The reasoning behind your model architecture and hyperparameter choices.
+        A list of files that were created during this step.
         """
     )
 

@@ -4,6 +4,11 @@ class DataSplit(BaseModel):
     train_path: str = Field(description="Path to generated train.csv file")
     val_path: str = Field(description="Path to generated validation.csv file")
     splitting_strategy: str = Field(description="Detailed description of the splitting strategy used")
+    files_created: list[str] = Field(
+        description="""
+        A list of files that were created during this step.
+        """
+    )
 
 def get_data_split_prompt(config, iteration, last_split_strategy="Split does not exist"):
     if config.task_type == 'classification':
