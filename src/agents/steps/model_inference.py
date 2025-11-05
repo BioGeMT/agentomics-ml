@@ -9,6 +9,14 @@ class ModelInference(BaseModel):
     path_to_inference_file: str = Field(
         description="Absolute path to the generated inference.py"
     )
+    inference_summary: str = Field(
+        description="Short summary of the inference implementation"
+    )
+    files_created: list[str] = Field(
+        description="""
+        A list of files that were created during this step.
+        """
+    )
 
 def get_model_inference_prompt(config):
     """

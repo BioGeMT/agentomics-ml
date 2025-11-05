@@ -6,9 +6,9 @@ class DataRepresentation(BaseModel):
         How will the data be represented, including any transformations, encodings, normalizations, features, and label transformations.
         """
     )
-    reasoning: str = Field(
+    files_created: list[str] = Field(
         description="""
-        The reasoning behind your data representation choices.
+        A list of files that were created during this step.
         """
     )
 

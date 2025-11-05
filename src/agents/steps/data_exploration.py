@@ -11,9 +11,9 @@ class DataExploration(BaseModel):
         Analysis of individual features: distributions, correlations with target, and potential predictive power.
         """
     )
-    reasoning: str = Field(
+    files_created: list[str] = Field(
         description="""
-        The reasoning behind your data exploration choices.
+        A list of files that were created during this step.
         """
     )
 

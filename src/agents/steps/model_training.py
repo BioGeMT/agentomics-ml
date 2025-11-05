@@ -4,9 +4,16 @@ class ModelTraining(BaseModel):
     path_to_train_file: str = Field(
         description="Absolute path to the generated train.py"
     )
-
     path_to_model_file: str = Field(
         description="Absolute path to the trained model file"
+    )
+    training_summary: str = Field(
+        description="Short summary of the training implementation"
+    )
+    files_created: list[str] = Field(
+        description="""
+        A list of files that were created during this step.
+        """
     )
 
 def get_model_training_prompt():
