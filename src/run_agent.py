@@ -82,14 +82,14 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
     last_split_strategy = None
     print(f"Starting training loop with {config.iterations} iterations")
     for run_index in range(config.iterations):
-        print(f"\n=== ITERATION {run_index} / {config.iterations} ===")
+        print(f"\n=== ITERATION {run_index} / {config.iterations - 1} ===")
         if(not config.can_iteration_split_data(run_index)):
             lock_split_files(config)
         split_fingerprint_before_iteration = create_split_fingerprint(config)
         start = time.time()
         try:
             # Not using feedback from failed iterations
-            feedback = iter_to_feedback[last_successful_iter] if (last_successful_iter is not None) else "No feedback available"
+            feedback = iter_to_feedback[last_successful_iter] if (last_successful_iter is not None) else "No instructions available"
             structured_outputs = await run_iteration(
                 config=config,
                 model=default_model, 
@@ -117,7 +117,7 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
             assert not val_split_changed #TODO delete
             new_metrics, best_metrics = get_new_and_best_metrics(config)
             iter_to_metrics[run_index] = new_metrics
-            iter_to_feedback[run_index] = "Iteration failed, no feedback available."
+            iter_to_feedback[run_index] = "Iteration failed, no instructions available."
             iter_to_outputs[run_index] = "Iteration failed, no outputs available."
             log_files(config, iteration=run_index)
             iter_to_split_changed[run_index] = val_split_changed
@@ -152,10 +152,19 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
         new_metrics, best_metrics = get_new_and_best_metrics(config)
         iter_to_metrics[run_index] = new_metrics
         iter_to_outputs[run_index] = structured_outputs
+
+        is_current_new_best = is_new_best(config)
+        populate_iteration_dir(config, run_index, is_best=is_current_new_best, structured_outputs=structured_outputs)
+        if(is_current_new_best):
+            snapshot(config, run_index)  # Snapshotting overrides the previous snapshot, influencing the get_new_and_best_metrics function
+            export_config_to_snapshot(config)
+            for callback in on_new_best_callbacks:
+                callback(config)
+
         try:
             iter_to_feedback[run_index] = await get_feedback(
                 config=config, 
-                is_new_best=is_new_best(config), 
+                is_new_best=is_current_new_best, 
                 model=feedback_model,
                 iteration=run_index,
                 extra_info=extra_info,
@@ -167,16 +176,8 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
             )
         except FeedbackAgentFailed as e:
             iter_to_outputs[run_index] = "No outputs available."
-            iter_to_feedback[run_index] = f"This was {'not ' if not is_new_best(config) else ''}the run with best validation metrics so far. No feedback available."
+            iter_to_feedback[run_index] = f"No instructions available."
             log_feedback_failure(e.exception_trace, iteration=run_index)
-
-        is_current_new_best = is_new_best(config)
-        populate_iteration_dir(config, run_index, is_best=is_current_new_best, structured_outputs=structured_outputs)
-        if(is_current_new_best):
-            snapshot(config, run_index)  # Snapshotting must be done after feedback - overrides the previous snapshot, influencing the get_new_and_best_metrics function
-            export_config_to_snapshot(config)
-            for callback in on_new_best_callbacks:
-                callback(config)
 
         add_metrics_to_report(config, run_index, new_metrics)
         await add_summary_to_report(default_model, config, run_index)
