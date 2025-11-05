@@ -10,13 +10,13 @@ def get_system_prompt(config):
     
     gpu_available = config.check_gpu_availability() is not None
 
-    available_resources = "CPU and GPU" if gpu_available else "CPU"
+    available_resources = config.get_resources_summary()
 
     #TODO don't limit your models and training concepts because of the lack of GPU
     return f"""
     Your goal is to create a robust machine learning model that will generalize to new unseen data. Use tools and follow instructions to reach this goal.
     You are using a linux system.
-    You have access to {available_resources} resources. Use them efficiently to train models.
+    You have access to the following resources: {available_resources}. Use them efficiently to train models.
     {'If a model architecture is fit for being accelerated by GPU, ensure your code uses GPU correctly before you run training.' if gpu_available else ''}
     You are provided with your own already activated environment
     Use this environment to install any packages you need (use non-verbose mode for installations, run conda installations with -y option).
