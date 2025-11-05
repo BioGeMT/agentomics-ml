@@ -1,3 +1,6 @@
+import os
+import stat
+from pathlib import Path
 from pydantic import BaseModel, Field
 
 from utils.dataset_utils import get_classes_integers
@@ -36,3 +39,9 @@ def get_model_inference_prompt(config):
     --input (an input file path). This file is of the same format as your training data (except the target column)
     --output (the output file path). {output_file_description}
     """
+
+def lock_inference_file(path_to_inference_file):
+    inference_file = Path(path_to_inference_file)
+    if inference_file.exists():
+        read_only_mode = stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH
+        os.chmod(inference_file, read_only_mode)
