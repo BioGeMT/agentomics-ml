@@ -134,7 +134,7 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
 
     The agent will have access to the train.csv and validation.csv files, all previous iteration files and step outputs, and the dataset_description.md file.
     The agent will have tools to install any packages/software, write and execute arbitrary bash and python code, and has access to the following foundation models: {foundation_models_info}
-    The agent has access to the following resources: {config.get_resources_summary()}
+    The agent will have access to the following resources: {config.get_resources_summary()}
 
     Balance exploration of new approaches and optimizing already working approaches based on the iteration history and remaining time/iterations. 
     Remember that the goal is to maximize the hidden test set performance that will use the saved best model (currently iteration {best_metric_iteration}).

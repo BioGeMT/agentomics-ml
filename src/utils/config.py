@@ -104,12 +104,33 @@ class Config:
         except:
             return None
     
+    def get_cpu_info(self):
+        cpu_info = subprocess.run(['lscpu'], capture_output=True, text=True).stdout
+        cpu_count = 'CPU count not available'
+        for line in cpu_info.split('\n'):
+            if 'CPU(s):' in line and 'NUMA' not in line:
+                cpu_count = line.split(':')[1].strip() + ' cores'
+                break
+        return cpu_count
+    
+    def get_ram_info(self):
+        mem_info = subprocess.run(['free', '-m'], capture_output=True, text=True).stdout
+        for line in mem_info.splitlines():
+            if line.strip().startswith('Mem:'):
+                return line.split()[1] + ' MB'  # Return total memory
+        return 'RAM info not available'
+    
     def get_resources_summary(self):
         gpu_info = self.check_gpu_availability()
+        resources = []
         if gpu_info:
-            return f'GPU Resource Available ({gpu_info})'
+            resources.append(f'GPU Resource Available ({gpu_info})')
         else:
-            return 'CPU Resources Only'
+            resources.append('CPU Resources Only')
+        resources.append(f'RAM: {self.get_ram_info()}')
+        resources.append(f'CPU: {self.get_cpu_info()}')
+        return ', '.join(resources)
+
 
     def print_summary(self):
         print('=== AGENTOMICS CONFIGURATION ===')
@@ -122,11 +143,5 @@ class Config:
         print('ITERATIONS:', self.iterations)
         print('SPLIT ALLOWED ITERATIONS:', self.split_allowed_iterations)
         print('USER PROMPT:', self.user_prompt)
-
-        gpu_info = self.check_gpu_availability()
-        if gpu_info:
-            print(f'GPU: Available ({gpu_info})')
-        else:
-            print('GPU: Not available')
-
+        print('RESOURCES SUMMARY:', self.get_resources_summary())
         print('===============================')
