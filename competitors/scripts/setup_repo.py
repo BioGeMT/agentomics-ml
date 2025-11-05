@@ -14,11 +14,7 @@ def main() -> None:
     config_path = Path(args.config)
     cfg = yaml.safe_load(config_path.read_text())
 
-    try:
-        repo_url = cfg["biomlbench_repo"]
-    except KeyError as exc:
-        raise ValueError("config.yaml must define 'biomlbench_repo'") from exc
-
+    repo_url = cfg["biomlbench_repo"]
     branch = cfg.get("biomlbench_branch", "main")
     competitors_dir = config_path.parent
     clone_dir = competitors_dir / "biomlbench"
