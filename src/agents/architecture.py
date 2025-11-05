@@ -93,12 +93,16 @@ def create_agents(config: Config, model, tools):
             raise ModelRetry("Train file does not exist.")
         if not os.path.exists(result.path_to_model_file):
             raise ModelRetry("Model file does not exist.")
+        if does_file_contain_string(result.path_to_train_file, "iteration_"):
+            raise ModelRetry("Train file contains references to an iteration folder ('iteration_' detected), which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
         return result
 
     @inference_agent.output_validator
     async def validate_inference(result: ModelInference) -> ModelInference:
         if not os.path.exists(result.path_to_inference_file):
             raise ModelRetry("Inference file does not exist.")
+        if does_file_contain_string(result.path_to_inference_file, "iteration_"):
+            raise ModelRetry("Inference file contains references to an iteration folder ('iteration_' detected), which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
         run_inference_and_log(config, iteration=-1, evaluation_stage='dry_run')
         lock_inference_file(result.path_to_inference_file)
         return result      
@@ -107,6 +111,8 @@ def create_agents(config: Config, model, tools):
     async def validate_prediction_exploration(result: PredictionExploration) -> PredictionExploration:
         if not os.path.exists(config.runs_dir / config.agent_id / "inference.py"):
             raise ModelRetry("Inference file does not exist.")
+        if does_file_contain_string(config.runs_dir / config.agent_id / "inference.py", "iteration_"):
+            raise ModelRetry("Inference file contains references to an iteration folder ('iteration_' detected), which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
         run_inference_and_log(config, iteration=-1, evaluation_stage='dry_run')
         return result
 
@@ -118,6 +124,10 @@ def create_agents(config: Config, model, tools):
         "prediction_exploration_agent": prediction_exploration_agent,
     } 
 
+def does_file_contain_string(file_path, search_string) -> bool:
+    with open(file_path, 'r') as file:
+        content = file.read()
+        return search_string in content
 
 def get_final_result_messages(all_messages):
     final_result_response = all_messages[-2]
