@@ -33,11 +33,9 @@ python "$COMPETITORS_DIR/scripts/setup_tasks.py"
 echo "[setup] Building Docker images (this will take a while)..."
 cd "$COMPETITORS_DIR/biomlbench"
 
-# Build base environment first if it doesn't exist
-if ! docker images biomlbench-env | grep -q biomlbench-env; then
-    echo "[setup] Building base environment..."
-    bash scripts/build_base_env.sh
-fi
+# Build base environment 
+ echo "[setup] Building base environment..."
+bash scripts/build_base_env.sh
 
 # Build AIDE agent image
 echo "[setup] Building AIDE agent image..."
