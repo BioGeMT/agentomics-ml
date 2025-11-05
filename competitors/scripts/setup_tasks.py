@@ -26,8 +26,7 @@ def generate_task(clone_dir: Path, dataset_root: Path, templates_dir: Path, comp
     (task_dir / "__init__.py").write_text("")
 
     desc_src = src / "dataset_description.md"
-    if desc_src.exists():
-        shutil.copy(desc_src, task_dir / "description.md")
+    shutil.copy(desc_src, task_dir / "description.md")
 
     prepare_template = (templates_dir / "prepare_template.py").read_text()
     config_template = (templates_dir / "config_template.yaml").read_text()
@@ -54,8 +53,7 @@ def generate_task(clone_dir: Path, dataset_root: Path, templates_dir: Path, comp
     module = util.module_from_spec(spec)
     spec.loader.exec_module(module)
     module.prepare(raw_dir, public_dir, private_dir)
-    if desc_src.exists():
-        shutil.copy(desc_src, public_dir / "description.md")
+    shutil.copy(desc_src, public_dir / "description.md")
 
 
 def main() -> None:
