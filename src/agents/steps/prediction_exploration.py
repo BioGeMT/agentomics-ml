@@ -12,6 +12,11 @@ class PredictionExploration(BaseModel):
         Don't provide concrete implementation recommendations for improvement.
         """
     )
+    files_created: list[str] = Field(
+        description="""
+        A list of files that were created during this step. Leave out the '/workspace/runs/<your_id>/' part of each path.
+        """
+    )
 
 def get_prediction_exploration_prompt(validation_path, inference_path):
     return f"""

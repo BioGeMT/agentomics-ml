@@ -8,7 +8,7 @@ class DataRepresentation(BaseModel):
     )
     files_created: list[str] = Field(
         description="""
-        A list of files that were created during this step.
+        A list of files that were created during this step. Leave out the '/workspace/runs/<your_id>/' part of each path.
         """
     )
 
