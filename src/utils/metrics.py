@@ -98,15 +98,10 @@ def get_regression_metrics_functions():
             needs_probabilities=False,
             higher_is_better=False
         ),
-        "POS_PCC": Metric(
+        "PEARSON": Metric(
             function=lambda y_true, y_pred: _pcc(y_true, y_pred),
             needs_probabilities=False,
             higher_is_better=True
-        ),
-        "NEG_PCC": Metric(
-            function=lambda y_true, y_pred: _pcc(y_true, y_pred),
-            needs_probabilities=False,
-            higher_is_better=False  # Negative correlation
         ),
         "R2": Metric(
             function=lambda y_true, y_pred: r2_score(y_true, y_pred),
