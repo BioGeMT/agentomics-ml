@@ -82,7 +82,7 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
     last_split_strategy = None
     print(f"Starting training loop with {config.iterations} iterations")
     for run_index in range(config.iterations):
-        print(f"\n=== ITERATION {run_index + 1} / {config.iterations} ===")
+        print(f"\n=== ITERATION {run_index} / {config.iterations} ===")
         if(not config.can_iteration_split_data(run_index)):
             lock_split_files(config)
         split_fingerprint_before_iteration = create_split_fingerprint(config)
