@@ -187,6 +187,7 @@ async def run_architecture_compressed(text_output_agent: Agent, inference_agent:
             train_path = str(config.runs_dir / config.agent_id / 'train.csv'),
             val_path = str(config.runs_dir / config.agent_id / 'validation.csv'),
             splitting_strategy = last_split_strategy,
+            files_created=[],
         )
         persistent_messages+=fabricate_final_result_messages(manual_data_split_step, model_name=config.model_name)
         structured_outputs.append(manual_data_split_step)
