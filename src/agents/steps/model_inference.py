@@ -40,7 +40,7 @@ def get_model_inference_prompt(config):
     
     #TODO "Except the target column" - use target/class/numeric_label?
     return f"""
-    Next task: create inference.py file.
+    Your next task: create inference.py file.
     If your model can be accelerated by GPU, implement the code to use GPU.
     The inference script must produce a prediction for every single input. Don't skip any samples.
     The inference script will be taking the following named arguments:

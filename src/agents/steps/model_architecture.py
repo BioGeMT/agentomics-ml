@@ -18,4 +18,4 @@ class ModelArchitecture(BaseModel):
     )
 
 def get_model_architecture_prompt():
-    return "Next task: choose the model architecture and hyperparameters."
+    return "Your next task: choose the model architecture and hyperparameters."
