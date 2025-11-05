@@ -26,7 +26,7 @@ from utils.report_logger import add_metrics_to_report, add_summary_to_report
 from utils.providers.provider import Provider, get_provider_from_string
 from feedback.feedback_agent import get_feedback
 from tools.setup_tools import create_tools
-from utils.snapshots import reset_snapshot_if_val_split_changed, create_split_fingerprint, wipe_current_iter_files
+from utils.snapshots import reset_snapshot_if_val_split_changed, create_split_fingerprint, wipe_current_iter_files, delete_metrics_from_iteration_dir
 from agents.steps.data_split import DataSplit
 
 async def main(model_name, feedback_model_name, dataset, tags, val_metric,
@@ -157,6 +157,7 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
             export_config_to_snapshot(config)
             for callback in on_new_best_callbacks:
                 callback(config)
+        delete_metrics_from_iteration_dir(config, run_index) #needs to be there for snapshotting, but removed after to not mixup metrics from diff splits if agent runs cat on metrics
 
         try:
             iter_to_feedback[run_index] = await get_feedback(
