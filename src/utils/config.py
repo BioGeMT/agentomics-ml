@@ -77,7 +77,7 @@ class Config:
         self.explicit_valid_set_provided = (agent_datasets_dir / dataset / "validation.csv").exists()
         self.split_allowed_iterations = split_allowed_iterations if not self.explicit_valid_set_provided else 0
         self.time_deadline = time_deadline
-        self.foundational_model_to_desc = {} #TODO implement
+        self.foundation_model_to_desc = {} #TODO implement
         
         if max_steps is not None:
             self.max_steps = max_steps
