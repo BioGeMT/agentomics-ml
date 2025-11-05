@@ -48,7 +48,7 @@ def get_user_prompt(config):
     return config.user_prompt
 
 def get_iteration_prompt(config, run_index, feedback):
-    past_iterations_range = f"iteration_0 to iteration_{run_index-1}" if run_index > 1 else "iteration_0"
+    past_iterations_range = f"iteration_0 up to iteration_{run_index-1}" if run_index > 1 else "iteration_0"
     return f"""
     Your original prompt: {config.user_prompt}
     You are at iteration {run_index}. Files from past iterations ({past_iterations_range}) are available in read-only folders: {config.runs_dir / config.agent_id}/iteration_0, iteration_1, etc.

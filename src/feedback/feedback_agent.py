@@ -130,6 +130,7 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
     You're providing instructions to an LLM agent, never offer that you will take any actions to fix or implement fixes yourself.
     Provide only actionable instructions, don't include "Why this helps", "Expected outcomes", or any other non-actionable information.
     If you refer to concrete files, use their name, extension, and the iteration they're from. Don't refer to them by their full path.
+    For example "Modify the train.py script from iteration 4 by changing the learning rate to 0.01" is a valid instruction.
     Don't provide instructions that go against the requirements in the common user prompt.
 
     The agent will have access to the train.csv and validation.csv files, all previous iteration files and step outputs, and the dataset_description.md file.
@@ -219,7 +220,7 @@ def aggregate_past_iterations(iter_to_outputs, iter_to_metrics, current_iter_val
                 Due to this, the metrics of older iterations are no longer considered for 'best iteration model' candidates.
                 """
 
-            is_best_info = f"The current iteration is {'not ' if not current_iter_is_new_best else ''}the best iteration run so far{', therefore it is currently selected as the solution to your task' if current_iter_is_new_best else '.'}"
+            is_best_info = f"The current iteration is {'not ' if not current_iter_is_new_best else ''}the best iteration run so far{', therefore it is currently selected as the \'best iteration model\'' if current_iter_is_new_best else '.'}"
             aggregation += f"""
             Iteration {i} (Current iteration) {f"(Duration: {iter_duration})" if iter_duration is not None else ""}
             Steps' outputs:
