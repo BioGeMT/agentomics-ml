@@ -3,13 +3,7 @@ import json
 def get_system_prompt(config):
     train_csv_path = config.agent_dataset_dir / "train.csv"
     validation_csv_path = config.agent_dataset_dir / "validation.csv"
-    dataset_knowledge_path = config.agent_dataset_dir / "dataset_description.md"
-
-    with open(dataset_knowledge_path) as f:
-        dataset_knowledge = f.read()
-    if config.task_type == "classification":
-        metadata = json.loads((config.prepared_dataset_dir / "metadata.json").read_text())
-        dataset_knowledge += f"\n\nLabel mapping: {metadata.get('label_to_scalar', {})}"
+    dataset_knowledge = get_dataset_knowledge(config)
     dataset_paths = f"Dataset path:\n    {train_csv_path}"
     if validation_csv_path.exists():
         dataset_paths += f"\n    Validation path:\n    {validation_csv_path}"
@@ -41,6 +35,15 @@ def get_system_prompt(config):
     """
     # return load_prompts(config["prompt"])["system_prompt"]
 
+def get_dataset_knowledge(config):
+    dataset_knowledge_path = config.agent_dataset_dir / "dataset_description.md"
+    with open(dataset_knowledge_path) as f:
+        dataset_knowledge = f.read()
+    if config.task_type == "classification":
+        metadata = json.loads((config.prepared_dataset_dir / "metadata.json").read_text())
+        dataset_knowledge += f"\n\nLabel mapping: {metadata.get('label_to_scalar', {})}"
+    return dataset_knowledge
+
 def get_user_prompt(config):
     return config.user_prompt
 
@@ -50,8 +53,7 @@ def get_iteration_prompt(config, run_index, feedback):
     Your original prompt: {config.user_prompt}
     You are at iteration {run_index}. Files from past iterations ({past_iterations_range}) are available in read-only folders: {config.runs_dir / config.agent_id}/iteration_0, iteration_1, etc.
     If you want to reuse any code or files from past iterations, copy them into your current working directory ({config.runs_dir / config.agent_id}). Files in past iteration folders won't be accessible during final inference.
-    Feedback from your past runs:
+    Instructions to follow for the current iteration:
     {feedback}
-    Address the feedback in your current iteration.
     {"You must not modify the train.csv and validation.csv files this iteration." if not config.can_iteration_split_data(run_index) else ""}
     """
