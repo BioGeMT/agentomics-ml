@@ -106,7 +106,6 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
             iter_to_duration[run_index] = time.time() - start
             log_serial_metrics(prefix='validation', metrics=None, iteration=run_index, task_type=config.task_type)
             log_serial_metrics(prefix='train', metrics=None, iteration=run_index, task_type=config.task_type)
-            #TODO also files in run dir should revert?
             load_fallbacks_to_rundir(config, run_index)
             val_split_changed = reset_snapshot_if_val_split_changed(
                 config,
@@ -114,9 +113,7 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
                 old_fingerprint=split_fingerprint_before_iteration, 
                 new_fingerprint=create_split_fingerprint(config),
             )
-            assert not val_split_changed #TODO delete
-            new_metrics, best_metrics = get_new_and_best_metrics(config)
-            iter_to_metrics[run_index] = new_metrics
+            iter_to_metrics[run_index] = {}
             iter_to_feedback[run_index] = "Iteration failed, no instructions available."
             iter_to_outputs[run_index] = "Iteration failed, no outputs available."
             log_files(config, iteration=run_index)
