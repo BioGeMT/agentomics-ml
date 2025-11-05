@@ -4,42 +4,45 @@ import weave
 import traceback
 from utils.exceptions import FeedbackAgentFailed
 from pydantic import BaseModel, Field
-from agents.steps.model_inference import ModelInference
-from agents.steps.model_training import ModelTraining
 from utils.printing_utils import truncate_float
 from utils.snapshots import get_best_iteration
+from agents.prompts.prompts_utils import get_dataset_knowledge
 
-class IterationSummary(BaseModel):
-    data_exploration_summary: str = Field(
+#TODO revamp stepputputs to be good for feedback agent, reasoning may be due to instructions - more details on code etc, concrete files produced
+#TODO in step sumaries, output list of files/scripts that have been created to help achieve the output (use it in feedback prompt)
+#TODO in og agent - follow feedback , not STEP-prompts (invalidate them outside of the 1st iteration?)
+class IterationInstructions(BaseModel):
+    data_exploration_instructions: str = Field(
         description="""
-        Summary of the data and the features explored
+        Instructions for the exploration step (you can instruct to skip this step if it's not necessary)
         """
     )
-    data_split_summary: str = Field(
+    data_split_instructions: str = Field(
         description="""
-        Summary of how was the data split.
+        Instructions for the data split step (you can instruct to skip this step if it's not necessary).
         """
     )
-    data_representation_summary: str = Field(
+    data_representation_instructions: str = Field(
         description="""
-        Summary of any used transformations, encodings, normalizations, features, ...
+        Instructions for the data representation step.
         """
     )
-    model_architecture_summary: str = Field(
+    model_architecture_instructions: str = Field(
         description="""
-        Summary of the machine learning model type and architecture.
+        Instructions for the machine learning architecture design step.
         """
     )
-    model_training_summary: str = Field(
+    model_training_instructions: str = Field(
         description="""
-        Summary of the training process, including hyperparameters and optimizers.
+        Instructions for the model training process, including hyperparameters and optimizers.
         """
     )
-    prediction_exploration_summary: str = Field(
+    prediction_exploration_instructions: str = Field(
         description="""
-        Summary of the insights about the prediction biases.
+        Instructions for the prediction exploration step.
         """
     )
+    # TODO common overarching part ?
 
 def create_feedback_agent(model, config):
     feedback_agent = Agent(
@@ -52,7 +55,7 @@ def create_feedback_agent(model, config):
 
 
 @weave.op(call_display_name="Get Feedback")
-async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, iter_to_metrics, iter_to_split_changed, val_split_changed, iter_to_duration, extra_info="") -> str:
+async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, iter_to_metrics, iter_to_split_changed, val_split_changed, iter_to_duration, extra_info="") -> IterationInstructions|str:
     if iteration == config.iterations - 1 : return "Last iteration, no feedback needed"
     
     agent = create_feedback_agent(model, config)
@@ -88,9 +91,22 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
     else:
         iterations_left = config.iterations - iteration - 1
         time_info = f"{iterations_left} iterations"
+
+    if(len(config.foundational_model_to_desc) == 0):
+        foundation_models_info = "No foundation models available"
+    else:
+        foundation_models_info = "".join([f'model_id:{model_id}\ndescription:{desc}\n' for model_id, desc in config.foundational_model_to_desc.items()])
         
     feedback_prompt = f"""
     {len(iter_to_outputs)} iterations completed in the current run so far
+    [Common user prompt of the iteration agents]
+    {config.user_prompt}
+    [End of user prompt]
+
+    [Dataset knowledge from dataset_description.md]
+    {get_dataset_knowledge(config)}
+    [End of dataset knowledge]
+
     [Iterations summaries (run history)]
     {all_iters_aggregation}
     [End of iteration summaries]
@@ -113,6 +129,10 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
     You're providing instructions to an LLM agent, never offer that you will take any actions to fix or implement fixes yourself.
     Provide only actionable instructions, don't include "Why this helps", "Expected outcomes", or any other non-actionable information.
     If you refer to concrete files, use their name, extension, and the iteration they're from. Don't refer to them by their full path.
+    Don't provide instructions that go against the requirements in the common user prompt.
+
+    The agent will have access to the train.csv and validation.csv files, all previous iteration files and step outputs, and the dataset_description.md file.
+    The agent will have tools to install any packages/software, write and execute arbitrary bash and python code, and has access to the following foundation models: {foundation_models_info}
 
     Balance exploration of new approaches and optimizing already working approaches based on the iteration history and remaining time/iterations. 
     Remember that the goal is to maximize the hidden test set performance that will use the saved best model (currently iteration {best_metric_iteration}).
@@ -125,8 +145,8 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
     try:
         feedback = await agent.run(
             user_prompt = feedback_prompt,
-            output_type=None,
-            message_history=None
+            message_history=None,
+            output_type=IterationInstructions,
         )
         time.sleep(3)
         return feedback.output
