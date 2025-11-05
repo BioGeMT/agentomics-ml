@@ -8,7 +8,7 @@ class ModelTraining(BaseModel):
         description="Absolute path to the trained model file"
     )
     training_summary: str = Field(
-        description="Short summary of the training implementation"
+        description="Short summary of the training implementation. Don't include any metrics in this summary."
     )
     files_created: list[str] = Field(
         description="""
