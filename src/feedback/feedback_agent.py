@@ -50,21 +50,21 @@ class IterationInstructions(BaseModel):
         """
     )
 
-def create_feedback_agent(model, config):
+def create_feedback_agent(model, provider, config):
     feedback_agent = Agent(
         model=model,
-        model_settings={'temperature': config.temperature},
-        retries=config.max_validation_retries
+        retries=config.max_validation_retries,
+        model_settings=provider.get_high_reasoning_model_settings(kwargs={'temperature': config.temperature}), 
     )
     
     return feedback_agent
 
 
 @weave.op(call_display_name="Get Feedback")
-async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, iter_to_metrics, iter_to_split_changed, val_split_changed, iter_to_duration, extra_info="") -> IterationInstructions|str:
+async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, iter_to_metrics, iter_to_split_changed, val_split_changed, iter_to_duration, provider, extra_info="") -> IterationInstructions|str:
     if iteration == config.iterations - 1 : return "Last iteration, no feedback needed"
     
-    agent = create_feedback_agent(model, config)
+    agent = create_feedback_agent(model=model, provider=provider, config=config)
     next_iteration_index = iteration + 1
     num_of_iters = len(iter_to_outputs)
     iter_to_split_version, split_version_to_iters = get_iter_split_infos(iter_to_outputs, iter_to_split_changed)

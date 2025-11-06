@@ -6,6 +6,7 @@ import os
 import time
 
 import wandb
+import weave
 from timeout_function_decorator import timeout as timeout_decorator
 
 from run_logging.evaluate_log_run import run_inference_and_log
@@ -65,12 +66,13 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric,
     feedback_model = provider.create_model(config.feedback_model_name, config)
     #TODO Instantiate report logger model and pass it to add_summary_to_report
 
-    await run_agentomics(config=config, default_model=default_model, feedback_model=feedback_model, on_new_best_callbacks=on_new_best_callbacks)
+    await run_agentomics(config=config, default_model=default_model, feedback_model=feedback_model, on_new_best_callbacks=on_new_best_callbacks, provider=provider)
 
     if(wandb_logged_in):
         wandb.finish()
 
-async def run_agentomics(config: Config, default_model, feedback_model, on_new_best_callbacks):
+@weave.op(call_display_name=lambda call: f"Agentomics run - agent_id: {call.inputs['config'].agent_id}")
+async def run_agentomics(config: Config, default_model, feedback_model, on_new_best_callbacks, provider):
     tools = create_tools(config)
     
     iter_to_outputs = {}
@@ -171,6 +173,7 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
                 iter_to_split_changed=iter_to_split_changed,
                 val_split_changed=val_split_changed,
                 iter_to_duration=iter_to_duration,
+                provider=provider,
             )
         except FeedbackAgentFailed as e:
             iter_to_outputs[run_index] = "No outputs available."
