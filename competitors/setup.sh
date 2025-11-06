@@ -45,10 +45,6 @@ bash scripts/build_agent.sh aide
 echo "[setup] Building BioMNI agent image..."
 bash scripts/build_agent.sh biomni
 
-# Build MLAgentBench image
-echo "[setup] Building MLAgentBench agent image..."
-bash scripts/build_agent.sh mlagentbench
-
 # Build STELLA image
 echo "[setup] Building STELLA agent image..."
 bash scripts/build_agent.sh stella
