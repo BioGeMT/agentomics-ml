@@ -1,4 +1,5 @@
 import wandb
+import math
 from wandb.errors import AuthenticationError, UsageError
 from utils.metrics import get_task_to_metrics_names
 
@@ -28,7 +29,7 @@ def log_inference_stage_and_metrics(stage, task_type, metrics=None):
     if stage == 0 or stage == 1:
        metrics_names = get_task_to_metrics_names()[task_type]
        print(f"   Logging placeholder metrics: {metrics_names}")
-       wandb.log({m: -1 for m in metrics_names})
+       wandb.log({m: math.nan for m in metrics_names})
     else:
         if metrics:
             print(f"   Logging test metrics: {metrics}")
@@ -40,7 +41,7 @@ def log_serial_metrics(prefix, task_type, metrics=None, iteration=None):
     
     if not metrics:
         metrics_names = get_task_to_metrics_names()[task_type]
-        wandb.log({f"{prefix}/{m}": -1 for m in metrics_names}, step=iteration)
+        wandb.log({f"{prefix}/{m}": math.nan for m in metrics_names}, step=iteration)
 
     else:
         metrics = {f"{prefix}/{k}": v for k,v in metrics.items()}
