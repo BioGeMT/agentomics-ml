@@ -34,6 +34,11 @@ class IterationInstructions(BaseModel):
         Instructions for the model training process, including hyperparameters and optimizers.
         """
     )
+    inference_instructions: str = Field(
+        description="""
+        Instructions for creating the inference script for the trained model.
+        """
+    )
     prediction_exploration_instructions: str = Field(
         description="""
         Instructions for the prediction exploration step.
@@ -100,17 +105,19 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
         
     feedback_prompt = f"""
     {len(iter_to_outputs)} iterations completed in the current run so far
-    [Common user prompt of the iteration agents]
+    <common_user_prompt_of_the_iteration_agents>
     {config.user_prompt}
-    [End of user prompt]
+    </common_user_prompt_of_the_iteration_agents>
 
-    [Dataset knowledge from dataset_description.md]
+    <dataset_knowledge_from_dataset_description_md>
     {get_dataset_knowledge(config)}
-    [End of dataset knowledge]
+    </dataset_knowledge_from_dataset_description_md>
 
-    [Iterations summaries (run history)]
+    <run_history>
+    <iterations_summaries>
     {all_iters_aggregation}
-    [End of iteration summaries]
+    </iterations_summaries>
+    </run_history>
 
     The main goal of the run is to maximize the hidden test set generalization performance (main metric:{config.val_metric}) that will use the 'best iteration model' (currently model from iteration {best_metric_iteration}). Only models using the latest split are candidates for this 'best iteration model'.
     There are {time_info} left before the run ends. Then, the 'best iteration model' will be extracted and automatically evaluated on the hidden test set.
@@ -205,12 +212,16 @@ def aggregate_past_iterations(iter_to_outputs, iter_to_metrics, current_iter_val
         
         if i != num_of_iters -1: 
             aggregation += f"""
-            Iteration {i} {f"(Duration: {iter_duration})" if iter_duration is not None else ""}
-            Steps' outputs:
+            <iteration_{i}_summary>
+            {f"<duration>{iter_duration}</duration>" if iter_duration is not None else ""}
+            <steps_outputs>
             {iter_to_outputs[i]}
-            Metrics:
-            {truncated_iter_metrics}
-            {split_info if truncated_iter_metrics else ""}
+            </steps_outputs>
+            <metrics>
+            {truncated_iter_metrics if truncated_iter_metrics else "Inference script failed, no metrics available."}
+            </metrics>
+            {f'<split_info>{split_info}</split_info>' if truncated_iter_metrics else ""}
+            </iteration_{i}_summary>
             """
         else: #last iteration (current):
             extra_info = current_iter_extra_info
@@ -223,14 +234,24 @@ def aggregate_past_iterations(iter_to_outputs, iter_to_metrics, current_iter_val
 
             is_best_info = f"The current iteration is {'not ' if not current_iter_is_new_best else ''}the best iteration run so far{', therefore it is currently selected as the best iteration model' if current_iter_is_new_best else '.'}"
             aggregation += f"""
-            Iteration {i} (Current iteration) {f"(Duration: {iter_duration})" if iter_duration is not None else ""}
-            Steps' outputs:
+            <iteration_{i}_summary>
+            {f"<duration>{iter_duration}</duration>" if iter_duration is not None else ""}
+            <steps_outputs>
             {iter_to_outputs[i]}
+            </steps_outputs>
+            <extra_info>
             {extra_info}
-            Metrics:
-            {truncated_iter_metrics}
+            </extra_info>
+            <metrics>
+            {truncated_iter_metrics if truncated_iter_metrics else "Inference script failed, no metrics available."}
+            </metrics>
+            <is_best_info>
             {is_best_info}
+            </is_best_info>
+            <split_info>
             {split_info}
+            </split_info>
+            </iteration_{i}_summary>
             """
 
     return aggregation
