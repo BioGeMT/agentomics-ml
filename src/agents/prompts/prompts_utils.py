@@ -52,8 +52,9 @@ def get_iteration_prompt(config, run_index, feedback):
     past_iterations_range = f"iteration_0 up to iteration_{run_index-1}" if run_index > 1 else "iteration_0"
     return f"""
     Your original prompt: {config.user_prompt}
-    You are at iteration {run_index}. Files from past iterations ({past_iterations_range}) are available in read-only folders: {config.runs_dir / config.agent_id}/iteration_0, iteration_1, etc.
+    You have already completed iterations {",".join([str(i) for i in range(run_index)])}. You are at iteration {run_index}. Files from past iterations ({past_iterations_range}) are available in read-only folders: {config.runs_dir / config.agent_id}/iteration_0, iteration_1, etc.
     If you want to reuse any code or files from past iterations, copy them into your current working directory ({config.runs_dir / config.agent_id}). Files in past iteration folders won't be accessible during final inference.
+    Detailed outputs of any previous iteration and their summaries are available at {config.runs_dir / config.agent_id}/iteration_<iteration_number>/structured_outputs.txt
     Instructions to follow for the current iteration:
     {feedback}
     {"You must not modify the train.csv and validation.csv files this iteration." if not config.can_iteration_split_data(run_index) else ""}
