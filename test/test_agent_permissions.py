@@ -21,7 +21,7 @@ class TestAgentPermissions(BaseAgentTest):
         
         result = self.bash_tool.function(f"ls -1 {self.config.runs_dir}/")
         self.assertNotIn("Command failed", result, "Should be able to list runs directory")
-        directories = [d.strip() for d in result.strip().split('\n') if d.strip()]
+        directories = [d.strip() for d in result.strip().split('\n') if d.strip() and not d.strip().startswith('[Tool call')]
 
         self.assertEqual(len(directories), 1, f"Expected exactly 1 directory, found {len(directories)}: {directories}")
         self.assertEqual(directories[0], self.agent_id, f"Expected only {self.agent_id} directory, found: {directories}")
@@ -85,13 +85,13 @@ class TestAgentPermissions(BaseAgentTest):
         self.assertIn(f"{self.config.runs_dir}/{self.agent_id}/.conda/envs/{self.agent_id}_env/bin/python", which_python.strip(),
                       "Python should be from the agent's conda environment")
         
-        install_result = self.bash_tool.function("conda install numpy -y 2>&1")
+        install_result = self.bash_tool.function("conda install matplotlib -y 2>&1")
         self.assertNotIn("Command failed", install_result, "Conda install should succeed")
         self.assertNotIn("Permission denied", install_result, "Conda install should not have permission issues")
         
-        python_result = self.bash_tool.function("python -c 'import numpy; print(f\"NumPy version: {numpy.__version__}\")' 2>&1")
+        python_result = self.bash_tool.function("python -c 'import matplotlib; print(f\"Matplotlib version: {matplotlib.__version__}\")' 2>&1")
         self.assertNotIn("Command failed", python_result, "Python command should succeed")
-        self.assertIn("NumPy version:", python_result, "Should successfully import numpy")
+        self.assertIn("Matplotlib version:", python_result, "Should successfully import matplotlib")
 
     def test_agent_python_tools_security(self):
         """Test that Python tools see proper workspace isolation."""

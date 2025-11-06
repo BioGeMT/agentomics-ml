@@ -18,7 +18,7 @@ class BashProcess:
         self.agent_env = self.filter_agent_env_vars()
 
         if autoconda:
-            self.create_conda_env()
+            self.create_preloaded_conda()
     
     def filter_agent_env_vars(self):
         agent_env = {}
@@ -30,11 +30,12 @@ class BashProcess:
 
         return agent_env
 
-    def create_conda_env(self):
+    def create_preloaded_conda(self):
         conda_env_path = self.runs_dir / self.agent_id / ".conda" / "envs" / f"{self.agent_id}_env"
-        self.run(
-            f"conda create -p {conda_env_path} python=3.9 -y"
-        )
+
+        self.run(f"mkdir -p {conda_env_path}")
+        self.run(f"tar -xzf /opt/agent_start_env.tar.gz -C {conda_env_path}")
+        self.run(f"source {conda_env_path}/bin/activate && conda-unpack")
 
     def run(self, command: str):
         with self.locked: #exclusive bash access

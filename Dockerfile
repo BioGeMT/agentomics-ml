@@ -27,6 +27,14 @@ ENV HF_HOME=/foundation_models
 COPY foundation_models/ /foundation_models/
 COPY src/utils/foundation_models_utils.py /repository/src/utils/foundation_models_utils.py
 RUN /opt/conda/envs/agentomics-env/bin/python /repository/src/utils/foundation_models_utils.py
+
+# Setup agent start environment
+COPY environment_agent.yaml .
+RUN mamba env create -f environment_agent.yaml \
+    && mamba clean -afy \
+    && rm -rf /tmp/conda-pkgs
+RUN conda run -n agent_start_env conda-pack -o /opt/agent_start_env.tar.gz
+
 WORKDIR /repository
 
 ENTRYPOINT ["/opt/conda/envs/agentomics-env/bin/python", "/repository/src/run_agent_interactive.py"]
