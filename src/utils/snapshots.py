@@ -194,7 +194,9 @@ def populate_iteration_dir(config, run_index, structured_outputs, is_best=False)
         ".cache",
     ]
 
-    files_to_delete = []
+    files_to_delete = [
+        'dry_run_metrics.txt',
+    ]
 
     for element in run_dir.iterdir():
         if element.is_dir() and (element.name.startswith("iteration_") or element.name == ".conda"):
