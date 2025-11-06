@@ -7,7 +7,7 @@ from utils.exceptions import IterationRunFailed
 from utils.printing_utils import pretty_print_node
 
 @weave.op(call_display_name=lambda call: f"Agent Step - {call.inputs['output_type'].__name__ if call.inputs.get('output_type', None) else call.inputs['agent']._output_type.__name__}")
-async def run_agent(agent: Agent, user_prompt: str, max_steps: int, message_history: list | None, output_type = None, verbose: bool = True):
+async def run_agent(agent: Agent, user_prompt: str, max_steps: int, message_history: list | None, output_type = None, verbose: bool = True, deps=None):
     with capture_run_messages() as messages:
         try:
             async with agent.iter(
@@ -15,6 +15,7 @@ async def run_agent(agent: Agent, user_prompt: str, max_steps: int, message_hist
                 usage_limits=UsageLimits(request_limit=max_steps),
                 output_type=output_type,
                 message_history=message_history,
+                deps=deps,
             ) as agent_run:
                 async for node in agent_run:
                     if(verbose):

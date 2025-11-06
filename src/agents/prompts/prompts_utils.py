@@ -23,6 +23,7 @@ def get_system_prompt(config):
     Don't delete this environment.
     Write all your python scripts in files.
     You can create files only in {config.runs_dir / config.agent_id} directory.
+    Don't create or modify any folders starting with 'iteration_'.
     Run all commands in a way that prints the least amount of tokens into the console.
     Always call tools with the right arguments, specifying each argument as separate key-value pair. 
     

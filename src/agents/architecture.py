@@ -60,6 +60,7 @@ def create_agents(config: Config, model, tools):
         model_settings={'temperature':config.temperature},
         output_type= PredictionExploration,
         retries=config.max_validation_retries,
+        deps_type=dict,
     )
 
     @split_dataset_agent.output_validator
@@ -108,11 +109,14 @@ def create_agents(config: Config, model, tools):
         return result      
     
     @prediction_exploration_agent.output_validator
-    async def validate_prediction_exploration(result: PredictionExploration) -> PredictionExploration:
+    async def validate_prediction_exploration(ctx, result: PredictionExploration) -> PredictionExploration:
         if not os.path.exists(config.runs_dir / config.agent_id / "inference.py"):
             raise ModelRetry("Inference file does not exist.")
         if does_file_contain_string(config.runs_dir / config.agent_id / "inference.py", "iteration_"):
             raise ModelRetry("Inference file contains references to an iteration folder ('iteration_' detected), which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
+        invalid_iter_folders = get_invalid_iteration_folders(config, ctx.deps['iteration'])
+        if len(invalid_iter_folders) > 0:
+            raise ModelRetry("An iteration folder was created during this iteration. Move all files out of it to the current working directory, update their dependencies if necessary, and delete it. This applies to the following folders: " + ", ".join(invalid_iter_folders))
         run_inference_and_log(config, iteration=-1, evaluation_stage='dry_run')
         return result
 
@@ -123,6 +127,15 @@ def create_agents(config: Config, model, tools):
         "inference_agent": inference_agent,
         "prediction_exploration_agent": prediction_exploration_agent,
     } 
+
+def get_invalid_iteration_folders(config, iteration):
+    run_dir = config.runs_dir / config.agent_id
+    valid_folders = [f"iteration_{i}" for i in range(iteration)]
+    invalid_folders = []
+    for element in run_dir.iterdir():
+        if "iteration_" in element.name and element.name not in valid_folders:
+            invalid_folders.append(element.name)
+    return invalid_folders
 
 def does_file_contain_string(file_path, search_string) -> bool:
     with open(file_path, 'r') as file:
@@ -250,6 +263,7 @@ async def run_architecture_compressed(text_output_agent: Agent, inference_agent:
         user_prompt=get_prediction_exploration_prompt(validation_path=val_path,inference_path=model_inference.path_to_inference_file)+ctx_replacer_msg,
         max_steps=config.max_steps,
         message_history=persistent_messages,
+        deps={'iteration': iteration},
     )
     persistent_messages+=get_final_result_messages(prediction_messages) #not used
     structured_outputs.append(prediction_exploration)
