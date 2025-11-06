@@ -35,10 +35,14 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
         validation_input = run_dir / "validation.csv"
         train_input = run_dir / "train.csv"
 
-    stage_to_input = {
+    stage_to_inference_input = {
         'dry_run': config.prepared_dataset_dir / "train.no_label.csv",
-        'validation': validation_input,
+        'validation': config.prepared_dataset_dir / "validation.no_label.csv" if config.explicit_valid_set_provided else run_dir / "validation.no_label.csv",
         'test': test_files_dir / "test.no_label.csv",
+        'train': config.prepared_dataset_dir / "train.no_label.csv",
+    }
+    stage_to_labeled_input = {
+        'validation': validation_input,
         'train': train_input
     }
     stage_to_output = {
@@ -53,10 +57,15 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
         'test': run_dir / "test_metrics.txt",
         'train': run_dir / "train_metrics.txt"
     }
+    if(not config.explicit_valid_set_provided and evaluation_stage == 'validation'):
+        create_labelless_validation_file(config, target_path=stage_to_inference_input[evaluation_stage]) 
 
     command_prefix=f"conda run -p {conda_path[source_folder]} --no-capture-output"
-    command = f"{command_prefix} python {inference_path[source_folder]} --input {stage_to_input[evaluation_stage]} --output {stage_to_output[evaluation_stage]}"
+    command = f"{command_prefix} python {inference_path[source_folder]} --input {stage_to_inference_input[evaluation_stage]} --output {stage_to_output[evaluation_stage]}"
     inference_out = subprocess.run(command, shell=True, executable="/bin/bash", capture_output=True)
+    if(not config.explicit_valid_set_provided and evaluation_stage == 'validation'):
+        remove_file(target_path=stage_to_inference_input[evaluation_stage])
+
     if evaluation_stage == 'test':
         test_file_path = test_files_dir / "test.csv"
         if not test_file_path.exists():
@@ -114,7 +123,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
         try:
             _ = get_metrics_and_serial_log(
                 results_file=stage_to_output[evaluation_stage],
-                test_file=stage_to_input[evaluation_stage],
+                test_file=stage_to_labeled_input[evaluation_stage],
                 output_file=stage_to_metrics_file[evaluation_stage],
                 numeric_label_col=dataset_metadata['numeric_label_col'],
                 iteration=iteration,
@@ -136,7 +145,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
         try:
             _ = get_metrics_and_serial_log(
                 results_file=stage_to_output[evaluation_stage],
-                test_file=stage_to_input[evaluation_stage],
+                test_file=stage_to_labeled_input[evaluation_stage],
                 output_file=stage_to_metrics_file[evaluation_stage],
                 numeric_label_col=dataset_metadata['numeric_label_col'],
                 iteration=iteration,
@@ -162,3 +171,18 @@ def get_metrics_and_serial_log(results_file, test_file, output_file, numeric_lab
     )
     log_serial_metrics(prefix=prefix, metrics=metrics, iteration=iteration, task_type=task_type)
     return metrics
+
+def create_labelless_validation_file(config, target_path: Path):
+    validation_with_labels = config.run_dir / config.agent_id / "validation.csv"
+    if not validation_with_labels.exists():
+        raise FileNotFoundError(f"validation.csv file with labels not found at {validation_with_labels} during the inference stage")
+    df = pd.read_csv(validation_with_labels)
+    label_col = config.get_numeric_label_col_name()
+    if label_col not in df.columns:
+        raise ValueError(f"No {label_col} column found in the validation dataset.")
+    df_no_label = df.drop(columns=[label_col])
+    df_no_label.to_csv(target_path, index=False)
+
+def remove_file(target_path: Path):
+    if target_path.exists():
+        target_path.unlink()
