@@ -60,6 +60,8 @@ def is_new_best(config):
         return True
     
     new_metrics, best_metrics = get_new_and_best_metrics(config)
+    if not new_metrics:
+        return False
 
     #TODO parametrize improvement threshold
     necessary_improvement = 0
