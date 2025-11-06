@@ -1,9 +1,14 @@
 import pprint
 import textwrap
+import json
 
 from pydantic_ai.messages import SystemPromptPart, UserPromptPart, TextPart, ToolCallPart, ToolReturnPart, RetryPromptPart ,ThinkingPart
 from pydantic_ai import CallToolsNode, ModelRequestNode, UserPromptNode
 from pydantic_graph.nodes import End
+from pygments import highlight
+from pygments.lexers import PythonLexer
+from pygments.formatters import TerminalTrueColorFormatter as TF
+from pygments.formatters import TerminalFormatter as TF
 
 class bcolors:
     HEADER = '\033[95m'
@@ -25,6 +30,49 @@ def pretty_print(content, width=120, color=None):
     else:
         pprint.pprint(content, width=width)
 
+def pretty_print_code(code):
+    """
+    Pretty print Python code with syntax highlighting and line numbers.
+    args:
+        code (str): The code string to pretty print.
+    """
+    if not code:
+        return
+
+    # normalize escapes and dedent
+    code = code.replace('\\r\\n', '\n').replace('\\r', '\n')
+    code = code.replace('\\t', '\t').replace('\\n', '\n')
+    code = textwrap.dedent(code).strip('\n') + '\n'
+
+    header = f"{bcolors.BOLD}{bcolors.OKCYAN}----- CODE START -----{bcolors.ENDC}"
+    footer = f"{bcolors.BOLD}{bcolors.OKCYAN}-----  CODE END  -----{bcolors.ENDC}"
+    print(header)
+
+    try:
+        # Try to use pygments for nice terminal highlighting
+        # Prefer truecolor formatter if available, fall back to standard terminal formatter
+        try:
+            formatter = TF()
+        except Exception:
+            formatter = TF()
+
+        highlighted = highlight(code, PythonLexer(), formatter)
+        lines = highlighted.splitlines()
+        width = len(str(len(lines)))
+        for i, ln in enumerate(lines, 1):
+            lineno = f"{bcolors.BOLD}{bcolors.OKBLUE}{str(i).rjust(width)}{bcolors.ENDC} "
+            # ln already contains color codes from pygments
+            print(f"{lineno}{ln}")
+    except Exception:
+        # Fallback: simple numbered output without external coloring
+        lines = code.splitlines()
+        width = len(str(len(lines)))
+        for i, ln in enumerate(lines, 1):
+            lineno = f"{bcolors.BOLD}{bcolors.OKBLUE}{str(i).rjust(width)}{bcolors.ENDC} "
+            print(f"{lineno}{ln}")
+
+    print(footer)
+
 def pretty_print_node(node):
     if(isinstance(node, CallToolsNode)):
         # print(node.model_response.parts)
@@ -36,7 +84,13 @@ def pretty_print_node(node):
                 pretty_print(part.tool_name, color=bcolors.OKCYAN)
                 if(part.tool_name == 'final_result'):
                     continue
-                    #dont print args since it will be printed 
+                    #dont print args since it will be printed
+                if(part.tool_name=='write_python'):
+                    args_dict = json.loads(str(part.args))
+                    pretty_print_code(args_dict['code'])
+                    pretty_print("file_path: "+args_dict['file_path'], color=bcolors.OKCYAN)
+                    continue
+
                 pretty_print(part.args, color=bcolors.OKCYAN)
             elif(isinstance(part, ThinkingPart)):
                 pretty_print(part.content)
