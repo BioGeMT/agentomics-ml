@@ -7,6 +7,8 @@ import requests
 
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_ai.settings import ModelSettings
+from pydantic_ai.models.openai import OpenAIResponsesModelSettings
 from openai import AsyncOpenAI
 from rich.console import Console
 from rich.panel import Panel
@@ -96,6 +98,12 @@ class Provider():
               model_name=model_name,
               provider=OpenAIProvider(openai_client=client)
           )
+    
+    def get_high_reasoning_model_settings(self, kwargs) -> ModelSettings:
+        return OpenAIResponsesModelSettings( #TODO needs implemented for non-OpenAI compatible providers
+            openai_reasoning_effort="high",
+            **kwargs,
+        )
 
     @staticmethod
     def get_provider_config(provider_name: str) -> Dict:
