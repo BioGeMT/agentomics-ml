@@ -169,6 +169,17 @@ def purge_conda_from_all_folders(config):
             if conda_env.exists():
                 shutil.rmtree(conda_env)
 
+def delete_metrics_from_iteration_dir(config, iteration):
+    run_dir = config.runs_dir / config.agent_id
+    iteration_dir = run_dir / f"iteration_{iteration}"
+    train_metrics_path = iteration_dir / "train_metrics.txt"
+    validation_metrics_path = iteration_dir / "validation_metrics.txt"
+
+    if train_metrics_path.exists():
+        train_metrics_path.unlink()
+    if validation_metrics_path.exists():
+        validation_metrics_path.unlink()
+
 def populate_iteration_dir(config, run_index, structured_outputs, is_best=False):
     run_dir = config.runs_dir / config.agent_id
     iteration_dir = run_dir / f"iteration_{run_index}"
@@ -181,10 +192,7 @@ def populate_iteration_dir(config, run_index, structured_outputs, is_best=False)
         ".cache",
     ]
 
-    files_to_delete = [
-        "train_metrics.txt",
-        "validation_metrics.txt"
-    ]
+    files_to_delete = []
 
     for element in run_dir.iterdir():
         if element.is_dir() and (element.name.startswith("iteration_") or element.name == ".conda"):

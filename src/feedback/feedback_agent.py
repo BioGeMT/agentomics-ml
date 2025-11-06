@@ -39,9 +39,9 @@ class IterationInstructions(BaseModel):
         Instructions for the prediction exploration step.
         """
     )
-    other_instructions: str = Field(
+    other_instructions: str | None = Field(
         description="""
-        Any other instructions that don't fit only one step.
+        Any other instructions that don't fit only one step (optional).
         """
     )
 
@@ -132,6 +132,7 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
     If you refer to concrete files, use their name, extension, and the iteration they're from. Don't refer to them by their full path.
     For example "Modify the train.py script from iteration 4 by changing the learning rate to 0.01" is a valid instruction.
     Don't provide instructions that go against the requirements in the common user prompt.
+    Don't instruct the agent to update the 'best iteration model', as this is done automatically.
 
     The agent will have access to the train.csv and validation.csv files, all previous iteration files and step outputs, and the dataset_description.md file.
     The agent will have tools to install any packages/software, write and execute arbitrary bash and python code, and has access to the following foundation models: {foundation_models_info}
@@ -209,7 +210,7 @@ def aggregate_past_iterations(iter_to_outputs, iter_to_metrics, current_iter_val
             {iter_to_outputs[i]}
             Metrics:
             {truncated_iter_metrics}
-            {split_info}
+            {split_info if truncated_iter_metrics else ""}
             """
         else: #last iteration (current):
             extra_info = current_iter_extra_info

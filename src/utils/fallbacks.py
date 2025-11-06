@@ -42,11 +42,10 @@ def load_fallbacks_to_rundir(config, iteration):
         print("VALIDATION CSV FALLBACK NOT FOUND")
         failed_to_retrieve = True
 
-    if(failed_to_retrieve):
+    if failed_to_retrieve:
         print('DELETING SPLIT FILES FROM THE CURRENT BROKEN ITERATION')
         for split_path in [run_dir / train_name, run_dir / val_name]:
-            if split_path.exists():
-                shutil.rmtree(split_path)
+            split_path.unlink()
 
         # If no split was successful yet, increase the allowed split iteration budget
         if(not config.can_iteration_split_data(iteration+1)): #check if next iter can split
