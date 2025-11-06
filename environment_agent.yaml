@@ -1,0 +1,15 @@
+name: agent_start_env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pandas
+  - numpy
+  - conda-pack==0.8.1
+  - scikit-learn
+  - pip
+  - pip:
+    - torch==2.5.1
+    - transformers==4.47.1
+    - einops==0.8.1
+    - multimolecule==0.0.8
