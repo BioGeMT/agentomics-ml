@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass
 from pathlib import Path
 import subprocess
@@ -81,6 +82,12 @@ class Config:
         
         if max_steps is not None:
             self.max_steps = max_steps
+
+    def get_numeric_label_col_name(self):
+        metadata_path = self.prepared_dataset_dir / "metadata.json"
+        with open(metadata_path, "r") as f:
+            metadata = json.load(f)
+        return metadata["numeric_label_col"]
 
     def can_iteration_split_data(self, iteration):
         return not self.explicit_valid_set_provided and iteration < self.split_allowed_iterations

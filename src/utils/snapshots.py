@@ -201,7 +201,7 @@ def populate_iteration_dir(config, run_index, structured_outputs, is_best=False)
             continue
         if element.name in files_to_skip:
             continue
-        if element.name in files_to_delete:
+        if element.name in files_to_delete and element.exists():
             element.unlink()
             continue
 
