@@ -104,7 +104,6 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
         foundation_models_info = "".join([f'model_id:{model_id}\ndescription:{desc}\n' for model_id, desc in config.foundation_model_to_desc.items()])
         
     feedback_prompt = f"""
-    {len(iter_to_outputs)} iterations completed in the current run so far
     <common_user_prompt_of_the_iteration_agents>
     {config.user_prompt}
     </common_user_prompt_of_the_iteration_agents>
@@ -114,11 +113,12 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
     </dataset_knowledge_from_dataset_description_md>
 
     <run_history>
+    {len(iter_to_outputs)} iterations completed in the current run so far
     <iterations_summaries>
     {all_iters_aggregation}
     </iterations_summaries>
     </run_history>
-
+    <your_instructions>
     The main goal of the run is to maximize the hidden test set generalization performance (main metric:{config.val_metric}) that will use the 'best iteration model' (currently model from iteration {best_metric_iteration}). Only models using the latest split are candidates for this 'best iteration model'.
     There are {time_info} left before the run ends. Then, the 'best iteration model' will be extracted and automatically evaluated on the hidden test set.
     Once an iteration produces a model with a better {config.val_metric} metric, that model will overwrite the 'best iteration model'.
@@ -140,6 +140,7 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
     For example "Modify the train.py script from iteration 4 by changing the learning rate to 0.01" is a valid instruction.
     Don't provide instructions that go against the requirements in the common user prompt.
     Don't instruct the agent to update the 'best iteration model', as this is done automatically.
+    Never refer to existing scripts or previous iteration agent's actions only as 'previous', 'existing', 'current, 'last', etc... Always mention the iteration number of what you're refering to.
 
     The agent will have access to the train.csv and validation.csv files, all previous iteration files and step outputs, and the dataset_description.md file.
     The agent will have tools to install any packages/software, write and execute arbitrary bash and python code, and has access to the following foundation models: {foundation_models_info}
@@ -150,6 +151,7 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
     This 'best iteration model' is saved and will not be overridden by a worse model, therefore you can safely instruct the agent to experiment with more exploratory models, representaiton etc... if you choose to.
 
     Once the next iteration finishes, the iterations summaries (run history) will be updated with its results and you will have an opportunity to provide another set of instructions etc.. until the run ends.
+    </your_instructions>
     """
     
     print("CONSTRUCTING ITERATION FEEDBACK...")
