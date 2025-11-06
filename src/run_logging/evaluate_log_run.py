@@ -173,7 +173,7 @@ def get_metrics_and_serial_log(results_file, test_file, output_file, numeric_lab
     return metrics
 
 def create_labelless_validation_file(config, target_path: Path):
-    validation_with_labels = config.run_dir / config.agent_id / "validation.csv"
+    validation_with_labels = config.runs_dir / config.agent_id / "validation.csv"
     if not validation_with_labels.exists():
         raise FileNotFoundError(f"validation.csv file with labels not found at {validation_with_labels} during the inference stage")
     df = pd.read_csv(validation_with_labels)
