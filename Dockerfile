@@ -21,6 +21,12 @@ RUN mamba env create -f environment.yaml \
 RUN conda init bash \
     && echo "conda activate agentomics-env" >> /root/.bashrc
 
+# Pre-download foundation models
+RUN mkdir -p /foundation_models
+ENV HF_HOME=/foundation_models
+COPY foundation_models/ /foundation_models/
+COPY src/utils/foundation_models_utils.py /repository/src/utils/foundation_models_utils.py
+RUN /opt/conda/envs/agentomics-env/bin/python /repository/src/utils/foundation_models_utils.py
 WORKDIR /repository
 
 ENTRYPOINT ["/opt/conda/envs/agentomics-env/bin/python", "/repository/src/run_agent_interactive.py"]
