@@ -10,6 +10,12 @@ from src.utils.dataset_utils import setup_nonsensitive_dataset_files_for_agent
 
 _shared_test_resources = None
 
+def check_foundation_model_gpu_usage(run_result: str, model: str) -> bool:
+    if "using device: cuda" in run_result.lower() and "cpu" not in run_result.lower():
+        print(f"\n{model} test used GPU")
+    else:
+        print(f"\nWARNING: {model} test ran on CPU (no GPU detected)")
+
 def get_shared_test_resources():
     global _shared_test_resources
 
