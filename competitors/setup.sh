@@ -16,13 +16,8 @@ echo "[setup] Activating environment"
 eval "$(conda shell.bash hook)"
 conda activate "$ENV_NAME"
 
-echo "[setup] Checking dependencies"
-if python -c "import yaml, pandas, sklearn, pyarrow" 2>/dev/null; then
-    echo "[setup] All dependencies already installed"
-else
-    echo "[setup] Installing basic dependencies"
-    conda install -c conda-forge pyyaml pandas scikit-learn pyarrow -y
-fi
+echo "[setup] Ensuring Python packages are installed"
+conda install -c conda-forge "numpy<2" pyyaml pandas scikit-learn pyarrow wandb -y
 
 echo "[setup] Cloning and installing biomlbench"
 python "$COMPETITORS_DIR/scripts/setup_repo.py" --config "$CONFIG"
@@ -30,23 +25,22 @@ python "$COMPETITORS_DIR/scripts/setup_repo.py" --config "$CONFIG"
 echo "[setup] Setting up Agentomics tasks"
 python "$COMPETITORS_DIR/scripts/setup_tasks.py"
 
-echo "[setup] Building Docker images (this will take a while)..."
+echo "[setup] Building Docker images (optional)..."
 cd "$COMPETITORS_DIR/biomlbench"
 
-# Build base environment
 echo "[setup] Building base environment..."
 bash scripts/build_base_env.sh
 
-# Build AIDE agent image
 echo "[setup] Building AIDE agent image..."
 bash scripts/build_agent.sh aide
 
-# Build BioMNI agent image
 echo "[setup] Building BioMNI agent image..."
 bash scripts/build_agent.sh biomni
 
-# Build STELLA image
 echo "[setup] Building STELLA agent image..."
 bash scripts/build_agent.sh stella
+
+echo "[setup] Building 1-shot agent image..."
+bash scripts/build_agent.sh oneshot
 
 echo "[setup] Done! Activate the environment with: conda activate $ENV_NAME"
