@@ -95,6 +95,10 @@ def create_agents(config: Config, model, tools):
             raise ModelRetry("Model file does not exist.")
         if does_file_contain_string(result.path_to_train_file, "iteration_"):
             raise ModelRetry("Train file contains references to an iteration folder ('iteration_' detected), which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
+            
+        # Validate proper import and usage of TrainingProgress
+        if not does_file_contain_string(result.path_to_train_file, "from client_utils.training_progress import TrainingProgress"):
+            raise ModelRetry("Training file must import TrainingProgress from client_utils.training_progress")
         return result
 
     @inference_agent.output_validator
@@ -165,7 +169,26 @@ def get_sytem_and_user_prompt_messages(all_messages, to_remove):
     user_prompt_part.content = user_prompt_part.content.replace(to_remove, "") #Remove a non-global part of the prompt
     return [first_message]
 
+def setup_run_environment(config: Config):
+    """Setup the environment for a new run"""
+    run_dir = config.runs_dir / config.agent_id
+    client_utils_dir = run_dir / "client_utils"
+    
+    # Create run directories
+    run_dir.mkdir(parents=True, exist_ok=True)
+    client_utils_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Copy client utils to run directory
+    src_client_utils = Path(__file__).parent.parent / "client_utils"
+    for file in src_client_utils.glob("*.py"):
+        if file.name != "__pycache__":
+            import shutil
+            shutil.copy2(file, client_utils_dir / file.name)
+
 async def run_architecture_compressed(text_output_agent: Agent, inference_agent: Agent, split_dataset_agent: Agent, training_agent: Agent, prediction_exploration_agent: Agent, config: Config, base_prompt: str, iteration: int, last_split_strategy: str):
+    # Setup run environment first
+    setup_run_environment(config)
+    
     persistent_messages = []
     structured_outputs = []
     ctx_replacer_msg = "\nSummarized outputs from your previous steps are in previous messages."
@@ -259,8 +282,30 @@ async def run_architecture_compressed(text_output_agent: Agent, inference_agent:
 
     return structured_outputs
 
+def setup_client_utils(config: Config):
+    """Setup client utilities in the workspace"""
+    run_dir = config.runs_dir / config.agent_id
+    client_utils_dir = run_dir / "client_utils"
+    
+    # Create directories
+    run_dir.mkdir(parents=True, exist_ok=True)
+    client_utils_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Copy client utils to workspace
+    src_client_utils = Path(__file__).parent.parent / "client_utils"
+    for file in src_client_utils.glob("*.py"):
+        if not file.name.startswith("__"):  # Skip __init__.py and similar
+            import shutil
+            shutil.copy2(file, client_utils_dir / file.name)
+    
+    # Ensure __init__.py exists
+    (client_utils_dir / "__init__.py").touch()
+
 @weave.op(call_display_name=lambda call: f"Iteration {call.inputs.get('iteration', 0)}")
 async def run_iteration(config: Config, model, iteration, feedback, tools, last_split_strategy):
+    # Setup client utilities first
+    setup_client_utils(config)
+    
     agents_dict = create_agents(config=config, model=model, tools=tools)
 
     if iteration == 0:
