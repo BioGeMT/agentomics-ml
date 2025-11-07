@@ -17,10 +17,14 @@ RiNALMo learns from raw RNA sequences without supervision and provides pretraine
 ## Quickstart: Masked Language Modeling
 
 ```python
+import torch
 import multimolecule  # Registers RiNALMo in Hugging Face transformers
 from transformers import pipeline
 
-unmasker = pipeline("fill-mask", model="multimolecule/rinalmo-micro")
+device = 0 if torch.cuda.is_available() else -1
+print("Using GPU" if device == 0 else "Using CPU")
+
+unmasker = pipeline("fill-mask", model="multimolecule/rinalmo-micro", device=device)
 
 res = unmasker("gguc<mask>cucugguuagaccagaucugagccu")
 for r in res:
@@ -38,21 +42,25 @@ for r in res:
 ## Get Sequence Embeddings
 
 ```python
+import torch
 from multimolecule import RnaTokenizer, RiNALMoModel
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
 
 # Load model and tokenizer
 tokenizer = RnaTokenizer.from_pretrained("multimolecule/rinalmo-micro")
-model = RiNALMoModel.from_pretrained("multimolecule/rinalmo-micro")
+model = RiNALMoModel.from_pretrained("multimolecule/rinalmo-micro").to(device)
 
 rna = "UAGCUUAUCAGACUGAUGUUG"
-inputs = tokenizer(rna, return_tensors="pt")
+inputs = tokenizer(rna, return_tensors="pt").to(device)
 outputs = model(**inputs)
 
 # Hidden state embeddings
 embeddings = outputs.last_hidden_state  # [batch, seq_len, hidden]
 
 # Mean pooling for sequence-level representation
-embedding_mean = embeddings.mean(dim=1)
+embedding_mean = embeddings.mean(dim=1).cpu()
 print(embedding_mean.shape)
 ```
 
@@ -66,12 +74,15 @@ print(embedding_mean.shape)
 import torch
 from multimolecule import RnaTokenizer, RiNALMoForSequencePrediction
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+
 tokenizer = RnaTokenizer.from_pretrained("multimolecule/rinalmo-micro")
-model = RiNALMoForSequencePrediction.from_pretrained("multimolecule/rinalmo-micro")
+model = RiNALMoForSequencePrediction.from_pretrained("multimolecule/rinalmo-micro").to(device)
 
 text = "UAGCUUAUCAGACUGAUGUUG"
-inputs = tokenizer(text, return_tensors="pt")
-label = torch.tensor([1])
+inputs = tokenizer(text, return_tensors="pt").to(device)
+label = torch.tensor([1]).to(device)
 
 outputs = model(**inputs, labels=label)
 loss = outputs.loss
@@ -84,12 +95,15 @@ print(loss)
 import torch
 from multimolecule import RnaTokenizer, RiNALMoForTokenPrediction
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+
 tokenizer = RnaTokenizer.from_pretrained("multimolecule/rinalmo-micro")
-model = RiNALMoForTokenPrediction.from_pretrained("multimolecule/rinalmo-micro")
+model = RiNALMoForTokenPrediction.from_pretrained("multimolecule/rinalmo-micro").to(device)
 
 rna = "UAGCUUAUCAGACUGAUGUUG"
-inputs = tokenizer(rna, return_tensors="pt")
-labels = torch.randint(2, (len(rna),))
+inputs = tokenizer(rna, return_tensors="pt").to(device)
+labels = torch.randint(2, (len(rna),)).to(device)
 
 outputs = model(**inputs, labels=labels)
 print(outputs.loss)
@@ -101,12 +115,15 @@ print(outputs.loss)
 import torch
 from multimolecule import RnaTokenizer, RiNALMoForContactPrediction
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+
 tokenizer = RnaTokenizer.from_pretrained("multimolecule/rinalmo-micro")
-model = RiNALMoForContactPrediction.from_pretrained("multimolecule/rinalmo-micro")
+model = RiNALMoForContactPrediction.from_pretrained("multimolecule/rinalmo-micro").to(device)
 
 rna = "UAGCUUAUCAGACUGAUGUUG"
-inputs = tokenizer(rna, return_tensors="pt")
-labels = torch.randint(2, (len(rna), len(rna)))
+inputs = tokenizer(rna, return_tensors="pt").to(device)
+labels = torch.randint(2, (len(rna), len(rna))).to(device)
 
 outputs = model(**inputs, labels=labels)
 print(outputs.loss)

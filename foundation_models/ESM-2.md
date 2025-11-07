@@ -39,9 +39,12 @@ from transformers import AutoTokenizer, AutoModel
 
 model_id = "facebook/esm2_t33_650M_UR50D"  # choose a size from the table
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+
 # Load tokenizer & base model (no task head)
 tokenizer = AutoTokenizer.from_pretrained(model_id)
-model = AutoModel.from_pretrained(model_id)
+model = AutoModel.from_pretrained(model_id).to(device)
 model.eval()
 
 # Example sequences (one-letter AA codes)
@@ -51,7 +54,7 @@ seqs = [
 ]
 
 # Tokenize (adds <cls>/<eos> as needed)
-enc = tokenizer(seqs, return_tensors="pt", padding=True, truncation=True)
+enc = tokenizer(seqs, return_tensors="pt", padding=True, truncation=True).to(device)
 
 with torch.no_grad():
     out = model(**enc, output_hidden_states=True)
@@ -71,7 +74,7 @@ embeds = []
 for i in range(hidden.size(0)):
     h = hidden[i][mask[i]]  # [valid_len, hidden]
     embeds.append(h.mean(dim=0))  # [hidden]
-embeds = torch.stack(embeds)  # [batch, hidden]
+embeds = torch.stack(embeds).cpu()  # [batch, hidden]
 print(embeds.shape)  # e.g., torch.Size([2, 1280]) for the 650M model
 ```
 
@@ -90,11 +93,14 @@ print(embeds.shape)  # e.g., torch.Size([2, 1280]) for the 650M model
 from transformers import AutoTokenizer, EsmForProteinFolding
 import torch
 
-model = EsmForProteinFolding.from_pretrained("facebook/esmfold_v1")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+
+model = EsmForProteinFolding.from_pretrained("facebook/esmfold_v1").to(device)
 tokenizer = AutoTokenizer.from_pretrained("facebook/esmfold_v1")
 
 seq = "MLKNVQVQLV"
-inputs = tokenizer([seq], return_tensors="pt", add_special_tokens=False)
+inputs = tokenizer([seq], return_tensors="pt", add_special_tokens=False).to(device)
 with torch.no_grad():
     outputs = model(**inputs)
 positions = outputs.positions   # atom positions
