@@ -61,6 +61,47 @@ def get_foundation_models_info():
 
     return "\n\n".join(model_infos)
 
+def build_foundation_model_catalog():
+    models_config = load_models_config()
+    catalog = {}
+
+    for family_name, meta in models_config.items():
+        catalog[family_name] = {
+            "summary": meta.get("summary"),
+            "path_to_info": meta.get("path_to_info"),
+            "models": [
+                {
+                    "name": model_cfg.get("name"),
+                    "params": model_cfg.get("params"),
+                }
+                for model_cfg in meta.get("models", [])
+            ],        
+        }
+                                                                                                                    
+    return catalog
+
+def format_foundation_model_catalog(catalog):
+    sections = []
+    for family, meta in catalog.items():
+        lines = [f"Family: {family}"]
+
+        summary = meta.get("summary")
+        lines.append(f"Summary: {summary}")
+
+        models = meta.get("models")
+        lines.append("Models:")
+        for model in models:
+            name = model.get("name")
+            params = model.get("params")
+            label = f"{name} ({params} params)" if params else name
+            lines.append(f"- {label}")
+        
+        path_to_info = meta.get("path_to_info")
+        lines.append(f"Docs: {path_to_info}")
+        sections.append("\n".join(lines))
+    
+    return "\n\n".join(sections)
+
 def main():
     config = load_models_config()
 

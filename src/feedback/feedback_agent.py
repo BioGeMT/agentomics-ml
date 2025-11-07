@@ -6,6 +6,7 @@ from utils.exceptions import FeedbackAgentFailed
 from pydantic import BaseModel, Field
 from utils.printing_utils import truncate_float
 from utils.snapshots import get_best_iteration
+from utils.foundation_models_utils import format_foundation_model_catalog
 from agents.prompts.prompts_utils import get_dataset_knowledge
 
 class IterationInstructions(BaseModel):
@@ -101,7 +102,7 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
     if(len(config.foundation_model_to_desc) == 0):
         foundation_models_info = "No foundation models available"
     else:
-        foundation_models_info = "".join([f'model_id:{model_id}\ndescription:{desc}\n' for model_id, desc in config.foundation_model_to_desc.items()])
+        foundation_models_info = format_foundation_model_catalog(config.foundation_model_to_desc)
         
     feedback_prompt = f"""
     <common_user_prompt_of_the_iteration_agents>
