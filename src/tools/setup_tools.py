@@ -1,6 +1,7 @@
 from .bash_tool import create_bash_tool
 from .write_python_tool import create_write_python_tool
 from .run_python_tool import create_run_python_tool
+from .foundation_models_info_tool import create_foundation_models_info_tool
 import weave
 
 def create_tools(config):
@@ -23,8 +24,12 @@ def create_tools(config):
                 timeout=config.run_python_tool_timeout,
                 proxy=config.use_proxy,
                 max_retries=config.max_tool_retries),
+            create_foundation_models_info_tool(
+                foundation_model_to_desc=config.foundation_model_to_desc,
+                max_retries=config.max_tool_retries
+            )
         ]
     # wrap each tool.function with @weave.op
-    for tool in tools:
-        tool.function = weave.op(tool.function, call_display_name=tool.name)
+    # for tool in tools:
+    #     tool.function = weave.op(tool.function, call_display_name=tool.name)
     return tools
