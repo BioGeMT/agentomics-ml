@@ -197,3 +197,13 @@ print(f"Success! Embeddings shape: {embeddings.shape}")
         self.assertIn("Success!", run_result, "RiNALMo should produce output")
 
         check_foundation_model_gpu_usage(run_result, model="RiNALMo")
+
+    def test_foundation_models_info_tool(self):
+        """The foundation-model info tool should return the catalog string."""
+        output = self.foundation_models_info_tool.function()
+        print(output)
+
+        self.assertIn("Family: ESM-2", output)
+        self.assertIn("Docs: /foundation_models/ESM-2.md", output)
+        self.assertIn("LongSafari/hyenadna-tiny-1k-seqlen-hf", output)
+        self.assertIn("multimolecule/rinalmo-micro", output.lower())

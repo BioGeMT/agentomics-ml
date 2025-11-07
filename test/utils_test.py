@@ -1,6 +1,12 @@
 import unittest
 from pathlib import Path
 import os
+import sys
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+SRC_PATH = REPO_ROOT / "src"
+if str(SRC_PATH) not in sys.path:
+    sys.path.insert(0, str(SRC_PATH))
 
 from src.tools.setup_tools import create_tools
 from src.utils.create_user import create_run_and_snapshot_dirs
@@ -48,14 +54,15 @@ def get_shared_test_resources():
 
         print("Setting up tools for testing (including conda env creation, might take a moment)\n")
 
-        bash_tool, write_python_tool, run_python_tool = create_tools(config)
+        bash_tool, write_python_tool, run_python_tool, foundation_models_info = create_tools(config)
 
         _shared_test_resources = {
             'config': config,
             'agent_id': agent_id,
             'bash_tool': bash_tool,
             'write_python_tool': write_python_tool,
-            'run_python_tool': run_python_tool
+            'run_python_tool': run_python_tool,
+            'foundation_models_info_tool': foundation_models_info
         }
 
     return _shared_test_resources
@@ -73,3 +80,4 @@ class BaseAgentTest(unittest.TestCase):
         cls.bash_tool = resources['bash_tool']
         cls.write_python_tool = resources['write_python_tool']
         cls.run_python_tool = resources['run_python_tool']
+        cls.foundation_models_info_tool = resources['foundation_models_info_tool']
