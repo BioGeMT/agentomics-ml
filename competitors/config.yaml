@@ -1,11 +1,11 @@
 biomlbench_repo: https://github.com/dimostzim/biomlbench.git
 biomlbench_branch: main
 
-openrouter_key: sk-or-v1
+openrouter_key: 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
 openrouter_base_url: https://openrouter.ai/api/v1
 model: openai/gpt-5-mini #or whatever
 
-time_limit_secs: 1800
+time_limit_secs: 900
 step_limit: 99999999  # effectively unlimited - agents controlled by time_limit_secs only
 
 # BioMNI-specific: Enable self-critic mode for iterative refinement
@@ -16,6 +16,7 @@ agents:
   - aide
   - biomni
   - stella
+  - oneshot
 
 datasets:
   - ago2_clash_hejret
