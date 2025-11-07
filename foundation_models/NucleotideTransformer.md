@@ -46,6 +46,10 @@ model = AutoModelForMaskedLM.from_pretrained(
     "InstaDeepAI/nucleotide-transformer-v2-500m-multi-species", trust_remote_code=True
 )
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+model = model.to(device)
+
 # Define sequence length and tokenize input
 max_length = tokenizer.model_max_length
 sequences = [
@@ -55,10 +59,10 @@ sequences = [
 
 tokens_ids = tokenizer.batch_encode_plus(
     sequences, return_tensors="pt", padding="max_length", max_length=max_length
-)["input_ids"]
+)["input_ids"].to(device)
 
 # Compute embeddings
-attention_mask = tokens_ids != tokenizer.pad_token_id
+attention_mask = (tokens_ids != tokenizer.pad_token_id).to(device)
 torch_outs = model(
     tokens_ids,
     attention_mask=attention_mask,
@@ -66,11 +70,11 @@ torch_outs = model(
     output_hidden_states=True
 )
 
-embeddings = torch_outs['hidden_states'][-1].detach().numpy()
+embeddings = torch_outs['hidden_states'][-1]
 print(f"Embeddings shape: {embeddings.shape}")
 
 # Compute mean sequence embeddings
 attention_mask = torch.unsqueeze(attention_mask, dim=-1)
-mean_sequence_embeddings = torch.sum(attention_mask*embeddings, axis=-2)/torch.sum(attention_mask, axis=1)
-print(f"Mean sequence embeddings: {mean_sequence_embeddings}")
+mean_sequence_embeddings = torch.sum(attention_mask * embeddings, dim=-2) / torch.sum(attention_mask, dim=1)
+print(f"Mean sequence embeddings: {mean_sequence_embeddings.cpu().shape}")
 ```
