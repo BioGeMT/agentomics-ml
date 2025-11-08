@@ -26,7 +26,7 @@ from utils.metrics import get_classification_metrics_names, get_regression_metri
 from utils.report_logger import add_metrics_to_report, add_summary_to_report
 from utils.providers.provider import Provider, get_provider_from_string
 from feedback.feedback_agent import get_feedback
-from tools.setup_tools import create_tools
+from tools.setup_tools import create_tools, get_tool_names
 from utils.snapshots import reset_snapshot_if_val_split_changed, create_split_fingerprint, wipe_current_iter_files, delete_metrics_from_iteration_dir
 from agents.steps.data_split import DataSplit
 
@@ -174,6 +174,7 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
                 val_split_changed=val_split_changed,
                 iter_to_duration=iter_to_duration,
                 provider=provider,
+                tool_names=get_tool_names(tools),
             )
         except FeedbackAgentFailed as e:
             iter_to_outputs[run_index] = "No outputs available."
