@@ -22,8 +22,8 @@ RUN conda init bash \
     && echo "conda activate agentomics-env" >> /root/.bashrc
 
 # Pre-download foundation models
-RUN mkdir -p /foundation_models
-ENV HF_HOME=/foundation_models
+RUN mkdir -p /foundation_models /cache/foundation_models
+ENV HF_HOME=/cache/foundation_models
 COPY foundation_models/ /foundation_models/
 COPY src/utils/foundation_models_utils.py /repository/src/utils/foundation_models_utils.py
 COPY src/utils/download_foundation_models.py /repository/src/utils/download_foundation_models.py
