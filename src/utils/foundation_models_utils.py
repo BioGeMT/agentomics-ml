@@ -67,7 +67,7 @@ def format_foundation_model_catalog(catalog):
         lines.append(f"Summary: {summary}")
 
         models = meta.get("models")
-        lines.append("Models:")
+        lines.append("Models HuggingFace id:")
         for model in models:
             name = model.get("name")
             params = model.get("params")
@@ -75,7 +75,7 @@ def format_foundation_model_catalog(catalog):
             lines.append(f"- {label}")
         
         path_to_info = meta.get("path_to_info")
-        lines.append(f"Docs: {path_to_info}")
+        lines.append(f"Docs and code snippets: {path_to_info}")
         sections.append("\n".join(lines))
     
     return "\n\n".join(sections)
