@@ -209,7 +209,7 @@ def fabricate_final_result_messages(structured_output, model_name):
     return [response_msg, request_msg]
 
 def replace_message_result_with_validated_files(messages: list[ModelMessage], config, since_timestamp):
-    for message in messages:
+    for message in messages[-2:]: #only replace files_created in the last output messages
         for part in message.parts:
             if isinstance(part, ToolCallPart) and part.tool_name=="final_result":
                 dict_args = part.args_as_dict()
