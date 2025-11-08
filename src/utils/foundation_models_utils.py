@@ -1,34 +1,12 @@
 import os
 import yaml
-from transformers import AutoTokenizer, AutoModel, AutoModelForMaskedLM, AutoModelForSequenceClassification
-import multimolecule
 
 BASE_DIR = os.environ.get('HF_HOME', '/foundation_models')
 MODELS_YAML = os.path.join('/foundation_models', 'models.yaml')
 
-FAMILY_MODEL_CLASSES = {
-    'ESM-2': AutoModel,
-    'HyenaDNA': AutoModelForSequenceClassification,
-    'NucleotideTransformer': AutoModelForMaskedLM,
-    'rinalmo': AutoModel,
-}
-
 def load_models_config():
     with open(MODELS_YAML, 'r') as f:
         return yaml.safe_load(f)
-
-def download_model(model_name, model_class):
-    try:
-        AutoTokenizer.from_pretrained(
-            model_name,
-            trust_remote_code=True
-        )
-        model_class.from_pretrained(
-            model_name,
-            trust_remote_code=True
-        )
-    except Exception as e:
-        print(f"Error: {str(e)}")
 
 def get_foundation_models_info():
     config = load_models_config()
@@ -101,20 +79,3 @@ def format_foundation_model_catalog(catalog):
         sections.append("\n".join(lines))
     
     return "\n\n".join(sections)
-
-def main():
-    config = load_models_config()
-
-    for family_name, family_data in config.items():
-        model_class = FAMILY_MODEL_CLASSES.get(family_name)
-        models = family_data.get('models')
-
-        for model_data in models:
-            model_name = model_data.get('name')
-            download_model(
-                model_name=model_name,
-                model_class=model_class,
-            )
-
-if __name__ == "__main__":
-    main()
