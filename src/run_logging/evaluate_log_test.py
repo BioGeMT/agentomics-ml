@@ -21,8 +21,6 @@ def run_test_evaluation(workspace_dir):
         print('FINAL TEST EVAL FAIL', str(e))
         log_inference_stage_and_metrics(1, task_type=config.task_type)
 
-    replace_python_paths(folder_path=config.snapshots_dir / config.agent_id,current_path=config.snapshots_dir / config.agent_id, new_path=".")
-
 def load_run_config(snapshots_dir):
     subdirs = [d for d in snapshots_dir.iterdir() if d.is_dir()]
     assert len(subdirs) == 1, 'More than 1 snapshot folder found, assuming only 1'

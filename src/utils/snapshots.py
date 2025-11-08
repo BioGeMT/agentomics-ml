@@ -138,6 +138,8 @@ def snapshot(config, iteration, delete_old_snapshot=True):
     snapshot_dir.mkdir(parents=True, exist_ok=True)
 
     shutil.copytree(str(iteration_dir), str(snapshot_dir), dirs_exist_ok=True)
+
+    replace_python_paths(folder_path=snapshot_dir,current_path=snapshot_dir, new_path=".")
         
     with open(snapshot_dir / "iteration_number.txt", "w") as f:
         f.write(str(iteration))
