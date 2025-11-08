@@ -10,7 +10,10 @@ class ModelTraining(BaseModel):
     training_summary: str = Field(
         description="Short summary of the training implementation. Don't include any metrics in this summary."
     )
-    files_created: list[str] = Field(
+    unresolved_issues: str = Field(
+        description="Issues that remain unresolved and could impact performance and/or metrics. (e.g. expected GPU to be available but is inaccessible during training, foundation model could not be loaded, etc...)"
+    )
+    files_created: list[str]|None = Field(
         description="""
         A list of files that were created during this step. Leave out the '/workspace/runs/<your_id>/' part of each path.
         """

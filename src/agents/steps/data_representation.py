@@ -6,9 +6,9 @@ class DataRepresentation(BaseModel):
         How will the data be represented, including any transformations, encodings, normalizations, features, and label transformations.
         """
     )
-    files_created: list[str] = Field(
+    files_created: list[str]|None = Field(
         description="""
-        A list of files that were created during this step. Leave out the '/workspace/runs/<your_id>/' part of each path.
+        This field should be passed as an empty list, as this will be overwritten and populated programatically.
         """
     )
 

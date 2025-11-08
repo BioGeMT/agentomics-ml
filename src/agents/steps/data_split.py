@@ -4,9 +4,9 @@ class DataSplit(BaseModel):
     train_path: str = Field(description="Path to generated train.csv file")
     val_path: str = Field(description="Path to generated validation.csv file")
     splitting_strategy: str = Field(description="Detailed description of the splitting strategy used")
-    files_created: list[str] = Field(
+    files_created: list[str]|None = Field(
         description="""
-        A list of files that were created during this step. Leave out the '/workspace/runs/<your_id>/' part of each path.
+        This field should be passed as an empty list, as this will be overwritten and populated programatically.
         """
     )
 
