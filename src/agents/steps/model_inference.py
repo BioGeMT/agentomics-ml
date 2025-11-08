@@ -12,8 +12,8 @@ class ModelInference(BaseModel):
     inference_summary: str = Field(
         description="Short summary of the inference implementation"
     )
-    unresolved_issues: str = Field(
-        description="Issues that remain unresolved and could impact performance and/or metrics. (e.g. expected GPU to be available but is inaccessible during inference, foundation model could not be loaded, etc...)"
+    unresolved_issues: str|None = Field(
+        description="Issues that remain unresolved and could impact performance and/or metrics. (e.g. expected GPU to be available but is inaccessible during inference, foundation model could not be loaded, etc...). Can be empty."
     )
     files_created: list[str]|None = Field(
         description="""
