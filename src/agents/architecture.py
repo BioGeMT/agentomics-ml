@@ -104,6 +104,8 @@ def create_agents(config: Config, model, tools):
             raise ModelRetry("Inference file does not exist.")
         if does_file_contain_string(result.path_to_inference_file, "iteration_"):
             raise ModelRetry("Inference file contains references to an iteration folder ('iteration_' detected), which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
+        if does_file_contain_string(result.path_to_inference_file, "train.csv") or does_file_contain_string(result.path_to_inference_file, "validation.csv"):
+            raise ModelRetry("Inference file contains references to dataset split files ('train.csv' or 'validation.csv' detected), which will not be accessible during final testing.")
         run_inference_and_log(config, iteration=-1, evaluation_stage='dry_run')
         lock_inference_file(result.path_to_inference_file)
         return result      
