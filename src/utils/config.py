@@ -32,14 +32,14 @@ class Config:
     # static defaults
     temperature: float = 1.0
     max_steps: int = 100 #TODO rename, this is per-step limit
-    max_validation_retries: int = 5
+    max_validation_retries: int = 10
     use_proxy: bool = True
     llm_response_timeout: int = 60 * 15
     bash_tool_timeout: int = 60 * 5
     write_python_tool_timeout: int = 60 * 1
     run_python_tool_timeout: int = 60 * 60 * 6 #This affects max training time
     credit_budget: int = 30 # Only applies when using a provisioning openrouter key #TODO
-    max_tool_retries: int = 5
+    max_tool_retries: int = 10
 
     def __init__(
         self,
