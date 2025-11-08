@@ -30,6 +30,6 @@ def create_tools(config):
             )
         ]
     # wrap each tool.function with @weave.op
-    # for tool in tools:
-    #     tool.function = weave.op(tool.function, call_display_name=tool.name)
+    for tool in tools:
+        tool.function = weave.op(tool.function, call_display_name=tool.name)
     return tools
