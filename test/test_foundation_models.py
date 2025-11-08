@@ -9,7 +9,7 @@ class TestFoundationModels(BaseAgentTest):
         doc_files = [
             "ESM-2.md",
             "HyenaDNA.md",
-            "DNABERT-2.md",
+            "rinalmo.md",
             "NucleotideTransformer.md"
         ]
 
