@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from pydantic.json_schema import SkipJsonSchema
 
 class ModelTraining(BaseModel):
     path_to_train_file: str = Field(
@@ -13,9 +14,10 @@ class ModelTraining(BaseModel):
     unresolved_issues: str|None = Field(
         description="Issues that remain unresolved and could impact performance and/or metrics. (e.g. expected GPU to be available but is inaccessible during training, foundation model could not be loaded, etc...). Can be empty."
     )
-    files_created: list[str]|None = Field(
+    files_created: SkipJsonSchema[list[str]] = Field(
+        default_factory=list,
         description="""
-        This field should be passed as an empty list, as this will be overwritten and populated programatically.
+        List of files created during model training step. Populated programmatically.
         """
     )
 

@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from pydantic.json_schema import SkipJsonSchema
 
 class ModelArchitecture(BaseModel):
     architecture: str = Field(
@@ -11,9 +12,10 @@ class ModelArchitecture(BaseModel):
         The hyperparameters you have chosen for your model.
         """
     )
-    files_created: list[str]|None = Field(
+    files_created: SkipJsonSchema[list[str]] = Field(
+        default_factory=list,
         description="""
-        This field should be passed as an empty list, as this will be overwritten and populated programatically.
+        List of files created during model architecture step. Populated programmatically.
         """
     )
 

@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from pydantic.json_schema import SkipJsonSchema
 
 class DataRepresentation(BaseModel):
     representation: str = Field(
@@ -6,9 +7,10 @@ class DataRepresentation(BaseModel):
         How will the data be represented, including any transformations, encodings, normalizations, features, and label transformations.
         """
     )
-    files_created: list[str]|None = Field(
+    files_created: SkipJsonSchema[list[str]] = Field(
+        default_factory=list,
         description="""
-        This field should be passed as an empty list, as this will be overwritten and populated programatically.
+        List of files created during data representation step. Populated programmatically.
         """
     )
 
