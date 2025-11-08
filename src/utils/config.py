@@ -112,19 +112,38 @@ class Config:
             return None
     
     def get_cpu_info(self):
-        cpu_info = subprocess.run(['lscpu'], capture_output=True, text=True).stdout
-        cpu_count = 'CPU count not available'
-        for line in cpu_info.split('\n'):
-            if 'CPU(s):' in line and 'NUMA' not in line:
-                cpu_count = line.split(':')[1].strip() + ' cores'
-                break
-        return cpu_count
+        try:
+            if subprocess.run(['which', 'sysctl'], capture_output=True).returncode == 0:
+                # macOS
+                cpu_info = subprocess.run(['sysctl', '-n', 'hw.ncpu'], capture_output=True, text=True).stdout
+                return f"{cpu_info.strip()} cores"
+            else:
+                # Linux
+                cpu_info = subprocess.run(['lscpu'], capture_output=True, text=True).stdout
+                cpu_count = 'CPU count not available'
+                for line in cpu_info.split('\n'):
+                    if 'CPU(s):' in line and 'NUMA' not in line:
+                        cpu_count = line.split(':')[1].strip() + ' cores'
+                        break
+                return cpu_count
+        except:
+            return 'CPU info not available'
     
     def get_ram_info(self):
-        mem_info = subprocess.run(['free', '-m'], capture_output=True, text=True).stdout
-        for line in mem_info.splitlines():
-            if line.strip().startswith('Mem:'):
-                return line.split()[1] + ' MB'  # Return total memory
+        try:
+            if subprocess.run(['which', 'sysctl'], capture_output=True).returncode == 0:
+                # macOS
+                mem_info = subprocess.run(['sysctl', '-n', 'hw.memsize'], capture_output=True, text=True).stdout
+                total_mb = int(mem_info.strip()) // (1024 * 1024)  # Convert bytes to MB
+                return f"{total_mb} MB"
+            else:
+                # Linux
+                mem_info = subprocess.run(['free', '-m'], capture_output=True, text=True).stdout
+                for line in mem_info.splitlines():
+                    if line.strip().startswith('Mem:'):
+                        return line.split()[1] + ' MB'
+        except:
+            return 'RAM info not available'
         return 'RAM info not available'
     
     def get_resources_summary(self):
