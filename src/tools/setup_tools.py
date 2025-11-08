@@ -33,3 +33,6 @@ def create_tools(config):
     for tool in tools:
         tool.function = weave.op(tool.function, call_display_name=tool.name)
     return tools
+
+def get_tool_names(tools):
+    return [tool.name for tool in tools]

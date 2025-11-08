@@ -62,7 +62,7 @@ def create_feedback_agent(model, provider, config):
 
 
 @weave.op(call_display_name="Get Feedback")
-async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, iter_to_metrics, iter_to_split_changed, val_split_changed, iter_to_duration, provider, extra_info="") -> IterationInstructions|str:
+async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, iter_to_metrics, iter_to_split_changed, val_split_changed, iter_to_duration, provider, tool_names, extra_info="") -> IterationInstructions|str:
     if iteration == config.iterations - 1 : return "Last iteration, no feedback needed"
     
     agent = create_feedback_agent(model=model, provider=provider, config=config)
@@ -103,7 +103,9 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
         foundation_models_info = "No foundation models available"
     else:
         foundation_models_info = format_foundation_model_catalog(config.foundation_model_to_desc)
-        
+
+    tools_info = ", ".join(tool_names)
+
     feedback_prompt = f"""
     <common_user_prompt_of_the_iteration_agents>
     {config.user_prompt}
@@ -144,7 +146,8 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
     Never refer to existing scripts or previous iteration agent's actions only as 'previous', 'existing', 'current, 'last', etc... Always mention the iteration number of what you're refering to.
 
     The agent will have access to the train.csv and validation.csv files, all previous iteration files and step outputs, and the dataset_description.md file.
-    The agent will have tools to install any packages/software, write and execute arbitrary bash and python code, and has access to the following foundation models: {foundation_models_info}
+    The agent has access to the following tools: {tools_info}.
+    The agent has access to the following foundation models: {foundation_models_info}
     The agent will have access to the following resources: {config.get_resources_summary()}
 
     Balance exploration of new approaches and optimizing already working approaches based on the iteration history and remaining time/iterations. 
