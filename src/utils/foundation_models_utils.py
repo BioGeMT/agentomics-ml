@@ -8,38 +8,10 @@ def load_models_config():
     with open(MODELS_YAML, 'r') as f:
         return yaml.safe_load(f)
 
-def get_foundation_models_info():
-    config = load_models_config()
-    model_infos = []
-    for model_type, family_data in config.items():
-        summary = family_data.get('summary', '')
-        path_to_info = family_data.get('path_to_info', '')
-        models = family_data.get('models', [])
-
-        family_info = f"**{model_type}**"
-        if summary:
-            family_info += f": {summary}"
-
-        model_list = []
-        for model_data in models:
-            model_name = model_data.get('name')
-            params = model_data.get('params', '')
-            if params:
-                model_list.append(f"  - {model_name} ({params} parameters)")
-            else:
-                model_list.append(f"  - {model_name}")
-
-        info_parts = [family_info]
-        if model_list:
-            info_parts.append("\n".join(model_list))
-        if path_to_info:
-            info_parts.append(f"  Documentation: {path_to_info}")
-
-        model_infos.append("\n".join(info_parts))
-
-    return "\n\n".join(model_infos)
-
 def build_foundation_model_catalog():
+    """
+    Returns a catalog of foundation models with their summaries, model names, parameters, and documentation paths.
+    """
     models_config = load_models_config()
     catalog = {}
 
@@ -59,6 +31,9 @@ def build_foundation_model_catalog():
     return catalog
 
 def format_foundation_model_catalog(catalog):
+    """
+    Formats the foundation model catalog into a string for feedback agent and get_foundation_models_info tool description.
+    """
     sections = []
     for family, meta in catalog.items():
         lines = [f"Family: {family}"]
