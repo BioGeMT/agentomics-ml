@@ -24,12 +24,12 @@ class TestFoundationModels(BaseAgentTest):
         """Test that agent has HF_HOME set correctly."""
 
         result = self.bash_tool.function("echo $HF_HOME 2>&1")
-        self.assertIn("/foundation_models", result, "HF_HOME should point to /foundation_models")
+        self.assertIn("/cache/foundation_models", result, "HF_HOME should point to /cache/foundation_models")
         
     def test_agent_list_models(self):
         """Test that agent can list foundation models directory."""
 
-        result = self.bash_tool.function("ls /foundation_models/hub 2>&1")
+        result = self.bash_tool.function("ls /cache/foundation_models/hub 2>&1")
         self.assertNotIn("Permission denied" or "No such file", result, "Agent should list foundation models directory")
         self.assertIn("esm2", result.lower(), "ESM-2 directory should exist in foundation models")
         self.assertIn("hyenadna", result.lower(), "HyenaDNA directory should exist in foundation models")
@@ -203,6 +203,6 @@ print(f"Success! Embeddings shape: {embeddings.shape}")
         output = self.foundation_models_info_tool.function()
 
         self.assertIn("Family: ESM-2", output)
-        self.assertIn("Docs: /foundation_models/ESM-2.md", output)
+        self.assertIn("Docs and code snippets: /foundation_models/ESM-2.md", output)
         self.assertIn("LongSafari/hyenadna-tiny-1k-seqlen-hf", output)
         self.assertIn("multimolecule/rinalmo-micro", output.lower())

@@ -1,7 +1,7 @@
 import os
 import yaml
 
-BASE_DIR = os.environ.get('HF_HOME', '/foundation_models')
+BASE_DIR = os.environ.get('HF_HOME', '/cache/foundation_models')
 MODELS_YAML = os.path.join('/foundation_models', 'models.yaml')
 
 def load_models_config():
