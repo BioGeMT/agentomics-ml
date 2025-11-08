@@ -1,12 +1,14 @@
 from pydantic import BaseModel, Field
+from pydantic.json_schema import SkipJsonSchema
 
 class DataSplit(BaseModel):
     train_path: str = Field(description="Path to generated train.csv file")
     val_path: str = Field(description="Path to generated validation.csv file")
     splitting_strategy: str = Field(description="Detailed description of the splitting strategy used")
-    files_created: list[str]|None = Field(
+    files_created: SkipJsonSchema[list[str]] = Field(
+        default_factory=list,
         description="""
-        This field should be passed as an empty list, as this will be overwritten and populated programatically.
+        List of files created during data split step. Populated programmatically.
         """
     )
 
