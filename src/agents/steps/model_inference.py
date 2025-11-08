@@ -12,9 +12,12 @@ class ModelInference(BaseModel):
     inference_summary: str = Field(
         description="Short summary of the inference implementation"
     )
-    files_created: list[str] = Field(
+    unresolved_issues: str = Field(
+        description="Issues that remain unresolved and could impact performance and/or metrics. (e.g. expected GPU to be available but is inaccessible during inference, foundation model could not be loaded, etc...)"
+    )
+    files_created: list[str]|None = Field(
         description="""
-        A list of files that were created during this step. Leave out the '/workspace/runs/<your_id>/' part of each path.
+        This field should be passed as an empty list, as this will be overwritten and populated programatically.
         """
     )
 
