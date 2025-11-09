@@ -2,11 +2,10 @@ name: agent_start_env
 channels:
   - conda-forge
 dependencies:
-  - python=3.9
-  - pandas
-  - numpy
+  - python==3.13
+  - pandas==2.3.1
   - conda-pack==0.8.1
-  - scikit-learn
+  - scikit-learn==1.7.1
   - pip
   - pip:
     - torch==2.5.1
