@@ -62,3 +62,31 @@ rinalmo:
   summary: RiNALMo is an RNA language model trained on 36 million non-coding RNA sequences using a masked language modeling objective, enabling the extraction of structural and functional information from raw nucleotide data.
   path_to_info: /foundation_models/rinalmo.md
   can_load_with_hf_automodel: true
+
+ChemBERTa:
+  models:
+    - name: DeepChem/ChemBERTa-100M-MLM
+      params: 100M
+    - name: DeepChem/ChemBERTa-77M-MLM
+      params: 77M
+    - name: DeepChem/ChemBERTa-10M-MLM
+      params: 10M
+    - name: DeepChem/ChemBERTa-5M-MLM
+      params: 5M
+    - name: DeepChem/ChemBERTa-77M-MTR
+      params: 77M
+    - name: DeepChem/ChemBERTa-10M-MTR
+      params: 10M
+    - name: DeepChem/ChemBERTa-5M-MTR
+      params: 5M
+  summary: ChemBERTa family are models for chemical molecular analysis and property prediction that processes SMILES representations using transformer architectures.
+  path_to_info: /foundation_models/ChemBERTa.md
+  can_load_with_hf_automodel: false
+
+MolFormerXL:
+  models:
+    - name: ibm-research/MoLFormer-XL-both-10pct
+      params: 47M
+  summary: MoLFormer is a class of models pretrained on SMILES string representations of up to 1.1B molecules from ZINC and PubChem. It is mainly intended to be used as a feature extractor or to be fine-tuned for a prediction task.
+  path_to_info: /foundation_models/MolFormerXL.md
+  can_load_with_hf_automodel: true
