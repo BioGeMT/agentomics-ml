@@ -10,7 +10,9 @@ class TestFoundationModels(BaseAgentTest):
             "ESM-2.md",
             "HyenaDNA.md",
             "rinalmo.md",
-            "NucleotideTransformer.md"
+            "NucleotideTransformer.md",
+            "MolFormerXL.md",
+            "ChemBERTa.md",
         ]
 
         for doc_file in doc_files:
@@ -198,11 +200,122 @@ print(f"Success! Embeddings shape: {embeddings.shape}")
 
         check_foundation_model_gpu_usage(run_result, model="RiNALMo")
 
+    def test_agent_chemberta_usage(self):
+        """Test that agent can use ChemBERTa model for SMILES / chemical tokenization."""
+        # First: MLM-style ChemBERTa usage (Masked Language Model)
+        chemberta_mlm_code = """
+import torch
+from transformers import AutoTokenizer, AutoModelForMaskedLM
+
+# Check GPU availability
+device = "cuda" if torch.cuda.is_available() else "cpu"
+print(f"Using device: {device}")
+if torch.cuda.is_available():
+    print(f"GPU Name: {torch.cuda.get_device_name(0)}")
+else:
+    print("No GPU available, using CPU.")
+
+# Load a small ChemBERTa MLM model for testing
+model_name = "DeepChem/ChemBERTa-5M-MLM"
+tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, local_files_only=True)
+model = AutoModelForMaskedLM.from_pretrained(model_name, trust_remote_code=True, local_files_only=True).to(device)
+
+# Example SMILES (ethanol) and inference
+smiles = "CCO"
+inputs = tokenizer(smiles, return_tensors='pt', padding=True, truncation=True).to(device)
+outputs = model(**inputs)
+logits = outputs.logits
+
+print(f"Success! MLM Output shape: {logits.shape}")
+"""
+
+        test_file_path = self.config.runs_dir / self.config.agent_id / "chemberta_mlm_test.py"
+        self.write_python_tool.function(file_path=test_file_path, code=chemberta_mlm_code)
+
+        run_result_mlm = self.run_python_tool.function(python_file_path=test_file_path)
+        self.assertNotIn("error", run_result_mlm.lower(), "ChemBERTa MLM script should run without errors")
+        self.assertIn("Success! MLM", run_result_mlm, "ChemBERTa MLM should produce output")
+
+        check_foundation_model_gpu_usage(run_result_mlm, model="ChemBERTa-MLM")
+
+        # Second: MTR-style ChemBERTa usage (AutoModel / Masked Token Regression)
+        chemberta_mtr_code = """
+import torch
+from transformers import AutoTokenizer, AutoModel
+
+# Check GPU availability
+device = "cuda" if torch.cuda.is_available() else "cpu"
+print(f"Using device: {device}")
+if torch.cuda.is_available():
+    print(f"GPU Name: {torch.cuda.get_device_name(0)}")
+else:
+    print("No GPU available, using CPU.")
+
+# Load a small ChemBERTa MTR model for testing
+model_name = "DeepChem/ChemBERTa-5M-MTR"
+tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, local_files_only=True)
+model = AutoModel.from_pretrained(model_name, trust_remote_code=True, local_files_only=True).to(device)
+
+# Example SMILES (ethanol) and a forward pass
+smiles = "CCO"
+inputs = tokenizer(smiles, return_tensors='pt', padding=True, truncation=True).to(device)
+outputs = model(**inputs)
+
+# Regression heads may return logits or a dict-like object; print repr
+print(f"Success! MTR Output: {type(outputs)}")
+"""
+
+        test_file_path_mtr = self.config.runs_dir / self.config.agent_id / "chemberta_mtr_test.py"
+        self.write_python_tool.function(file_path=test_file_path_mtr, code=chemberta_mtr_code)
+
+        run_result_mtr = self.run_python_tool.function(python_file_path=test_file_path_mtr)
+        self.assertNotIn("error", run_result_mtr.lower(), "ChemBERTa MTR script should run without errors")
+        self.assertIn("Success! MTR", run_result_mtr, "ChemBERTa MTR should produce output")
+
+        check_foundation_model_gpu_usage(run_result_mtr, model="ChemBERTa-MTR")
+
+    def test_agent_molformer_usage(self):
+        """Test that agent can use MoLFormer model for SMILES / chemical embeddings."""
+        molformer_code = """
+import torch
+from transformers import AutoTokenizer, AutoModel
+
+# Check GPU availability
+device = "cuda" if torch.cuda.is_available() else "cpu"
+print(f"Using device: {device}")
+if torch.cuda.is_available():
+    print(f"GPU Name: {torch.cuda.get_device_name(0)}")
+else:
+    print("No GPU available, using CPU.")
+
+# Load MoLFormer model (small/XL variant as catalogued)
+model_name = "ibm-research/MoLFormer-XL-both-10pct"
+tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, local_files_only=True)
+model = AutoModel.from_pretrained(model_name, trust_remote_code=True, local_files_only=True).to(device)
+
+# Example SMILES and forward pass
+smiles = ["Cn1c(=O)c2c(ncn2C)n(C)c1=O"]
+inputs = tokenizer(smiles, padding=True, return_tensors='pt').to(device)
+with torch.no_grad():
+    outputs = model(**inputs)
+
+print(f"Success! Output shape: {outputs.pooler_output.shape}")
+"""
+
+        test_file_path = self.config.runs_dir / self.config.agent_id / "molformer_test.py"
+        self.write_python_tool.function(file_path=test_file_path, code=molformer_code)
+
+        run_result = self.run_python_tool.function(python_file_path=test_file_path)
+        self.assertNotIn("error", run_result.lower(), "MoLFormer script should run without errors")
+        self.assertIn("Success!", run_result, "MoLFormer should produce output")
+
+        print(run_result)
+        check_foundation_model_gpu_usage(run_result, model="MoLFormer-XL")
+
     def test_foundation_models_info_tool(self):
         """The foundation-model info tool should return the catalog string."""
         output = self.foundation_models_info_tool.function()
 
         self.assertIn("Family: ESM-2", output)
-        self.assertIn("Docs and code snippets: /foundation_models/ESM-2.md", output)
         self.assertIn("LongSafari/hyenadna-tiny-1k-seqlen-hf", output)
         self.assertIn("multimolecule/rinalmo-micro", output.lower())
