@@ -137,7 +137,7 @@ def snapshot(config, iteration, delete_old_snapshot=True):
 
     snapshot_dir.mkdir(parents=True, exist_ok=True)
 
-    shutil.copytree(str(iteration_dir), str(snapshot_dir), dirs_exist_ok=True)
+    shutil.copytree(str(iteration_dir), str(snapshot_dir), dirs_exist_ok=True, symlinks=True)
 
     replace_python_paths(folder_path=snapshot_dir,current_path=iteration_dir, new_path=".")
         
