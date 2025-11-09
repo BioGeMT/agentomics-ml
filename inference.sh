@@ -88,9 +88,10 @@ if [[ "$DOCKER_MODE" == true ]]; then
         -v "$(dirname "$INPUT_PATH_ABS"):/input_dir" \
         -v "$(dirname "$OUTPUT_PATH_ABS"):/output_dir" \
         ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
+        --entrypoint "" \
         -w /workspace \
         -e PATH="/workspace/.conda/envs/${AGENT_NAME}_env/bin:$PATH" \
-        condaforge/mambaforge:23.3.1-0 \
+        agentomics_img \
         python inference.py \
         --input "/input_dir/$(basename "$INPUT_PATH_ABS")" \
         --output "/output_dir/$(basename "$OUTPUT_PATH_ABS")" "${ARGS[@]}" 
