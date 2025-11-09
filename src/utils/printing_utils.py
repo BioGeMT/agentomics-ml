@@ -93,7 +93,7 @@ def pretty_print_node(node):
 
                 pretty_print(part.args, color=bcolors.OKCYAN)
             elif(isinstance(part, ThinkingPart)):
-                pretty_print(part.content)
+                pretty_print(part.content, color=bcolors.OKGREEN)
             else:
                 pretty_print(f"DEVINFO: Unexpected part type (in CallToolsNode): {type(part)}")
                 pretty_print(part)
