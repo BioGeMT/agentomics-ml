@@ -151,7 +151,7 @@ def create_agents(config: Config, model, tools):
             raise ModelRetry("Inference file contains references to an iteration folder ('iteration_' detected), which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
         invalid_iter_folders = get_invalid_iteration_folders(config, ctx.deps['iteration'])
         if len(invalid_iter_folders) > 0:
-            raise ModelRetry("An iteration folder was created during this iteration. Move all files out of it to the current working directory, update their dependencies if necessary, and delete it. This applies to the following folders: " + ", ".join(invalid_iter_folders))
+            raise ModelRetry("An iteration folder was created during this iteration. Move all files out of it to the current working directory, update their dependencies if necessary, and delete the folder. This applies to the following folders: " + ", ".join(invalid_iter_folders))
         run_inference_and_log(config, iteration=-1, evaluation_stage='dry_run')
         result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
         return result
