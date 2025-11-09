@@ -53,4 +53,6 @@ def log_feedback_failure(message, iteration):
     
     else:
         wandb.log({'feedback_exception_msg':message}, step=iteration)
-   
+
+def log_iteration_duration(iteration, duration):
+    wandb.log({'duration':duration}, step=iteration)

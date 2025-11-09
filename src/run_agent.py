@@ -10,7 +10,7 @@ import weave
 from timeout_function_decorator import timeout as timeout_decorator
 
 from run_logging.evaluate_log_run import run_inference_and_log
-from run_logging.logging_helpers import log_serial_metrics, log_feedback_failure
+from run_logging.logging_helpers import log_serial_metrics, log_feedback_failure, log_iteration_duration
 from run_logging.wandb_setup import setup_logging
 from run_logging.log_files import log_files, export_config_to_snapshot
 from utils.env_utils import are_wandb_vars_available
@@ -101,11 +101,13 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
                 last_split_strategy=last_split_strategy,
             )
             iter_to_duration[run_index] = time.time() - start
+            log_iteration_duration(iteration=run_index, duration=iter_to_duration[run_index])
             last_split_strategy = next((step.splitting_strategy for step in structured_outputs if isinstance(step, DataSplit)), None)
             save_splits_to_fallback(config)
             last_successful_iter = run_index
         except IterationRunFailed as e:
             iter_to_duration[run_index] = time.time() - start
+            log_iteration_duration(iteration=run_index, duration=iter_to_duration[run_index])
             log_serial_metrics(prefix='validation', metrics=None, iteration=run_index, task_type=config.task_type)
             log_serial_metrics(prefix='train', metrics=None, iteration=run_index, task_type=config.task_type)
             load_fallbacks_to_rundir(config, run_index)
