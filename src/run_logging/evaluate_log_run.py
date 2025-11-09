@@ -60,7 +60,10 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
     if(not config.explicit_valid_set_provided and evaluation_stage == 'validation'):
         create_labelless_validation_file(config, target_path=stage_to_inference_input[evaluation_stage]) 
 
-    command_prefix=f"conda run -p {conda_path[source_folder]} --no-capture-output"
+    if evaluation_stage == 'test':
+        command_prefix=f"cd {snapshot_dir} && conda run -p {conda_path[source_folder]} --no-capture-output"
+    else:
+        command_prefix=f"conda run -p {conda_path[source_folder]} --no-capture-output"
     command = f"{command_prefix} python {inference_path[source_folder]} --input {stage_to_inference_input[evaluation_stage]} --output {stage_to_output[evaluation_stage]}"
     inference_out = subprocess.run(command, shell=True, executable="/bin/bash", capture_output=True)
     if(not config.explicit_valid_set_provided and evaluation_stage == 'validation'):
