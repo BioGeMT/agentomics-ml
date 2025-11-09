@@ -126,7 +126,7 @@ def create_agents(config: Config, model, tools):
         if not os.path.exists(result.path_to_model_file):
             raise ModelRetry("Model file does not exist.")
         if does_file_contain_string(result.path_to_train_file, "iteration_"):
-            raise ModelRetry("Train file contains references to an iteration folder ('iteration_' detected), which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
+            raise ModelRetry("Train file contains path containing a forbidden string 'iteration_' or references an iteration folder, which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
         result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
         return result
 
@@ -135,7 +135,7 @@ def create_agents(config: Config, model, tools):
         if not os.path.exists(result.path_to_inference_file):
             raise ModelRetry("Inference file does not exist.")
         if does_file_contain_string(result.path_to_inference_file, "iteration_"):
-            raise ModelRetry("Inference file contains references to an iteration folder ('iteration_' detected), which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
+            raise ModelRetry("Inference file contains path containing a forbidden string 'iteration_' or references an iteration folder, which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
         if does_file_contain_string(result.path_to_inference_file, "train.csv") or does_file_contain_string(result.path_to_inference_file, "validation.csv"):
             raise ModelRetry("Inference file contains references to dataset split files ('train.csv' or 'validation.csv' detected), which will not be accessible during final testing.")
         run_inference_and_log(config, iteration=-1, evaluation_stage='dry_run')
