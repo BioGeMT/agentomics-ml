@@ -76,15 +76,18 @@ def run_agent(config: dict, agent: str, dataset: str) -> Path:
     ]
 
     with open(log_file, "w") as f:
-        subprocess.run(
+        result = subprocess.run(
             cmd,
             cwd=CLONE_DIR,
             env=env,
             stdout=f,
             stderr=subprocess.STDOUT,
             text=True,
-            check=True,
+            check=False,
         )
+
+    if result.returncode != 0:
+        raise RuntimeError(f"Agent {agent} failed on dataset {dataset} with exit code {result.returncode}")
 
     return copy_run_artifacts(agent, dataset, output_subdir)
 
@@ -141,50 +144,54 @@ def main() -> int:
 
     for dataset, agent in iterate_targets(config, args):
         console.rule(f"{agent} on {dataset}")
-        artifact_dir = run_agent(config, agent, dataset)
-        output_subdir = RESULTS_DIR / f"{dataset}_{agent}"
+        try:
+            artifact_dir = run_agent(config, agent, dataset)
+            output_subdir = RESULTS_DIR / f"{dataset}_{agent}"
 
-        metrics, task_type = evaluate_submission(
-            dataset=dataset,
-            artifact_root=artifact_dir,
-            data_dir=DATA_DIR,
-            output_dir=output_subdir,
-        )
-
-        inference_stage = rerun_inference(
-            dataset=dataset,
-            artifact_root=artifact_dir,
-            data_dir=DATA_DIR,
-            output_dir=output_subdir,
-        )
-        (output_subdir / "inference_stage.json").write_text(
-            json.dumps(
-                {
-                    "inference_stage": inference_stage,
-                    "inference_stage_id": INFERENCE_STAGE[inference_stage],
-                },
-                indent=2,
+            metrics, task_type = evaluate_submission(
+                dataset=dataset,
+                artifact_root=artifact_dir,
+                data_dir=DATA_DIR,
+                output_dir=output_subdir,
             )
-        )
 
-        wandb.init(
-            project=os.environ["WANDB_PROJECT_NAME"],
-            entity=os.environ["WANDB_ENTITY"],
-            name=f"{dataset}-{agent}",
-            config={
-                "dataset": dataset,
-                "agent": agent,
-                "task_type": task_type,
-            },
-        )
-        payload = {name: float(value) for name, value in metrics.items()}
-        payload["inference_stage_id"] = INFERENCE_STAGE[inference_stage]
-        wandb.log(payload)
-        wandb.finish()
+            inference_stage = rerun_inference(
+                dataset=dataset,
+                artifact_root=artifact_dir,
+                data_dir=DATA_DIR,
+                output_dir=output_subdir,
+            )
+            (output_subdir / "inference_stage.json").write_text(
+                json.dumps(
+                    {
+                        "inference_stage": inference_stage,
+                        "inference_stage_id": INFERENCE_STAGE[inference_stage],
+                    },
+                    indent=2,
+                )
+            )
 
-        console.print(f"Metrics: {json.dumps(metrics, indent=2)}")
-        console.print(f"Inference stage: {inference_stage}")
-        summary.append((dataset, agent, highlight_metric(metrics, task_type)))
+            wandb.init(
+                project=os.environ["WANDB_PROJECT_NAME"],
+                entity=os.environ["WANDB_ENTITY"],
+                name=f"{dataset}-{agent}",
+                config={
+                    "dataset": dataset,
+                    "agent": agent,
+                    "task_type": task_type,
+                },
+            )
+            payload = {name: float(value) for name, value in metrics.items()}
+            payload["inference_stage_id"] = INFERENCE_STAGE[inference_stage]
+            wandb.log(payload)
+            wandb.finish()
+
+            console.print(f"Metrics: {json.dumps(metrics, indent=2)}")
+            console.print(f"Inference stage: {inference_stage}")
+            summary.append((dataset, agent, highlight_metric(metrics, task_type)))
+        except Exception as e:
+            console.print(f"[red]FAILED: {e}[/red]")
+            summary.append((dataset, agent, f"FAILED: {str(e)}"))
 
     table = Table(title="Benchmark Summary", box=box.SIMPLE_HEAVY)
     table.add_column("Dataset")
