@@ -21,16 +21,6 @@ Larger models are generally more accurate but require more memory.
 
 ---
 
-## Installation
-
-```bash
-pip install torch transformers
-# For ESMFold extras
-pip install openfold biopython
-```
-
----
-
 ## Get Sequence Embeddings (mean-pooled, special tokens removed)
 
 ```python
