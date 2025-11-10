@@ -73,6 +73,7 @@ class Config:
         self.snapshots_dir = workspace_dir / "snapshots"
         self.fallbacks_dir = workspace_dir / "fallbacks"
         self.reports_dir = workspace_dir / "reports"
+        self.extras_dir = workspace_dir / "extras"
         self.iterations = iterations
         self.task_type = get_task_type_from_prepared_dataset(prepared_datasets_dir / dataset)
         self.user_prompt = user_prompt
