@@ -2,7 +2,115 @@ import pandas as pd
 import wandb
 from dotenv import load_dotenv
 import numpy as np
+from weave.trace_server.trace_server_interface import CallsFilter
+import pandas as pd
+import wandb
+import weave
+from dotenv import load_dotenv
 
+def generate_iterative_runs(tags, path, method, entity='ceitec-ai', project='Agentomics-ML'):
+    load_dotenv()
+    api = wandb.Api(timeout=120)
+    weave_client = weave.init(f"{entity}/{project}")
+    runs = api.runs(
+        f"{entity}/{project}",
+        # filters={"tags": {"$in": tags}}
+    )
+    runs_data = []
+    for run in runs:
+        if('_runtime' not in run.summary.keys()):
+            continue
+        if run.id != 're4ynxfb': #TODO remove
+            continue
+        run_data = {
+            "run_id": run.id,
+            "run_name": run.name,
+            "tags": run.tags,
+            "created_at": run.created_at,
+            "state": run.state,
+            'wandb_runtime': run.summary['_runtime'],
+            "method":method,
+            **get_run_tokens_info(entity=entity, project=project, run_id=run.id, weave_client=weave_client),
+        }
+
+        for key, value in run.config.items():
+            run_data[f"{key}"] = value
+        
+        history_data = run.history(pandas=True)
+        new_best_data = history_data['validation/new_best']
+        run_data['best_iteration'] = new_best_data[new_best_data == True].last_valid_index()
+        run_data['successful_run'] = run_data['best_iteration'] is not None
+        
+        splits = ['validation', 'train']
+        # if run is finished
+        all_metrics = [key.split('/')[-1] for key in history_data.keys() if key.split('/')[0] in splits]
+        print('metrics', all_metrics)
+        timeseries_cols = ['duration', '_timestamp', '_step', '_runtime'] + all_metrics
+        if(not history_data.empty):
+            sample_timeseries_field = 'validation/snapshot_reset'
+            iterations_completed = len(history_data[sample_timeseries_field])
+            for k,v in history_data.items():
+                if (k.split('/')[0] not in splits and k not in timeseries_cols): #split data and timeseries will get processed separately
+                    run_data[k]=v
+                else:
+                    assert len(v) == iterations_completed, f'{k} is not of length {iterations_completed}'
+                    for i, v in enumerate(history_data[k]):
+                        if k in all_metrics:
+                            run_data[f'{i}:test/{k}'] = v
+                        else:
+                            run_data[f'{i}:{k}'] = v
+
+        runs_data.append(run_data)
+
+    df = pd.DataFrame(runs_data)
+    df = df.rename(columns={'val_metric': 'metric_to_optimize'})
+    cols_to_drop = [ 
+        'run_id', 
+        'tags', 
+        'agent_id',
+        'inference_stage',
+        'use_proxy',
+        'credit_budget',
+    ]
+    df = df.drop(columns=cols_to_drop)
+    df['models'] = df['model_name'] +' / '+ df['feedback_model_name']
+
+    df.to_csv(path, index=False)
+    print(f"Found {len(df)} runs matching the specified tags {tags}")
+    return df
+
+def get_run_tokens_info(entity, project, run_id, weave_client):
+    run_info = {
+        'prompt_tokens': None,
+        'completion_tokens': None,
+        'requests': None,
+        'total_tokens': None,
+        'reasoning_tokens': None
+    }
+    calls = weave_client.get_calls(filter=CallsFilter(wb_run_ids=[f"{entity}/{project}/{run_id}"], trace_roots_only=True))
+    assert len(calls) == 1, len(calls)
+    call = calls[0]
+    # print(call.summary)
+    usage = call.summary.get('usage')
+    
+    # sum across all models
+    if not usage:
+        return run_info
+    for model, info in usage.items():
+        simple_fields = ['prompt_tokens', 'completion_tokens', 'requests', 'total_tokens']
+        for simple_field in simple_fields:
+            if run_info[simple_field] is None:
+                run_info[simple_field] = 0
+            run_info[simple_field] += info.get(simple_field, 0)
+            
+        ctd = info.get('completion_tokens_details')
+        reasoning_tokens = ctd.get('reasoning_tokens') if ctd is not None else 0
+        if run_info['reasoning_tokens'] is None:
+            run_info['reasoning_tokens'] = 0
+
+        run_info['reasoning_tokens'] += reasoning_tokens
+        
+    return run_info
 
 def generate_aide_runs(tags, path, method, drop_na, entity='ceitec-ai', project='Agentomics-ML'):
     load_dotenv()
@@ -47,138 +155,6 @@ def generate_aide_runs(tags, path, method, drop_na, entity='ceitec-ai', project=
     df = df.drop(columns=cols_to_drop)
     df['method'] = method + ":" + df['model']
     df.to_csv(path, index=False)
-    return df
-
-def generate_noniterative_runs(tags, path, method, drop_na, entity='ceitec-ai', project='Agentomics-ML'):
-    load_dotenv()
-    api = wandb.Api(timeout=120)
-    runs = api.runs(
-        f"{entity}/{project}",
-        filters={"tags": {"$in": tags}},
-    )
-    runs_data = []
-    for run in runs:
-        if('_runtime' not in run.summary.keys()):
-            continue
-        run_data = {
-            "run_id": run.id,
-            "run_name": run.name,
-            "tags": run.tags,
-            "created_at": run.created_at,
-            "state": run.state, #necessary?
-            'duration': run.summary['_runtime'],
-        }
-        for key, value in run.config.items():
-            run_data[f"{key}"] = value
-        for key, value in run.summary.items():
-            if(key in ["AUPRC", "AUROC", "ACC", "inference_stage"]):
-                run_data[f"{key}"] = value
-        runs_data.append(run_data)
-
-    df = pd.DataFrame(runs_data)
-    if(drop_na): # drops killed
-        df = df.dropna().reset_index(drop=True)
-
-    df['successful_run'] = df['inference_stage'].apply(lambda x: True if x == 2 else False)
-    cols_to_drop = [ 
-        'run_id', 
-        'tags', 
-        'agent_id',
-        'state',
-        'inference_stage',
-    ]
-    df = df.drop(columns=cols_to_drop)
-    df = df[df['model'] != 'google/gemini-2.5-pro-preview-03-25']
-    print(f"Found {len(df)} runs matching the specified tags {tags}")
-    
-    df['method'] = method + ":" + df['model']
-    df.to_csv(path, index=False)
-    return df
-
-def generate_iterative_runs(tags, path, method, entity='ceitec-ai', project='Agentomics-ML'):
-    load_dotenv()
-    api = wandb.Api(timeout=120)
-    runs = api.runs(
-        f"{entity}/{project}",
-        filters={"tags": {"$in": tags}}
-    )
-    runs_data = []
-    for run in runs:
-        if('_runtime' not in run.summary.keys()):
-            continue
-        run_data = {
-            "run_id": run.id,
-            "run_name": run.name,
-            "tags": run.tags,
-            "created_at": run.created_at,
-            "state": run.state,
-            'duration': run.summary['_runtime'],
-        }
-
-        for key, value in run.config.items():
-            run_data[f"{key}"] = value
-        for key, value in run.summary.items():
-            if(key in ["AUPRC", "AUROC", "ACC", "inference_stage"]):
-                run_data[f"{key}"] = value
-            
-        metrics = ['ACC', 'AUPRC', 'AUROC']
-        val_histories = [f'validation/{metric}' for metric in metrics]
-        train_histories = [f'train/{metric}' for metric in metrics]
-        stealth_test_histories = [f'stealth_test/{metric}' for metric in metrics]
-        histories = val_histories + train_histories + stealth_test_histories
-        history_data = run.history(keys=histories, pandas=True)
-        # if run is not finished
-        if(not history_data.empty):
-            for metric in metrics:
-                best_val_row_index = history_data[f'validation/{metric}'].idxmax()
-                max_val_row = history_data.loc[best_val_row_index]
-                test_val = max_val_row[f'stealth_test/{metric}']
-                run_data[f'{metric}'] = test_val
-                run_data[f'best_{metric}_iteration'] = best_val_row_index
-
-                zeroth_iteration_row = history_data.loc[0]
-                test_val_zeroth = zeroth_iteration_row[f'stealth_test/{metric}']
-                run_data[f'{metric}_zeroth'] = test_val_zeroth
-
-                #TODO compute max of 0th iterations (5 runs) -> compare to average best metric over 5 iterations to estimate how much feedback helps
-                run_data[f'{metric}_gain_on_zeroth'] = test_val - test_val_zeroth
-
-                splits = ['validation', 'stealth_test', 'train']
-                for split in splits:
-                    for i, value in enumerate(history_data[f'{split}/{metric}']):
-                        run_data[f'{i}:{split}/{metric}'] = value
-
-        runs_data.append(run_data)
-
-    df = pd.DataFrame(runs_data)
-    df['successful_run'] = df['ACC'].apply(lambda x: True if x >= 0 else False)
-    df = df.rename(columns={'val_metric': 'metric_to_optimize'})
-    cols_to_drop = [ 
-        'run_id', 
-        'tags', 
-        'agent_id',
-        # 'state',
-        'inference_stage',
-        'use_proxy',
-        'credit_budget',
-        'max_run_retries',
-    ]
-    df = df.drop(columns=cols_to_drop)
-    df['method'] = method + ":" + df['model']
-    df = df[df['model'] == 'GPT4_1']
-    # keep only 5 oldest runs for each dataset
-    time_picked_dfs = []
-    for dataset in df['dataset'].unique():
-        dataset_df = df[df['dataset'] == dataset]
-        dataset_df = dataset_df.sort_values(by='created_at', ascending=True)
-        dataset_df = dataset_df.head(5)
-        time_picked_dfs.append(dataset_df)
-
-    df = pd.concat(time_picked_dfs, ignore_index=True)
-
-
-    df.to_csv(path, index=False)
-    print(f"Found {len(df)} runs matching the specified tags {tags}")
     return df
 
 def transform_gb_leaderboard_to_long_format(path):
@@ -277,18 +253,18 @@ def process_leaderboard(leaderboard_path, save_path):
     return df
 
 if __name__ == "__main__":
-    _ = generate_noniterative_runs(
-        tags=['andrea_run_one_shot_v3', 'andrea_run_one_shot_v4', 'oneshot_recover_v1'], 
-        path="zeroshot_runs.csv",
-        method="zero_shot",
-        drop_na=True,
-    )
-    _ = generate_noniterative_runs(
-        tags=['andrea_DI_v2', 'DI_recover_v1'], 
-        path="DI_runs.csv",
-        method="DI",
-        drop_na=True,
-    )
+    # _ = generate_noniterative_runs(
+    #     tags=['andrea_run_one_shot_v3', 'andrea_run_one_shot_v4', 'oneshot_recover_v1'], 
+    #     path="zeroshot_runs.csv",
+    #     method="zero_shot",
+    #     drop_na=True,
+    # )
+    # _ = generate_noniterative_runs(
+    #     tags=['andrea_DI_v2', 'DI_recover_v1'], 
+    #     path="DI_runs.csv",
+    #     method="DI",
+    #     drop_na=True,
+    # )
     _ = generate_iterative_runs(
         tags=['agentomics_v10', 'agentomics_v11', 'agentomics_einfra_v1'], 
         path="Agentomics_runs.csv",

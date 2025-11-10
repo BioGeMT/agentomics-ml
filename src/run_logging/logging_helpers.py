@@ -55,4 +55,11 @@ def log_feedback_failure(message, iteration):
         wandb.log({'feedback_exception_msg':message}, step=iteration)
 
 def log_iteration_duration(iteration, duration):
+    if not is_wandb_active():
+        return
     wandb.log({'duration':duration}, step=iteration)
+
+def log_new_best(iteration):
+    if not is_wandb_active():
+        return
+    wandb.log({'validation/new_best':True}, step=iteration)
