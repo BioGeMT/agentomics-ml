@@ -10,20 +10,24 @@ from run_logging.wandb_setup import resume_wandb_run
 from utils.snapshots import replace_python_paths
 
 def run_test_evaluation(workspace_dir):
-    config = load_run_config(snapshots_dir = Path(workspace_dir) / 'snapshots')
-    resume_wandb_run(config)
-
     print("\nRunning final test evaluation...")
+    config = None
     try:
+        config = load_run_config(snapshots_dir = Path(workspace_dir) / 'snapshots')
+        resume_wandb_run(config)
         run_inference_and_log(config, iteration=None, evaluation_stage='test', use_best_snapshot=True)
         add_final_test_metrics_to_best_report(config)
     except Exception as e:
         print('FINAL TEST EVAL FAIL', str(e))
-        log_inference_stage_and_metrics(1, task_type=config.task_type)
+        if config is not None:
+            log_inference_stage_and_metrics(1, task_type=config.task_type)
+        else:
+            log_inference_stage_and_metrics(1, task_type='classification') #fallback
 
 def load_run_config(snapshots_dir):
     subdirs = [d for d in snapshots_dir.iterdir() if d.is_dir()]
-    assert len(subdirs) == 1, 'More than 1 snapshot folder found, assuming only 1'
+    assert len(subdirs) > 0, 'No snapshot folder found'
+    assert len(subdirs) == 1, f'Expected 1 snapshot folder, found {len(subdirs)}'
     snapshot_dir = subdirs[0]
     config_path = snapshot_dir.resolve() / "config.json"
     with open(config_path, 'r') as f:
