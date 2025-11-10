@@ -1,15 +1,17 @@
 import json
 from pathlib import Path
 import argparse
+import time
 
 from utils.config import Config
 from utils.report_logger import add_final_test_metrics_to_best_report
 from run_logging.evaluate_log_run import run_inference_and_log
-from run_logging.logging_helpers import log_inference_stage_and_metrics
+from run_logging.logging_helpers import log_inference_stage_and_metrics, log_test_inference_duration
 from run_logging.wandb_setup import resume_wandb_run
 from utils.snapshots import replace_python_paths
 
 def run_test_evaluation(workspace_dir):
+    start = time.time()
     print("\nRunning final test evaluation...")
     config = None
     try:
@@ -23,6 +25,7 @@ def run_test_evaluation(workspace_dir):
             log_inference_stage_and_metrics(1, task_type=config.task_type)
         else:
             log_inference_stage_and_metrics(1, task_type='classification') #fallback
+    log_test_inference_duration(time.time() - start)
 
 def load_run_config(snapshots_dir):
     subdirs = [d for d in snapshots_dir.iterdir() if d.is_dir()]

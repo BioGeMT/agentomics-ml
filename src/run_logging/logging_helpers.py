@@ -63,3 +63,9 @@ def log_new_best(iteration):
     if not is_wandb_active():
         return
     wandb.log({'validation/new_best':True}, step=iteration)
+
+def log_test_inference_duration(duration):
+    if not is_wandb_active():
+        return
+    wandb.log({'test_inference_duration':duration})
+    
