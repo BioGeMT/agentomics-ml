@@ -4,6 +4,10 @@
 
 **Nucleotide Transformer v2** is a large-scale foundation language model developed by **InstaDeep**, **NVIDIA**, and **TUM** for genomic sequence understanding. It is part of the *Nucleotide Transformer* collection, pre-trained on over **850 genomes** from diverse species — both model and non-model organisms — encompassing **174 billion nucleotides (~29B tokens)**.
 
+Part of this collection is the nucleotide-transformer-500m-human-ref, a 500M parameters transformer pre-trained on the human reference genome. 
+
+Part of this collection is the nucleotide-transformer-v2-50m-3mer-multi-species, a 50M parameters transformer pre-trained on a collection of 850 genomes from a wide range of species, including model and non-model organisms.
+
 Unlike previous models trained on single reference genomes, this collection integrates information across thousands of genomes, providing highly accurate molecular phenotype predictions.
 
 ## Model Variants
@@ -19,16 +23,6 @@ Unlike previous models trained on single reference genomes, this collection inte
 | **InstaDeepAI/nucleotide-transformer-v2-100m-multi-species**     | Fill-Mask | Sep 16, 2024 | 97.9M      | 2.31k     | 1     |
 | **InstaDeepAI/nucleotide-transformer-v2-250m-multi-species**     | Fill-Mask | Sep 16, 2024 | 250M       | 6.68k     | 3     |
 | **InstaDeepAI/nucleotide-transformer-v2-500m-multi-species**     | Fill-Mask | Oct 2024     | 0.5B       | 50.9k     | 27    |
-
-## Installation
-
-To use this model, install the latest version of the Transformers library from source:
-
-```bash
-pip install --upgrade git+https://github.com/huggingface/transformers.git
-```
-
----
 
 ## Example Usage
 
@@ -72,6 +66,7 @@ torch_outs = model(
 
 embeddings = torch_outs['hidden_states'][-1]
 print(f"Embeddings shape: {embeddings.shape}")
+print(f"Embeddings per token: {embeddings}")
 
 # Compute mean sequence embeddings
 attention_mask = torch.unsqueeze(attention_mask, dim=-1)

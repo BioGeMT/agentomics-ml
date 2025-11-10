@@ -33,6 +33,10 @@ HyenaDNA:
 
 NucleotideTransformer:
   models:
+    - name: InstaDeepAI/nucleotide-transformer-500m-human-ref
+      params: 500M
+    - name: InstaDeepAI/nucleotide-transformer-v2-50m-3mer-multi-species
+      params: 50M
     - name: InstaDeepAI/nucleotide-transformer-v2-50m-multi-species
       params: 50M
     - name: InstaDeepAI/nucleotide-transformer-v2-100m-multi-species
