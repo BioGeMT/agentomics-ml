@@ -25,7 +25,9 @@ class EvaluationArtifacts:
     @property
     def run_dir(self) -> Path:
         agentomics_dir = self.artifact_root / "agentomics"
-        return next(agentomics_dir.glob(f"{self.dataset}_*"))
+        matches = list(agentomics_dir.glob(f"{self.dataset}_*"))
+        assert len(matches) == 1
+        return matches[0]
 
     @property
     def submission_path(self) -> Path:
