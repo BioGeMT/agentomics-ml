@@ -7,7 +7,7 @@ from wandb.errors import CommError
 from run_logging.logging_helpers import login_to_wandb
 import weave
 
-def setup_logging(config, dir="/tmp/wandb"):
+def setup_logging(config, dir=None):
     dotenv.load_dotenv()
     api_key = os.getenv("WANDB_API_KEY")
     wandb_project_name = os.getenv("WANDB_PROJECT_NAME")
@@ -19,7 +19,7 @@ def setup_logging(config, dir="/tmp/wandb"):
         return False
     try:
         wandb.init(
-            dir=config.runs_dir / dir,
+            dir=config.extras_dir / 'run_logs' if dir is None else dir,
             entity=wandb_entity,
             project=wandb_project_name,
             tags=config.tags,
@@ -34,7 +34,7 @@ def setup_logging(config, dir="/tmp/wandb"):
         print("W&B initialization failed - skipping experiment logging")
         return False
 
-def resume_wandb_run(config, dir="/tmp/wandb"):
+def resume_wandb_run(config, dir=None):
     api_key = os.getenv("WANDB_API_KEY")
     wandb_project_name = os.getenv("WANDB_PROJECT_NAME")
     wandb_entity = os.getenv("WANDB_ENTITY")
@@ -45,7 +45,7 @@ def resume_wandb_run(config, dir="/tmp/wandb"):
         return False
     else:
         wandb.init(
-            dir=config.runs_dir / dir,
+            dir=config.extras_dir / 'test_logs' if dir is None else dir,
             id = config.wandb_run_id,
             project=wandb_project_name,
             entity=wandb_entity,
