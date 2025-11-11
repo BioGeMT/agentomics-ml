@@ -172,7 +172,7 @@ def main() -> int:
         console.rule(f"{agent} on {dataset}")
         try:
             artifact_dir = run_agent(config, agent, dataset)
-            output_subdir = RESULTS_DIR / f"{dataset}_{agent}"
+            output_subdir = artifact_dir.parent  # Use timestamped directory
 
             metrics, task_type = evaluate_submission(
                 dataset=dataset,
