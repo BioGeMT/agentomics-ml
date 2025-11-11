@@ -22,11 +22,18 @@ sys.path.insert(0, str(SRC_DIR))
 
 load_dotenv(PROJECT_ROOT / ".env")
 
-from evaluation import INFERENCE_STAGE, evaluate_submission, rerun_inference
-from utils.metrics import get_task_to_metrics_names  
-
+# Load config early to set provisioning key before api_keys import
 HERE = Path(__file__).resolve().parent
 CONFIG_PATH = HERE / "config.yaml"
+with open(CONFIG_PATH, "r") as fh:
+    _config = yaml.safe_load(fh)
+    if _config.get("enable_cost_tracking") and _config.get("provisioning_key"):
+        os.environ["PROVISIONING_OPENROUTER_API_KEY"] = _config["provisioning_key"]
+
+from evaluation import INFERENCE_STAGE, evaluate_submission, rerun_inference
+from utils.metrics import get_task_to_metrics_names
+from utils.api_keys import create_new_api_key, get_api_key_usage, delete_api_key
+
 CLONE_DIR = HERE / "biomlbench"
 RESULTS_DIR = HERE / "results"
 DATA_DIR = HERE / "data"
@@ -59,8 +66,18 @@ def build_env(base: dict, config: dict, agent: str) -> dict:
 
 
 def run_agent(config: dict, agent: str, dataset: str) -> Path:
-    env = build_env(os.environ, config, agent)
     timestamp = time.strftime("%Y-%m-%dT%H-%M-%S-%Z", time.gmtime())
+
+    # Cost tracking: create provisioned key
+    key_hash = None
+    if config.get("enable_cost_tracking", False):
+        config = config.copy()
+        key_name = f"{agent}_{dataset}_{timestamp}"
+        key_result = create_new_api_key(key_name, config["spending_limit_per_run"])
+        key_hash = key_result['hash']
+        config["openrouter_key"] = key_result['key']
+
+    env = build_env(os.environ, config, agent)
     output_subdir = RESULTS_DIR / f"{dataset}_{agent}_{timestamp}"
     output_subdir.mkdir(parents=True, exist_ok=True)
     log_file = output_subdir / "run.log"
@@ -91,6 +108,12 @@ def run_agent(config: dict, agent: str, dataset: str) -> Path:
 
     if result.returncode != 0:
         raise RuntimeError(f"Agent {agent} failed on dataset {dataset} with exit code {result.returncode}")
+
+    # Cost tracking: save usage and cleanup
+    if key_hash:
+        usage_data = get_api_key_usage(key_hash)
+        (output_subdir / "cost.json").write_text(json.dumps({"cost_usd": usage_data['usage']}, indent=2))
+        delete_api_key(key_hash)
 
     return copy_run_artifacts(agent, dataset, output_subdir)
 
@@ -174,6 +197,13 @@ def main() -> int:
                 )
             )
 
+            # Load cost data if available
+            cost_file = artifact_dir.parent / "cost.json"
+            cost_usd = None
+            if cost_file.exists():
+                cost_data = json.loads(cost_file.read_text())
+                cost_usd = cost_data.get("cost_usd")
+
             wandb.init(
                 project=os.environ["WANDB_PROJECT_NAME"],
                 entity=os.environ["WANDB_ENTITY"],
@@ -187,6 +217,8 @@ def main() -> int:
             )
             payload = {name: float(value) for name, value in metrics.items()}
             payload["inference_stage_id"] = INFERENCE_STAGE[inference_stage]
+            if cost_usd is not None:
+                payload["cost_usd"] = cost_usd
             wandb.log(payload)
             wandb.finish()
 
