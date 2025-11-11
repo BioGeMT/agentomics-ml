@@ -4,6 +4,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Iterator
 
@@ -58,7 +59,8 @@ def build_env(base: dict, config: dict, agent: str) -> dict:
 
 def run_agent(config: dict, agent: str, dataset: str) -> Path:
     env = build_env(os.environ, config, agent)
-    output_subdir = RESULTS_DIR / f"{dataset}_{agent}"
+    timestamp = time.strftime("%Y-%m-%dT%H-%M-%S-%Z", time.gmtime())
+    output_subdir = RESULTS_DIR / f"{dataset}_{agent}_{timestamp}"
     output_subdir.mkdir(parents=True, exist_ok=True)
     log_file = output_subdir / "run.log"
 
@@ -174,7 +176,7 @@ def main() -> int:
             wandb.init(
                 project=os.environ["WANDB_PROJECT_NAME"],
                 entity=os.environ["WANDB_ENTITY"],
-                name=f"{dataset}-{agent}",
+                name=f"{dataset}-{agent}-{json.loads((artifact_dir / 'metadata.json').read_text())['created_at']}",
                 config={
                     "dataset": dataset,
                     "agent": agent,
