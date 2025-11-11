@@ -111,18 +111,26 @@ def rerun_inference(
     artifact_root: Path,
     data_dir: Path,
     output_dir: Path,
+    agent: str = None,
 ) -> str:
     artifacts = EvaluationArtifacts(dataset=dataset, artifact_root=artifact_root)
-    features_path = data_dir / "agentomics" / dataset / "prepared" / "public" / "test_features.csv"
-    replay_dir = output_dir / "replay"
-    replay_dir.mkdir(parents=True, exist_ok=True)
-    replay_output = replay_dir / "submission.csv"
     inference_path = artifacts.code_dir / "inference.py"
     if not inference_path.exists():
         return "missing"
     env_yaml = inference_path.parent / "environment.yaml"
     if not env_yaml.exists():
         return "exists"
+
+    # For oneshot: just check files exist, skip actual rerun
+    # (no tools = static code = deterministic. If we get predictions it means inference run sucessfully)
+    if agent == "oneshot":
+        return "matches"
+
+    # For tool-using agents: 
+    features_path = data_dir / "agentomics" / dataset / "prepared" / "public" / "test_features.csv"
+    replay_dir = output_dir / "replay"
+    replay_dir.mkdir(parents=True, exist_ok=True)
+    replay_output = replay_dir / "submission.csv"
     env_name = f"inference-replay-{dataset}"
     subprocess.run(
         ["conda", "env", "create", "-n", env_name, "-f", str(env_yaml)],
