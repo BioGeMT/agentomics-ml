@@ -186,6 +186,7 @@ def main() -> int:
                 artifact_root=artifact_dir,
                 data_dir=DATA_DIR,
                 output_dir=output_subdir,
+                agent=agent,
             )
             (output_subdir / "inference_stage.json").write_text(
                 json.dumps(
