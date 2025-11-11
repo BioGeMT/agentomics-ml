@@ -111,7 +111,9 @@ def parse_args():
     parser.add_argument('--model', type=str, help='Model id to use (depends on provider)')
     parser.add_argument('--val-metric', type=str, help='Validation metric to use')
     parser.add_argument('--iterations', type=int, help='Number of iterations to run')
+    parser.add_argument('--timeout', type=int, help='Timeout in seconds')
     parser.add_argument('--target-col', type=str, help='Name of the target column')
+    parser.add_argument('--tags', nargs='*', default=[], help='(Optional) Tags for a wandb run logging')
     parser.add_argument('--task-type', type=str, help='Task type: classification or regression')
     parser.add_argument('--provider', type=str, default='openrouter', help='Provider name (e.g., openai, openrouter)')
     parser.add_argument('--user-prompt', type=str, default=None, help='Custom user prompt to guide the agent')
@@ -165,8 +167,9 @@ if __name__ == '__main__':
         prepared_datasets_dir= '/home/agent/prepared_datasets',
         prepared_test_sets_dir= '/home/agent/prepared_test_sets',
         agent_datasets_dir= '/home/workspace/datasets',
-        tags=[],
+        tags=args.tags,
         provider=args.provider,
         split_allowed_iterations=args.split_allowed_iterations,
         on_new_best_callbacks=[generate_preds_for_biomlbench],
+        timeout=args.timeout,
     ))
