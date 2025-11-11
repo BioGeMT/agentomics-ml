@@ -12,6 +12,11 @@ def infer_target(train_df: pd.DataFrame) -> str:
 
 
 def generate_task(clone_dir: Path, dataset_root: Path, templates_dir: Path, competitors_dir: Path, name: str) -> None:
+    """
+    Convert an Agentomics dataset to BioMLBench task format by creating task directory structure,
+    populates it with templated files (prepare.py, config.yaml, grade.py), copies raw data,
+    and executes the prepare script to generate public/private data splits for agent run.
+    """
     src = dataset_root / name
     train_df = pd.read_csv(src / "train.csv")
     test_df = pd.read_csv(src / "test.csv")
