@@ -39,11 +39,12 @@ def load_config() -> dict:
 
 def build_env(base: dict, config: dict, agent: str) -> dict:
     env = base.copy()
+    agent_config = config["agents"][agent]
     env.update(
         {
             "OPENROUTER_API_KEY": config["openrouter_key"],
             "OPENROUTER_BASE_URL": config["openrouter_base_url"],
-            "OPENROUTER_MODEL": config["model"],
+            "OPENROUTER_MODEL": agent_config["model"],
             "BMLB_TIME_LIMIT_SECS": str(config["time_limit_secs"]),
             "BMLB_STEP_LIMIT": str(config["step_limit"]),
         }
@@ -52,8 +53,8 @@ def build_env(base: dict, config: dict, agent: str) -> dict:
         env["LLM_SOURCE"] = "Custom"
         env["CUSTOM_MODEL_BASE_URL"] = config["openrouter_base_url"]
         env["CUSTOM_MODEL_API_KEY"] = config["openrouter_key"]
-        env["BIOMNI_SELF_CRITIC"] = str(config["biomni_self_critic"]).lower()
-        env["BIOMNI_ITERATIONS"] = str(config["biomni_iterations"])
+        env["BIOMNI_SELF_CRITIC"] = str(agent_config["self_critic"]).lower()
+        env["BIOMNI_ITERATIONS"] = str(agent_config["iterations"])
     return env
 
 
@@ -123,7 +124,7 @@ def highlight_metric(metrics: dict[str, float], task_type: str) -> str:
 
 
 def iterate_targets(config: dict, args: argparse.Namespace) -> Iterator[tuple[str, str]]:
-    agents = [a for a in config["agents"] if not args.agents or a in args.agents]
+    agents = [a for a in config["agents"].keys() if not args.agents or a in args.agents]
     datasets = [d for d in config["datasets"] if not args.datasets or d in args.datasets]
     for dataset in datasets:
         for agent in agents:
@@ -181,6 +182,7 @@ def main() -> int:
                     "dataset": dataset,
                     "agent": agent,
                     "task_type": task_type,
+                    "model": config["agents"][agent]["model"],
                 },
             )
             payload = {name: float(value) for name, value in metrics.items()}
