@@ -22,6 +22,21 @@ RUN conda env create -f environment.yaml \
 RUN conda init bash \
     && echo "conda activate agentomics-env" >> /root/.bashrc
 
+# Pre-download foundation models
+RUN mkdir -p /foundation_models /cache/foundation_models
+ENV HF_HOME=/cache/foundation_models
+COPY foundation_models/ /foundation_models/
+COPY foundation_models_utils.py /repository/src/utils/foundation_models_utils.py
+COPY download_foundation_models.py /repository/src/utils/download_foundation_models.py
+RUN /opt/conda/envs/agentomics-env/bin/python /repository/src/utils/download_foundation_models.py
+
+# Setup agent start environment
+COPY environment_agent.yaml .
+RUN conda env create -f environment_agent.yaml \
+    && conda clean -afy \
+    && rm -rf /tmp/conda-pkgs
+RUN conda run -n agent_start_env conda-pack -o /opt/agent_start_env.tar.gz
+
 WORKDIR /repository
 
 # where to put submission, will be extracted
