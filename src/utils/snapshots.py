@@ -82,9 +82,9 @@ def is_new_best(config):
     print(f"Best metrics: {best_metrics}")
     return is_new_best
        
-def delete_snapshot(snapshot_dir):
-    if snapshot_dir.exists():
-        shutil.rmtree(snapshot_dir)
+def delete_dir(dir_path):
+    if dir_path.exists():
+        shutil.rmtree(dir_path)
 
 def file_fingerprint(path, chunk_size=65536):
     hasher = hashlib.sha256()
@@ -112,7 +112,7 @@ def reset_snapshot_if_val_split_changed(config, iteration, old_fingerprint, new_
         if is_wandb_active():
             wandb.log({"validation/snapshot_reset":1}, step=iteration)
         snapshot_dir = config.snapshots_dir / config.agent_id
-        delete_snapshot(snapshot_dir)
+        delete_dir(snapshot_dir)
         snapshot_dir.mkdir(parents=True, exist_ok=True)
         return True
     else:
@@ -128,18 +128,20 @@ def lock_split_files(config):
     os.chmod(train_split, read_only_mode)
     os.chmod(validation_split, read_only_mode)
 
-def snapshot(config, iteration, delete_old_snapshot=True):
-    iteration_dir = config.runs_dir / config.agent_id / f"iteration_{iteration}"
+def snapshot(config, iteration, structured_outputs, delete_old_snapshot=True):
     snapshot_dir = config.snapshots_dir / config.agent_id
 
-    if delete_old_snapshot:
-        delete_snapshot(snapshot_dir)
+    snapshot_run_dir_into_dest(
+        config=config,
+        destination_dir=snapshot_dir,
+        delete_old_destination_dir=delete_old_snapshot,
+        structured_outputs=structured_outputs,
+        snapshot_conda=True,
+        is_best=True,
+        rundir_path_replacement = "."
+    )
 
-    snapshot_dir.mkdir(parents=True, exist_ok=True)
-
-    shutil.copytree(str(iteration_dir), str(snapshot_dir), dirs_exist_ok=True, symlinks=True)
-
-    replace_python_paths(folder_path=snapshot_dir,current_path=iteration_dir, new_path=".")
+    replace_python_paths(folder_path=snapshot_dir,current_path=snapshot_dir, new_path=".")
         
     with open(snapshot_dir / "iteration_number.txt", "w") as f:
         f.write(str(iteration))
@@ -152,21 +154,21 @@ def get_best_iteration(config):
             return int(f.read().strip())
     return None
 
-def export_conda_to_iteration_dir(config, run_dir, iteration_dir, is_best=False):
-    if is_best:
+def export_conda_to_dir(config, run_dir, destination_dir, include_packages=False):
+    if include_packages:
         conda_env = run_dir / ".conda"
-        shutil.copytree(str(conda_env), str(iteration_dir / ".conda"), symlinks=True, dirs_exist_ok=True)
+        shutil.copytree(str(conda_env), str(destination_dir / ".conda"), symlinks=False, dirs_exist_ok=True)
     
     env_name = f"{config.agent_id}_env"
     conda_env = run_dir / ".conda" / "envs" / env_name
     if conda_env.exists():
-        subprocess.run(['conda', 'env', 'export', '-p', str(conda_env), '-f', str(iteration_dir / "conda_environment.yml")], check=True)
+        subprocess.run(['conda', 'env', 'export', '-p', str(conda_env), '-f', str(destination_dir / "conda_environment.yml")], check=True)
 
-def save_outputs_to_iteration_dir(iteration_dir, structured_outputs):
-    with open(iteration_dir / "structured_outputs.txt", "w") as f:
+def save_outputs_to_dir(dest_dir, structured_outputs):
+    with open(dest_dir / "structured_outputs.txt", "w") as f:
         f.write(str(structured_outputs))
 
-def purge_conda_from_all_folders(config):
+def purge_conda_from_all_iteration_folders(config):
     for element in (config.runs_dir / config.agent_id).iterdir():
         if element.is_dir() and element.name.startswith("iteration_"):
             conda_env = element / ".conda"
@@ -184,20 +186,43 @@ def delete_metrics_from_iteration_dir(config, iteration):
     if validation_metrics_path.exists():
         validation_metrics_path.unlink()
 
-def populate_iteration_dir(config, run_index, structured_outputs, is_best=False):
+def populate_iteration_dir(config, run_index, is_best, structured_outputs):
     run_dir = config.runs_dir / config.agent_id
     iteration_dir = run_dir / f"iteration_{run_index}"
-    iteration_dir.mkdir()
+    if(is_best):
+        purge_conda_from_all_iteration_folders(config)
+
+    snapshot_run_dir_into_dest(
+        config=config,
+        destination_dir=iteration_dir,
+        delete_old_destination_dir=True,
+        structured_outputs=structured_outputs,
+        snapshot_conda=True,
+        is_best=is_best,
+        rundir_path_replacement=iteration_dir,
+        remove_source_files=True,
+    )
+
+def snapshot_run_dir_into_dest(config, destination_dir, delete_old_destination_dir, structured_outputs, snapshot_conda, rundir_path_replacement, remove_source_files=False, is_best=False):
+    run_dir = config.runs_dir / config.agent_id
+    destination_dir = Path(destination_dir)
+
+    if delete_old_destination_dir and destination_dir.exists():
+        delete_dir(destination_dir)
+        
+    destination_dir.mkdir()
 
     files_to_skip = [
         "train.csv",
         "validation.csv",
-        "__pycache__",
-        ".cache",
     ]
 
     files_to_delete = [
         'dry_run_metrics.txt',
+    ]
+    folders_to_delete = [
+        "__pycache__",
+        ".cache",
     ]
 
     for element in run_dir.iterdir():
@@ -208,14 +233,19 @@ def populate_iteration_dir(config, run_index, structured_outputs, is_best=False)
         if element.name in files_to_delete and element.exists():
             element.unlink()
             continue
+        if element.name in folders_to_delete and element.is_dir():
+            shutil.rmtree(element)
+            continue
+        shutil.copy(str(element), str(destination_dir / element.name), follow_symlinks=False)
+        if(remove_source_files):
+            element.unlink()
 
-        shutil.move(str(element), str(iteration_dir / element.name))
+    replace_python_paths(folder_path=destination_dir, current_path=run_dir, new_path=rundir_path_replacement)
 
-    replace_python_paths(folder_path=iteration_dir, current_path=run_dir, new_path=iteration_dir)
-
-    purge_conda_from_all_folders(config)
-    export_conda_to_iteration_dir(config, run_dir, iteration_dir, is_best=is_best)
-    save_outputs_to_iteration_dir(iteration_dir, structured_outputs)
+    if snapshot_conda:
+        export_conda_to_dir(config, run_dir, destination_dir, include_packages=is_best)
+    if structured_outputs is not None:
+        save_outputs_to_dir(destination_dir, structured_outputs)
 
 def wipe_current_iter_files(config):
     run_dir = config.runs_dir / config.agent_id

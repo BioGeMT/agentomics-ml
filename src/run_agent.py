@@ -155,13 +155,13 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
         iter_to_outputs[run_index] = structured_outputs
 
         is_current_new_best = is_new_best(config)
-        populate_iteration_dir(config, run_index, is_best=is_current_new_best, structured_outputs=structured_outputs)
         if(is_current_new_best):
             log_new_best(iteration=run_index)
-            snapshot(config, run_index)  # Snapshotting overrides the previous snapshot, influencing the get_new_and_best_metrics function
+            snapshot(config=config, iteration=run_index, structured_outputs=structured_outputs)  # Snapshotting overrides the previous snapshot, influencing the get_new_and_best_metrics function
             export_config_to_snapshot(config)
             for callback in on_new_best_callbacks:
                 callback(config)
+        populate_iteration_dir(config, run_index, is_best=is_current_new_best, structured_outputs=structured_outputs)
         delete_metrics_from_iteration_dir(config, run_index) #needs to be there for snapshotting, but removed after to not mixup metrics from diff splits if agent runs cat on metrics
 
         try:
