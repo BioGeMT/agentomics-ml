@@ -147,8 +147,10 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
     If you're requesting the agent to create specific files or folders, never request anything with the name 'iteration', 'iter', or similar. For example, prefer 'exploration_script.py' over 'exploration_scipt_iter3.py'. Simply refer to the agent's workspace path as 'your workspace'.
 
     The agent will have access to the train.csv and validation.csv files, all previous iteration files and step outputs, and the dataset_description.md file.
-    The agent has access to the following tools: {tools_info}.
-    The agent has access to the following foundation models: {foundation_models_info}
+    The agent will have access to the following tools: {tools_info}.
+    <foundation_models_info>
+    The agent will have access to the following foundation models: {foundation_models_info}
+    </foundation_models_info>
     The agent will have access to the following resources: {config.get_resources_summary()}
 
     Balance exploration of new approaches and optimizing already working approaches based on the iteration history and remaining time/iterations. 
