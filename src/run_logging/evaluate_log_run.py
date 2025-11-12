@@ -64,6 +64,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
         command_prefix=f"cd {snapshot_dir} && conda run -p {conda_path[source_folder]} --no-capture-output"
     else:
         command_prefix=f"conda run -p {conda_path[source_folder]} --no-capture-output"
+    remove_file(stage_to_output[evaluation_stage])
     command = f"{command_prefix} python {inference_path[source_folder]} --input {stage_to_inference_input[evaluation_stage]} --output {stage_to_output[evaluation_stage]}"
     inference_out = subprocess.run(command, shell=True, executable="/bin/bash", capture_output=True)
     if(not config.explicit_valid_set_provided and evaluation_stage == 'validation'):
@@ -99,10 +100,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
         if inference_out.returncode != 0:
             print('DRY RUN EVAL FAIL during inference:', inference_out.stderr)
             raise ModelRetry(f'Inference script validation failed: {str(inference_out)}')
-        input_rows = len(pd.read_csv(config.prepared_dataset_dir / "train.csv"))
-        output_rows = len(pd.read_csv(stage_to_output[evaluation_stage]))
-        if(input_rows != output_rows):
-            raise ModelRetry(f'Inference script must produce prediction for each input sample. Input rows: {input_rows}. Predicted rows: {output_rows}')
+        verify_file_and_row_count(input_path=stage_to_inference_input[evaluation_stage], predictions_path=stage_to_output[evaluation_stage], inference_out=inference_out)
         try:
             _ = get_metrics(
                 results_file=stage_to_output[evaluation_stage],
@@ -189,3 +187,15 @@ def create_labelless_validation_file(config, target_path: Path):
 def remove_file(target_path: Path):
     if target_path.exists():
         target_path.unlink()
+
+def verify_file_and_row_count(input_path, predictions_path, inference_out):
+    if not predictions_path.exists():
+        raise ModelRetry(f"Inference doesn't produce predictions. Stderr/stdout: {str(inference_out)}")
+    try:
+        actual_rows = len(pd.read_csv(predictions_path))
+    except Exception as e:
+        tb = traceback.format_exc()
+        raise ModelRetry(f'Inference produced faulty predictions csv file. {e}\n{tb}') from e
+    expected_rows = len(pd.read_csv(input_path))
+    if actual_rows != expected_rows:
+        raise ModelRetry(f'Inference script must produce prediction for each input sample. Input rows: {expected_rows}. Predicted rows: {actual_rows}')
