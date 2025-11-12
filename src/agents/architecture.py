@@ -122,9 +122,9 @@ def create_agents(config: Config, model, tools):
     @training_agent.output_validator
     async def validate_training(ctx: RunContext[dict], result: ModelTraining) -> ModelTraining:
         if not os.path.exists(result.path_to_train_file):
-            raise ModelRetry("Train file does not exist.")
+            raise ModelRetry(f"Train file does not exist. {result.path_to_train_file}")
         if not os.path.exists(result.path_to_model_file):
-            raise ModelRetry("Model file does not exist.")
+            raise ModelRetry(f"Model file does not exist at {result.path_to_model_file}")
         if does_file_contain_string(result.path_to_train_file, "iteration_"):
             raise ModelRetry("Train file contains path containing a forbidden string 'iteration_' or references an iteration folder, which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
         result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
@@ -133,7 +133,7 @@ def create_agents(config: Config, model, tools):
     @inference_agent.output_validator
     async def validate_inference(ctx: RunContext[dict], result: ModelInference) -> ModelInference:
         if not os.path.exists(result.path_to_inference_file):
-            raise ModelRetry("Inference file does not exist.")
+            raise ModelRetry(f"Inference file does not exist at {result.path_to_inference_file}")
         if does_file_contain_string(result.path_to_inference_file, "iteration_"):
             raise ModelRetry("Inference file contains path containing a forbidden string 'iteration_' or references an iteration folder, which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
         if does_file_contain_string(result.path_to_inference_file, "train.csv") or does_file_contain_string(result.path_to_inference_file, "validation.csv"):
@@ -146,7 +146,7 @@ def create_agents(config: Config, model, tools):
     @prediction_exploration_agent.output_validator
     async def validate_prediction_exploration(ctx: RunContext[dict], result: PredictionExploration) -> PredictionExploration:
         if not os.path.exists(config.runs_dir / config.agent_id / "inference.py"):
-            raise ModelRetry("Inference file does not exist.")
+            raise ModelRetry(f"Inference file does not exist at {config.runs_dir / config.agent_id / 'inference.py'}")
         if does_file_contain_string(config.runs_dir / config.agent_id / "inference.py", "iteration_"):
             raise ModelRetry("Inference file contains references to an iteration folder ('iteration_' detected), which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
         invalid_iter_folders = get_invalid_iteration_folders(config, ctx.deps['iteration'])
