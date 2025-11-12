@@ -87,6 +87,10 @@ def copy_and_format_predictions_for_biomlbench(preds_source_path, preds_dest_pat
     preds_df = preds_df[['id','prediction']].rename(columns={'prediction': target_col})
     preds_df.to_csv(preds_dest_path, index=False)
 
+def copy_original_predictions(preds_source_path, preds_dest_path):
+    preds_df = pd.read_csv(preds_source_path).reset_index()
+    preds_df.to_csv(preds_dest_path, index=False)
+
 def extract_dataset_name_from_description(description_path):
     with open(description_path, 'r') as f:
         first_line = f.readline()
@@ -170,6 +174,6 @@ if __name__ == '__main__':
         tags=args.tags,
         provider=args.provider,
         split_allowed_iterations=args.split_allowed_iterations,
-        on_new_best_callbacks=[generate_preds_for_biomlbench],
+        on_new_best_callbacks=[generate_preds_for_biomlbench, copy_original_predictions],
         timeout=args.timeout,
     ))
