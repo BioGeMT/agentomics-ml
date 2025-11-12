@@ -69,6 +69,7 @@ def generate_preds_for_biomlbench(config):
             preds_dest_path=submission_path,
             target_col=args.target_col #passed from outside the fn, refactor into reading prepared yaml metadata
         )
+        copy_original_predictions(predictions_path, os.path.join(SUBMISSION_DIR, 'submission_extended.csv'))
         copy_dir(source_dir='/home/workspace/snapshots', dest_dir=CODE_DIR)
         copy_dir(source_dir='/home/workspace/reports', dest_dir=Path(str(CODE_DIR))/'reports')
     except Exception as e:
@@ -157,8 +158,6 @@ if __name__ == '__main__':
         dataset_name=dataset_name
     )
 
-
-
     asyncio.run(run_experiment(
         model=args.model,
         dataset_name=dataset_name, # Name doesnt matter for biomlbench, has his own run structure, but matters for our logging
@@ -174,6 +173,6 @@ if __name__ == '__main__':
         tags=args.tags,
         provider=args.provider,
         split_allowed_iterations=args.split_allowed_iterations,
-        on_new_best_callbacks=[generate_preds_for_biomlbench, copy_original_predictions],
+        on_new_best_callbacks=[generate_preds_for_biomlbench],
         timeout=args.timeout,
     ))
