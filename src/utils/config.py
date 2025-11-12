@@ -27,6 +27,7 @@ class Config:
     time_deadline: Optional[int] = None
 
     wandb_run_id: Optional[str] = None
+    enable_progress_logs: bool = True  # Flag to control training progress logging
     # static defaults
     temperature: float = 1.0
     max_steps: int = 100 #TODO rename, this is per-step limit

@@ -23,6 +23,11 @@ def get_model_training_prompt():
     Requirements:
     1. The train script should save any files necessary to use the trained model for predictions (e.g. model file, tokenizers, ...).
     2. If your model can be accelerated by GPU, implement the code to use GPU.
+    """
+
+def get_model_training_prompt_with_progress():
+    base_prompt = get_model_training_prompt()
+    progress_requirement = """
     3. You MUST use the TrainingProgress class from client_utils.training_progress to report training progress:
        - Import it using: from client_utils.training_progress import TrainingProgress
        - Create an instance: progress = TrainingProgress()
@@ -32,3 +37,4 @@ def get_model_training_prompt():
     
     This will help monitor the training progress and ensure we can track metrics during the process.
     """
+    return base_prompt.rstrip() + "\n    " + progress_requirement

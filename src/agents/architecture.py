@@ -15,7 +15,7 @@ from agents.steps.data_split import DataSplit, get_data_split_prompt
 from agents.steps.model_architecture import ModelArchitecture, get_model_architecture_prompt
 from agents.steps.data_representation import DataRepresentation, get_data_representation_prompt
 from agents.steps.data_exploration import DataExploration, get_data_exploration_prompt
-from agents.steps.model_training import ModelTraining, get_model_training_prompt
+from agents.steps.model_training import ModelTraining, get_model_training_prompt, get_model_training_prompt_with_progress
 from agents.steps.prediction_exploration import PredictionExploration, get_prediction_exploration_prompt
 from utils.config import Config
 from utils.report_logger import save_step_output
@@ -39,6 +39,14 @@ def create_agents(config: Config, model, tools):
     )
 
     training_agent = Agent(
+        model=model,
+        tools=tools,
+        model_settings={'temperature': config.temperature},
+        output_type=ModelTraining,
+        retries=config.max_validation_retries,
+    )
+
+    training_agent_with_progress = Agent(
         model=model,
         tools=tools,
         model_settings={'temperature': config.temperature},
@@ -95,8 +103,14 @@ def create_agents(config: Config, model, tools):
             raise ModelRetry("Model file does not exist.")
         if does_file_contain_string(result.path_to_train_file, "iteration_"):
             raise ModelRetry("Train file contains references to an iteration folder ('iteration_' detected), which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
-            
-        # Validate proper import and usage of TrainingProgress
+        return result
+
+    @training_agent_with_progress.output_validator
+    async def validate_training_with_progress(result: ModelTraining) -> ModelTraining:
+        # First, run all base training validations
+        result = await validate_training(result)
+        
+        # Then, validate proper import and usage of TrainingProgress
         if not does_file_contain_string(result.path_to_train_file, "from client_utils.training_progress import TrainingProgress"):
             raise ModelRetry("Training file must import TrainingProgress from client_utils.training_progress")
         return result
@@ -124,6 +138,7 @@ def create_agents(config: Config, model, tools):
         "text_output_agent": text_output_agent,
         "split_dataset_agent": split_dataset_agent,
         "training_agent": training_agent,
+        "training_agent_with_progress": training_agent_with_progress,
         "inference_agent": inference_agent,
         "prediction_exploration_agent": prediction_exploration_agent,
     } 
@@ -185,7 +200,7 @@ def setup_run_environment(config: Config):
             import shutil
             shutil.copy2(file, client_utils_dir / file.name)
 
-async def run_architecture_compressed(text_output_agent: Agent, inference_agent: Agent, split_dataset_agent: Agent, training_agent: Agent, prediction_exploration_agent: Agent, config: Config, base_prompt: str, iteration: int, last_split_strategy: str):
+async def run_architecture_compressed(text_output_agent: Agent, inference_agent: Agent, split_dataset_agent: Agent, training_agent: Agent, training_agent_with_progress: Agent, prediction_exploration_agent: Agent, config: Config, base_prompt: str, iteration: int, last_split_strategy: str):
     # Setup run environment first
     setup_run_environment(config)
     
@@ -246,8 +261,8 @@ async def run_architecture_compressed(text_output_agent: Agent, inference_agent:
     structured_outputs.append(model_architecture)
 
     messages_training, model_training = await run_agent(
-        agent=training_agent, 
-        user_prompt=get_model_training_prompt()+ctx_replacer_msg, 
+        agent=training_agent_with_progress if config.enable_progress_logs else training_agent, 
+        user_prompt=(get_model_training_prompt_with_progress() if config.enable_progress_logs else get_model_training_prompt())+ctx_replacer_msg, 
         max_steps=config.max_steps,
         message_history=persistent_messages,
     )
@@ -318,6 +333,7 @@ async def run_iteration(config: Config, model, iteration, feedback, tools, last_
         text_output_agent=agents_dict["text_output_agent"],
         split_dataset_agent=agents_dict["split_dataset_agent"],
         training_agent=agents_dict["training_agent"],
+        training_agent_with_progress=agents_dict["training_agent_with_progress"],
         inference_agent=agents_dict["inference_agent"],
         prediction_exploration_agent=agents_dict["prediction_exploration_agent"],
         config=config,

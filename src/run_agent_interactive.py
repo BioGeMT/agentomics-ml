@@ -44,6 +44,7 @@ def main():
     parser.add_argument("--tags", nargs="*", default=[], help="(Optional) Comma-separated tags to associate with the run")
     parser.add_argument('--user-prompt', type=str, default="Create the best possible machine learning model that will generalize to new unseen data.", help='(Optional) Text to overwrite the default user prompt')
     parser.add_argument("--model", help="Model name. Should be compatible with the selected provider")
+    parser.add_argument('--no-progress-logs', action='store_true', help='Disable training progress logging (TrainingProgress not required).')
 
     available_metrics = get_classification_metrics_names() + get_regression_metrics_names()
     parser.add_argument("--val-metric", help="Validation metric", choices=available_metrics)
@@ -136,6 +137,7 @@ def main():
         provider=provider_name,
         split_allowed_iterations=args.split_allowed_iterations,
         timeout=args.timeout,
+        no_progress_logs=args.no_progress_logs,
     ))
     return 0
         

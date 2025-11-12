@@ -31,7 +31,7 @@ from agents.steps.data_split import DataSplit
 
 async def main(model_name, feedback_model_name, dataset, tags, val_metric,
                workspace_dir, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir, iterations, 
-               user_prompt, provider_name, on_new_best_callbacks, split_allowed_iterations, time_deadline):
+               user_prompt, provider_name, on_new_best_callbacks, split_allowed_iterations, time_deadline, no_progress_logs):
     agent_id = os.getenv('AGENT_ID')
     # Initialize configuration 
     config = Config(
@@ -50,6 +50,7 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric,
         split_allowed_iterations=split_allowed_iterations,
         time_deadline=time_deadline,
     )
+    config.enable_progress_logs = not no_progress_logs
     ensure_workspace_folders(config)
     create_run_and_snapshot_dirs(config)
     config.print_summary()
@@ -196,6 +197,8 @@ def parse_args():
     parser.add_argument("--timeout", type=int, help="Timeout before the run is shut down in seconds")
     parser.add_argument('--split-allowed-iterations', type=int, default=1, help='Number of initial iterations that allow the agent to split the data into training and validation sets')
 
+    parser.add_argument('--no-progress-logs', action='store_true', help='Disable training progress logging (TrainingProgress not required).')
+
     parser.add_argument('--user-prompt', type=str, default="Create the best possible machine learning model that will generalize to new unseen data.", help='(Optional) Text to overwrite the default user prompt')
 
     val_metric_choices = get_classification_metrics_names() + get_regression_metrics_names()
@@ -205,7 +208,7 @@ def parse_args():
 
 async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir,
                           workspace_dir, tags, iterations, user_prompt, provider, timeout, 
-                          split_allowed_iterations=1, on_new_best_callbacks=[]):
+                          split_allowed_iterations=1, on_new_best_callbacks=[], no_progress_logs=False):
     setup_nonsensitive_dataset_files_for_agent(
         prepared_datasets_dir=Path(prepared_datasets_dir),
         agent_datasets_dir=Path(agent_datasets_dir),
@@ -232,6 +235,7 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
             split_allowed_iterations=split_allowed_iterations,
             prepared_test_sets_dir=prepared_test_sets_dir,
             time_deadline=time_deadline,
+            no_progress_logs=no_progress_logs,
         )
     except TimeoutError:
         print('Timeout reached')
@@ -255,6 +259,7 @@ async def run_experiment_from_terminal():
         provider=args.provider,
         split_allowed_iterations=args.split_allowed_iterations,
         timeout=args.timeout,
+        no_progress_logs=args.no_progress_logs,
     )
 
 if __name__ == "__main__":

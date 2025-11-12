@@ -40,6 +40,7 @@ Operational Flags:
   --test              Run the project's integrated test suite.
                       (Note: Only supported in Docker mode, not in local Conda mode.)
   --cpu-only          Force Docker/Conda to run using CPU only (skip GPU configuration).
+  --no-progress-logs  Disable training progress logging (TrainingProgress not required).
   --ollama            Enable support for an Ollama server running on the host machine.
   --tags              (Optional) Space separated tags for Weights and Biases logging.
   -h, --help          Show this help message and exit.
@@ -131,6 +132,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --cpu-only)
             CPU_ONLY=true
+            shift
+            ;;
+        --no-progress-logs)
+            AGENTOMICS_ARGS+=(--no-progress-logs)
             shift
             ;;
         *)
