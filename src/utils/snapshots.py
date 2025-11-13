@@ -278,9 +278,18 @@ def replace_python_paths(folder_path, current_path, new_path):
         if element.is_dir():
             replace_python_paths(element, current_path, new_path)
         if element.is_file() and element.name.endswith('.py'):
-            with open(element, "r") as f:
-                old_content = f.read()
-            new_content = old_content.replace(str(current_path), str(new_path))
-            if(old_content != new_content):
-                with open(element, "w") as f:
-                    f.write(new_content)
+            replace_python_paths_in_file(element, current_path, new_path)
+
+def replace_python_paths_in_file(file_path, current_path, new_path):
+    with open(file_path, "r") as f:
+        old_content = f.read()
+    new_content = old_content.replace(str(current_path), str(new_path))
+    if(old_content != new_content):
+        make_file_writable(file_path)
+        with open(file_path, "w") as f:
+            f.write(new_content)
+
+def make_file_writable(file_path):
+    st = os.stat(file_path)
+    write_bits = stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
+    os.chmod(file_path, st.st_mode | write_bits)
