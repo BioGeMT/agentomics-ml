@@ -130,7 +130,7 @@ def lock_split_files(config):
 
 def snapshot(config, iteration, structured_outputs, delete_old_snapshot=True):
     snapshot_dir = config.snapshots_dir / config.agent_id
-
+    run_dir = config.runs_dir / config.agent_id
     snapshot_run_dir_into_dest(
         config=config,
         destination_dir=snapshot_dir,
@@ -138,11 +138,10 @@ def snapshot(config, iteration, structured_outputs, delete_old_snapshot=True):
         structured_outputs=structured_outputs,
         snapshot_conda=True,
         is_best=True,
-        rundir_path_replacement = "."
+        path_to_replace=run_dir,
+        path_replacement = ".",
     )
 
-    replace_python_paths(folder_path=snapshot_dir,current_path=snapshot_dir, new_path=".")
-        
     with open(snapshot_dir / "iteration_number.txt", "w") as f:
         f.write(str(iteration))
 
@@ -189,6 +188,7 @@ def delete_metrics_from_iteration_dir(config, iteration):
 def populate_iteration_dir(config, run_index, is_best, structured_outputs):
     run_dir = config.runs_dir / config.agent_id
     iteration_dir = run_dir / f"iteration_{run_index}"
+    snapshot_dir = config.snapshots_dir / config.agent_id
     if(is_best):
         purge_conda_from_all_iteration_folders(config)
 
@@ -199,11 +199,12 @@ def populate_iteration_dir(config, run_index, is_best, structured_outputs):
         structured_outputs=structured_outputs,
         snapshot_conda=True,
         is_best=is_best,
-        rundir_path_replacement=iteration_dir,
+        path_to_replace=snapshot_dir, #Rundir is replaced with Snapshot paths before populate_iteration_dir is called
+        path_replacement=iteration_dir,
         remove_source_files=True,
     )
 
-def snapshot_run_dir_into_dest(config, destination_dir, delete_old_destination_dir, structured_outputs, snapshot_conda, rundir_path_replacement, remove_source_files=False, is_best=False):
+def snapshot_run_dir_into_dest(config, destination_dir, delete_old_destination_dir, structured_outputs, snapshot_conda, path_to_replace, path_replacement, remove_source_files=False, is_best=False):
     run_dir = config.runs_dir / config.agent_id
     destination_dir = Path(destination_dir)
 
@@ -224,6 +225,7 @@ def snapshot_run_dir_into_dest(config, destination_dir, delete_old_destination_d
         "__pycache__",
         ".cache",
     ]
+    replace_python_paths(folder_path=run_dir, current_path=path_to_replace, new_path=path_replacement)
 
     for element in run_dir.iterdir():
         if element.is_dir() and (element.name.startswith("iteration_") or element.name == ".conda"):
@@ -245,7 +247,6 @@ def snapshot_run_dir_into_dest(config, destination_dir, delete_old_destination_d
             if(remove_source_files):
                 element.unlink()
 
-    replace_python_paths(folder_path=destination_dir, current_path=run_dir, new_path=rundir_path_replacement)
 
     if snapshot_conda:
         export_conda_to_dir(config, run_dir, destination_dir, include_packages=is_best)
