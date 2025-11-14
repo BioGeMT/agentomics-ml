@@ -15,6 +15,8 @@ def build_foundation_model_catalog():
     """
     models_config = load_models_config()
     catalog = {}
+    if(models_config is None):
+        return catalog
 
     for family_name, meta in models_config.items():
         catalog[family_name] = {
