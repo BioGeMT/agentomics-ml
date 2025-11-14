@@ -39,9 +39,6 @@ ENV AGENT_DIR=${AGENT_DIR}
 
 RUN mkdir ${LOGS_DIR} ${CODE_DIR} ${AGENT_DIR}
 
-# put all the agent files in the expected location
-COPY . ${AGENT_DIR}
-
 # Setup agent start environment
 ENV START_ENV_PKG=${AGENT_DIR}/agent_start_env.tar.gz
 COPY environment_agent.yaml .
@@ -57,3 +54,6 @@ COPY foundation_models/ /foundation_models/
 COPY foundation_models_utils.py /repository/src/utils/foundation_models_utils.py
 COPY download_foundation_models.py /repository/src/utils/download_foundation_models.py
 RUN /opt/conda/envs/agentomics-env/bin/python /repository/src/utils/download_foundation_models.py
+
+# put all the agent files in the expected location
+COPY . ${AGENT_DIR}
