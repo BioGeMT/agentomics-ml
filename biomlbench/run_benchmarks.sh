@@ -1,5 +1,35 @@
 #!/usr/bin/env bash
 REPOS_DIR=/home/vmart01/repos
+DSET=polarishub/tdcommons-caco2-wang
+
+setup_biomlbench_repo() {
+  if [ ! -d "$REPOS_DIR/biomlbench" ] ; then
+    #TODO freeze repo version
+    git clone https://github.com/science-machine/biomlbench.git "$REPOS_DIR/biomlbench"
+  fi
+  cd "$REPOS_DIR/biomlbench"
+  if ! conda env list | grep -q "^biomlbench_conda_env "; then
+    conda create -n biomlbench_conda_env python=3.11 uv -c conda-forge -y
+  fi
+  source activate biomlbench_conda_env
+  uv sync
+  source .venv/bin/activate
+
+  # Fix polaris data download (only if not already patched)
+  if ! grep -q "_patch_fsspec_for_proxy" "$REPOS_DIR/biomlbench/biomlbench/data_sources/polaris.py"; then
+    sed -i "20 r $REPOS_DIR/agentomics-ml/biomlbench/proxyfix.py" "$REPOS_DIR/biomlbench/biomlbench/data_sources/polaris.py"
+  fi
+
+  # ./scripts/build_base_env.sh
+  ./scripts/pull_prebuilt_images.sh
+  biomlbench prepare -t $DSET
+
+  # Update container config: set gpus to 1 and nano_cpus to 32000000000
+  sed -i 's/"nano_cpus": 12000000000/"nano_cpus": 32000000000/' "$REPOS_DIR/biomlbench/environment/config/container_configs/default.json"
+  sed -i 's/"gpus": 0/"gpus": 1/' "$REPOS_DIR/biomlbench/environment/config/container_configs/default.json"
+}
+
+setup_biomlbench_repo
 
 cleanup() {
   rm -rf "$REPOS_DIR"/biomlbench/agents/agentomics-ml
@@ -20,8 +50,6 @@ cp "$REPOS_DIR"/agentomics-ml/environment_agent.yaml "$REPOS_DIR"/agentomics-ml/
 cp "$REPOS_DIR"/agentomics-ml/src/utils/foundation_models_utils.py "$REPOS_DIR"/agentomics-ml/biomlbench/agentomics-ml/foundation_models_utils.py
 cp "$REPOS_DIR"/agentomics-ml/src/utils/download_foundation_models.py "$REPOS_DIR"/agentomics-ml/biomlbench/agentomics-ml/download_foundation_models.py
 
-#TODO pull the fresh repo and make changes to gpu config etc..
-# Copy the agentomics 'biomlbench agent' folder into the right place in biomlbench repo
 cd "$REPOS_DIR"/biomlbench
 source .venv/bin/activate
 mkdir -p "$REPOS_DIR"/biomlbench/agents/agentomics-ml
@@ -31,7 +59,8 @@ cp -r "$REPOS_DIR"/agentomics-ml/biomlbench/agentomics-ml "$REPOS_DIR"/biomlbenc
 # Build and run the agent 
 ./scripts/build_agent.sh agentomics-ml
 echo RUNNING AGENT
-biomlbench run-agent --agent agentomics-ml --task-id polarishub/tdcommons-caco2-wang
+#TODO pass args
+biomlbench run-agent --agent agentomics-ml --task-id $DSET
 echo DONE
 
 # Optional cleanup
