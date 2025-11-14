@@ -55,6 +55,7 @@ class Config:
         prepared_test_sets_dir: Path,
         agent_datasets_dir: Path,
         user_prompt: str,
+        task_type: Optional[str] = None,
         max_steps: Optional[int] = None,
         iterations: Optional[int] = 5,
         split_allowed_iterations: int = 1,
@@ -77,7 +78,7 @@ class Config:
         self.reports_dir = workspace_dir / "reports"
         self.extras_dir = workspace_dir / "extras"
         self.iterations = iterations
-        self.task_type = get_task_type_from_prepared_dataset(prepared_datasets_dir / dataset)
+        self.task_type = task_type if task_type is not None else get_task_type_from_prepared_dataset(prepared_datasets_dir / dataset)
         self.user_prompt = user_prompt
         self.explicit_valid_set_provided = (agent_datasets_dir / dataset / "validation.csv").exists()
         self.split_allowed_iterations = split_allowed_iterations if not self.explicit_valid_set_provided else 0
