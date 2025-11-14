@@ -6,6 +6,8 @@ BASE_DIR = os.environ.get('HF_HOME', '/cache/foundation_models')
 MODELS_YAML = os.path.join('/foundation_models', 'models.yaml')
 
 def load_models_config():
+    if not Path(MODELS_YAML).exists():
+        return None
     with open(MODELS_YAML, 'r') as f:
         return yaml.safe_load(f)
 
