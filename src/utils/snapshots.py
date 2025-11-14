@@ -161,7 +161,7 @@ def export_conda_to_dir(config, run_dir, destination_dir, include_packages=False
     env_name = f"{config.agent_id}_env"
     conda_env = run_dir / ".conda" / "envs" / env_name
     if conda_env.exists():
-        subprocess.run(['conda', 'env', 'export', '-p', str(conda_env), '-f', str(destination_dir / "conda_environment.yml"), '--format', 'yaml'], check=True)
+        subprocess.run(['conda', 'env', 'export', '-p', str(conda_env), '-f', str(destination_dir / "conda_environment.yml")], check=True, capture_output=True)
 
 def save_outputs_to_dir(dest_dir, structured_outputs):
     with open(dest_dir / "structured_outputs.txt", "w") as f:
