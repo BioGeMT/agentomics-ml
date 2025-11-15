@@ -77,45 +77,50 @@ def run_agent(config: dict, agent: str, dataset: str) -> Path:
         key_hash = key_result['hash']
         config["openrouter_key"] = key_result['key']
 
-    env = build_env(os.environ, config, agent)
-    output_subdir = RESULTS_DIR / f"{dataset}_{agent}_{timestamp}"
-    output_subdir.mkdir(parents=True, exist_ok=True)
-    log_file = output_subdir / "run.log"
+    try:
+        env = build_env(os.environ, config, agent)
+        output_subdir = RESULTS_DIR / f"{dataset}_{agent}_{timestamp}"
+        output_subdir.mkdir(parents=True, exist_ok=True)
+        log_file = output_subdir / "run.log"
 
-    cmd = [
-        "biomlbench",
-        "run-agent",
-        "--agent",
-        agent,
-        "--task-id",
-        f"agentomics/{dataset}",
-        "--output-dir",
-        str(output_subdir),
-        "--data-dir",
-        str(DATA_DIR),
-    ]
+        cmd = [
+            "biomlbench",
+            "run-agent",
+            "--agent",
+            agent,
+            "--task-id",
+            f"agentomics/{dataset}",
+            "--output-dir",
+            str(output_subdir),
+            "--data-dir",
+            str(DATA_DIR),
+        ]
 
-    with open(log_file, "w") as f:
-        result = subprocess.run(
-            cmd,
-            cwd=CLONE_DIR,
-            env=env,
-            stdout=f,
-            stderr=subprocess.STDOUT,
-            text=True,
-            check=False,
-        )
+        with open(log_file, "w") as f:
+            result = subprocess.run(
+                cmd,
+                cwd=CLONE_DIR,
+                env=env,
+                stdout=f,
+                stderr=subprocess.STDOUT,
+                text=True,
+                check=False,
+            )
 
-    if result.returncode != 0:
-        raise RuntimeError(f"Agent {agent} failed on dataset {dataset} with exit code {result.returncode}")
+        if result.returncode != 0:
+            raise RuntimeError(f"Agent {agent} failed on dataset {dataset} with exit code {result.returncode}")
 
-    # Cost tracking: save usage and cleanup
-    if key_hash:
-        usage_data = get_api_key_usage(key_hash)
-        (output_subdir / "cost.json").write_text(json.dumps({"cost_usd": usage_data['usage']}, indent=2))
-        delete_api_key(key_hash)
+        # Cost tracking: save usage
+        if key_hash:
+            usage_data = get_api_key_usage(key_hash)
+            (output_subdir / "cost.json").write_text(json.dumps({"cost_usd": usage_data['usage']}, indent=2))
 
-    return copy_run_artifacts(agent, dataset, output_subdir)
+        return copy_run_artifacts(agent, dataset, output_subdir)
+
+    finally:
+        # ALWAYS cleanup the provisioned key, even on failure
+        if key_hash:
+            delete_api_key(key_hash)
 
 
 def copy_run_artifacts(agent: str, dataset: str, output_subdir: Path) -> Path:
