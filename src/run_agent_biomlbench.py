@@ -4,13 +4,14 @@ import argparse
 import shutil
 import pandas as pd
 import subprocess
+import re
 from pathlib import Path
 
 from utils.dataset_utils import prepare_dataset
 from run_agent import run_experiment
 from utils.create_user import create_agent_id
 
-def setup_agentomics_folder_structure_and_files(description_path, train_data_path, target_col, task_type, dataset_name):
+def setup_agentomics_folder_structure_and_files(description_path, train_data_path, task_type, dataset_name):
     os.mkdir('/home/workspace')
     os.mkdir('/home/workspace/datasets')
 
@@ -22,6 +23,8 @@ def setup_agentomics_folder_structure_and_files(description_path, train_data_pat
 
     os.mkdir('/home/agent/prepared_datasets')
     os.mkdir(f'/home/agent/prepared_datasets/{dataset_name}')
+
+    target_col = get_target_col_from_description(description_path)
 
     prepare_dataset(
         dataset_dir=f'/home/agent/raw_datasets/{dataset_name}',
@@ -82,6 +85,13 @@ def generate_preds_for_biomlbench(config):
     print('- FINISHED PREDS FOR BIOMLBENCH -')
     print('---------------------------------')
 
+def get_target_col_from_description(description_path):
+    with open(description_path, 'r') as file:
+        for line in file.readlines():
+            if 'Target column' in line:
+                match = re.search(r"\{(.*?)\}", line)
+                return match.group(1) if match else None
+
 def copy_and_format_predictions_for_biomlbench(preds_source_path, preds_dest_path, target_col):
     preds_df = pd.read_csv(preds_source_path).reset_index()
     preds_df['id'] = preds_df.index
@@ -117,7 +127,6 @@ def parse_args():
     parser.add_argument('--val-metric', type=str, help='Validation metric to use')
     parser.add_argument('--iterations', type=int, help='Number of iterations to run')
     parser.add_argument('--timeout', type=int, help='Timeout in seconds')
-    parser.add_argument('--target-col', type=str, help='Name of the target column')
     parser.add_argument('--tags', nargs='*', default=[], help='(Optional) Tags for a wandb run logging')
     parser.add_argument('--task-type', type=str, help='Task type: classification or regression')
     parser.add_argument('--provider', type=str, default='openrouter', help='Provider name (e.g., openai, openrouter)')
@@ -153,7 +162,6 @@ if __name__ == '__main__':
     setup_agentomics_folder_structure_and_files(
         description_path = description_path, 
         train_data_path = train_data, 
-        target_col=args.target_col, 
         task_type=args.task_type,
         dataset_name=dataset_name
     )
