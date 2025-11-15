@@ -56,7 +56,7 @@ setup_support_files
 # Build and run the agent
 ./scripts/build_agent.sh agentomics-ml
 echo RUNNING AGENT
-OUTPUT=$(biomlbench run-agent --agent agentomics-ml --task-id $DSET 2>&1 | tee /dev/tty)
+OUTPUT=$(biomlbench run-agent --agent agentomics-ml --task-id "$DSET" 2>&1 | tee /dev/tty)
 
 RESULTS_DIR=$(echo "$OUTPUT" | grep -oP "Results saved to: \K.*" | head -1)
 submission_path=$(jq -r '."submission_path"' "$RESULTS_DIR/submission.jsonl")
