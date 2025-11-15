@@ -185,7 +185,7 @@ if __name__ == '__main__':
     asyncio.run(run_experiment(
         model=args.model,
         dataset_name=dataset_name, # Name doesnt matter for biomlbench, has his own run structure, but matters for our logging
-        val_metric=args.val_metric,
+        val_metric=val_metric,
         iterations=args.iterations,
         user_prompt=args.user_prompt,
         # Testing prompt
