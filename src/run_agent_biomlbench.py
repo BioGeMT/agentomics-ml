@@ -68,10 +68,11 @@ def generate_preds_for_biomlbench(config):
 
     try:
         predictions_path = run_inference_on_test_data(test_no_label)
+        target_col = get_target_col_from_description()
         copy_and_format_predictions_for_biomlbench(
             preds_source_path=predictions_path,
             preds_dest_path=submission_path,
-            target_col=args.target_col #passed from outside the fn, refactor into reading prepared yaml metadata
+            target_col=target_col #passed from outside the fn, refactor into reading prepared yaml metadata
         )
         copy_original_predictions(predictions_path, os.path.join(SUBMISSION_DIR, 'submission_extended.csv'))
         copy_dir(source_dir='/home/workspace/snapshots', dest_dir=CODE_DIR)
