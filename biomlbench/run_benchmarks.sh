@@ -76,8 +76,7 @@ fi
 PROJECT_ROOT="$REPOS_DIR/agentomics-ml/src"
 export PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH"
 cd "$REPOS_DIR"/agentomics-ml
-TARGET_COL=$(conda run -n agentomics-env python src/utils/biomlbench_target_utils.py 2>&1 | tee /dev/tty)
-conda run -n agentomics-env python src/run_logging/biomlbench_test_eval.py --results-dir=$RESULTS_DIR --grade-json "$GRADE_JSON" --target-col "$TARGET_COL"
+conda run -n agentomics-env python src/run_logging/biomlbench_test_eval.py --results-dir=$RESULTS_DIR --grade-json "$GRADE_JSON"
 
 echo DONE
 
