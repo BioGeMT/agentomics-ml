@@ -70,6 +70,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--results-dir', type=str, required=True, help='Path to the biomlbench run results dir')
     parser.add_argument('--grade-json', type=str, required=True, help='String version of the grade json dictionary from running biomlbench grade-sample')
+    parser.add_argument('--target-col', type=str, required=True, help='The name of the target col in answers.csv')
     args = parser.parse_args()
 
     grade_dict = json.loads(args.grade_json)
@@ -90,8 +91,8 @@ def main():
         config_path=config_path,
         predictions_path=preds_path,
         labeled_test_path=labeled_test_path,
-        label_col='Y',
-        output_metrics_file=submission_info_path.parent / 'metrics.json',
+        label_col=args.target_col,
+        output_metrics_file=submission_info_path.parent / 'test_metrics.json',
         biomlbench_grade_dict=grade_dict,
     )
 
