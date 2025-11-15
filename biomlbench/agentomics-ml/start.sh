@@ -16,9 +16,7 @@ export TIME_LIMIT=$(format_time $TIME_LIMIT_SECS)
 echo -e "\033[0;31mStarting Agentomics-ML...\033[0m"
 timeout $TIME_LIMIT_SECS /opt/conda/envs/agentomics-env/bin/python /home/agent/src/run_agent_biomlbench.py \
     --model $MODEL \
-    --val-metric $VAL_METRIC \
     --iterations $ITERATIONS \
-    --task-type $TASK_TYPE \
     --user-prompt "$USER_PROMPT" \
     --split-allowed-iterations $SPLIT_ALLOWED_ITERATIONS \
     --timeout $TIME_LIMIT_SECS \

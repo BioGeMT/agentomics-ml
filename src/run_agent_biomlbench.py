@@ -106,13 +106,23 @@ def extract_dataset_name_from_description(description_path):
 def extract_val_metric_from_description(description_path):
     biomlbench_metric_to_agentomics_metric = {
         'mean_absolute_error': 'MAE',
-        #TODO
+        'pr_auc': "AUPRC",
+        'pearsonr': "PEARSON",
+        'roc_auc': "AUROC",
     }
+
     with open(description_path, 'r') as f:
         for line in f.readlines():
             if '**Main Metric' in line:
                 biomlbench_metric = line.split("**Main Metric:**")[-1].strip()
                 return biomlbench_metric_to_agentomics_metric[biomlbench_metric]
+
+def extract_task_type_from_val_metric(val_metric):
+    if val_metric in ['AUPRC', 'AUROC']:
+        return 'classification'
+    if val_metric in ['MAE', 'PEARSON']:
+        return 'regression'
+    raise Exception('Unknown val metric, update parsing.')
 
 def copy_dir(source_dir, dest_dir):
     if not os.path.exists(source_dir):
@@ -134,7 +144,6 @@ def parse_args():
     parser.add_argument('--iterations', type=int, help='Number of iterations to run')
     parser.add_argument('--timeout', type=int, help='Timeout in seconds')
     parser.add_argument('--tags', nargs='*', default=[], help='(Optional) Tags for a wandb run logging')
-    parser.add_argument('--task-type', type=str, help='Task type: classification or regression')
     parser.add_argument('--provider', type=str, default='openrouter', help='Provider name (e.g., openai, openrouter)')
     parser.add_argument('--user-prompt', type=str, default=None, help='Custom user prompt to guide the agent')
     parser.add_argument('--split-allowed-iterations', type=int, help='Number of initial iterations that allow the agent to split the data into training and validation sets')
@@ -164,11 +173,12 @@ if __name__ == '__main__':
 
     dataset_name = extract_dataset_name_from_description(description_path)
     val_metric = extract_val_metric_from_description(description_path)
+    task_type = extract_task_type_from_val_metric(val_metric)
 
     setup_agentomics_folder_structure_and_files(
         description_path = description_path, 
         train_data_path = train_data, 
-        task_type=args.task_type,
+        task_type=task_type,
         dataset_name=dataset_name
     )
 
