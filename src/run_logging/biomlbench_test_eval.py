@@ -85,8 +85,9 @@ def main():
 
     preds_path = Path(run_info['submission_path']).parent / 'submission_extended.csv'
     task_id = run_info['task_id']
-    labeled_test_path = f'~/.cache/bioml-bench/data/{task_id}/prepared/private/answers.csv'
-    desc_path = f'~/.cache/bioml-bench/data/{task_id}/prepared/public/description.md'
+    labeled_test_path = Path(f'~/.cache/bioml-bench/data/{task_id}/prepared/private/answers.csv').expanduser()
+    desc_path = Path(f'~/.cache/bioml-bench/data/{task_id}/prepared/public/description.md').expanduser()
+
     target_col = get_target_col_from_description(desc_path)
 
     run_test_evaluation(
