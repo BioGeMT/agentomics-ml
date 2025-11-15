@@ -89,7 +89,7 @@ def get_target_col_from_description(description_path):
     with open(description_path, 'r') as file:
         for line in file.readlines():
             if 'Target column' in line:
-                match = re.search(r"\{(.*?)\}", line)
+                match = re.search(r'\{\s*["\'](.*?)["\']\s*\}', line)
                 return match.group(1) if match else None
 
 def copy_and_format_predictions_for_biomlbench(preds_source_path, preds_dest_path, target_col):
