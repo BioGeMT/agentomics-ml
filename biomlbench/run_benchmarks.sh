@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-REPOS_DIR="/home/$USER/repos"
+REPOS_DIR="/home/$USER/repos" #TODO needs to be configured
 DSET=polarishub/tdcommons-caco2-wang
 
 setup_biomlbench_repo() {
@@ -33,27 +33,25 @@ setup_biomlbench_repo
 
 cleanup() {
   rm -rf "$REPOS_DIR"/biomlbench/agents/agentomics-ml
-  rm -rf "$REPOS_DIR"/agentomics-ml/biomlbench/agentomics-ml/foundation_models
-  rm "$REPOS_DIR"/agentomics-ml/biomlbench/agentomics-ml/environment.yaml
-  rm "$REPOS_DIR"/agentomics-ml/biomlbench/agentomics-ml/environment_agent.yaml
-  rm "$REPOS_DIR"/agentomics-ml/biomlbench/agentomics-ml/foundation_models_utils.py
-  rm "$REPOS_DIR"/agentomics-ml/biomlbench/agentomics-ml/download_foundation_models.py
 }
 
 # Optional cleanup
 cleanup
 
 # Setup files that need to be in the agentomics 'biomlbench agent' folder
-cp -r "$REPOS_DIR"/agentomics-ml/foundation_models "$REPOS_DIR"/agentomics-ml/biomlbench/agentomics-ml/
-cp "$REPOS_DIR"/agentomics-ml/environment.yaml "$REPOS_DIR"/agentomics-ml/biomlbench/agentomics-ml/environment.yaml
-cp "$REPOS_DIR"/agentomics-ml/environment_agent.yaml "$REPOS_DIR"/agentomics-ml/biomlbench/agentomics-ml/environment_agent.yaml
-cp "$REPOS_DIR"/agentomics-ml/src/utils/foundation_models_utils.py "$REPOS_DIR"/agentomics-ml/biomlbench/agentomics-ml/foundation_models_utils.py
-cp "$REPOS_DIR"/agentomics-ml/src/utils/download_foundation_models.py "$REPOS_DIR"/agentomics-ml/biomlbench/agentomics-ml/download_foundation_models.py
+setup_support_files() {
+  cp -r "$REPOS_DIR"/agentomics-ml/foundation_models "$REPOS_DIR"/biomlbench/agents/agentomics-ml
+  cp "$REPOS_DIR"/agentomics-ml/environment.yaml "$REPOS_DIR"/biomlbench/agents/agentomics-ml/environment.yaml
+  cp "$REPOS_DIR"/agentomics-ml/environment_agent.yaml "$REPOS_DIR"/biomlbench/agents/agentomics-ml/environment_agent.yaml
+  cp "$REPOS_DIR"/agentomics-ml/src/utils/foundation_models_utils.py "$REPOS_DIR"/biomlbench/agents/agentomics-ml/foundation_models_utils.py
+  cp "$REPOS_DIR"/agentomics-ml/src/utils/download_foundation_models.py "$REPOS_DIR"/biomlbench/agents/agentomics-ml/download_foundation_models.py
+}
 
 cd "$REPOS_DIR"/biomlbench
 source .venv/bin/activate
 mkdir -p "$REPOS_DIR"/biomlbench/agents/agentomics-ml
 cp -r "$REPOS_DIR"/agentomics-ml/biomlbench/agentomics-ml "$REPOS_DIR"/biomlbench/agents/
+setup_support_files
 
 # Build and run the agent
 ./scripts/build_agent.sh agentomics-ml
