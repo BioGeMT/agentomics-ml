@@ -9,19 +9,23 @@ from pathlib import Path
 from utils.dataset_utils import prepare_dataset
 from run_agent import run_experiment
 from utils.create_user import create_agent_id
+from utils.biomlbench_target_utils import get_target_col_from_description
 
-def setup_agentomics_folder_structure_and_files(description_path, train_data_path, target_col, task_type, dataset_name):
+def setup_agentomics_folder_structure_and_files(description_path, train_data_path, task_type, dataset_name):
     os.mkdir('/home/workspace')
     os.mkdir('/home/workspace/datasets')
 
     os.mkdir('/home/agent/raw_datasets')
     os.mkdir(f'/home/agent/raw_datasets/{dataset_name}')
 
+    #TODO prune description of implementation instructions and only keep dataset-related information
     shutil.copy(description_path, f'/home/agent/raw_datasets/{dataset_name}/dataset_description.md')
     shutil.copy(train_data_path, f'/home/agent/raw_datasets/{dataset_name}/train.csv')
 
     os.mkdir('/home/agent/prepared_datasets')
     os.mkdir(f'/home/agent/prepared_datasets/{dataset_name}')
+
+    target_col = get_target_col_from_description(description_path)
 
     prepare_dataset(
         dataset_dir=f'/home/agent/raw_datasets/{dataset_name}',
@@ -64,11 +68,13 @@ def generate_preds_for_biomlbench(config):
 
     try:
         predictions_path = run_inference_on_test_data(test_no_label)
+        target_col = get_target_col_from_description()
         copy_and_format_predictions_for_biomlbench(
             preds_source_path=predictions_path,
             preds_dest_path=submission_path,
-            target_col=args.target_col #passed from outside the fn, refactor into reading prepared yaml metadata
+            target_col=target_col #passed from outside the fn, refactor into reading prepared yaml metadata
         )
+        copy_original_predictions(predictions_path, os.path.join(SUBMISSION_DIR, 'submission_extended.csv'))
         copy_dir(source_dir='/home/workspace/snapshots', dest_dir=CODE_DIR)
         copy_dir(source_dir='/home/workspace/reports', dest_dir=Path(str(CODE_DIR))/'reports')
     except Exception as e:
@@ -81,16 +87,43 @@ def generate_preds_for_biomlbench(config):
     print('- FINISHED PREDS FOR BIOMLBENCH -')
     print('---------------------------------')
 
+
+
 def copy_and_format_predictions_for_biomlbench(preds_source_path, preds_dest_path, target_col):
     preds_df = pd.read_csv(preds_source_path).reset_index()
     preds_df['id'] = preds_df.index
     preds_df = preds_df[['id','prediction']].rename(columns={'prediction': target_col})
     preds_df.to_csv(preds_dest_path, index=False)
 
+def copy_original_predictions(preds_source_path, preds_dest_path):
+    preds_df = pd.read_csv(preds_source_path).reset_index()
+    preds_df.to_csv(preds_dest_path, index=False)
+
 def extract_dataset_name_from_description(description_path):
     with open(description_path, 'r') as f:
         first_line = f.readline()
         return first_line.lstrip('#').strip()
+    
+def extract_val_metric_from_description(description_path):
+    biomlbench_metric_to_agentomics_metric = {
+        'mean_absolute_error': 'MAE',
+        'pr_auc': "AUPRC",
+        'pearsonr': "PEARSON",
+        'roc_auc': "AUROC",
+    }
+
+    with open(description_path, 'r') as f:
+        for line in f.readlines():
+            if '**Main Metric' in line:
+                biomlbench_metric = line.split("**Main Metric:**")[-1].strip()
+                return biomlbench_metric_to_agentomics_metric[biomlbench_metric]
+
+def extract_task_type_from_val_metric(val_metric):
+    if val_metric in ['AUPRC', 'AUROC']:
+        return 'classification'
+    if val_metric in ['MAE', 'PEARSON']:
+        return 'regression'
+    raise Exception('Unknown val metric, update parsing.')
 
 def copy_dir(source_dir, dest_dir):
     if not os.path.exists(source_dir):
@@ -109,10 +142,9 @@ def copy_dir(source_dir, dest_dir):
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str, help='Model id to use (depends on provider)')
-    parser.add_argument('--val-metric', type=str, help='Validation metric to use')
     parser.add_argument('--iterations', type=int, help='Number of iterations to run')
-    parser.add_argument('--target-col', type=str, help='Name of the target column')
-    parser.add_argument('--task-type', type=str, help='Task type: classification or regression')
+    parser.add_argument('--timeout', type=int, help='Timeout in seconds')
+    parser.add_argument('--tags', nargs='*', default=[], help='(Optional) Tags for a wandb run logging')
     parser.add_argument('--provider', type=str, default='openrouter', help='Provider name (e.g., openai, openrouter)')
     parser.add_argument('--user-prompt', type=str, default=None, help='Custom user prompt to guide the agent')
     parser.add_argument('--split-allowed-iterations', type=int, help='Number of initial iterations that allow the agent to split the data into training and validation sets')
@@ -139,24 +171,22 @@ if __name__ == '__main__':
     description_path = '/home/data/description.md'
     train_data = '/home/data/train.csv'
     sample_submission = '/home/data/sample_submission.csv'
-    # Where to output predictions for biomlbench
 
     dataset_name = extract_dataset_name_from_description(description_path)
+    val_metric = extract_val_metric_from_description(description_path)
+    task_type = extract_task_type_from_val_metric(val_metric)
 
     setup_agentomics_folder_structure_and_files(
         description_path = description_path, 
         train_data_path = train_data, 
-        target_col=args.target_col, 
-        task_type=args.task_type,
+        task_type=task_type,
         dataset_name=dataset_name
     )
-
-
 
     asyncio.run(run_experiment(
         model=args.model,
         dataset_name=dataset_name, # Name doesnt matter for biomlbench, has his own run structure, but matters for our logging
-        val_metric=args.val_metric,
+        val_metric=val_metric,
         iterations=args.iterations,
         user_prompt=args.user_prompt,
         # Testing prompt
@@ -165,8 +195,9 @@ if __name__ == '__main__':
         prepared_datasets_dir= '/home/agent/prepared_datasets',
         prepared_test_sets_dir= '/home/agent/prepared_test_sets',
         agent_datasets_dir= '/home/workspace/datasets',
-        tags=[],
+        tags=args.tags,
         provider=args.provider,
         split_allowed_iterations=args.split_allowed_iterations,
         on_new_best_callbacks=[generate_preds_for_biomlbench],
+        timeout=args.timeout,
     ))

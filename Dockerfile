@@ -30,11 +30,12 @@ COPY src/utils/download_foundation_models.py /repository/src/utils/download_foun
 RUN /opt/conda/envs/agentomics-env/bin/python /repository/src/utils/download_foundation_models.py
 
 # Setup agent start environment
+ENV START_ENV_PKG=/opt/agent_start_env.tar.gz
 COPY environment_agent.yaml .
 RUN mamba env create -f environment_agent.yaml \
     && mamba clean -afy \
     && rm -rf /tmp/conda-pkgs
-RUN conda run -n agent_start_env conda-pack -o /opt/agent_start_env.tar.gz
+RUN conda run -n agent_start_env conda-pack -o ${START_ENV_PKG}
 
 WORKDIR /repository
 

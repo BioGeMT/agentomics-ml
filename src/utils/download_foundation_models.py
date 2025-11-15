@@ -17,6 +17,9 @@ def download_model(model_name, model_class):
 
 def main():
     config = load_models_config()
+    if config is None:
+        print('INFO: NO FOUNDATION MODELS FOUND IN CONFIG')
+        return
 
     for _, family_data in config.items():
         models = family_data.get('models')

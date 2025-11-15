@@ -6,6 +6,8 @@ BASE_DIR = os.environ.get('HF_HOME', '/cache/foundation_models')
 MODELS_YAML = os.path.join('/foundation_models', 'models.yaml')
 
 def load_models_config():
+    if not Path(MODELS_YAML).exists():
+        return None
     with open(MODELS_YAML, 'r') as f:
         return yaml.safe_load(f)
 
@@ -15,6 +17,8 @@ def build_foundation_model_catalog():
     """
     models_config = load_models_config()
     catalog = {}
+    if(models_config is None):
+        return catalog
 
     for family_name, meta in models_config.items():
         catalog[family_name] = {

@@ -32,10 +32,11 @@ class BashProcess:
 
     def create_preloaded_conda(self):
         conda_env_path = self.runs_dir / self.agent_id / ".conda" / "envs" / f"{self.agent_id}_env"
-
+        start_env_pkg=os.getenv('START_ENV_PKG')
         self.run(f"mkdir -p {conda_env_path}")
-        self.run(f"tar -xzf /opt/agent_start_env.tar.gz -C {conda_env_path}")
+        self.run(f"tar -xzf {start_env_pkg} -C {conda_env_path}")
         self.run(f"source {conda_env_path}/bin/activate && conda-unpack")
+
 
     def run(self, command: str):
         with self.locked: #exclusive bash access
