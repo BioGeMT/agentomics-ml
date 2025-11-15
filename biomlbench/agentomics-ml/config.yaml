@@ -3,10 +3,9 @@ agentomics-ml:
   dockerfile: agentomics-ml/Dockerfile
   env_vars:
     MODEL: openai/gpt-5-nano
-    VAL_METRIC: MSE
+    VAL_METRIC: MSE #TODO
     ITERATIONS: 1
-    TARGET_COL: Y #TODO not necessary?
-    TASK_TYPE: regression
+    TASK_TYPE: regression #TODO
     USER_PROMPT: "Create the best possible machine learning model that will generalize to new unseen data."
     SPLIT_ALLOWED_ITERATIONS: 1
 
