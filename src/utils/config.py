@@ -26,6 +26,7 @@ class Config:
     task_type: str
     user_prompt: str
     split_allowed_iterations: int
+    exploration_iterations: int
     time_deadline: Optional[int] = None
 
     wandb_run_id: Optional[str] = None
@@ -57,6 +58,7 @@ class Config:
         max_steps: Optional[int] = None,
         iterations: Optional[int] = 5,
         split_allowed_iterations: int = 1,
+        exploration_iterations: int = 3,
         time_deadline: Optional[int] = None,
     ):
         self.agent_id = agent_id
@@ -79,6 +81,7 @@ class Config:
         self.user_prompt = user_prompt
         self.explicit_valid_set_provided = (agent_datasets_dir / dataset / "validation.csv").exists()
         self.split_allowed_iterations = split_allowed_iterations if not self.explicit_valid_set_provided else 0
+        self.exploration_iterations = exploration_iterations
         self.time_deadline = time_deadline
         self.foundation_model_to_desc = build_foundation_model_catalog()
         

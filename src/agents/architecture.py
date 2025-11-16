@@ -8,7 +8,7 @@ from pathlib import Path
 from pydantic_ai.messages import ModelResponse, ToolCallPart, ToolReturnPart, ModelRequest, TextPart, ModelMessage
 
 from agents.agent_utils import run_agent
-from agents.prompts.prompts_utils import get_iteration_prompt, get_user_prompt, get_system_prompt
+from agents.prompts.prompts_utils import get_iteration_prompt, get_system_prompt, get_iteration_0_prompt
 from agents.steps.model_inference import ModelInference, get_model_inference_prompt, lock_inference_file
 from agents.steps.data_split import DataSplit, get_data_split_prompt
 from agents.steps.model_architecture import ModelArchitecture, get_model_architecture_prompt
@@ -352,7 +352,7 @@ async def run_iteration(config: Config, model, iteration, feedback, tools, last_
     agents_dict = create_agents(config=config, model=model, tools=tools)
 
     if iteration == 0:
-        base_prompt = get_user_prompt(config)
+        base_prompt = get_iteration_0_prompt()
     else:
         base_prompt = get_iteration_prompt(config, iteration, feedback)
 

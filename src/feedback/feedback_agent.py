@@ -106,6 +106,16 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
 
     tools_info = ", ".join(tool_names)
 
+    if next_iteration_index <= config.exploration_iterations:
+        exploration_guidance = f"""
+        You are still in the exploration phase (iteration {next_iteration_index} out of {config.exploration_iterations} exploration iterations).
+        During this phase, suggest only baseline models to identify what works well for this dataset.
+        Implement a different baseline model family than previous iterations. Keep the models simple and focus on diversity.
+
+        Remaining exploration iterations: {config.exploration_iterations - next_iteration_index}
+        """
+    else:
+        exploration_guidance = ""
     feedback_prompt = f"""
     <common_user_prompt_of_the_iteration_agents>
     {config.user_prompt}
@@ -122,6 +132,7 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
     </iterations_summaries>
     </run_history>
     <your_instructions>
+    {f"<exploration_guidance>\n{exploration_guidance}\n</exploration_guidance>" if exploration_guidance else ""}
     The main goal of the run is to maximize the hidden test set generalization performance (main metric:{config.val_metric}) that will use the 'best iteration model' (currently model from iteration {best_metric_iteration}). Only models using the latest split are candidates for this 'best iteration model'.
     There are {time_info} left before the run ends. Then, the 'best iteration model' will be extracted and automatically evaluated on the hidden test set.
     Once an iteration produces a model with a better {config.val_metric} metric, that model will overwrite the 'best iteration model'.
