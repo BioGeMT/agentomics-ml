@@ -45,8 +45,11 @@ def get_dataset_knowledge(config):
         dataset_knowledge += f"\n\nLabel mapping: {metadata.get('label_to_scalar', {})}"
     return dataset_knowledge
 
-def get_user_prompt(config):
-    return config.user_prompt
+def get_iteration_0_prompt():
+    return f"""
+    Iteration 0 - Baseline implementation:
+    You must implement a simple baseline model in this iteration. Keep the model architecture straightforward and use standard preprocessing.
+    """
 
 def get_iteration_prompt(config, run_index, feedback):
     past_iterations_range = f"iteration_0 up to iteration_{run_index-1}" if run_index > 1 else "iteration_0"
