@@ -20,4 +20,6 @@ class ModelArchitecture(BaseModel):
     )
 
 def get_model_architecture_prompt():
-    return "Your next task: choose the model architecture and hyperparameters."
+    return """Your next task: choose the model architecture and hyperparameters.
+    Goal: Select an approach that balances model capacity and generalization, given your dataset characteristics and available resources.
+    """

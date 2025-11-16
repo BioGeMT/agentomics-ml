@@ -203,7 +203,7 @@ def parse_args():
     parser.add_argument("--timeout", type=int, help="Timeout before the run is shut down in seconds")
     parser.add_argument('--split-allowed-iterations', type=int, default=1, help='Number of initial iterations that allow the agent to split the data into training and validation sets')
 
-    parser.add_argument('--user-prompt', type=str, default="Create the best possible machine learning model that will generalize to new unseen data.", help='(Optional) Text to overwrite the default user prompt')
+    parser.add_argument('--user-prompt', type=str, default="Develop a machine learning model that generalizes well to new unseen data.", help='(Optional) Text to overwrite the default user prompt')
 
     val_metric_choices = get_classification_metrics_names() + get_regression_metrics_names()
     parser.add_argument('--val-metric', help='Validation metric to use for the best model selection', required=True, choices=val_metric_choices)
