@@ -42,7 +42,7 @@ def main():
     parser.add_argument("--timeout", type=int, help="Timeout before the run is shut down in seconds")
     parser.add_argument("--split-allowed-iterations", type=int, help="Number of initial iterations that are allowed to (re)split the data into train/validation", default=1)
     parser.add_argument("--tags", nargs="*", default=[], help="(Optional) Comma-separated tags to associate with the run")
-    parser.add_argument('--user-prompt', type=str, default="Create the best possible machine learning model that will generalize to new unseen data.", help='(Optional) Text to overwrite the default user prompt')
+    parser.add_argument('--user-prompt', type=str, default="Develop a machine learning model that generalizes well to new unseen data.", help='(Optional) Text to overwrite the default user prompt')
     parser.add_argument("--model", help="Model name. Should be compatible with the selected provider")
 
     available_metrics = get_classification_metrics_names() + get_regression_metrics_names()

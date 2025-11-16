@@ -3,7 +3,7 @@ from pydantic.json_schema import SkipJsonSchema
 
 class ModelTraining(BaseModel):
     path_to_train_file: str = Field(
-        description="Absolute path to the generated train.py"
+        description="Absolute path to the generated training script Python file"
     )
     path_to_model_file: str = Field(
         description="Absolute path to the trained model file"
@@ -21,9 +21,12 @@ class ModelTraining(BaseModel):
         """
     )
 
-def get_model_training_prompt():
-    return """
-    Your next task: implement any necessary code for training a model. Then train a single model.
-    The train script should save any files necessary to use the trained model for predictions (e.g. model file, tokenizers, ...).
-    If your model can be accelerated by GPU, implement the code to use GPU.
+def get_model_training_prompt(config):
+    return f"""
+    Your next task: implement training code and train your model to optimal performance.
+    Training guidelines:
+    - Train until convergence or early stopping.
+    - For iterative methods: save the best checkpoint based on validation performance.
+    - Save all artifacts needed for inference (model file, tokenizers, etc...).
+    {"Use GPU if available for models that benefit from acceleration" if config.check_gpu_availability() else "Implement efficient CPU only training, as you don't have access to GPUs."}
     """

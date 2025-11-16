@@ -304,7 +304,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
     training_deps = {'start_time': datetime.datetime.now()}
     messages_training, model_training = await run_agent(
         agent=training_agent, 
-        user_prompt=get_model_training_prompt()+ctx_replacer_msg, 
+        user_prompt=get_model_training_prompt(config)+ctx_replacer_msg, 
         max_steps=config.max_steps,
         message_history=persistent_messages,
         deps=training_deps,
