@@ -55,6 +55,10 @@ def run_inference_on_test_data(test_data_path):
     if inference_out.returncode != 0:
         print("Error during inference:")
         print(inference_out.stderr.decode())
+    print('------INFERENCE OUTPUTS-------')
+    print(inference_out.stdout)
+    print(inference_out.stderr)
+    print('---END OF INFERENCE OUTPUTS---')
     return output_path
 
 def generate_preds_for_biomlbench(config):
