@@ -1,0 +1,32 @@
+biomlbench_repo: https://github.com/dimostzim/biomlbench.git
+biomlbench_branch: main
+
+openrouter_key: sk-or-v1
+openrouter_base_url: https://openrouter.ai/api/v1
+
+# Cost tracking (optional)
+enable_cost_tracking: true  # Set to true when you have a provisioning key
+provisioning_key: sk-or-v1  # Add your provisioning key here when enabling cost tracking
+spending_limit_per_run: 50.0  # Max spend per agent run in USD
+
+time_limit_secs: 1000
+step_limit: 99999999  #  unlimited - agents controlled by time_limit_secs only
+
+agents:
+  aide:
+    model: openai/gpt-5-mini
+  biomni:
+    model: openai/gpt-5-mini
+    self_critic: true
+    iterations: 99999999
+  stella:
+    model: openai/gpt-5-mini
+  oneshot:
+    model: openai/gpt-5-mini
+
+datasets:
+  - ago2_clash_hejret
+  - drosophila_enhancers_stark
+  - human_enhancers_cohn
+  - human_enhancers_ensembl
+  - human_ocr_ensembl
