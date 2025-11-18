@@ -10,7 +10,9 @@ def get_metrics(results_file, test_file, task_type, output_file=None, numeric_la
     
     results = pd.read_csv(results_file)
     test = pd.read_csv(test_file)
-    merged = pd.merge(results, test, left_index=True, right_index=True)
+    merged = pd.merge(results, test, on='id', how='inner')
+    if(len(merged) != len(test)):
+        print('WARNING: PREDICTIONS LENGTH DOESNT MATCH TEST DATASET')
     metrics = {}
     
     if task_type == "classification":
