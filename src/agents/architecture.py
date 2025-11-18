@@ -150,13 +150,26 @@ def create_agents(config: Config, model, tools):
             raise ModelRetry(f"Model file ({result.path_to_model_file}) must be inside the artifacts folder ({result.path_to_artifacts_dir})")
         if does_file_contain_string(result.path_to_train_file, "iteration_"):
             raise ModelRetry("Train file contains path containing a forbidden string 'iteration_' or references an iteration folder, which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
-        retrain_and_check(
+        created_files_names = retrain_and_check(
             config=config,
-            train_data_path=ctx.deps['train_csv_path'], 
+            train_data_path=ctx.deps['train_csv_path'],
             valid_data_path=ctx.deps['validation_csv_path'],
             train_script_path = result.path_to_train_file,
             model_file_name = Path(result.path_to_model_file).name,
         )
+        existing_files = list(Path(result.path_to_artifacts_dir).iterdir())
+        existing_files_names = [f.name for f in existing_files]
+
+        # Check if created files match existing files in artifacts directory
+        if set(created_files_names) != set(existing_files_names):
+            difference = set(existing_files_names) - set(created_files_names)
+            error_msg = f"Artifacts directory contains extra files, probably from a previous failed training attempt.\n"
+            error_msg += f"Files created using the current training script: {created_files_names}\n"
+            error_msg += f"Files existing in artifacts directory: {existing_files_names}\n"
+            error_msg += f"Extra files that should be cleaned up: {list(difference)}\n"
+            error_msg += f"Please clean up the artifacts directory at {result.path_to_artifacts_dir} and try again."
+            raise ModelRetry(error_msg)
+
         result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
         return result
 
