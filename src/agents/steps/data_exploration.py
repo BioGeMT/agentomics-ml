@@ -9,7 +9,7 @@ class DataExploration(BaseModel):
     )
     feature_analysis: str = Field(
         description="""
-        Analysis of individual features: distributions, correlations with target, and potential predictive power.
+        Analysis of individual features: distributions, correlations with target.
         """
     )
     domain_insights: str = Field(

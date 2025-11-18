@@ -25,8 +25,8 @@ def get_model_training_prompt(config):
     return f"""
     Your next task: implement training code and train your model to optimal performance.
     Training guidelines:
-    - Train until convergence or early stopping.
-    - For iterative methods: save the best checkpoint based on validation performance.
+    - Train until convergence or early stopping and output the best model.
     - Save all artifacts needed for inference (model file, tokenizers, etc...).
+    - If you failed to implement your intended model, when you call the final_output tool, put into unresolved issues what went wrong.
     {"Use GPU if available for models that benefit from acceleration" if config.check_gpu_availability() else "Implement efficient CPU only training, as you don't have access to GPUs."}
     """
