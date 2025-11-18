@@ -236,9 +236,14 @@ def snapshot_run_dir_into_dest(config, destination_dir, delete_old_destination_d
         if element.name in folders_to_delete and element.is_dir():
             shutil.rmtree(element)
             continue
-        shutil.copy(str(element), str(destination_dir / element.name), follow_symlinks=False)
-        if(remove_source_files):
-            element.unlink()
+        if element.is_dir():
+            shutil.copytree(str(element), str(destination_dir / element.name), symlinks=False, dirs_exist_ok=True)
+            if(remove_source_files):
+                shutil.rmtree(element)
+        else:
+            shutil.copy(str(element), str(destination_dir / element.name), follow_symlinks=True)
+            if(remove_source_files):
+                element.unlink()
 
     replace_python_paths(folder_path=destination_dir, current_path=run_dir, new_path=rundir_path_replacement)
 
