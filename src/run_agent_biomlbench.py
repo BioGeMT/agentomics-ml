@@ -387,7 +387,6 @@ if __name__ == '__main__':
 
     # Locations of data (passed by biomlbench docker image)
     description_path = '/home/data/description.md'
-    train_data = '/home/data/train.csv'
     sample_submission = '/home/data/sample_submission.csv'
 
     dataset_name = extract_dataset_name_from_description(description_path)
@@ -398,6 +397,12 @@ if __name__ == '__main__':
         is_proteingym = False
     val_metric = extract_val_metric_from_description(description_path, is_proteingym=is_proteingym)
     task_type = extract_task_type_from_val_metric(val_metric)
+
+    if is_proteingym:
+        train_data = '/home/data/data.csv'
+    else:
+        train_data = '/home/data/train.csv'
+
 
     setup_agentomics_folder_structure_and_files(
         description_path = description_path, 
