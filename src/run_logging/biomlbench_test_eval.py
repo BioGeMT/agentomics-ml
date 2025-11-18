@@ -3,6 +3,8 @@ import json
 from pathlib import Path
 import dotenv
 import wandb
+import statistics
+import pandas as pd
 
 from utils.config import Config
 from run_logging.logging_helpers import log_inference_stage_and_metrics
@@ -14,17 +16,42 @@ def run_test_evaluation(config_path, predictions_path, labeled_test_path, label_
     dotenv.load_dotenv()
     config = load_run_config(config_path)
     resume_wandb_run(config)
-
-    metrics = get_metrics(
-        results_file=predictions_path,
-        test_file=labeled_test_path,
-        output_file=output_metrics_file,
-        numeric_label_col=label_col,
-        delete_preds=False,
-        task_type=config.task_type,
-    )
-    log_inference_stage_and_metrics(2, metrics=metrics, task_type=config.task_type)
-    log_biomlbench_grade(biomlbench_grade_dict)
+    is_proteingym = 'fitness_score_fold_random_5' in pd.read_csv(predictions_path).columns
+    if(is_proteingym):
+        print('PROTEINGYM TEST EVAL DETECTED')
+        all_metrics = {}
+        unique_original_metrics = set()
+        fold_cols = ['fold_random_5','fold_modulo_5','fold_contiguous_5']
+        for fold_col in fold_cols:
+            fold_pred_col = f'fitness_score_{fold_col}'
+            metrics = get_metrics(
+                pred_col=fold_pred_col,
+                results_file=predictions_path,
+                test_file=labeled_test_path,
+                output_file=output_metrics_file + f'_{fold_col}',
+                numeric_label_col=label_col,
+                delete_preds=False,
+                task_type=config.task_type,
+            )
+            for k in metrics.keys():
+                unique_original_metrics.add(k)
+                metrics[f'{k}_{fold_col}'] = metrics.pop(k)
+            all_metrics.update(metrics)
+        for metric in unique_original_metrics:
+            all_metrics[metric] = statistics.mean([all_metrics[f'{metric}_{fold_col}'] for fold_col in fold_cols]) #take avg over all fold metrics (biomlbench style)
+        log_inference_stage_and_metrics(2, metrics=all_metrics, task_type=config.task_type)
+        log_biomlbench_grade(biomlbench_grade_dict)
+    else:
+        metrics = get_metrics(
+            results_file=predictions_path,
+            test_file=labeled_test_path,
+            output_file=output_metrics_file,
+            numeric_label_col=label_col,
+            delete_preds=False,
+            task_type=config.task_type,
+        )
+        log_inference_stage_and_metrics(2, metrics=metrics, task_type=config.task_type)
+        log_biomlbench_grade(biomlbench_grade_dict)
 
 def load_submission_jsonl(jsonl_path):
     with open(jsonl_path, 'r') as f:

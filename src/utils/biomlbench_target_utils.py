@@ -6,6 +6,7 @@ def get_target_col_from_description(description_path='/home/data/description.md'
             if 'Target column' in line:
                 match = re.search(r'\{\s*["\'](.*?)["\']\s*\}', line)
                 return match.group(1) if match else None
+    return 'fitness_score' #proteingym dsets
 
 if __name__ == '__main__':
     print(get_target_col_from_description())
