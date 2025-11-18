@@ -48,8 +48,8 @@ RUN conda env create -f environment_agent.yaml \
 RUN conda run -n agent_start_env conda-pack -o ${START_ENV_PKG}
 
 # Pre-download foundation models
-RUN mkdir -p /foundation_models /cache/foundation_models
-ENV HF_HOME=/cache/foundation_models
+RUN mkdir -p /foundation_models /home/cache/foundation_models
+ENV HF_HOME=/home/cache/foundation_models
 COPY foundation_models/ /foundation_models/
 COPY foundation_models_utils.py /repository/src/utils/foundation_models_utils.py
 COPY download_foundation_models.py /repository/src/utils/download_foundation_models.py
