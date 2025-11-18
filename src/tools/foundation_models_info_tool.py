@@ -4,7 +4,7 @@ from pydantic_ai import Tool
 def create_foundation_models_info_tool(foundation_model_to_desc, max_retries):
     def _get_foundation_models_info(family: str|None = None):
         """
-        Tool for retrieving information about the foundation models available in this system and ready to be used.
+        This tool lists foundation models available in this system and ready to be used.
         Returns brief infos of the model families, along with the different model sizes.
         If the family argument is specified, returns detailed info, code snippets, available models, and README of a specific family.
 
