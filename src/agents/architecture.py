@@ -1,5 +1,6 @@
 import os
 import datetime
+import subprocess
 
 from pydantic_ai import Agent, ModelRetry, RunContext
 import weave
@@ -14,7 +15,7 @@ from agents.steps.data_split import DataSplit, get_data_split_prompt
 from agents.steps.model_architecture import ModelArchitecture, get_model_architecture_prompt
 from agents.steps.data_representation import DataRepresentation, get_data_representation_prompt
 from agents.steps.data_exploration import DataExploration, get_data_exploration_prompt
-from agents.steps.model_training import ModelTraining, get_model_training_prompt
+from agents.steps.model_training import ModelTraining, get_model_training_prompt, retrain_and_check
 from agents.steps.prediction_exploration import PredictionExploration, get_prediction_exploration_prompt
 from utils.config import Config
 from utils.report_logger import save_step_output
@@ -139,10 +140,23 @@ def create_agents(config: Config, model, tools):
     async def validate_training(ctx: RunContext[dict], result: ModelTraining) -> ModelTraining:
         if not os.path.exists(result.path_to_train_file):
             raise ModelRetry(f"Train file does not exist. {result.path_to_train_file}")
+        if not Path(result.path_to_train_file).name.strip() == 'train.py':
+            raise ModelRetry(f"Train file must be called 'train.py' , currently is named {Path(result.path_to_train_file).name.strip()}")
         if not os.path.exists(result.path_to_model_file):
             raise ModelRetry(f"Model file does not exist at {result.path_to_model_file}")
+        if ctx.deps['run_dir'] not in Path(result.path_to_artifacts_dir).parents:
+            raise ModelRetry(f"path_to_artifacts_dir ({result.path_to_artifacts_dir}) must be a child of your run dir ({ctx.deps['run_dir']})")
+        if Path(result.path_to_artifacts_dir).resolve() not in Path(result.path_to_model_file).parents:
+            raise ModelRetry(f"Model file ({result.path_to_model_file}) must be inside the artifacts folder ({result.path_to_artifacts_dir})")
         if does_file_contain_string(result.path_to_train_file, "iteration_"):
             raise ModelRetry("Train file contains path containing a forbidden string 'iteration_' or references an iteration folder, which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
+        retrain_and_check(
+            config=config,
+            train_data_path=ctx.deps['train_csv_path'], 
+            valid_data_path=ctx.deps['validation_csv_path'],
+            train_script_path = result.path_to_train_file,
+            model_file_name = Path(result.path_to_model_file).name,
+        )
         result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
         return result
 
@@ -270,6 +284,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
     structured_outputs.append(data_exploration_output)
     
     split_allowed_iterations = config.split_allowed_iterations
+    data_split_step = None
     if not config.explicit_valid_set_provided and iteration < split_allowed_iterations:
         data_split_deps = {'start_time': datetime.datetime.now()}
         messages_split, data_split = await run_agent(
@@ -281,6 +296,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
         )
         replace_message_result_with_validated_files(messages_split, config, since_timestamp=data_split_deps['start_time'])
         persistent_messages+=get_final_result_messages(messages_split)
+        data_split_step=data_split
         structured_outputs.append(data_split)
     else:
         assert last_split_strategy is not None, f'Agent didnt have a chance to split data, provide a non-0 allowed split iterations (currently {config.split_allowed_iterations})'
@@ -291,6 +307,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
             files_created=[],
         )
         persistent_messages+=fabricate_final_result_messages(manual_data_split_step, model_name=config.model_name)
+        data_split_step=manual_data_split_step
         structured_outputs.append(manual_data_split_step)
 
     representation_deps = {'start_time': datetime.datetime.now()}
@@ -317,7 +334,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
     persistent_messages+=get_final_result_messages(messages_architecture)
     structured_outputs.append(model_architecture)
 
-    training_deps = {'start_time': datetime.datetime.now()}
+    training_deps = {'start_time': datetime.datetime.now(), 'train_csv_path':data_split_step.train_path, 'validation_csv_path':data_split_step.val_path, 'run_dir': config.runs_dir / config.agent_id}
     messages_training, model_training = await run_agent(
         agent=training_agent, 
         user_prompt=get_model_training_prompt(config)+ctx_replacer_msg, 
