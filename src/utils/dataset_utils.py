@@ -273,6 +273,54 @@ def get_label_to_number_map(train_df, test_df, target_col, positive_class=None, 
 
     return label_map
 
+def add_id_column(train_df, validation_df=None, test_df=None):
+    """
+    Add ID column to dataframes.
+    - Train and validation share a common ID range (no overlap)
+    - Test has its own ID range starting from 0
+    - If the dataset already has an 'id' column, it's renamed to 'id_original'
+
+    Args:
+        train_df: Training dataframe
+        validation_df: Validation dataframe (optional)
+        test_df: Test dataframe (optional)
+
+    Returns:
+        Tuple of (train_df, validation_df, test_df) with ID columns added
+    """
+    # Rename existing 'id' columns if present
+    if 'id' in train_df.columns and 'id_original' in train_df.columns:
+        raise Exception('Cannot have both "id" and "id_original" columns in training data')
+    if 'id' in train_df.columns:
+        train_df.rename(columns={'id': 'id_original'}, inplace=True)
+
+    if validation_df is not None:
+        if 'id' in validation_df.columns and 'id_original' in validation_df.columns:
+            raise Exception('Cannot have both "id" and "id_original" columns in validation data')
+        if 'id' in validation_df.columns:
+            validation_df.rename(columns={'id': 'id_original'}, inplace=True)
+
+    if test_df is not None:
+        if 'id' in test_df.columns and 'id_original' in test_df.columns:
+            raise Exception('Cannot have both "id" and "id_original" columns in test data')
+        if 'id' in test_df.columns:
+            test_df.rename(columns={'id': 'id_original'}, inplace=True)
+
+    # Train IDs start at 0
+    train_df['id'] = range(len(train_df))
+
+    # Validation IDs continue after training
+    if validation_df is not None:
+        validation_start_id = len(train_df)
+        validation_df['id'] = range(validation_start_id, validation_start_id + len(validation_df))
+
+    # Test IDs start at 0
+    if test_df is not None:
+        test_df['id'] = range(len(test_df))
+
+    return train_df, validation_df, test_df
+
+
 def prepare_dataset(dataset_dir, target_col,
                    positive_class, negative_class, task_type, output_dir, test_sets_output_dir, interactive=False):
     """
@@ -293,12 +341,12 @@ def prepare_dataset(dataset_dir, target_col,
     train_df = pd.read_csv(train)
     test_df = pd.read_csv(test) if test else None
     validation_df = pd.read_csv(validation) if validation else None
-    
+
     if target_col is None:
         target_col = auto_detect_target_col(train_df, interactive=interactive)
     if task_type is None:
         task_type = auto_detect_task_type(train_df, target_col)
-    
+
     if task_type == 'classification':
         label_map = get_label_to_number_map(
             train_df=train_df,
@@ -307,7 +355,8 @@ def prepare_dataset(dataset_dir, target_col,
             positive_class=positive_class,
             negative_class=negative_class
         )
-    
+    train_df, validation_df, test_df = add_id_column(train_df, validation_df, test_df)
+
     dataframes = [('train', train_df)]
     if test_df is not None:
         dataframes.append(('test', test_df))

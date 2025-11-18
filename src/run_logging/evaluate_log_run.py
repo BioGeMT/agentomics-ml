@@ -199,3 +199,14 @@ def verify_file_and_row_count(input_path, predictions_path, inference_out):
     expected_rows = len(pd.read_csv(input_path))
     if actual_rows != expected_rows:
         raise ModelRetry(f'Inference script must produce prediction for each input sample. Input rows: {expected_rows}. Predicted rows: {actual_rows}')
+    input_ids = pd.read_csv(input_path)['id']
+    try:
+        prediction_ids = pd.read_csv(predictions_path)['id']
+        if not (input_ids.equals(prediction_ids)):
+            diff = input_ids.compare(prediction_ids, align_axis=0).head(n=20)
+            raise ModelRetry(f'Inference script must keep the id column from the input data the same. First 20 differences:\n{diff}')
+
+    except Exception as e:
+        tb = traceback.format_exc()
+        raise ModelRetry(f'Inference script must produce predicions with the \'id\' column. {e}\n{tb}') from e
+
