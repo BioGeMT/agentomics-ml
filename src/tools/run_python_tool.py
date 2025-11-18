@@ -28,7 +28,7 @@ def create_run_python_tool(agent_id, runs_dir, timeout, max_retries, proxy):
         start_time = time.time()
         # validate path is a file
         if not Path(python_file_path).is_file():
-            return "python_file_path is not a valid python file path"
+            return f"{python_file_path} is not a valid python file path"
         
         #TODO allow to accept arguments + validate they don't break the bash (requiring input etc)
         env_path = runs_dir / agent_id / ".conda" / "envs" / f"{agent_id}_env"
