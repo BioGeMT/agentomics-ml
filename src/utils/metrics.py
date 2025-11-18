@@ -1,5 +1,5 @@
 from sklearn.metrics import average_precision_score, roc_auc_score, accuracy_score, mean_squared_error, mean_absolute_error, r2_score, f1_score, log_loss, matthews_corrcoef, mean_absolute_percentage_error
-from scipy.stats import pearsonr
+from scipy.stats import pearsonr, spearmanr
 import numpy as np
 
 class Metric:
@@ -20,6 +20,11 @@ class Metric:
 
 def _pcc(y_true, y_pred):
     r = pearsonr(np.asarray(y_true, float).ravel(), np.asarray(y_pred, float).ravel())[0]
+    return float(r) if np.isfinite(r) else 0.0
+
+def _scc(y_true, y_pred):
+    """Spearman correlation coefficient."""
+    r = spearmanr(np.asarray(y_true, float).ravel(), np.asarray(y_pred, float).ravel())[0]
     return float(r) if np.isfinite(r) else 0.0
 
 def _auroc_metric(y_true, y_prob):
@@ -100,6 +105,11 @@ def get_regression_metrics_functions():
         ),
         "PEARSON": Metric(
             function=lambda y_true, y_pred: _pcc(y_true, y_pred),
+            needs_probabilities=False,
+            higher_is_better=True
+        ),
+        "SPEARMAN": Metric(
+            function=lambda y_true, y_pred: _scc(y_true, y_pred),
             needs_probabilities=False,
             higher_is_better=True
         ),

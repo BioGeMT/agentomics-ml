@@ -298,6 +298,7 @@ def extract_val_metric_from_description(description_path, is_proteingym):
         'pr_auc': "AUPRC",
         'pearsonr': "PEARSON",
         'roc_auc': "AUROC",
+        'spearman': "SPEARMAN",
     }
 
     # TODO scout readmes and fill in
@@ -334,9 +335,9 @@ def extract_val_metric_from_description(description_path, is_proteingym):
 def extract_task_type_from_val_metric(val_metric):
     if val_metric in ['AUPRC', 'AUROC']:
         return 'classification'
-    if val_metric in ['MAE', 'PEARSON']:
+    if val_metric in ['MAE', 'PEARSON', 'SPEARMAN']:
         return 'regression'
-    raise Exception('Unknown val metric, update parsing.')
+    raise Exception('Unknown val metric, update parsing or metrics.')
 
 def copy_dir(source_dir, dest_dir):
     if not os.path.exists(source_dir):
