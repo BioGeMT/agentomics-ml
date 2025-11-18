@@ -289,8 +289,12 @@ def copy_original_predictions(preds_source_path, preds_dest_path):
 
 def extract_dataset_name_from_description(description_path):
     with open(description_path, 'r') as f:
-        first_line = f.readline()
-        return first_line.lstrip('#').strip()
+        first_line = f.readline().lstrip('#').strip()
+        # If first line is empty, try the second line
+        if not first_line:
+            second_line = f.readline().lstrip('#').strip()
+            return second_line
+        return first_line
     
 def extract_val_metric_from_description(description_path, is_proteingym):
     biomlbench_metric_to_agentomics_metric = {
