@@ -51,10 +51,10 @@ def setup_agentomics_folder_structure_and_files(description_path, train_data_pat
 
     if is_proteingym:
         # Copy the csv, but leave out the following columns: fold_random_5,fold_modulo_5,fold_contiguous_5
-        # id,sequence,fitness_score,fold_random_5,fold_modulo_5,fold_contiguous_5
         df = pd.read_csv(train_data_path)
         columns_to_drop = ['fold_random_5', 'fold_modulo_5', 'fold_contiguous_5']
         df = df.drop(columns=[col for col in columns_to_drop if col in df.columns])
+        df = df[df['fold_random_5'] != -1]
         df.to_csv(f'/home/agent/raw_datasets/{dataset_name}/train.csv', index=False)
     else:
         shutil.copy(train_data_path, f'/home/agent/raw_datasets/{dataset_name}/train.csv')
@@ -117,6 +117,7 @@ def generate_preds_for_biomlbench_proteingym(config):
         env_path = Path(f"{snapshots_dir}/{run_name}") / ".conda"/ "envs" / f"{run_name}_env"
         inference_script_path = Path(f"{snapshots_dir}/{run_name}") / "inference.py"
         og_train_data = pd.read_csv('/home/data/train.csv')
+        og_train_data = og_train_data[og_train_data['fold_random_5'] != -1]
         final_predictions_path = f'{snapshots_dir}/{run_name}/predictions.csv'
         train_script_path = Path(f"{snapshots_dir}/{run_name}") / 'train.py'
         cols_to_keep = ['id','sequence','fitness_score']
