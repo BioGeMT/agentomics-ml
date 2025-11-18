@@ -94,6 +94,11 @@ def retrain_and_check(config, train_data_path, valid_data_path, train_script_pat
             raise ModelRetry(error_msg)
         print('TRAINING REPRODUCIBILITY OK')
 
+        # Log all files created in artifacts dir before cleanup
+        created_files = list(temp_artifacts_dir.iterdir())
+        created_files_names = [f.name for f in created_files]
+        return created_files_names
+
     except Exception as e:
         if isinstance(e, ModelRetry):
             raise
