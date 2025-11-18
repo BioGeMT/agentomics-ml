@@ -306,16 +306,16 @@ def extract_val_metric_from_description(description_path, is_proteingym):
     }
 
     # TODO scout readmes and fill in
-    metric_keywords = [
-        ('spearman correlation', 'spearman'),
-        ('pearson correlation', 'pearsonr'),
-        ('roc_auc', 'roc_auc'),
-        ('auroc', 'roc_auc'),
-        ('pr_auc', 'pr_auc'),
-        ('auprc', 'pr_auc'),
-        ('mean absolute error', 'mean_absolute_error'),
-        ('mae', 'mean_absolute_error'),
-    ]
+    metric_keywords = {
+        'spearman correlation': 'spearman',
+        'pearson correlation': 'pearsonr',
+        'roc_auc': 'roc_auc',
+        'auroc': 'roc_auc',
+        'pr_auc': 'pr_auc',
+        'auprc': 'pr_auc',
+        'mean absolute error': 'mean_absolute_error',
+        'mae': 'mean_absolute_error',
+    }
 
     if is_proteingym:
         with open(description_path, 'r') as f:
@@ -324,7 +324,7 @@ def extract_val_metric_from_description(description_path, is_proteingym):
 
             # Search for metric keywords in the description
             found_keywords = []
-            for keyword, metric_name in metric_keywords:
+            for keyword, metric_name in metric_keywords.items():
                 if keyword in content_lower:
                     found_keywords.append(keyword)
             assert len(found_keywords) ==1, found_keywords
