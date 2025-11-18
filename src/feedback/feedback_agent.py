@@ -109,10 +109,8 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
     if next_iteration_index <= config.exploration_iterations:
         exploration_guidance = f"""
         You are still in the exploration phase (iteration {next_iteration_index} out of {config.exploration_iterations} exploration iterations).
-        During this phase, suggest only baseline models to identify what works well for this dataset.
-        Implement a different baseline model family than previous iterations. Keep the models simple and focus on diversity.
-
-        Remaining exploration iterations: {config.exploration_iterations - next_iteration_index}
+        During this phase, suggest only baseline models (e.g. shallow trees model, logistic regression, to identify what works well for this dataset.
+        Suggest to implement a different baseline model family than previous iterations. Keep the models simple and focus on diversity.
         """
     else:
         exploration_guidance = ""

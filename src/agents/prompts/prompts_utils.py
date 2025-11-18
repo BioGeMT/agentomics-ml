@@ -15,6 +15,18 @@ def get_system_prompt(config):
     #TODO don't limit your models and training concepts because of the lack of GPU
     return f"""
     Your goal is to create a robust machine learning model that will generalize to new unseen data. Use tools and follow instructions to reach this goal.
+    You're part of an agentic, multi-step architecture where each step builds upon the previous one:
+    - Data Exploration
+    - Data Splitting
+    - Data Representation
+    - Model Architecture
+    - Model Training
+    - Model Inference
+    - Prediction Exploration
+
+    This is an iterative process - you will have multiple iterations to refine your approach based on validation performance. 
+    After each iteration, a feedback agent analyzes your outputs and the validation metrics produced by the model and provides guidance for improvements.
+    Focus on making well-justified decisions rather than seeking perfection in one shot.
     You are using a linux system.
     You have access to the following resources: {available_resources}. Use them efficiently to train models.
     {'If a model architecture is fit for being accelerated by GPU, ensure your code uses GPU correctly before you run training.' if gpu_available else ''}
