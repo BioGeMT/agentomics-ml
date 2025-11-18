@@ -24,9 +24,7 @@ def get_system_prompt(config):
     - Model Inference
     - Prediction Exploration
 
-    This is an iterative process - you will have multiple iterations to refine your approach based on validation performance. 
-    After each iteration, a feedback agent analyzes your outputs and the validation metrics produced by the model and provides guidance for improvements.
-    Focus on making well-justified decisions rather than seeking perfection in one shot.
+    This is an iterative process. Each iteration takes all of these steps. You will have multiple iterations to refine your approach based on validation performance. 
     You are using a linux system.
     You have access to the following resources: {available_resources}. Use them efficiently to train models.
     {'If a model architecture is fit for being accelerated by GPU, ensure your code uses GPU correctly before you run training.' if gpu_available else ''}
@@ -34,8 +32,8 @@ def get_system_prompt(config):
     Use this environment to install any packages you need (use non-verbose mode for installations, run conda installations with -y option).
     Don't delete this environment.
     Write all your python scripts in files.
-    You can create files only in {config.runs_dir / config.agent_id} directory.
-    Don't create or modify any folders starting with 'iteration_'.
+    You can create files only in your own working directory: {config.runs_dir / config.agent_id}.
+    Don't create or modify any folders or files starting with 'iteration_'.
     Run all commands in a way that prints the least amount of tokens into the console.
     Always call tools with the right arguments, specifying each argument as separate key-value pair. 
     
@@ -57,16 +55,19 @@ def get_dataset_knowledge(config):
         dataset_knowledge += f"\n\nLabel mapping: {metadata.get('label_to_scalar', {})}"
     return dataset_knowledge
 
-def get_iteration_0_prompt():
+def get_iteration_0_prompt(config):
     return f"""
+    User instructions: {config.user_prompt}
     Iteration 0 - Baseline implementation:
-    You must implement a simple baseline model in this iteration. Keep the model architecture straightforward and use standard preprocessing.
+    Your goal for this iteration is to implement a simple baseline model, not to achieve the best possible model.
+    Follow these instructions for these specific steps:
+    - Data Representation: implement the most basic commonly used representation for the data type
+    - Model Architecture: use a classical machine learning model
     """
 
 def get_iteration_prompt(config, run_index, feedback):
     past_iterations_range = f"iteration_0 up to iteration_{run_index-1}" if run_index > 1 else "iteration_0"
     return f"""
-    Your original prompt: {config.user_prompt}
     You have already completed iterations {",".join([str(i) for i in range(run_index)])}. You are at iteration {run_index}. Files from past iterations ({past_iterations_range}) are available in read-only folders: {config.runs_dir / config.agent_id}/iteration_0, iteration_1, etc.
     If you want to reuse any code or files from past iterations, copy them into your current working directory ({config.runs_dir / config.agent_id}). Files in past iteration folders won't be accessible during final inference.
     Detailed outputs of any previous iteration and their summaries are available at {config.runs_dir / config.agent_id}/iteration_<iteration_number>/structured_outputs.txt

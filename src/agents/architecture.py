@@ -352,7 +352,7 @@ async def run_iteration(config: Config, model, iteration, feedback, tools, last_
     agents_dict = create_agents(config=config, model=model, tools=tools)
 
     if iteration == 0:
-        base_prompt = get_iteration_0_prompt()
+        base_prompt = get_iteration_0_prompt(config)
     else:
         base_prompt = get_iteration_prompt(config, iteration, feedback)
 

@@ -109,15 +109,18 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
     if next_iteration_index <= config.exploration_iterations:
         exploration_guidance = f"""
         You are still in the exploration phase (iteration {next_iteration_index} out of {config.exploration_iterations} exploration iterations).
-        During this phase, suggest only baseline models (e.g. shallow trees model, logistic regression, to identify what works well for this dataset.
-        Suggest to implement a different baseline model family than previous iterations. Keep the models simple and focus on diversity.
+        Your task is to instruct the agent to implement a baseline model. 
+        Follow these instructions for these specific steps:
+        - Data Representation: implement the most basic commonly used representation for the data type
+        - Model Architecture: use a classical machine learning model
+        Never suggest a representation-model combination that has already been explored.
         """
     else:
         exploration_guidance = ""
     feedback_prompt = f"""
-    <common_user_prompt_of_the_iteration_agents>
+    <prompt_of_the_iteration_agents>
     {config.user_prompt}
-    </common_user_prompt_of_the_iteration_agents>
+    </prompt_of_the_iteration_agents>
 
     <dataset_knowledge_from_dataset_description_md>
     {get_dataset_knowledge(config)}
@@ -162,9 +165,7 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
     </foundation_models_info>
     The agent will have access to the following resources: {config.get_resources_summary()}
 
-    Balance exploration of new approaches and optimizing already working approaches based on the iteration history and remaining time/iterations. 
-    Remember that the goal is to maximize the hidden test set performance that will use the saved best model (currently iteration {best_metric_iteration}).
-    This 'best iteration model' is saved and will not be overridden by a worse model, therefore you can safely instruct the agent to experiment with more exploratory models, representaiton etc... if you choose to.
+    Based on the iteration history, remaining time and iterations: choose to explore radically different model architectures and data representations or choose to optimize the most promising past iteration.
 
     Once the next iteration finishes, the iterations summaries (run history) will be updated with its results and you will have an opportunity to provide another set of instructions etc.. until the run ends.
     </your_instructions>
@@ -220,7 +221,7 @@ def aggregate_past_iterations(iter_to_outputs, iter_to_metrics, current_iter_val
 
         split_info = f"This iteration used train/validation split strategy version {iter_split_version}. "
         if(len(iters_with_the_same_split) > 0):
-            split_info+=f"This is the same as itertations {iters_with_the_same_split}. "
+            split_info+=f"This is the same as iterations {iters_with_the_same_split}. "
         if(iter_split_version != lastest_split_version):
             split_info += f"This iteration's split (version {iter_split_version}) is different from the latest iteration's split ({lastest_split_version}), therefore this iteration metrics can no longer be considered for a 'best iteration model' candidate. "
         else:
