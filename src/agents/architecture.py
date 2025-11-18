@@ -111,10 +111,26 @@ def create_agents(config: Config, model, tools):
             raise ModelRetry(f"The files must be called exactly 'train.csv' and 'validation.csv'. Files ({train_path.name} and {val_path.name}) have been deleted.")
         
         target_col = 'numeric_label' #TODO generalize and take from metadata.json or config
-        for path in [result.train_path, result.val_path]:
-            df = pd.read_csv(path)
-            if target_col not in df.columns:
-                raise ModelRetry(f"Target column {target_col} not found in dataset {path}. Columns found: {df.columns.tolist()}")
+        train_df = pd.read_csv(result.train_path)
+        val_df = pd.read_csv(result.val_path)
+
+        if target_col not in train_df.columns:
+            raise ModelRetry(f"Target column {target_col} not found in train dataset {result.train_path}. Columns found: {train_df.columns.tolist()}")
+        if target_col not in val_df.columns:
+            raise ModelRetry(f"Target column {target_col} not found in validation dataset {result.val_path}. Columns found: {val_df.columns.tolist()}")
+
+        # Validate that both datasets have id column
+        if 'id' not in train_df.columns:
+            raise ModelRetry(f"ID column 'id' is missing in train dataset {result.train_path}. Columns found: {train_df.columns.tolist()}")
+        if 'id' not in val_df.columns:
+            raise ModelRetry(f"ID column 'id' is missing in validation dataset {result.val_path}. Columns found: {val_df.columns.tolist()}")
+
+        # Validate that train and validation have no overlapping IDs
+        train_ids = set(train_df['id'].dropna().tolist())
+        val_ids = set(val_df['id'].dropna().tolist())
+        overlapping_ids = train_ids.intersection(val_ids)
+        if overlapping_ids:
+            raise ModelRetry(f"Train and validation datasets have overlapping IDs. IDs must be unique across train and validation splits.")
 
         result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
         return result
@@ -356,7 +372,6 @@ async def run_iteration(config: Config, model, iteration, feedback, tools, last_
     else:
         base_prompt = get_iteration_prompt(config, iteration, feedback)
 
-    #TODO parametrize compressed vs normal runs
     structured_outputs = await run_architecture_compressed(
         data_exploration_agent=agents_dict['data_exploration_agent'],
         data_representation_agent=agents_dict['data_representation_agent'],
