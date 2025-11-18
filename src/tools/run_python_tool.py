@@ -19,6 +19,7 @@ def create_run_python_tool(agent_id, runs_dir, timeout, max_retries, proxy):
         This tool can run long running python scripts
         Input must be a path to an existing python file
         Returns the command line output of the run
+        When training a model, prefer using this tool over bash tool
         
         Args:
             python_file_path: A full absolute path to the python file to run
