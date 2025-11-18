@@ -13,7 +13,7 @@ def create_run_python_tool(agent_id, runs_dir, timeout, max_retries, proxy):
         proxy = proxy
     )
 
-    def _run_python(python_file_path: str):
+    def _run_python(python_file_path: str, kwargs:dict=None):
         """
         A tool used to run a python file
         This tool can run long running python scripts
@@ -22,6 +22,7 @@ def create_run_python_tool(agent_id, runs_dir, timeout, max_retries, proxy):
         
         Args:
             python_file_path: A full absolute path to the python file to run
+            kwargs: A dictionary of arguments to pass to the python script as command line arguments (Optional). Example : {"--arg1": "value1", "--arg2": "value2"}
         """
         start_time = time.time()
         # validate path is a file
@@ -30,7 +31,11 @@ def create_run_python_tool(agent_id, runs_dir, timeout, max_retries, proxy):
         
         #TODO allow to accept arguments + validate they don't break the bash (requiring input etc)
         env_path = runs_dir / agent_id / ".conda" / "envs" / f"{agent_id}_env"
-        command = f"conda run -p {env_path} --no-capture-output python {python_file_path}"
+        if kwargs:
+            args = " ".join([f"{key} {value}" for key, value in kwargs.items()])
+            command = f"conda run -p {env_path} --no-capture-output python {python_file_path} {args}"
+        else:
+            command = f"conda run -p {env_path} --no-capture-output python {python_file_path}"
         out = bash.run(command)
         timer_msg = f"\n[Tool call took {time.time() - start_time:.1f} seconds]"
         return out + timer_msg
