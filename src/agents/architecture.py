@@ -168,6 +168,7 @@ def create_agents(config: Config, model, tools):
             raise ModelRetry("Inference file contains path containing a forbidden string 'iteration_' or references an iteration folder, which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
         if does_file_contain_string(result.path_to_inference_file, "train.csv") or does_file_contain_string(result.path_to_inference_file, "validation.csv"):
             raise ModelRetry("Inference file contains references to dataset split files ('train.csv' or 'validation.csv' detected), which will not be accessible during final testing.")
+        #TODO improve validation with info about the artifacts-dir
         run_inference_and_log(config, iteration=-1, evaluation_stage='dry_run')
         lock_inference_file(result.path_to_inference_file)
         result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
@@ -349,7 +350,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
     inference_deps = {'start_time': datetime.datetime.now()}
     messages_inference, model_inference = await run_agent(
         agent=inference_agent, 
-        user_prompt=get_model_inference_prompt(config)+ctx_replacer_msg, 
+        user_prompt=get_model_inference_prompt(config, training_artifacts_dir=model_training.path_to_artifacts_dir)+ctx_replacer_msg, 
         max_steps=config.max_steps,
         message_history=persistent_messages,
         deps=inference_deps,
