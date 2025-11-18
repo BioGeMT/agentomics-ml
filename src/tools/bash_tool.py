@@ -98,6 +98,7 @@ def create_bash_tool(agent_id, runs_dir, timeout, max_retries, autoconda=True, p
             Use this to execute bash commands. 
             Input should be a valid bash command.
             Do not use sudo commands, as you don't have sudo access.
+            Do not use this tool to run python scripts, use the run_python tool instead.
 
             Examples:
             \"ls\"
@@ -106,7 +107,6 @@ def create_bash_tool(agent_id, runs_dir, timeout, max_retries, autoconda=True, p
             \"echo "hello world" > test.txt\"
             \"conda create -n my_env python=3.8 matplotlib -c conda-forge -y\"
             \"source activate my_env\"            
-            \"python /workspace/numpy_test.py\"
 
             Args:
                 command: A valid bash command.
