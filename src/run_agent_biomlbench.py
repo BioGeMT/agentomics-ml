@@ -143,6 +143,10 @@ def generate_preds_for_biomlbench_proteingym(config):
                 valid_df = og_train_data[og_train_data[fold_col] == validation_fold_value][cols_to_keep]
                 train_df = og_train_data[(og_train_data[fold_col] != current_test_fold_value) & (og_train_data[fold_col] != validation_fold_value)][cols_to_keep]
 
+                test_df = test_df.rename(columns={'fitness_score':'numeric_label'}, errors='raise')
+                valid_df = valid_df.rename(columns={'fitness_score':'numeric_label'}, errors='raise')
+                train_df = train_df.rename(columns={'fitness_score':'numeric_label'}, errors='raise')
+
                 # Assert there's no intersection between these
                 train_ids = set(train_df['id'])
                 valid_ids = set(valid_df['id'])
@@ -152,11 +156,11 @@ def generate_preds_for_biomlbench_proteingym(config):
                 assert len(valid_ids & test_ids) == 0, "Intersection found between validation and test"
 
                 # Export to csv files
-                train_csv_path = f'{snapshots_dir}/{run_name}/fold_{fold_col}_{current_test_fold_value}_train.csv'
-                valid_csv_path = f'{snapshots_dir}/{run_name}/fold_{fold_col}_{current_test_fold_value}_valid.csv'
-                test_csv_path = f'{snapshots_dir}/{run_name}/fold_{fold_col}_{current_test_fold_value}_test.csv'
-                artifacts_dir = f'{snapshots_dir}/{run_name}/fold_{fold_col}_{current_test_fold_value}_artifacts'
-                predictions_csv_path = f'{snapshots_dir}/{run_name}/fold_{fold_col}_{current_test_fold_value}_predictions.csv'
+                train_csv_path = f'{snapshots_dir}/{run_name}/{fold_col}_{current_test_fold_value}_train.csv'
+                valid_csv_path = f'{snapshots_dir}/{run_name}/{fold_col}_{current_test_fold_value}_valid.csv'
+                test_csv_path = f'{snapshots_dir}/{run_name}/{fold_col}_{current_test_fold_value}_test.csv'
+                artifacts_dir = f'{snapshots_dir}/{run_name}/{fold_col}_{current_test_fold_value}_artifacts'
+                predictions_csv_path = f'{snapshots_dir}/{run_name}/{fold_col}_{current_test_fold_value}_predictions.csv'
 
                 train_df.to_csv(train_csv_path, index=False)
                 valid_df.to_csv(valid_csv_path, index=False)
