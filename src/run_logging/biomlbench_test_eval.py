@@ -33,9 +33,11 @@ def run_test_evaluation(config_path, predictions_path, labeled_test_path, label_
                 delete_preds=False,
                 task_type=config.task_type,
             )
+            updated_metrics = {}
             for k in metrics.keys():
                 unique_original_metrics.add(k)
-                metrics[f'{k}_{fold_col}'] = metrics.pop(k)
+                updated_metrics[f'{k}_{fold_col}'] = metrics.pop(k)
+            metrics = updated_metrics
             all_metrics.update(metrics)
         for metric in unique_original_metrics:
             all_metrics[metric] = statistics.mean([all_metrics[f'{metric}_{fold_col}'] for fold_col in fold_cols]) #take avg over all fold metrics (biomlbench style)
