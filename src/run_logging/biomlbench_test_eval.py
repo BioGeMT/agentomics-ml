@@ -36,7 +36,7 @@ def run_test_evaluation(config_path, predictions_path, labeled_test_path, label_
             updated_metrics = {}
             for k in metrics.keys():
                 unique_original_metrics.add(k)
-                updated_metrics[f'{k}_{fold_col}'] = metrics.pop(k)
+                updated_metrics[f'{k}_{fold_col}'] = metrics[k]
             metrics = updated_metrics
             all_metrics.update(metrics)
         for metric in unique_original_metrics:
