@@ -28,7 +28,7 @@ def run_test_evaluation(config_path, predictions_path, labeled_test_path, label_
                 pred_col=fold_pred_col,
                 results_file=predictions_path,
                 test_file=labeled_test_path,
-                output_file=output_metrics_file + f'_{fold_col}',
+                output_file=str(output_metrics_file) + f'_{fold_col}',
                 numeric_label_col=label_col,
                 delete_preds=False,
                 task_type=config.task_type,
