@@ -116,7 +116,7 @@ def generate_preds_for_biomlbench_proteingym(config):
 
         env_path = Path(f"{snapshots_dir}/{run_name}") / ".conda"/ "envs" / f"{run_name}_env"
         inference_script_path = Path(f"{snapshots_dir}/{run_name}") / "inference.py"
-        og_train_data = pd.read_csv('/home/data/train.csv')
+        og_train_data = pd.read_csv('/home/data/data.csv')
         og_train_data = og_train_data[og_train_data['fold_random_5'] != -1]
         final_predictions_path = f'{snapshots_dir}/{run_name}/predictions.csv'
         train_script_path = Path(f"{snapshots_dir}/{run_name}") / 'train.py'
