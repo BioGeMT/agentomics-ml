@@ -48,7 +48,8 @@ class BashProcess:
                     "stderr": subprocess.STDOUT,
                     "text": True,
                     "env": self.agent_env,
-                    "errors": "replace"  # handle invalid UTF-8 bytes
+                    "errors": "replace",  # handle invalid UTF-8 bytes
+                    "cwd": f"{self.runs_dir}/{self.agent_id}"
                 }
 
                 result = subprocess.run(
