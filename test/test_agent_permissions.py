@@ -5,6 +5,12 @@ import subprocess
 class TestAgentPermissions(BaseAgentTest):
     """Test suite for agent isolation and security."""
 
+    def test_current_working_directory(self):
+        """Test that the agent's current working directory is its own workspace."""
+        result = self.bash_tool.function("pwd")
+        expected_dir = f"{self.config.runs_dir}/{self.agent_id}"
+        self.assertIn(expected_dir, result.strip(), f"Agent's working directory should be {expected_dir}, got: {result.strip()}")
+
     def test_agent_directory_access(self):
         """Test that agent can access only its own work directory."""
 
