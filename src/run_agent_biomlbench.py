@@ -201,7 +201,6 @@ def generate_preds_for_biomlbench_proteingym(config):
                 # Check all the ids are there for easy merge/concat
                 preds_df = pd.read_csv(predictions_csv_path)
                 assert len(preds_df) == len(test_df), f"Mismatch: {len(preds_df)} predictions vs {len(test_df)} test samples"
-                preds_df = preds_df.reset_index(drop=True)
                 fold_predictions_dfs.append(preds_df)
 
             # Concatenate all fold predictions for this fold column
@@ -286,16 +285,16 @@ def generate_preds_for_biomlbench(config):
 
 def copy_and_format_predictions_for_biomlbench(preds_source_path, preds_dest_path, target_col, is_proteingym=False):
     if(is_proteingym):
-        preds_df = pd.read_csv(preds_source_path).reset_index()
+        preds_df = pd.read_csv(preds_source_path)
         preds_df.to_csv(preds_dest_path, index=False)
     else:
-        preds_df = pd.read_csv(preds_source_path).reset_index()
+        preds_df = pd.read_csv(preds_source_path)
         # preds_df['id'] = preds_df.index #TODO remove since id is kept now?
         preds_df = preds_df[['id','prediction']].rename(columns={'prediction': target_col})
         preds_df.to_csv(preds_dest_path, index=False)
 
 def copy_original_predictions(preds_source_path, preds_dest_path):
-    preds_df = pd.read_csv(preds_source_path).reset_index()
+    preds_df = pd.read_csv(preds_source_path)
     preds_df.to_csv(preds_dest_path, index=False)
 
 def extract_dataset_name_from_description(description_path):
