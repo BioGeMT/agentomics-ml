@@ -104,7 +104,8 @@ def generate_preds_for_biomlbench_proteingym(config):
     print('---------------------------------')
 
     # test_no_label = '/home/data/test_features.csv'
-    SUBMISSION_DIR = os.getenv('SUBMISSION_DIR', '')
+    SUBMISSION_DIR = os.getenv('SUBMISSION_DIR')
+    CODE_DIR= os.getenv('CODE_DIR')
     submission_path = os.path.join(SUBMISSION_DIR, 'submission.csv')
     temp_csv_files = []  # Track temp files for cleanup (initialize before try block)
     try:
@@ -142,6 +143,10 @@ def generate_preds_for_biomlbench_proteingym(config):
                 test_df = og_train_data[og_train_data[fold_col] == current_test_fold_value][cols_to_keep]
                 valid_df = og_train_data[og_train_data[fold_col] == validation_fold_value][cols_to_keep]
                 train_df = og_train_data[(og_train_data[fold_col] != current_test_fold_value) & (og_train_data[fold_col] != validation_fold_value)][cols_to_keep]
+
+                assert len(train_df) > 0, f"Empty training set for fold {current_test_fold_value}"
+                assert len(valid_df) > 0, f"Empty validation set for fold {current_test_fold_value}"
+                assert len(test_df) > 0, f"Empty test set for fold {current_test_fold_value}"
 
                 test_df = test_df.rename(columns={'fitness_score':'numeric_label'}, errors='raise')
                 valid_df = valid_df.rename(columns={'fitness_score':'numeric_label'}, errors='raise')
@@ -201,7 +206,7 @@ def generate_preds_for_biomlbench_proteingym(config):
             # Concatenate all fold predictions for this fold column
             fold_preds = pd.concat(fold_predictions_dfs, ignore_index=True)
             if 'prediction' in fold_preds.columns:
-                fold_preds = fold_preds.rename(columns={'prediction': f'fitness_score_{fold_col}'}) #Col name required my biomlbench proteingym grade function
+                fold_preds = fold_preds.rename(columns={'prediction': f'fitness_score_{fold_col}'}) #Col name required by biomlbench proteingym grade function
             fold_col_to_preds.append(fold_preds)
 
         # Combine all predictions based on ID
@@ -212,14 +217,14 @@ def generate_preds_for_biomlbench_proteingym(config):
         assert len(final_predictions_df) == len(og_train_data), 'predictions dont match the original data'
         final_predictions_df.to_csv(final_predictions_path, index=False)
 
-        target_col = get_target_col_from_description(description_path)
+        target_col = get_target_col_from_description()
 
         # For now, use the first fold's predictions for the submission (average could be used instead)
         copy_and_format_predictions_for_biomlbench(
             preds_source_path=final_predictions_path,
             preds_dest_path=submission_path,
             target_col=target_col, #passed from outside the fn, refactor into reading prepared yaml metadata
-            is_proteingym=is_proteingym,
+            is_proteingym=True,
         )
         
         # TODO how are we using the original predictions? We compute metrics based on one col only, biomlbench averages three metrics -> what to do?
