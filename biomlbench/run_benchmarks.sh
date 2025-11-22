@@ -115,15 +115,12 @@ cd "$REPOS_DIR"/agentomics-ml
 conda run -n agentomics-env python src/run_logging/biomlbench_test_eval.py --results-dir=$RESULTS_DIR --grade-json "$GRADE_JSON"
 
 # Get config path and log API usage, then delete key
-code_dir=$(ls -d "$RESULTS_DIR"/../*/code 2>/dev/null | head -1)
-CONFIG_PATH="$code_dir/config.json"
-cd "$REPOS_DIR/agentomics-ml" && conda run -n agentomics-env python src/utils/api_keys_utils.py cleanup-and-log --config-path "$CONFIG_PATH" --api-key-hash "$API_KEY_HASH"
+CONFIG_PATH=$(find "$RESULTS_DIR" -name "config.json" -type f 2>/dev/null | head -1)
+cd "$REPOS_DIR/agentomics-ml" && PYTHONPATH="$REPOS_DIR/agentomics-ml/src" conda run -n agentomics-env python src/utils/api_keys_utils.py cleanup-and-log --config-path "$CONFIG_PATH" --api-key-hash "$API_KEY_HASH"
 
 # Optional removal of conda (uses a lot of storage)
-cd "$REPOS_DIR"/biomlbench
+cd "$REPOS_DIR/biomlbench"
 find . -type d -name ".conda" -exec rm -rf {} +
-
 echo DONE
-
 # Optional cleanup
 cleanup
