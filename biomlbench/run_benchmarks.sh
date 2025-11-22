@@ -1,6 +1,44 @@
 #!/usr/bin/env bash
+
+# Needs config in biomlbench/agentomics-ml (with wandb keys) and normal .env in agenotmics (with wandb and openrouter provisioning) + needs agentomics env created already
+SPEND_LIMIT=10
 REPOS_DIR="/home/$USER/repos" #TODO needs to be configured
-DSET=polarishub/tdcommons-caco2-wang
+DSET=proteingym-dms/SPIKE_SARS2_Starr_2020_binding
+
+# DSET=proteingym-dms/SPA_STAAU_Tsuboyama_2023_1LP1
+# DSET=polarishub/tdcommons-caco2-wang
+#TODO generalize copying, repos
+
+# Drug discovery (polarishub/)
+# polaris-pkis2-egfr-wt-c-1 **pr_auc** CLF (targetcol CLASS_EGFR) README-OK
+# polaris-adme-fang-hclint-1 **pearsonr** REG README-OK
+# polaris-adme-fang-hppb-1 **pearsonr** REG README-OK
+# polaris-adme-fang-solu-1 **pearsonr** REG README-OK
+# tdcommons-cyp2d6-substrate-carbonmangels **pr_auc** CLF README-OK
+# tdcommons-lipophilicity-astrazeneca mean_absolute_error REG README-OK
+# tdcommons-herg roc_auc CLF README-OK
+# tdcommons-bbb-martins roc_auc CLF README-OK
+# tdcommons-caco2-wang mean_absolute_error REG README-OK
+
+# Protein engineering (proteingym-dms/)
+# SPIKE_SARS2_Starr_2020_binding REG
+# SPA_STAAU_Tsuboyama_2023
+# PSAE_PICP2_indels
+# CBX4_HUMAN_multi-sub
+# Q8EG35_SHEON_indels
+# CSN4_MOUSE_indels
+
+# Create API key
+API_KEY_OUTPUT=$(cd "$REPOS_DIR/agentomics-ml" && PYTHONPATH="$REPOS_DIR/agentomics-ml/src" conda run -n agentomics-env python src/utils/api_keys_utils.py create --name "agentomics_run_$(date +%s)" --limit "$SPEND_LIMIT")
+API_KEY=$(echo "$API_KEY_OUTPUT" | cut -d',' -f1)
+API_KEY_HASH=$(echo "$API_KEY_OUTPUT" | cut -d',' -f2)
+echo "Created API key with the following spend limit: $SPEND_LIMIT"
+# Update config.yaml with the new API key
+if grep -q "^    OPENROUTER_API_KEY:" "$REPOS_DIR"/agentomics-ml/biomlbench/agentomics-ml/config.yaml; then
+  sed -i "s|^    OPENROUTER_API_KEY:.*|    OPENROUTER_API_KEY: $API_KEY|" "$REPOS_DIR"/agentomics-ml/biomlbench/agentomics-ml/config.yaml
+else
+  sed -i "/env_vars:/a\    OPENROUTER_API_KEY: $API_KEY" "$REPOS_DIR"/agentomics-ml/biomlbench/agentomics-ml/config.yaml
+fi
 
 setup_biomlbench_repo() {
   if [ ! -d "$REPOS_DIR/biomlbench" ] ; then
@@ -75,6 +113,15 @@ PROJECT_ROOT="$REPOS_DIR/agentomics-ml/src"
 export PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH"
 cd "$REPOS_DIR"/agentomics-ml
 conda run -n agentomics-env python src/run_logging/biomlbench_test_eval.py --results-dir=$RESULTS_DIR --grade-json "$GRADE_JSON"
+
+# Get config path and log API usage, then delete key
+code_dir=$(ls -d "$RESULTS_DIR"/../*/code 2>/dev/null | head -1)
+CONFIG_PATH="$code_dir/config.json"
+cd "$REPOS_DIR/agentomics-ml" && conda run -n agentomics-env python src/utils/api_keys_utils.py cleanup-and-log --config-path "$CONFIG_PATH" --api-key-hash "$API_KEY_HASH"
+
+# Optional removal of conda (uses a lot of storage)
+cd "$REPOS_DIR"/biomlbench
+find . -type d -name ".conda" -exec rm -rf {} +
 
 echo DONE
 
