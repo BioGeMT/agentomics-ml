@@ -201,6 +201,7 @@ def generate_preds_for_biomlbench_proteingym(config):
                 # Check all the ids are there for easy merge/concat
                 preds_df = pd.read_csv(predictions_csv_path)
                 assert len(preds_df) == len(test_df), f"Mismatch: {len(preds_df)} predictions vs {len(test_df)} test samples"
+                preds_df = preds_df.reset_index(drop=True)
                 fold_predictions_dfs.append(preds_df)
 
             # Concatenate all fold predictions for this fold column
