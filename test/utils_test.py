@@ -54,7 +54,7 @@ def get_shared_test_resources():
 
         print("Setting up tools for testing (including conda env creation, might take a moment)\n")
 
-        bash_tool, write_python_tool, run_python_tool, foundation_models_info = create_tools(config)
+        bash_tool, write_python_tool, run_python_tool, foundation_models_info, replace_tool = create_tools(config)
 
         _shared_test_resources = {
             'config': config,
@@ -62,7 +62,8 @@ def get_shared_test_resources():
             'bash_tool': bash_tool,
             'write_python_tool': write_python_tool,
             'run_python_tool': run_python_tool,
-            'foundation_models_info_tool': foundation_models_info
+            'foundation_models_info_tool': foundation_models_info,
+            'replace_tool': replace_tool
         }
 
     return _shared_test_resources
@@ -81,3 +82,4 @@ class BaseAgentTest(unittest.TestCase):
         cls.write_python_tool = resources['write_python_tool']
         cls.run_python_tool = resources['run_python_tool']
         cls.foundation_models_info_tool = resources['foundation_models_info_tool']
+        cls.replace_tool = resources['replace_tool']

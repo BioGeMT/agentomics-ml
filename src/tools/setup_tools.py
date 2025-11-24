@@ -2,6 +2,7 @@ from .bash_tool import create_bash_tool
 from .write_python_tool import create_write_python_tool
 from .run_python_tool import create_run_python_tool
 from .foundation_models_info_tool import create_foundation_models_info_tool
+from .replace_tool import create_replace_tool
 import weave
 
 def create_tools(config):
@@ -26,6 +27,10 @@ def create_tools(config):
                 max_retries=config.max_tool_retries),
             create_foundation_models_info_tool(
                 foundation_model_to_desc=config.foundation_model_to_desc,
+                max_retries=config.max_tool_retries),
+            create_replace_tool(
+                agent_id=config.agent_id,
+                runs_dir=config.runs_dir,
                 max_retries=config.max_tool_retries
             )
         ]
