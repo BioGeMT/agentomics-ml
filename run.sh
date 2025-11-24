@@ -177,18 +177,19 @@ if [ "$LOCAL_MODE" = true ]; then
     cp -r ../workspace/reports/${AGENT_ID}/. outputs/${AGENT_ID}/reports/
 else
     echo "Building the run image"
-    docker build --progress=quiet -t agentomics_img -f Dockerfile .
+    docker build -t agentomics_img -f Dockerfile .
     echo "Build done"
     AGENT_ID=$(docker run --rm -u $(id -u):$(id -g) -v "$(pwd)":/repository:ro --entrypoint \
                /opt/conda/envs/agentomics-env/bin/python agentomics_img /repository/src/utils/create_user.py)
 
     echo "Building the data preparation image"
-    docker build --progress=quiet -t agentomics_prepare_img -f Dockerfile.prepare .
+    docker build -t agentomics_prepare_img -f Dockerfile.prepare .
     echo "Build done"
     docker run \
         -u $(id -u):$(id -g) \
         --rm \
         -it \
+        -e PYTHONWARNINGS=ignore \
         --name agentomics_prepare_cont_${AGENT_ID} \
         -v "$(pwd)":/repository \
         agentomics_prepare_img
@@ -223,6 +224,7 @@ else
             --name agentomics_test_cont_${AGENT_ID} \
             --env-file $(pwd)/.env \
             -e AGENT_ID=${AGENT_ID} \
+            -e PYTHONWARNINGS=ignore \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
             ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
@@ -239,6 +241,7 @@ else
             --name agentomics_cont_${AGENT_ID} \
             --env-file $(pwd)/.env \
             -e AGENT_ID=${AGENT_ID} \
+            -e PYTHONWARNINGS=ignore \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
             ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
@@ -247,6 +250,15 @@ else
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
             agentomics_img ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
 
+        ARTIFACT_PATH="/workspace/snapshots/${AGENT_ID}"
+
+        if ! docker run --rm -v temp_agentomics_volume_${AGENT_ID}:/workspace busybox test -d ${ARTIFACT_PATH}; then
+            echo -e "${RED}Agent didn't produce any valid model, skipping testing evaluation.${NOCOLOR}" >&2
+
+            docker volume rm temp_agentomics_volume_${AGENT_ID} || true
+            exit 1
+        fi
+
         echo "Running final evaluation on test set"
         docker run \
             --rm \
@@ -254,6 +266,7 @@ else
             --env-file $(pwd)/.env \
             -e AGENT_ID=${AGENT_ID} \
             -e PYTHONPATH=/repository/src \
+            -e PYTHONWARNINGS=ignore \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
