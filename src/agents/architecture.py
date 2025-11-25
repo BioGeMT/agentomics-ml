@@ -19,6 +19,7 @@ from agents.steps.prediction_exploration import PredictionExploration, get_predi
 from utils.config import Config
 from utils.report_logger import save_step_output
 from run_logging.evaluate_log_run import run_inference_and_log
+from rich.console import Console
 
 def create_agents(config: Config, model, tools):
     data_exploration_agent = Agent(
@@ -239,8 +240,10 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
     persistent_messages = []
     structured_outputs = []
     ctx_replacer_msg = "\nSummarized outputs from your previous steps are in previous messages."
+    console = Console()
 
     data_exploration_deps = {'start_time': datetime.datetime.now()}
+    console.print("[bold purple]DATA EXPLORATION STEP[/bold purple]")
     messages_data_exploration, data_exploration_output = await run_agent(
         agent=data_exploration_agent,
         user_prompt=base_prompt + get_data_exploration_prompt(iteration), #base prompt has feedback (if non-0 iter) and user prompt
@@ -254,6 +257,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
     structured_outputs.append(data_exploration_output)
     
     split_allowed_iterations = config.split_allowed_iterations
+    console.print("[bold purple]SPLITTING STEP[/bold purple]")
     if not config.explicit_valid_set_provided and iteration < split_allowed_iterations:
         data_split_deps = {'start_time': datetime.datetime.now()}
         messages_split, data_split = await run_agent(
@@ -278,6 +282,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
         structured_outputs.append(manual_data_split_step)
 
     representation_deps = {'start_time': datetime.datetime.now()}
+    console.print("[bold purple]REPRESENTATION STEP[/bold purple]")
     messages_representation, data_representation = await run_agent(
         agent=data_representation_agent,
         user_prompt=get_data_representation_prompt()+ctx_replacer_msg,
@@ -290,6 +295,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
     structured_outputs.append(data_representation)
 
     arch_deps = {'start_time': datetime.datetime.now()}
+    console.print("[bold purple]ARCHITECTURE STEP[/bold purple]")
     messages_architecture, model_architecture = await run_agent(
         agent=model_architecture_agent,
         user_prompt=get_model_architecture_prompt()+ctx_replacer_msg,
@@ -302,6 +308,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
     structured_outputs.append(model_architecture)
 
     training_deps = {'start_time': datetime.datetime.now()}
+    console.print("[bold purple]TRAINING STEP[/bold purple]")
     messages_training, model_training = await run_agent(
         agent=training_agent, 
         user_prompt=get_model_training_prompt()+ctx_replacer_msg, 
@@ -314,6 +321,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
     structured_outputs.append(model_training)
 
     inference_deps = {'start_time': datetime.datetime.now()}
+    console.print("[bold purple]INFERENCE STEP[/bold purple]")
     messages_inference, model_inference = await run_agent(
         agent=inference_agent, 
         user_prompt=get_model_inference_prompt(config)+ctx_replacer_msg, 
@@ -331,6 +339,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
         val_path = config.agent_dataset_dir / config.dataset / "validation.csv"
 
     prediction_deps = {'iteration': iteration, 'start_time': datetime.datetime.now()}
+    console.print("[bold purple]PREDICTION EXPLORATION STEP[/bold purple]")
     prediction_messages, prediction_exploration = await run_agent(
         agent=prediction_exploration_agent,
         user_prompt=get_prediction_exploration_prompt(validation_path=val_path,inference_path=model_inference.path_to_inference_file)+ctx_replacer_msg,
