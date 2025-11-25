@@ -1,96 +1,96 @@
-ESM-2:
-  models:
-    - name: facebook/esm2_t6_8M_UR50D
-      params: 8M
-    - name: facebook/esm2_t12_35M_UR50D
-      params: 35M
-    - name: facebook/esm2_t30_150M_UR50D
-      params: 150M
-    - name: facebook/esm2_t33_650M_UR50D
-    - name: facebook/esm2_t36_3B_UR50D
-      params: 3B  
-    - name: facebook/esm2_t48_15B_UR50D
-      params: 15B
-  summary: ESM-2 is a protein language model trained on the UniRef protein sequence database using a masked language modeling objective to learn evolutionary and structural dependencies between amino acids.
-  path_to_info: /foundation_models/ESM-2.md
-  can_load_with_hf_automodel: true
-
-HyenaDNA:
-  models:
-    - name: LongSafari/hyenadna-tiny-1k-seqlen-hf
-      params: 1K
-    - name: LongSafari/hyenadna-small-32k-seqlen-hf
-      params: 32K
-    - name: LongSafari/hyenadna-medium-160k-seqlen-hf
-      params: 160K
-    - name: LongSafari/hyenadna-medium-450k-seqlen-hf
-      params: 450K
-    - name: LongSafari/hyenadna-large-1m-seqlen-hf
-      params: 1M
-  summary: HyenaDNA is a genomic language model trained on the human reference genome using next-nucleotide prediction, enabling long-context modeling and single-nucleotide resolution for diverse genomic prediction tasks.
-  path_to_info: /foundation_models/HyenaDNA.md
-  can_load_with_hf_automodel: true
+# ESM-2:
+#   models:
+#     - name: facebook/esm2_t6_8M_UR50D
+#       params: 8M
+#     - name: facebook/esm2_t12_35M_UR50D
+#       params: 35M
+#     - name: facebook/esm2_t30_150M_UR50D
+#       params: 150M
+#     - name: facebook/esm2_t33_650M_UR50D
+#     - name: facebook/esm2_t36_3B_UR50D
+#       params: 3B
+#     - name: facebook/esm2_t48_15B_UR50D
+#       params: 15B
+#   summary: ESM-2 is a protein language model trained on the UniRef protein sequence database using a masked language modeling objective to learn evolutionary and structural dependencies between amino acids.
+#   path_to_info: /foundation_models/ESM-2.md
+#   can_load_with_hf_automodel: true
+#
+# HyenaDNA:
+#   models:
+#     - name: LongSafari/hyenadna-tiny-1k-seqlen-hf
+#       params: 1K
+#     - name: LongSafari/hyenadna-small-32k-seqlen-hf
+#       params: 32K
+#     - name: LongSafari/hyenadna-medium-160k-seqlen-hf
+#       params: 160K
+#     - name: LongSafari/hyenadna-medium-450k-seqlen-hf
+#       params: 450K
+#     - name: LongSafari/hyenadna-large-1m-seqlen-hf
+#       params: 1M
+#   summary: HyenaDNA is a genomic language model trained on the human reference genome using next-nucleotide prediction, enabling long-context modeling and single-nucleotide resolution for diverse genomic prediction tasks.
+#   path_to_info: /foundation_models/HyenaDNA.md
+#   can_load_with_hf_automodel: true
 
 NucleotideTransformer:
   models:
-    - name: InstaDeepAI/nucleotide-transformer-500m-human-ref
-      params: 500M
-    - name: InstaDeepAI/nucleotide-transformer-v2-50m-3mer-multi-species
-      params: 50M
+#     - name: InstaDeepAI/nucleotide-transformer-500m-human-ref
+#       params: 500M
+#     - name: InstaDeepAI/nucleotide-transformer-v2-50m-3mer-multi-species
+#       params: 50M
     - name: InstaDeepAI/nucleotide-transformer-v2-50m-multi-species
       params: 50M
-    - name: InstaDeepAI/nucleotide-transformer-v2-100m-multi-species
-      params: 100M
-    - name: InstaDeepAI/nucleotide-transformer-v2-250m-multi-species
-      params: 250M
-    - name: InstaDeepAI/nucleotide-transformer-v2-500m-multi-species
-      params: 500M
-    - name: InstaDeepAI/nucleotide-transformer-500m-1000g
-      params: 500M
-    - name: InstaDeepAI/nucleotide-transformer-2.5b-multi-species
-      params: 2.5B
-    - name: InstaDeepAI/nucleotide-transformer-2.5b-1000g
-      params: 2.5B
+#     - name: InstaDeepAI/nucleotide-transformer-v2-100m-multi-species
+#       params: 100M
+#     - name: InstaDeepAI/nucleotide-transformer-v2-250m-multi-species
+#       params: 250M
+#     - name: InstaDeepAI/nucleotide-transformer-v2-500m-multi-species
+#       params: 500M
+#     - name: InstaDeepAI/nucleotide-transformer-500m-1000g
+#       params: 500M
+#     - name: InstaDeepAI/nucleotide-transformer-2.5b-multi-species
+#       params: 2.5B
+#     - name: InstaDeepAI/nucleotide-transformer-2.5b-1000g
+#       params: 2.5B
   summary: NucleotideTransformer is a genomic language model trained on DNA sequences from 850 diverse species using a masked language modeling objective, enabling cross-species genomic representation learning for diverse genomic prediction tasks.
   path_to_info: /foundation_models/NucleotideTransformer.md
   can_load_with_hf_automodel: false
 
-rinalmo:
-  models:
-    - name: multimolecule/rinalmo-micro
-      params: 33M
-    - name: multimolecule/rinalmo-mega
-      params: 148M
-    - name: multimolecule/rinalmo-giga
-      params: 650M
-  summary: RiNALMo is an RNA language model trained on 36 million non-coding RNA sequences using a masked language modeling objective, enabling the extraction of structural and functional information from raw nucleotide data.
-  path_to_info: /foundation_models/rinalmo.md
-  can_load_with_hf_automodel: true
-
-ChemBERTa:
-  models:
-    - name: DeepChem/ChemBERTa-100M-MLM
-      params: 100M
-    - name: DeepChem/ChemBERTa-77M-MLM
-      params: 77M
-    - name: DeepChem/ChemBERTa-10M-MLM
-      params: 10M
-    - name: DeepChem/ChemBERTa-5M-MLM
-      params: 5M
-    - name: DeepChem/ChemBERTa-77M-MTR
-      params: 77M
-    - name: DeepChem/ChemBERTa-10M-MTR
-      params: 10M
-    - name: DeepChem/ChemBERTa-5M-MTR
-      params: 5M
-  summary: ChemBERTa family are models for chemical molecular analysis and property prediction that processes SMILES representations using transformer architectures.
-  path_to_info: /foundation_models/ChemBERTa.md
-  can_load_with_hf_automodel: false
-
-MolFormerXL:
-  models:
-    - name: ibm-research/MoLFormer-XL-both-10pct
-      params: 47M
-  summary: MoLFormer is a class of models pretrained on SMILES string representations of up to 1.1B molecules from ZINC and PubChem. It is mainly intended to be used as a feature extractor or to be fine-tuned for a prediction task.
-  path_to_info: /foundation_models/MolFormerXL.md
-  can_load_with_hf_automodel: true
+# rinalmo:
+#   models:
+#     - name: multimolecule/rinalmo-micro
+#       params: 33M
+#     - name: multimolecule/rinalmo-mega
+#       params: 148M
+#     - name: multimolecule/rinalmo-giga
+#       params: 650M
+#   summary: RiNALMo is an RNA language model trained on 36 million non-coding RNA sequences using a masked language modeling objective, enabling the extraction of structural and functional information from raw nucleotide data.
+#   path_to_info: /foundation_models/rinalmo.md
+#   can_load_with_hf_automodel: true
+#
+# ChemBERTa:
+#   models:
+#     - name: DeepChem/ChemBERTa-100M-MLM
+#       params: 100M
+#     - name: DeepChem/ChemBERTa-77M-MLM
+#       params: 77M
+#     - name: DeepChem/ChemBERTa-10M-MLM
+#       params: 10M
+#     - name: DeepChem/ChemBERTa-5M-MLM
+#       params: 5M
+#     - name: DeepChem/ChemBERTa-77M-MTR
+#       params: 77M
+#     - name: DeepChem/ChemBERTa-10M-MTR
+#       params: 10M
+#     - name: DeepChem/ChemBERTa-5M-MTR
+#       params: 5M
+#   summary: ChemBERTa family are models for chemical molecular analysis and property prediction that processes SMILES representations using transformer architectures.
+#   path_to_info: /foundation_models/ChemBERTa.md
+#   can_load_with_hf_automodel: false
+#
+# MolFormerXL:
+#   models:
+#     - name: ibm-research/MoLFormer-XL-both-10pct
+#       params: 47M
+#   summary: MoLFormer is a class of models pretrained on SMILES string representations of up to 1.1B molecules from ZINC and PubChem. It is mainly intended to be used as a feature extractor or to be fine-tuned for a prediction task.
+#   path_to_info: /foundation_models/MolFormerXL.md
+#   can_load_with_hf_automodel: true

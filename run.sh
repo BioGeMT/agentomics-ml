@@ -177,13 +177,13 @@ if [ "$LOCAL_MODE" = true ]; then
     cp -r ../workspace/reports/${AGENT_ID}/. outputs/${AGENT_ID}/reports/
 else
     echo "Building the run image"
-    docker build --progress=quiet -t agentomics_img -f Dockerfile .
+    docker build  -t agentomics_img -f Dockerfile .
     echo "Build done"
     AGENT_ID=$(docker run --rm -u $(id -u):$(id -g) -v "$(pwd)":/repository:ro --entrypoint \
                /opt/conda/envs/agentomics-env/bin/python agentomics_img /repository/src/utils/create_user.py)
 
     echo "Building the data preparation image"
-    docker build --progress=quiet -t agentomics_prepare_img -f Dockerfile.prepare .
+    docker build  -t agentomics_prepare_img -f Dockerfile.prepare .
     echo "Build done"
     docker run \
         -u $(id -u):$(id -g) \
