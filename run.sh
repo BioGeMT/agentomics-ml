@@ -28,8 +28,9 @@ Use --local to run with a local Conda environment.
 Required Arguments (for non-interactive runs):
   --model <name>      The LLM model name (e.g., 'openai/gpt-4').
   --dataset <name>    The short identifier for the prepared dataset (e.g., 'breast_cancer').
-  --iterations <N>    Number of iterations to run the agent (e.g., 5).
-  --timeout <int>   Amount of seconds the agent is allowed to run for. This or --iterations will dictate the duration, whichever will expire first. 
+  --iterations <N>    Number of iterations to run the agent (recommended more than 5).
+  --timeout <int>   Amount of seconds the agent is allowed to run for. This or --iterations will dictate the duration, whichever will expire first. (recommended
+  ~480s)
   --split-allowed-iterations <N>    Number of initial iterations that are allowed to (re)split the data into train/validation (e.g., 1).
   --val-metric <name> The metric to optimize (e.g., 'ACC').
   --user-prompt <str> The main prompt/goal for the agent.
