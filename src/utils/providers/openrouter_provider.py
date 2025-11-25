@@ -60,31 +60,41 @@ class OpenRouterProvider(Provider):
         if not models:
             return None
         excluded_providers = ["nousresearch"]
-        excluded_models = []
+        excluded_models = ["deepcogito/cogito-v2-preview-deepseek-671b",
+            "ibm-granite/granite-4.0-h-micro",
+            "baidu/ernie-4.5-21b-a3b",
+            "perplexity/sonar-pro-search",
+                           ]
         filtered = []
         for model in models:
             model_id = model.get("id", "")
             pricing = model.get("pricing", {})
+            description = model.get("description", "").lower()
+            research_keywords = ["deep research", "research model"]
+            if any(keyword in description for keyword in research_keywords) or \
+                   "deepresearch" in model_id:
+                continue
             if model_id in excluded_models:
                 continue
             if any(f"{provider}/" in model_id for provider in excluded_providers):
                 continue
             # Skip unwanted models
-            if (not pricing or 
+            if (not pricing or
                 model_id.startswith("openrouter/") or
                 ":free" in model_id or
+                ":thinking" in model_id or
                 self.is_byok_model(model) or
                 not self.is_coding_model(model) or
                 not self.supports_tool_use(model)):
                 continue
-            
+
             try:
                 prompt_cost = float(pricing.get("prompt", "0"))
                 completion_cost = float(pricing.get("completion", "0"))
-                
+
                 if prompt_cost == 0 and completion_cost == 0:
                     continue
-                
+
                 # Format model data
                 provider = model_id.split("/")[0] if "/" in model_id else "unknown"
                 model_data = {
@@ -97,10 +107,10 @@ class OpenRouterProvider(Provider):
                     "supports_tools": True  # All models that pass filtering support tools
                 }
                 filtered.append(model_data)
-                    
+
             except (ValueError, TypeError):
                 continue
-        
+
         return filtered[:limit]
 
     def display_models(self, models: List[Dict] = None) -> List[Dict]:
