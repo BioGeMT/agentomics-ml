@@ -55,7 +55,7 @@ NucleotideTransformer:
   path_to_info: /foundation_models/NucleotideTransformer.md
   can_load_with_hf_automodel: false
 
-  rinalmo:
+rinalmo:
    models:
      - name: multimolecule/rinalmo-micro
 #       params: 33M
