@@ -28,11 +28,11 @@ class OpenRouterProvider(Provider):
     def is_coding_model(self, model: Dict) -> bool:
         model_id = model.get("id", "").lower()
         description = model.get("description", "").lower()
-        
-        exclude_patterns = ["whisper", "dall-e", "tts", "embedding", "vision", "image", "audio"]
+
+        exclude_patterns = ["whisper", "dall-e", "tts", "embedding", "vision", "image", "audio", "research"]
         if any(pattern in f"{model_id} {description}" for pattern in exclude_patterns):
             return False
-        
+
         return True
     
     def supports_tool_use(self, model: Dict) -> bool:
