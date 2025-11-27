@@ -116,7 +116,7 @@ def main():
         val_metric = interactive_metric_selection(task_type)
     
     if not model:
-        model = provider.interactive_model_selection(limit=100)
+        model = provider.interactive_model_selection(limit=50)
 
     if not iterations:
         iterations = get_user_input_for_int("Enter number of iterations to run:", default=5)
