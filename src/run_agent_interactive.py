@@ -72,7 +72,7 @@ def main():
     # Handle list-only modes (these don't require interactivity)
     if args.list_datasets:
         console.print("Available Datasets", style="cyan")
-        datasets = get_all_prepared_datasets_info(paths["prepared_datasets_dir"])
+        datasets = get_all_prepared_datasets_info(paths["prepared_datasets_dir"], paths["prepared_test_sets_dir"])
         print_datasets_table(datasets)
         return 0
     
@@ -100,7 +100,7 @@ def main():
     # Go to interactive selection if dataset/model/val_metric not provided
     print_welcome()
     if not dataset:
-        datasets = get_all_prepared_datasets_info(paths["prepared_datasets_dir"])
+        datasets = get_all_prepared_datasets_info(paths["prepared_datasets_dir"], paths["prepared_test_sets_dir"])
         dataset = interactive_dataset_selection(datasets)
         if not dataset:
             console.print("No dataset selected", style="red")

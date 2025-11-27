@@ -229,6 +229,7 @@ else
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/test":/repository/test:ro \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
+            -v "$(pwd)/prepared_test_sets":/repository/prepared_test_sets:ro \
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
             --entrypoint /opt/conda/envs/agentomics-env/bin/python \
             agentomics_img -m test.run_all_tests
@@ -244,6 +245,7 @@ else
             ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
+            -v "$(pwd)/prepared_test_sets":/repository/prepared_test_sets:ro \
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
             agentomics_img ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
 
