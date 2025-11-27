@@ -31,7 +31,7 @@
 #   path_to_info: /foundation_models/HyenaDNA.md
 #   can_load_with_hf_automodel: true
 
-NucleotideTransformer:
+ NucleotideTransformer:
   models:
 #     - name: InstaDeepAI/nucleotide-transformer-500m-human-ref
 #       params: 500M
@@ -55,7 +55,7 @@ NucleotideTransformer:
   path_to_info: /foundation_models/NucleotideTransformer.md
   can_load_with_hf_automodel: false
 
-rinalmo:
+ rinalmo:
    models:
      - name: multimolecule/rinalmo-micro
 #       params: 33M
