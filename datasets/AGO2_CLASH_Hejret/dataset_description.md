@@ -1,11 +1,1 @@
-
-        The AGO2 Hejret2023 dataset was adapted from [miRBench: novel benchmark datasets for microRNA binding site prediction that mitigate against prevalent microRNA Frequency Class Bias]. 
-        This dataset contains microRNA sequences and their corresponding binding sites, as 
-        identified via a CLASH (crosslinking, ligation, and sequencing of hybrids) experiment. 
-        There are two sequences in this dataset: gene and noncodingRNA. 
-        The gene sequences are 50nt fragments including a target site of the noncodingRNA. 
-        We expect that the targeting occurs via partial complementarity of the two sequences.
-        Samples with label==1 are target sites retrieved from the CLASH experiment. 
-        For each of these positive samples, a negative sample (label==0) is created by matching the same 
-        noncodingRNA sequence with a randomly selected gene sequence.
-    
+The AGO2 Hejret2023 dataset was adapted from miRBench, which catalogues microRNA binding sites measured with CLASH (crosslinking, ligation, and sequencing of hybrids). Each example pairs a 50 nt gene fragment containing the candidate binding site with a 17–26 nt microRNA sequence. Positive labels correspond to miRNA–mRNA hybrids observed in CLASH, whereas negatives reuse the microRNA but couple it with a randomly selected gene fragment. The CSV files store columns gene, noncodingRNA, noncodingRNA_name, noncodingRNA_fam, feature, target, chr, start, end, strand, and gene_cluster_ID, where target is 1 for true interactions and 0 otherwise. The combined train and test partitions contain 4,579 positives and 4,579 negatives, yielding a balanced benchmark for microRNA target recognition.
