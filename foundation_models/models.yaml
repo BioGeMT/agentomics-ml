@@ -1,9 +1,9 @@
-# ESM-2:
-#   models:
+ ESM-2:
+   models:
 #     - name: facebook/esm2_t6_8M_UR50D
 #       params: 8M
-#     - name: facebook/esm2_t12_35M_UR50D
-#       params: 35M
+     - name: facebook/esm2_t12_35M_UR50D
+       params: 35M
 #     - name: facebook/esm2_t30_150M_UR50D
 #       params: 150M
 #     - name: facebook/esm2_t33_650M_UR50D
@@ -11,9 +11,9 @@
 #       params: 3B
 #     - name: facebook/esm2_t48_15B_UR50D
 #       params: 15B
-#   summary: ESM-2 is a protein language model trained on the UniRef protein sequence database using a masked language modeling objective to learn evolutionary and structural dependencies between amino acids.
-#   path_to_info: /foundation_models/ESM-2.md
-#   can_load_with_hf_automodel: true
+   summary: ESM-2 is a protein language model trained on the UniRef protein sequence database using a masked language modeling objective to learn evolutionary and structural dependencies between amino acids.
+   path_to_info: /foundation_models/ESM-2.md
+   can_load_with_hf_automodel: true
 #
 # HyenaDNA:
 #   models:
@@ -55,17 +55,17 @@ NucleotideTransformer:
   path_to_info: /foundation_models/NucleotideTransformer.md
   can_load_with_hf_automodel: false
 
-# rinalmo:
-#   models:
-#     - name: multimolecule/rinalmo-micro
+  rinalmo:
+   models:
+     - name: multimolecule/rinalmo-micro
 #       params: 33M
 #     - name: multimolecule/rinalmo-mega
 #       params: 148M
 #     - name: multimolecule/rinalmo-giga
 #       params: 650M
-#   summary: RiNALMo is an RNA language model trained on 36 million non-coding RNA sequences using a masked language modeling objective, enabling the extraction of structural and functional information from raw nucleotide data.
-#   path_to_info: /foundation_models/rinalmo.md
-#   can_load_with_hf_automodel: true
+   summary: RiNALMo is an RNA language model trained on 36 million non-coding RNA sequences using a masked language modeling objective, enabling the extraction of structural and functional information from raw nucleotide data.
+   path_to_info: /foundation_models/rinalmo.md
+   can_load_with_hf_automodel: true
 #
 # ChemBERTa:
 #   models:
