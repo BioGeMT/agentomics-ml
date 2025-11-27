@@ -72,7 +72,7 @@ def main():
     # Handle list-only modes (these don't require interactivity)
     if args.list_datasets:
         console.print("Available Datasets", style="cyan")
-        datasets = get_all_prepared_datasets_info(paths["prepared_datasets_dir"])
+        datasets = get_all_prepared_datasets_info(paths["prepared_datasets_dir"], paths["prepared_test_sets_dir"])
         print_datasets_table(datasets)
         return 0
     
@@ -100,7 +100,7 @@ def main():
     # Go to interactive selection if dataset/model/val_metric not provided
     print_welcome()
     if not dataset:
-        datasets = get_all_prepared_datasets_info(paths["prepared_datasets_dir"])
+        datasets = get_all_prepared_datasets_info(paths["prepared_datasets_dir"], paths["prepared_test_sets_dir"])
         dataset = interactive_dataset_selection(datasets)
         if not dataset:
             console.print("No dataset selected", style="red")
@@ -116,7 +116,7 @@ def main():
         val_metric = interactive_metric_selection(task_type)
     
     if not model:
-        model = provider.interactive_model_selection(limit=50)
+        model = provider.interactive_model_selection(limit=100)
 
     if not iterations:
         iterations = get_user_input_for_int("Enter number of iterations to run:", default=5)
