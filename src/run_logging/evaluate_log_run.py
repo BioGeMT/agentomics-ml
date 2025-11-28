@@ -39,7 +39,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
         'dry_run': config.prepared_dataset_dir / "train.no_label.csv",
         'validation': config.prepared_dataset_dir / "validation.no_label.csv" if config.explicit_valid_set_provided else run_dir / "validation.no_label.csv",
         'test': test_files_dir / "test.no_label.csv",
-        'train': config.prepared_dataset_dir / "train.no_label.csv" if config.explicit_valid_set_provided else run_dir / "train.no_label.csv",
+        'train': config.prepared_dataset_dir / "train.no_label.csv" if config.explicit_valid_set_provided else run_dir / "train.no_label.csv", #contains pre-split data otherwise
     }
     stage_to_labeled_input = {
         'validation': validation_input,
