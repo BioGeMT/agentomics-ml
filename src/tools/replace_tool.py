@@ -8,7 +8,7 @@ from pathlib import Path
 class Edit(BaseModel):
     old: str = Field(description="The old string to replace. Can be multi-line.")
     new: str = Field(description="The new string to replace with. Can be multi-line.")
-    replace_all: bool = Field(description="Whether to replace all occurrences.", default=False)
+    replace_all: bool = Field(description="Whether to replace all occurrences. If False, replaces only the first occurrence.", default=False)
 
 def create_replace_tool(agent_id, runs_dir, max_retries):
     def _replace(file_path: str, edit: Edit|list[Edit]):
