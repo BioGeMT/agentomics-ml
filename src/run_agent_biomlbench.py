@@ -111,14 +111,16 @@ def generate_preds_for_biomlbench_proteingym(config):
     CODE_DIR= os.getenv('CODE_DIR')
     submission_path = os.path.join(SUBMISSION_DIR, 'submission.csv')
     temp_csv_files = []  # Track temp files for cleanup (initialize before try block)
+    snapshots_dir = '/home/workspace/snapshots'
+    run_names = os.listdir(snapshots_dir)
+    run_name = run_names[0]
+    with open(Path(f"{snapshots_dir}/{run_name}") / "iteration_number.txt", 'r') as f:
+        iteration = int(f.read().strip())
 
     start_time = time.time()
     try:
         # id,sequence,fitness_score,fold_random_5,fold_modulo_5,fold_contiguous_5
-        snapshots_dir = '/home/workspace/snapshots'
-        run_names = os.listdir(snapshots_dir)
         assert len(run_names) == 1, "Expected exactly one run"
-        run_name = run_names[0]
 
         env_path = Path(f"{snapshots_dir}/{run_name}") / ".conda"/ "envs" / f"{run_name}_env"
         inference_script_path = Path(f"{snapshots_dir}/{run_name}") / "inference.py"
@@ -254,7 +256,7 @@ def generate_preds_for_biomlbench_proteingym(config):
 
         # Log execution time to wandb
         elapsed_time = time.time() - start_time
-        wandb.log({"proteingym_preds_generation_time_seconds": elapsed_time})
+        wandb.log({"proteingym_preds_generation_time_seconds": elapsed_time}, step=iteration)
 
     print('------CROSS VALIDATION LEAKAGE PREVENTION END-------')
     print('---------------------------------')
