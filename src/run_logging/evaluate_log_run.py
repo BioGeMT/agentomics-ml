@@ -41,6 +41,12 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
         'test': test_files_dir / "test.no_label.csv",
         'train': config.prepared_dataset_dir / "train.no_label.csv" if config.explicit_valid_set_provided else run_dir / "train.no_label.csv", #contains pre-split data otherwise
     }
+    stage_to_training_artifacts_dir = {
+        'dry_run': run_dir / "training_artifacts",
+        'validation': run_dir / "training_artifacts",
+        'test': snapshot_dir / "training_artifacts",
+        'train': run_dir / "training_artifacts",
+    }
     stage_to_labeled_input = {
         'validation': validation_input,
         'train': train_input
@@ -65,7 +71,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
     else:
         command_prefix=f"conda run -p {conda_path[source_folder]}"
     remove_file(stage_to_output[evaluation_stage])
-    command = f"{command_prefix} python {inference_path[source_folder]} --input {stage_to_inference_input[evaluation_stage]} --output {stage_to_output[evaluation_stage]}"
+    command = f"{command_prefix} python {inference_path[source_folder]} --input {stage_to_inference_input[evaluation_stage]} --output {stage_to_output[evaluation_stage]} --artifacts-dir {stage_to_training_artifacts_dir[evaluation_stage]}"
     inference_out = subprocess.run(command, shell=True, executable="/bin/bash", capture_output=True)
     if (not config.explicit_valid_set_provided and evaluation_stage in ['validation', 'train']):
         remove_file(target_path=stage_to_inference_input[evaluation_stage])
