@@ -83,11 +83,12 @@ def run_inference_on_test_data(test_data_path):
     env_path = Path(f"{snapshots_dir}/{run_name}") / ".conda"/ "envs" / f"{run_name}_env"
     inference_path = Path(f"{snapshots_dir}/{run_name}") / "inference.py"
     input_path = test_data_path
+    artifacts_dir_path = f'{snapshots_dir}/{run_name}/training_artifacts'
     output_path = f'{snapshots_dir}/{run_name}/predictions.csv'
 
     command_dir_ensurance = f"cd {os.path.dirname(inference_path)} && "
     command_prefix=f"conda run -p {env_path} --no-capture-output"
-    command = f"{command_dir_ensurance} {command_prefix} python {inference_path} --input {input_path} --output {output_path}"
+    command = f"{command_dir_ensurance} {command_prefix} python \"{inference_path}\" --input \"{input_path}\" --output \"{output_path}\" --artifacts-dir \"{artifacts_dir_path}\""
     inference_out = subprocess.run(command, shell=True, executable="/bin/bash", capture_output=True, check=False)
     if inference_out.returncode != 0:
         print("Error during inference:")
@@ -177,7 +178,7 @@ def generate_preds_for_biomlbench_proteingym(config):
                 command_prefix=f"conda run -p {env_path} --no-capture-output"
 
                 train_command_dir_ensurance = f"cd {os.path.dirname(train_script_path)} && "
-                training_command = f"{train_command_dir_ensurance} {command_prefix} python {train_script_path} --train-data {train_csv_path} --validation-data {valid_csv_path} --artifacts-dir {artifacts_dir}"
+                training_command = f"{train_command_dir_ensurance} {command_prefix} python \"{train_script_path}\" --train-data \"{train_csv_path}\" --validation-data \"{valid_csv_path}\" --artifacts-dir \"{artifacts_dir}\""
                 training_out = subprocess.run(training_command, shell=True, executable="/bin/bash", capture_output=True, check=False)
                 if training_out.returncode != 0:
                     print("Error during training:")
@@ -188,7 +189,7 @@ def generate_preds_for_biomlbench_proteingym(config):
                 print('---END OF TRAINING OUTPUTS---')
 
                 inference_command_dir_ensurance = f"cd {os.path.dirname(inference_script_path)} && "
-                inference_command = f"{inference_command_dir_ensurance} {command_prefix} python {inference_script_path} --input {test_csv_path} --output {predictions_csv_path} --artifacts-dir {artifacts_dir}"
+                inference_command = f"{inference_command_dir_ensurance} {command_prefix} python \"{inference_script_path}\" --input \"{test_csv_path}\" --output \"{predictions_csv_path}\" --artifacts-dir \"{artifacts_dir}\""
                 inference_out = subprocess.run(inference_command, shell=True, executable="/bin/bash", capture_output=True, check=False)
                 if inference_out.returncode != 0:
                     print("Error during inference:")
