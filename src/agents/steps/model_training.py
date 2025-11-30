@@ -9,13 +9,13 @@ import pandas as pd
 
 class ModelTraining(BaseModel):
     path_to_train_file: str = Field(
-        description="Absolute path to the generated training script Python file"
+        description="Absolute path to the generated 'train.py'"
     )
     path_to_model_file: str = Field(
         description="Absolute path to the trained model file"
     )
     path_to_artifacts_dir: str = Field(
-        description="Absolute path to the artifacts folder produced by training (this folder should be the parent of path_to_model_file)"
+        description="Absolute path to the folder with artifacts produced by training. Must be called 'training_artifacts'. (This folder should be the parent of path_to_model_file and a sibling to train.py)"
     )
     training_summary: str = Field(
         description="Short summary of the training implementation. Don't include any metrics in this summary."

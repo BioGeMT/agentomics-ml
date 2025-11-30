@@ -146,6 +146,10 @@ def create_agents(config: Config, model, tools):
             raise ModelRetry(f"Model file does not exist at {result.path_to_model_file}")
         if ctx.deps['run_dir'] not in Path(result.path_to_artifacts_dir).parents:
             raise ModelRetry(f"path_to_artifacts_dir ({result.path_to_artifacts_dir}) must be a child of your run dir ({ctx.deps['run_dir']})")
+        if Path(result.path_to_artifacts_dir).name.strip() != 'training_artifacts':
+            raise ModelRetry(f"The artifacts folder produced by training must be called 'training_artifacts', currently is named {Path(result.path_to_artifacts_dir).name.strip()}")
+        if (Path(result.path_to_train_file).resolve().parent / 'training_artifacts').resolve() != Path(result.path_to_artifacts_dir).resolve():
+            raise ModelRetry(f"The artifacts folder produced by training must be a sibling to train.py.")
         if Path(result.path_to_artifacts_dir).resolve() not in Path(result.path_to_model_file).parents:
             raise ModelRetry(f"Model file ({result.path_to_model_file}) must be inside the artifacts folder ({result.path_to_artifacts_dir})")
         if does_file_contain_string(result.path_to_train_file, "iteration_"):
