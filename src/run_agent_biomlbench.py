@@ -6,6 +6,8 @@ import pandas as pd
 import subprocess
 from pathlib import Path
 import yaml
+import time
+import wandb
 
 from utils.dataset_utils import prepare_dataset
 from run_agent import run_experiment
@@ -109,6 +111,8 @@ def generate_preds_for_biomlbench_proteingym(config):
     CODE_DIR= os.getenv('CODE_DIR')
     submission_path = os.path.join(SUBMISSION_DIR, 'submission.csv')
     temp_csv_files = []  # Track temp files for cleanup (initialize before try block)
+
+    start_time = time.time()
     try:
         # id,sequence,fitness_score,fold_random_5,fold_modulo_5,fold_contiguous_5
         snapshots_dir = '/home/workspace/snapshots'
@@ -247,6 +251,10 @@ def generate_preds_for_biomlbench_proteingym(config):
                     shutil.rmtree(temp_path)
         except Exception as cleanup_error:
             print(f"Warning: Error during cleanup: {cleanup_error}")
+
+        # Log execution time to wandb
+        elapsed_time = time.time() - start_time
+        wandb.log({"proteingym_preds_generation_time_seconds": elapsed_time})
 
     print('------CROSS VALIDATION LEAKAGE PREVENTION END-------')
     print('---------------------------------')
