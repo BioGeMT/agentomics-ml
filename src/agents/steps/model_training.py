@@ -71,7 +71,7 @@ def retrain_and_check(config, train_data_path, valid_data_path, train_script_pat
         valid_subset.to_csv(temp_valid_path, index=False)
 
         # Run training script on subset
-        command = f"{command_prefix} python {train_script_path} --train-data {temp_train_path} --validation-data {temp_valid_path} --artifacts-dir {temp_artifacts_dir}"
+        command = f"{command_prefix} python \"{train_script_path}\" --train-data \"{temp_train_path}\" --validation-data \"{temp_valid_path}\" --artifacts-dir \"{temp_artifacts_dir}\""
         training_out = subprocess.run(command, shell=True, executable="/bin/bash", capture_output=True)
         if(training_out.returncode != 0):
             raise ModelRetry(f"Training script validaiton failed: Return code: {training_out.returncode}\nStderr: {training_out.stderr}, Stdout: {training_out.stdout}")
