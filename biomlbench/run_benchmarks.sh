@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-# Needs config in biomlbench/agentomics-ml (with wandb keys) and normal .env in agenotmics (with wandb and openrouter provisioning) + needs agentomics env created already
+# Before running:
+# - fill in a and adjust biomlbench/agentomics-ml/config.yaml
+# - needs the conda agentomics_env created already
+# - ENV https_proxy (etc.) variables need to be hardcoded in dockerfiles if using a proxy
+REPOS_DIR="/home/$USER/repos" #this needs to be configured to the agentomics repository parent directory (biomlbench will be pulled as a sibling to the agentomics repo)
 SPEND_LIMIT=10
-REPOS_DIR="/home/$USER/repos" #TODO needs to be configured
 DSET=proteingym-dms/SPIKE_SARS2_Starr_2020_binding
-
-# DSET=proteingym-dms/SPA_STAAU_Tsuboyama_2023_1LP1
 # DSET=polarishub/tdcommons-caco2-wang
-#TODO generalize copying, repos
 
 # Drug discovery (polarishub/)
 # polaris-pkis2-egfr-wt-c-1 **pr_auc** CLF (targetcol CLASS_EGFR) README-OK

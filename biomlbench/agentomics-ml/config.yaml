@@ -2,7 +2,7 @@ agentomics-ml:
   start: agentomics-ml/start.sh
   dockerfile: agentomics-ml/Dockerfile
   env_vars:
-    # OPENROUTER_API_KEY: 
+    # PROVISIONING_OPENROUTER_API_KEY: 
     # pass wandb keys for logging
     # WANDB_API_KEY: ""
     # WANDB_PROJECT_NAME: ""
