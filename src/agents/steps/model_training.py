@@ -61,21 +61,13 @@ def retrain_and_check(config, train_data_path, valid_data_path, train_script_pat
     try:
         # Create balanced subsets of training and validation data
         target_col = config.get_numeric_label_col_name()
-        samples_per_label = 100
 
         # Sample training data
-        train_df = pd.read_csv(train_data_path)
-        train_subset = train_df.groupby(target_col, group_keys=False).apply(
-            lambda x: x.sample(n=min(len(x), samples_per_label), random_state=42)
-        ).reset_index(drop=True)
+        train_subset = get_dataset_subset(train_data_path, target_col, config.task_type)
         train_subset.to_csv(temp_train_path, index=False)
 
         # Sample validation data
-        valid_df = pd.read_csv(valid_data_path)
-        valid_subset = valid_df.groupby(target_col, group_keys=False).apply(
-            lambda x: x.sample(n=min(len(x), samples_per_label), random_state=42)
-        ).reset_index(drop=True)
-        valid_subset = valid_df.head(samples_per_label * 2)
+        valid_subset = get_dataset_subset(valid_data_path, target_col, config.task_type)
         valid_subset.to_csv(temp_valid_path, index=False)
 
         # Run training script on subset
@@ -112,3 +104,22 @@ def retrain_and_check(config, train_data_path, valid_data_path, train_script_pat
             temp_valid_path.unlink()
         if temp_artifacts_dir.exists():
             shutil.rmtree(temp_artifacts_dir)
+
+def get_dataset_subset(data_path, target_col, task_type):
+    df = pd.read_csv(data_path)
+    clf_per_label_samples = 100
+    reg_samples = 1000
+
+    if task_type == 'classification':
+        # For classification: balance samples per label
+        subset = df.groupby(target_col, group_keys=False).apply(
+            lambda x: x.sample(n=min(len(x), clf_per_label_samples), random_state=42)
+        ).reset_index(drop=True)
+    elif task_type == 'regression':
+        # For regression: random sample from entire dataset
+        total_samples = min(len(df), reg_samples)
+        subset = df.sample(n=total_samples, random_state=42).reset_index(drop=True)
+    else:
+        raise ValueError(f"Unknown task type: {task_type}. Supported types are 'classification' and 'regression'.")
+
+    return subset
