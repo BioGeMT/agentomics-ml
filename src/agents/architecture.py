@@ -1,6 +1,7 @@
 import os
 import datetime
 import subprocess
+import re
 
 from pydantic_ai import Agent, ModelRetry, RunContext
 import weave
@@ -226,7 +227,10 @@ def get_invalid_iteration_folders(config, iteration):
 def does_file_contain_string(file_path, search_string) -> bool:
     with open(file_path, 'r') as file:
         content = file.read()
-        return search_string in content
+
+    # the search_string must be withing a string in the python file (between ' or "), doesnt match comments, variables, etc.
+    pattern = rf"(['\"]).*?{re.escape(search_string)}.*?\1"
+    return re.search(pattern, content, re.DOTALL) is not None
 
 def get_final_result_messages(all_messages):
     final_result_response = all_messages[-2]
