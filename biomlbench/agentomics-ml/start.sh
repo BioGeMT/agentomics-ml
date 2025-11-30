@@ -1,6 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-git clone https://github.com/BioGeMT/agentomics-ml.git /home/agentomics-ml
+git clone -b biomlbench_agentomics_implementation https://github.com/BioGeMT/agentomics-ml.git /home/agentomics-ml
 
 cp -r /home/agentomics-ml/src /home/agent/src
 
@@ -16,12 +16,11 @@ export TIME_LIMIT=$(format_time $TIME_LIMIT_SECS)
 echo -e "\033[0;31mStarting Agentomics-ML...\033[0m"
 timeout $TIME_LIMIT_SECS /opt/conda/envs/agentomics-env/bin/python /home/agent/src/run_agent_biomlbench.py \
     --model $MODEL \
-    --val-metric $VAL_METRIC \
     --iterations $ITERATIONS \
-    --target-col $TARGET_COL \
-    --task-type $TASK_TYPE \
     --user-prompt "$USER_PROMPT" \
-    --split-allowed-iterations $SPLIT_ALLOWED_ITERATIONS
+    --split-allowed-iterations $SPLIT_ALLOWED_ITERATIONS \
+    --timeout $TIME_LIMIT_SECS \
+    --tags biomlbench_test_v0
 
 if [ $? -eq 124 ]; then
   echo "Timed out after $TIME_LIMIT"

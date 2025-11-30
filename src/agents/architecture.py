@@ -1,5 +1,7 @@
 import os
 import datetime
+import subprocess
+import re
 
 from pydantic_ai import Agent, ModelRetry, RunContext
 import weave
@@ -14,7 +16,7 @@ from agents.steps.data_split import DataSplit, get_data_split_prompt
 from agents.steps.model_architecture import ModelArchitecture, get_model_architecture_prompt
 from agents.steps.data_representation import DataRepresentation, get_data_representation_prompt
 from agents.steps.data_exploration import DataExploration, get_data_exploration_prompt
-from agents.steps.model_training import ModelTraining, get_model_training_prompt
+from agents.steps.model_training import ModelTraining, get_model_training_prompt, retrain_and_check
 from agents.steps.prediction_exploration import PredictionExploration, get_prediction_exploration_prompt
 from utils.config import Config
 from utils.report_logger import save_step_output
@@ -111,10 +113,26 @@ def create_agents(config: Config, model, tools):
             raise ModelRetry(f"The files must be called exactly 'train.csv' and 'validation.csv'. Files ({train_path.name} and {val_path.name}) have been deleted.")
         
         target_col = 'numeric_label' #TODO generalize and take from metadata.json or config
-        for path in [result.train_path, result.val_path]:
-            df = pd.read_csv(path)
-            if target_col not in df.columns:
-                raise ModelRetry(f"Target column {target_col} not found in dataset {path}. Columns found: {df.columns.tolist()}")
+        train_df = pd.read_csv(result.train_path)
+        val_df = pd.read_csv(result.val_path)
+
+        if target_col not in train_df.columns:
+            raise ModelRetry(f"Target column {target_col} not found in train dataset {result.train_path}. Columns found: {train_df.columns.tolist()}")
+        if target_col not in val_df.columns:
+            raise ModelRetry(f"Target column {target_col} not found in validation dataset {result.val_path}. Columns found: {val_df.columns.tolist()}")
+
+        # Validate that both datasets have id column
+        if 'id' not in train_df.columns:
+            raise ModelRetry(f"ID column 'id' is missing in train dataset {result.train_path}. Columns found: {train_df.columns.tolist()}")
+        if 'id' not in val_df.columns:
+            raise ModelRetry(f"ID column 'id' is missing in validation dataset {result.val_path}. Columns found: {val_df.columns.tolist()}")
+
+        # Validate that train and validation have no overlapping IDs
+        train_ids = set(train_df['id'].dropna().tolist())
+        val_ids = set(val_df['id'].dropna().tolist())
+        overlapping_ids = train_ids.intersection(val_ids)
+        if overlapping_ids:
+            raise ModelRetry(f"Train and validation datasets have overlapping IDs. IDs must be unique across train and validation splits.")
 
         result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
         return result
@@ -123,10 +141,40 @@ def create_agents(config: Config, model, tools):
     async def validate_training(ctx: RunContext[dict], result: ModelTraining) -> ModelTraining:
         if not os.path.exists(result.path_to_train_file):
             raise ModelRetry(f"Train file does not exist. {result.path_to_train_file}")
+        if not Path(result.path_to_train_file).name.strip() == 'train.py':
+            raise ModelRetry(f"Train file must be called 'train.py' , currently is named {Path(result.path_to_train_file).name.strip()}")
         if not os.path.exists(result.path_to_model_file):
             raise ModelRetry(f"Model file does not exist at {result.path_to_model_file}")
+        if ctx.deps['run_dir'] not in Path(result.path_to_artifacts_dir).parents:
+            raise ModelRetry(f"path_to_artifacts_dir ({result.path_to_artifacts_dir}) must be a child of your run dir ({ctx.deps['run_dir']})")
+        if Path(result.path_to_artifacts_dir).name.strip() != 'training_artifacts':
+            raise ModelRetry(f"The artifacts folder produced by training must be called 'training_artifacts', currently is named {Path(result.path_to_artifacts_dir).name.strip()}")
+        if (Path(result.path_to_train_file).resolve().parent / 'training_artifacts').resolve() != Path(result.path_to_artifacts_dir).resolve():
+            raise ModelRetry(f"The artifacts folder produced by training must be a sibling to train.py.")
+        if Path(result.path_to_artifacts_dir).resolve() not in Path(result.path_to_model_file).parents:
+            raise ModelRetry(f"Model file ({result.path_to_model_file}) must be inside the artifacts folder ({result.path_to_artifacts_dir})")
         if does_file_contain_string(result.path_to_train_file, "iteration_"):
             raise ModelRetry("Train file contains path containing a forbidden string 'iteration_' or references an iteration folder, which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
+        created_files_names = retrain_and_check(
+            config=config,
+            train_data_path=ctx.deps['train_csv_path'],
+            valid_data_path=ctx.deps['validation_csv_path'],
+            train_script_path = result.path_to_train_file,
+            model_file_name = Path(result.path_to_model_file).name,
+        )
+        existing_files = list(Path(result.path_to_artifacts_dir).iterdir())
+        existing_files_names = [f.name for f in existing_files]
+
+        # Check if created files match existing files in artifacts directory
+        if set(created_files_names) != set(existing_files_names):
+            difference = set(existing_files_names) - set(created_files_names)
+            error_msg = f"Artifacts directory contains extra files, probably from a previous failed training attempt.\n"
+            error_msg += f"Files created using the current training script: {created_files_names}\n"
+            error_msg += f"Files existing in artifacts directory: {existing_files_names}\n"
+            error_msg += f"Extra files that should be cleaned up: {list(difference)}\n"
+            error_msg += f"Please clean up the artifacts directory at {result.path_to_artifacts_dir} and try again."
+            raise ModelRetry(error_msg)
+
         result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
         return result
 
@@ -138,6 +186,7 @@ def create_agents(config: Config, model, tools):
             raise ModelRetry("Inference file contains path containing a forbidden string 'iteration_' or references an iteration folder, which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
         if does_file_contain_string(result.path_to_inference_file, "train.csv") or does_file_contain_string(result.path_to_inference_file, "validation.csv"):
             raise ModelRetry("Inference file contains references to dataset split files ('train.csv' or 'validation.csv' detected), which will not be accessible during final testing.")
+        #TODO improve validation with info about the artifacts-dir
         run_inference_and_log(config, iteration=-1, evaluation_stage='dry_run')
         lock_inference_file(result.path_to_inference_file)
         result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
@@ -178,7 +227,10 @@ def get_invalid_iteration_folders(config, iteration):
 def does_file_contain_string(file_path, search_string) -> bool:
     with open(file_path, 'r') as file:
         content = file.read()
-        return search_string in content
+
+    # the search_string must be withing a string in the python file (between ' or "), doesnt match comments, variables, etc.
+    pattern = rf"(['\"]).*?{re.escape(search_string)}.*?\1"
+    return re.search(pattern, content, re.DOTALL) is not None
 
 def get_final_result_messages(all_messages):
     final_result_response = all_messages[-2]
@@ -254,6 +306,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
     structured_outputs.append(data_exploration_output)
     
     split_allowed_iterations = config.split_allowed_iterations
+    data_split_step = None
     if not config.explicit_valid_set_provided and iteration < split_allowed_iterations:
         data_split_deps = {'start_time': datetime.datetime.now()}
         messages_split, data_split = await run_agent(
@@ -265,6 +318,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
         )
         replace_message_result_with_validated_files(messages_split, config, since_timestamp=data_split_deps['start_time'])
         persistent_messages+=get_final_result_messages(messages_split)
+        data_split_step=data_split
         structured_outputs.append(data_split)
     else:
         assert last_split_strategy is not None, f'Agent didnt have a chance to split data, provide a non-0 allowed split iterations (currently {config.split_allowed_iterations})'
@@ -275,6 +329,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
             files_created=[],
         )
         persistent_messages+=fabricate_final_result_messages(manual_data_split_step, model_name=config.model_name)
+        data_split_step=manual_data_split_step
         structured_outputs.append(manual_data_split_step)
 
     representation_deps = {'start_time': datetime.datetime.now()}
@@ -301,7 +356,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
     persistent_messages+=get_final_result_messages(messages_architecture)
     structured_outputs.append(model_architecture)
 
-    training_deps = {'start_time': datetime.datetime.now()}
+    training_deps = {'start_time': datetime.datetime.now(), 'train_csv_path':data_split_step.train_path, 'validation_csv_path':data_split_step.val_path, 'run_dir': config.runs_dir / config.agent_id}
     messages_training, model_training = await run_agent(
         agent=training_agent, 
         user_prompt=get_model_training_prompt(config)+ctx_replacer_msg, 
@@ -316,7 +371,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
     inference_deps = {'start_time': datetime.datetime.now()}
     messages_inference, model_inference = await run_agent(
         agent=inference_agent, 
-        user_prompt=get_model_inference_prompt(config)+ctx_replacer_msg, 
+        user_prompt=get_model_inference_prompt(config, training_artifacts_dir=model_training.path_to_artifacts_dir)+ctx_replacer_msg, 
         max_steps=config.max_steps,
         message_history=persistent_messages,
         deps=inference_deps,
@@ -356,7 +411,6 @@ async def run_iteration(config: Config, model, iteration, feedback, tools, last_
     else:
         base_prompt = get_iteration_prompt(config, iteration, feedback)
 
-    #TODO parametrize compressed vs normal runs
     structured_outputs = await run_architecture_compressed(
         data_exploration_agent=agents_dict['data_exploration_agent'],
         data_representation_agent=agents_dict['data_representation_agent'],

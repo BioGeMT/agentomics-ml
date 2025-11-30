@@ -39,5 +39,21 @@ ENV AGENT_DIR=${AGENT_DIR}
 
 RUN mkdir ${LOGS_DIR} ${CODE_DIR} ${AGENT_DIR}
 
+# Setup agent start environment
+ENV START_ENV_PKG=${AGENT_DIR}/agent_start_env.tar.gz
+COPY environment_agent.yaml .
+RUN conda env create -f environment_agent.yaml \
+    && conda clean -afy \
+    && rm -rf /tmp/conda-pkgs
+RUN conda run -n agent_start_env conda-pack -o ${START_ENV_PKG}
+
+# Pre-download foundation models
+RUN mkdir -p /foundation_models /home/cache/foundation_models
+ENV HF_HOME=/home/cache/foundation_models
+COPY foundation_models/ /foundation_models/
+COPY foundation_models_utils.py /repository/src/utils/foundation_models_utils.py
+COPY download_foundation_models.py /repository/src/utils/download_foundation_models.py
+RUN /opt/conda/envs/agentomics-env/bin/python /repository/src/utils/download_foundation_models.py
+
 # put all the agent files in the expected location
 COPY . ${AGENT_DIR}
