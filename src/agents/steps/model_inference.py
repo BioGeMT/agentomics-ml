@@ -48,12 +48,13 @@ def get_model_inference_prompt(config, training_artifacts_dir):
     return f"""
     Your next task: create inference.py file.
     If your model can be accelerated by GPU, implement the code to use GPU.
-    The inference script must produce a prediction for every single input. Don't skip any samples.
+    The inference script must produce a prediction for every single input. Don't skip any samples. The 'id' column from the input file must be preserved in the output file.
     The inference script must use the same architecture as your current trained model from 'train.py' and use the artifacts produced by that script (located at '{training_artifacts_dir}').
     The inference script will be taking the following named arguments:
     --input (an input file path). This file is of the same format as your training data (except the target column)
     --output (the output file path). {output_file_description}
     --artifacts-dir (the folder that contains training artifacts from the training step that are needed to run inference (for example model weights, tokenizers, etc..). The following dir should be used as a default: '{training_artifacts_dir}'. If a different path is provided, your script must adapt to the new source. You can assume the artifact files will always have the same name. 
+    The script must not accept any other parameters.
     """
 
 def lock_inference_file(path_to_inference_file):

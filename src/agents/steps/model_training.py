@@ -43,6 +43,7 @@ def get_model_training_prompt(config):
     --train-data (a path to the training data csv)
     --validation-data (a path to the validation data csv. For example for the purposes of early-stopping. If the training script doesn't need validation data, still include the argument for compatibility and don't use it.)
     --artifacts-dir (path to a directory that will be populated by the training script with artifacts needed to use the trained model for predictions (e.g. produced model weights, produced tokenizers, ...). This directory should not contain any other external sources like imported scripts, conda packages, foundation models, etc..)
+    The script must not accept any other parameters.
     """
 
 def retrain_and_check(config, train_data_path, valid_data_path, train_script_path, model_file_name):

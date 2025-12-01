@@ -112,7 +112,7 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
         Your task is to instruct the agent to implement a baseline model. 
         Follow these instructions for these specific steps:
         - Data Representation: implement the most basic commonly used representation for the data type
-        - Model Architecture: use a classical machine learning model
+        - Model Architecture: use a classical machine learning model or a simple low-parameter neural network
         Never suggest a representation-model combination that has already been explored.
         """
     else:
@@ -126,12 +126,12 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
     {get_dataset_knowledge(config)}
     </dataset_knowledge_from_dataset_description_md>
 
-    <run_history>
+    <iteration_history>
     {len(iter_to_outputs)} iterations completed in the current run so far
     <iterations_summaries>
     {all_iters_aggregation}
     </iterations_summaries>
-    </run_history>
+    </iteration_history>
     <your_instructions>
     {f"<exploration_guidance>\n{exploration_guidance}\n</exploration_guidance>" if exploration_guidance else ""}
     The main goal of the run is to maximize the hidden test set generalization performance (main metric:{config.val_metric}) that will use the 'best iteration model' (currently model from iteration {best_metric_iteration}). Only models using the latest split are candidates for this 'best iteration model'.
@@ -165,9 +165,12 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
     </foundation_models_info>
     The agent will have access to the following resources: {config.get_resources_summary()}
 
-    Based on the iteration history, remaining time and iterations: choose to explore radically different model architectures and data representations or choose to optimize the most promising past iteration.
+    The iteration history consists of experiments that used some data representation (R) and model architecture (A) combinations (R x A).
+    Based on the iteration history and remaining time choose to either:
+    A) explore combinations (R x A) not present in the iteration history 
+    B) further develop an existing promising (R x A) combination. If the iteration history already contains a further developed version of a (R x A) combination that did not result in a validation {config.val_metric} improvement, you must not develop it further again.
 
-    Once the next iteration finishes, the iterations summaries (run history) will be updated with its results and you will have an opportunity to provide another set of instructions etc.. until the run ends.
+    Once the next iteration finishes, the iterations summaries (iteration history) will be updated with its results and you will have an opportunity to provide another set of instructions etc.. until the run ends.
     </your_instructions>
     """
     
