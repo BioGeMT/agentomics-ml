@@ -1,5 +1,10 @@
 FROM condaforge/mambaforge:23.3.1-0
 
+ENV https_proxy=http://proxy.um.edu.mt:80
+ENV HTTPS_PROXY=http://proxy.um.edu.mt:80
+ENV HTTP_PROXY=http://proxy.um.edu.mt:80
+ENV http_proxy=http://proxy.um.edu.mt:80
+
 # Always set -y to conda install commands
 ENV CONDA_ALWAYS_YES=true 
 # Cache conda packages in a temp directory (removed after build - reduces image size)
