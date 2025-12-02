@@ -50,7 +50,7 @@ update_config() {
 
   local cfg="$REPOS_DIR/agentomics-ml/biomlbench/agentomics-ml/config.yaml"
   local escaped_prompt=$(printf '%s\n' "$USER_PROMPT" | sed -e 's/[\/&]/\\&/g')
-  local tags_yaml=$(printf '["'$(IFS='","'; echo "${TAGS[*]}")\"'"]' | sed 's/\["\[/[/g; s/\]"\]/]/g')
+  local tags="${TAGS[*]}"
 
   for var in WANDB_API_KEY WANDB_PROJECT_NAME WANDB_ENTITY SPLIT_ALLOWED_ITERATIONS ITERATIONS MODEL; do
     local val="${!var}"
@@ -68,9 +68,9 @@ update_config() {
   fi
 
   if grep -q "^    TAGS:" "$cfg"; then
-    sed -i "s|^    TAGS:.*|    TAGS: $tags_yaml|" "$cfg"
+    sed -i "s|^    TAGS:.*|    TAGS: $tags|" "$cfg"
   else
-    sed -i "/env_vars:/a\    TAGS: $tags_yaml" "$cfg"
+    sed -i "/env_vars:/a\    TAGS: $tags" "$cfg"
   fi
 }
 
