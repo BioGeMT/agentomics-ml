@@ -36,5 +36,11 @@ def export_config_to_snapshot(config):
         if isinstance(value, Path):
             config_dict[key] = str(value)
 
-    config_path = (config.snapshots_dir / config.agent_id).resolve() / "config.json"
-    config_path.write_text(json.dumps(config_dict, indent=2))
+    # Save to .agentomics_storage
+    storage_dir = config.workspace_dir / ".agentomics_storage"
+    storage_dir.mkdir(parents=True, exist_ok=True, mode=0o755)
+    storage_dir.chmod(0o755)
+    
+    storage_config_path = storage_dir / "config.json"
+    storage_config_path.write_text(json.dumps(config_dict, indent=2))
+    storage_config_path.chmod(0o644)

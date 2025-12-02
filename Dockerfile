@@ -21,14 +21,14 @@ RUN mamba env create -f environment.yaml \
 RUN conda init bash \
     && echo "conda activate agentomics-env" >> /root/.bashrc
 
-# Pre-download foundation models
+# Pre-download foundation models (optional - continues build if this fails)
 RUN mkdir -p /foundation_models /cache/foundation_models
 ENV HF_HOME=/cache/foundation_models
 COPY foundation_models/ /foundation_models/
 COPY src/utils/foundation_models_utils.py /repository/src/utils/foundation_models_utils.py
 COPY src/utils/download_foundation_models.py /repository/src/utils/download_foundation_models.py
-RUN LD_PRELOAD=$(find /opt/conda/envs/agentomics-env/lib/python3.12/site-packages/scikit_learn.libs -name "libgomp*.so*" | head -1) \
-    /opt/conda/envs/agentomics-env/bin/python /repository/src/utils/download_foundation_models.py
+#RUN LD_PRELOAD=$(find /opt/conda/envs/agentomics-env/lib/python3.12/site-packages/scikit_learn.libs -name "libgomp*.so*" | head -1) \
+#    /opt/conda/envs/agentomics-env/bin/python /repository/src/utils/download_foundation_models.py || echo "Warning: Foundation models download failed. Continuing without them."
 
 # Setup agent start environment
 ENV START_ENV_PKG=/opt/agent_start_env.tar.gz

@@ -29,6 +29,8 @@ def get_data_split_prompt(config, iteration, last_split_strategy="Split does not
         extra_info = ""
     
     train_csv_path = config.agent_dataset_dir / "train.csv"
+    # Include user prompt if provided
+    user_instructions = f"\n\nUser instructions: {config.user_prompt}" if config.user_prompt else ""
     return f"""
         Your next task: Split the training dataset ({train_csv_path}) into training and validation sets:
         Ensure the validation split is representative of new unseen data, since it will be used for optimizing choices like architecture, hyperparameters, and training strategies.
@@ -36,5 +38,5 @@ def get_data_split_prompt(config, iteration, last_split_strategy="Split does not
         - Save 'train.csv' and 'validation.csv' in {config.runs_dir / config.agent_id}.
         Return the absolute paths to these files.
 
-        {extra_info}
+        {extra_info}{user_instructions}
         """

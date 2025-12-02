@@ -14,5 +14,11 @@ class DataRepresentation(BaseModel):
         """
     )
 
-def get_data_representation_prompt():
-    return "Your next task: define the data representation."
+def get_data_representation_prompt(user_prompt: str = None, is_fork: bool = False):
+    base_prompt = "Your next task: define the data representation."
+    
+    # Include user prompt if provided
+    if user_prompt:
+        return f"{base_prompt}\n\nUser instructions: {user_prompt}"
+    
+    return base_prompt

@@ -32,7 +32,11 @@ def load_run_config(snapshots_dir):
     assert len(subdirs) > 0, 'No snapshot folder found'
     assert len(subdirs) == 1, f'Expected 1 snapshot folder, found {len(subdirs)}'
     snapshot_dir = subdirs[0]
-    config_path = snapshot_dir.resolve() / "config.json"
+    
+    # Load config from .agentomics_storage
+    workspace_dir = snapshots_dir.parent
+    config_path = workspace_dir / ".agentomics_storage" / "config.json"
+    
     with open(config_path, 'r') as f:
         config_dict = json.load(f)
 

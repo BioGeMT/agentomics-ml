@@ -19,6 +19,17 @@ class ModelArchitecture(BaseModel):
         """
     )
 
-def get_model_architecture_prompt():
-    return """Your next task: choose the model architecture and hyperparameters.
+
+def get_model_architecture_prompt(user_prompt: str = None, is_fork: bool = False):
     """
+    Prompt for choosing model architecture and hyperparameters.
+
+    If a custom user prompt is provided (either from the CLI or inherited
+    when forking), append it as explicit user instructions.
+    """
+    base_prompt = "Your next task: choose the model architecture and hyperparameters."
+    
+    if user_prompt:
+        return f"{base_prompt}\n\nUser instructions: {user_prompt}"
+    
+    return base_prompt

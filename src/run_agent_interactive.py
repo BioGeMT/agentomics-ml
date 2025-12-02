@@ -2,10 +2,14 @@ import argparse
 import sys
 import asyncio
 from pathlib import Path
+import warnings
 from rich.console import Console
 from rich.panel import Panel
 import json
 import dotenv
+
+# Suppress noisy Pydantic warnings from dependencies
+warnings.filterwarnings('ignore', category=UserWarning, module='pydantic._internal._generate_schema')
 
 from utils.dataset_utils import get_all_prepared_datasets_info
 from utils.datasets_interactive_utils import interactive_dataset_selection, print_datasets_table
@@ -14,6 +18,7 @@ from utils.providers.provider import Provider, get_provider_and_api_key
 from utils.metrics import get_classification_metrics_names, get_regression_metrics_names
 from utils.env_utils import are_wandb_vars_available
 from utils.user_input import get_user_input_for_int
+from utils.step_snapshots import Step
 from run_agent import run_experiment
 
 console = Console()
@@ -37,16 +42,21 @@ def main():
     parser.add_argument("--list-datasets", action="store_true", help="List available datasets and exit")
     parser.add_argument("--list-metrics", action="store_true", help="List available validation metrics and exit")
     parser.add_argument("--root-privileges", action="store_true", help="Whether the script has root privileges to create a new user for the agent (recommended)")
-    parser.add_argument("--dataset", help="Dataset name")
+    parser.add_argument("--dataset", help="Dataset name (auto-detected when forking)")
     parser.add_argument("--iterations", type=int, help="Number of iterations to run")
     parser.add_argument("--timeout", type=int, help="Timeout before the run is shut down in seconds")
     parser.add_argument("--split-allowed-iterations", type=int, help="Number of initial iterations that are allowed to (re)split the data into train/validation", default=1)
     parser.add_argument("--tags", nargs="*", default=[], help="(Optional) Comma-separated tags to associate with the run")
-    parser.add_argument('--user-prompt', type=str, default="Develop a machine learning model that generalizes well to new unseen data.", help='(Optional) Text to overwrite the default user prompt')
+    parser.add_argument('--user-prompt', type=str, default="Create the best possible machine learning model that will generalize to new unseen data.", help='(Optional) Custom instructions for the agent. When forking, inherits from source run unless explicitly provided.')
     parser.add_argument("--model", help="Model name. Should be compatible with the selected provider")
 
     available_metrics = get_classification_metrics_names() + get_regression_metrics_names()
-    parser.add_argument("--val-metric", help="Validation metric", choices=available_metrics)
+    parser.add_argument("--val-metric", help="Validation metric (auto-detected when forking)", choices=available_metrics)
+    
+    # Fork arguments
+    parser.add_argument('--fork-from-run', type=str, help='The run ID to fork from')
+    parser.add_argument('--fork-from-step', type=str, choices=Step.get_step_names(), help='Step name to fork from')
+    parser.add_argument('--fork-from-iteration', type=int, help='(Optional) Specific iteration to fork from. If omitted, uses the latest iteration.')
     
     args = parser.parse_args()
     dotenv.load_dotenv()
@@ -86,10 +96,15 @@ def main():
         display_metrics_table()  # Show all metrics when listing
         return 0
     
+    # Check if we're forking
+    is_forking = args.fork_from_run and args.fork_from_step
+    
     # For interactive mode (when dataset/model/val_metric missing), require interactive terminal
-    if (not dataset or not model or not args.val_metric) and not check_tty_available():
+    # UNLESS we're forking (in which case these are auto-detected)
+    if not is_forking and (not dataset or not model or not args.val_metric) and not check_tty_available():
         console.print("Interactive terminal required for dataset/model/val_metric selection but not available", style="red")
         console.print("For non-interactive use, specify --dataset, --model, and --val-metric arguments", style="cyan")
+        console.print("Or use --fork-from-run to fork from an existing run (auto-detects parameters)", style="cyan")
         console.print("Example: python agentomics-entrypoint.py --dataset breast_cancer --model 'openai/gpt-4' --val-metric 'ACC'", style="cyan")
         return 1
     
@@ -98,22 +113,35 @@ def main():
         console.print("To setup wandb, provide WANDB_API_KEY, WANDB_PROJECT_NAME, and WANDB_ENTITY env variables", style="yellow")
     
     # Go to interactive selection if dataset/model/val_metric not provided
+    # When forking, these will be auto-detected from source run
     print_welcome()
-    if not dataset:
-        datasets = get_all_prepared_datasets_info(paths["prepared_datasets_dir"], paths["prepared_test_sets_dir"])
-        dataset = interactive_dataset_selection(datasets)
-        if not dataset:
-            console.print("No dataset selected", style="red")
-            return 1
     
-    # Load metadata
-    prepared_dataset_path = Path(paths["prepared_datasets_dir"]) / dataset
-    metadata_path = prepared_dataset_path / "metadata.json"
-    metadata = json.loads(metadata_path.read_text())
-    task_type = metadata.get("task_type")
+    if not is_forking:
+        # Not forking: need to select dataset and val_metric interactively if missing
+        if not dataset:
+            datasets = get_all_prepared_datasets_info(paths["prepared_datasets_dir"])
+            dataset = interactive_dataset_selection(datasets)
+            if not dataset:
+                console.print("No dataset selected", style="red")
+                return 1
+        
+        # Load metadata for task type (needed for metric selection)
+        prepared_dataset_path = Path(paths["prepared_datasets_dir"]) / dataset
+        metadata_path = prepared_dataset_path / "metadata.json"
+        metadata = json.loads(metadata_path.read_text())
+        task_type = metadata.get("task_type")
 
-    if not val_metric:
-        val_metric = interactive_metric_selection(task_type)
+        if not val_metric:
+            val_metric = interactive_metric_selection(task_type)
+    else:
+        # Forking: dataset and val_metric will be auto-detected
+        # But we still need task_type for the run_experiment call if dataset was provided
+        if dataset:
+            prepared_dataset_path = Path(paths["prepared_datasets_dir"]) / dataset
+            metadata_path = prepared_dataset_path / "metadata.json"
+            if metadata_path.exists():
+                metadata = json.loads(metadata_path.read_text())
+                task_type = metadata.get("task_type")
     
     if not model:
         model = provider.interactive_model_selection(limit=50)
@@ -136,6 +164,9 @@ def main():
         provider=provider_name,
         split_allowed_iterations=args.split_allowed_iterations,
         timeout=args.timeout,
+        fork_from_run=args.fork_from_run,
+        fork_from_step=args.fork_from_step,
+        fork_from_iteration=args.fork_from_iteration,
     ))
     return 0
         

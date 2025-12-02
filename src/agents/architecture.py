@@ -20,7 +20,9 @@ from agents.steps.model_training import ModelTraining, get_model_training_prompt
 from agents.steps.prediction_exploration import PredictionExploration, get_prediction_exploration_prompt
 from utils.config import Config
 from utils.report_logger import save_step_output
+from utils.step_snapshots import StepRegistry
 from run_logging.evaluate_log_run import run_inference_and_log
+from utils.step_snapshots import snapshotable_step, RunManager, step_execution_context
 
 def create_agents(config: Config, model, tools):
     data_exploration_agent = Agent(
@@ -287,124 +289,280 @@ def get_new_rundir_files(config, since_timestamp, ignore_iter_folders=True):
             new_files.append(element.name)
     return new_files
 
-async def run_architecture_compressed(data_exploration_agent: Agent, data_representation_agent: Agent, model_architecture_agent: Agent, inference_agent: Agent, split_dataset_agent: Agent, training_agent: Agent, prediction_exploration_agent: Agent, config: Config, base_prompt: str, iteration: int, last_split_strategy: str):
-    persistent_messages = []
-    structured_outputs = []
-    ctx_replacer_msg = "\nSummarized outputs from your previous steps are in previous messages."
 
+# ============================================================================
+# DECORATED STEP FUNCTIONS (for snapshotting and forking)
+# ============================================================================
+
+@snapshotable_step("data_exploration")
+async def run_data_exploration_step(agent, config, base_prompt, iteration):
+    """Step 0: Data exploration - analyze dataset and understand structure"""
     data_exploration_deps = {'start_time': datetime.datetime.now()}
-    messages_data_exploration, data_exploration_output = await run_agent(
-        agent=data_exploration_agent,
-        user_prompt=base_prompt + get_data_exploration_prompt(iteration), #base prompt has feedback (if non-0 iter) and user prompt
+    messages, output = await run_agent(
+        agent=agent,
+        user_prompt=base_prompt + get_data_exploration_prompt(iteration),
         max_steps=config.max_steps,
         message_history=None,
         deps=data_exploration_deps,
     )
-    replace_message_result_with_validated_files(messages_data_exploration, config, since_timestamp=data_exploration_deps['start_time'])
-    persistent_messages+=get_sytem_and_user_prompt_messages(messages_data_exploration, to_remove=get_data_exploration_prompt(iteration))
-    persistent_messages+=get_final_result_messages(messages_data_exploration)
-    structured_outputs.append(data_exploration_output)
-    
+    replace_message_result_with_validated_files(messages, config, since_timestamp=data_exploration_deps['start_time'])
+    return messages, output
+
+
+@snapshotable_step("data_split")
+async def run_data_split_step(agent, config, iteration, last_split_strategy, message_history):
+    """Step 1: Data split - split data into train/validation sets"""
+    ctx_replacer_msg = "\nSummarized outputs from your previous steps are in previous messages."
     split_allowed_iterations = config.split_allowed_iterations
-    data_split_step = None
+
     if not config.explicit_valid_set_provided and iteration < split_allowed_iterations:
+        # Check if we're forking (to include user prompt override)
+        from utils.step_snapshots import StepRegistry
+        run_manager = StepRegistry._run_manager
+        is_fork = run_manager is not None and run_manager.resume_from is not None
+        config._is_fork = is_fork
         data_split_deps = {'start_time': datetime.datetime.now()}
-        messages_split, data_split = await run_agent(
-            agent=split_dataset_agent,
-            user_prompt=get_data_split_prompt(config=config, iteration=iteration, last_split_strategy=last_split_strategy)+ctx_replacer_msg,
+        messages, output = await run_agent(
+            agent=agent,
+            user_prompt=get_data_split_prompt(config=config, iteration=iteration, last_split_strategy=last_split_strategy) + ctx_replacer_msg,
             max_steps=config.max_steps,
-            message_history=persistent_messages,
+            message_history=message_history,
             deps=data_split_deps,
         )
-        replace_message_result_with_validated_files(messages_split, config, since_timestamp=data_split_deps['start_time'])
-        persistent_messages+=get_final_result_messages(messages_split)
-        data_split_step=data_split
-        structured_outputs.append(data_split)
+        replace_message_result_with_validated_files(messages, config, since_timestamp=data_split_deps['start_time'])
+        return messages, output
     else:
-        assert last_split_strategy is not None, f'Agent didnt have a chance to split data, provide a non-0 allowed split iterations (currently {config.split_allowed_iterations})'
-        manual_data_split_step = DataSplit(
-            train_path = str(config.runs_dir / config.agent_id / 'train.csv'),
-            val_path = str(config.runs_dir / config.agent_id / 'validation.csv'),
-            splitting_strategy = last_split_strategy,
+        assert last_split_strategy is not None, f'Agent didnt have a chance to split data'
+        manual_data_split = DataSplit(
+            train_path=str(config.runs_dir / config.agent_id / 'train.csv'),
+            val_path=str(config.runs_dir / config.agent_id / 'validation.csv'),
+            splitting_strategy=last_split_strategy,
             files_created=[],
         )
-        persistent_messages+=fabricate_final_result_messages(manual_data_split_step, model_name=config.model_name)
-        data_split_step=manual_data_split_step
-        structured_outputs.append(manual_data_split_step)
+        messages = fabricate_final_result_messages(manual_data_split, model_name=config.model_name)
+        return messages, manual_data_split
 
+
+@snapshotable_step("data_representation")
+async def run_data_representation_step(agent, config, message_history):
+    """Step 2: Data representation - define transformations and encodings"""
+    ctx_replacer_msg = "\nSummarized outputs from your previous steps are in previous messages."
     representation_deps = {'start_time': datetime.datetime.now()}
-    messages_representation, data_representation = await run_agent(
-        agent=data_representation_agent,
-        user_prompt=get_data_representation_prompt()+ctx_replacer_msg,
+    # Check if we're forking (to include user prompt override)
+    run_manager = StepRegistry._run_manager
+    is_fork = run_manager is not None and run_manager.resume_from is not None
+    messages, output = await run_agent(
+        agent=agent,
+        user_prompt=get_data_representation_prompt(config.user_prompt, is_fork=is_fork) + ctx_replacer_msg,
         max_steps=config.max_steps,
-        message_history=persistent_messages,
+        message_history=message_history,
         deps=representation_deps,
     )
-    replace_message_result_with_validated_files(messages_representation, config, since_timestamp=representation_deps['start_time'])
-    persistent_messages+=get_final_result_messages(messages_representation)
-    structured_outputs.append(data_representation)
+    replace_message_result_with_validated_files(messages, config, since_timestamp=representation_deps['start_time'])
+    return messages, output
 
+
+@snapshotable_step("model_architecture")
+async def run_model_architecture_step(agent, config, message_history):
+    """Step 3: Model architecture - choose model and hyperparameters"""
+    ctx_replacer_msg = "\nSummarized outputs from your previous steps are in previous messages."
     arch_deps = {'start_time': datetime.datetime.now()}
-    messages_architecture, model_architecture = await run_agent(
-        agent=model_architecture_agent,
-        user_prompt=get_model_architecture_prompt()+ctx_replacer_msg,
+    # Check if we're forking (to include user prompt override)
+    run_manager = StepRegistry._run_manager
+    is_fork = run_manager is not None and run_manager.resume_from is not None
+    messages, output = await run_agent(
+        agent=agent,
+        user_prompt=get_model_architecture_prompt(config.user_prompt, is_fork=is_fork) + ctx_replacer_msg,
         max_steps=config.max_steps,
-        message_history=persistent_messages,
+        message_history=message_history,
         deps=arch_deps,
     )
-    replace_message_result_with_validated_files(messages_architecture, config, since_timestamp=arch_deps['start_time'])
-    persistent_messages+=get_final_result_messages(messages_architecture)
-    structured_outputs.append(model_architecture)
+    replace_message_result_with_validated_files(messages, config, since_timestamp=arch_deps['start_time'])
+    return messages, output
 
-    training_deps = {'start_time': datetime.datetime.now(), 'train_csv_path':data_split_step.train_path, 'validation_csv_path':data_split_step.val_path, 'run_dir': config.runs_dir / config.agent_id}
-    messages_training, model_training = await run_agent(
-        agent=training_agent, 
-        user_prompt=get_model_training_prompt(config)+ctx_replacer_msg, 
+@snapshotable_step("model_training")
+async def run_model_training_step(agent, config, message_history):
+    """Step 4: Model training - train the model"""
+    ctx_replacer_msg = "\nSummarized outputs from your previous steps are in previous messages."
+    run_dir = config.runs_dir / config.agent_id
+    # Determine train and validation paths based on whether explicit validation set was provided
+    if config.explicit_valid_set_provided:
+        train_csv_path = config.agent_dataset_dir / "train.csv"
+        validation_csv_path = config.agent_dataset_dir / "validation.csv"
+    else:
+        train_csv_path = run_dir / "train.csv"
+        validation_csv_path = run_dir / "validation.csv"
+    
+    training_deps = {
+        'start_time': datetime.datetime.now(),
+        'run_dir': run_dir,
+        'train_csv_path': train_csv_path,
+        'validation_csv_path': validation_csv_path,
+    }
+    # Check if we're forking (to include user prompt override)
+    run_manager = StepRegistry._run_manager
+    is_fork = run_manager is not None and run_manager.resume_from is not None
+    messages, output = await run_agent(
+        agent=agent,
+        user_prompt=get_model_training_prompt(config.user_prompt, is_fork=is_fork) + ctx_replacer_msg,
         max_steps=config.max_steps,
-        message_history=persistent_messages,
+        message_history=message_history,
         deps=training_deps,
     )
-    replace_message_result_with_validated_files(messages_training, config, since_timestamp=training_deps['start_time'])
-    persistent_messages+=get_final_result_messages(messages_training)
-    structured_outputs.append(model_training)
+    replace_message_result_with_validated_files(messages, config, since_timestamp=training_deps['start_time'])
+    return messages, output
 
+
+@snapshotable_step("model_inference")
+async def run_model_inference_step(agent, config, model_training_output, message_history):
+    """Step 5: Model inference - create inference script"""
+    ctx_replacer_msg = "\nSummarized outputs from your previous steps are in previous messages."
     inference_deps = {'start_time': datetime.datetime.now()}
-    messages_inference, model_inference = await run_agent(
-        agent=inference_agent, 
-        user_prompt=get_model_inference_prompt(config, training_artifacts_dir=model_training.path_to_artifacts_dir)+ctx_replacer_msg, 
+    # Check if we're forking (to include user prompt override)
+    run_manager = StepRegistry._run_manager
+    is_fork = run_manager is not None and run_manager.resume_from is not None
+    # Mark config as fork for prompt functions that check config._is_fork
+    config._is_fork = is_fork
+
+    training_artifacts_dir = model_training_output.path_to_artifacts_dir
+
+    messages, output = await run_agent(
+        agent=agent,
+        user_prompt=get_model_inference_prompt(config, training_artifacts_dir=training_artifacts_dir) + ctx_replacer_msg,
         max_steps=config.max_steps,
-        message_history=persistent_messages,
+        message_history=message_history,
         deps=inference_deps,
     )
-    replace_message_result_with_validated_files(messages_inference, config, since_timestamp=inference_deps['start_time'])
-    persistent_messages+=get_final_result_messages(messages_inference)
-    structured_outputs.append(model_inference)
+    replace_message_result_with_validated_files(messages, config, since_timestamp=inference_deps['start_time'])
+    return messages, output
 
+
+@snapshotable_step("prediction_exploration")
+async def run_prediction_exploration_step(agent, config, iteration, model_inference_output, message_history):
+    """Step 6: Prediction exploration - analyze model predictions"""
+    ctx_replacer_msg = "\nSummarized outputs from your previous steps are in previous messages."
+    
     if not config.explicit_valid_set_provided:
         val_path = config.runs_dir / config.agent_id / 'validation.csv'
     else:
         val_path = config.agent_dataset_dir / config.dataset / "validation.csv"
-
+    
+    # Check if we're forking (to include user prompt override)
+    run_manager = StepRegistry._run_manager
+    is_fork = run_manager is not None and run_manager.resume_from is not None
     prediction_deps = {'iteration': iteration, 'start_time': datetime.datetime.now()}
-    prediction_messages, prediction_exploration = await run_agent(
-        agent=prediction_exploration_agent,
-        user_prompt=get_prediction_exploration_prompt(validation_path=val_path,inference_path=model_inference.path_to_inference_file)+ctx_replacer_msg,
+    messages, output = await run_agent(
+        agent=agent,
+        user_prompt=get_prediction_exploration_prompt(validation_path=val_path, inference_path=model_inference_output.path_to_inference_file, user_prompt=config.user_prompt, is_fork=is_fork) + ctx_replacer_msg,
         max_steps=config.max_steps,
-        message_history=persistent_messages,
+        message_history=message_history,
         deps=prediction_deps,
     )
-    replace_message_result_with_validated_files(prediction_messages, config, since_timestamp=prediction_deps['start_time'])
-    persistent_messages+=get_final_result_messages(prediction_messages) #not used
-    structured_outputs.append(prediction_exploration)
+    replace_message_result_with_validated_files(messages, config, since_timestamp=prediction_deps['start_time'])
+    return messages, output
 
+
+# ============================================================================
+# ORCHESTRATION FUNCTION
+# ============================================================================
+
+async def run_architecture_compressed(data_exploration_agent: Agent, data_representation_agent: Agent, model_architecture_agent: Agent, inference_agent: Agent, split_dataset_agent: Agent, training_agent: Agent, prediction_exploration_agent: Agent, config: Config, base_prompt: str, iteration: int, last_split_strategy: str, run_manager: RunManager = None):
+    """
+    Orchestrate all steps with automatic snapshotting.
+    
+    The decorated step functions handle snapshotting and forking automatically.
+    Orchestration handles state accumulation (persistent_messages, structured_outputs).
+    """
+    persistent_messages = []
+    structured_outputs = []
+    
+    # Use context manager to enable step tracking
+    async with step_execution_context(config, iteration, run_manager):
+        
+        # Step 0: Data Exploration
+        messages, output = await run_data_exploration_step(
+            data_exploration_agent, config, base_prompt, iteration
+        )
+        # Accumulate state
+        persistent_messages += get_sytem_and_user_prompt_messages(messages, to_remove=get_data_exploration_prompt(iteration))
+        persistent_messages += get_final_result_messages(messages)
+        structured_outputs.append(output)
+        
+        # Step 1: Data Split
+        messages, output = await run_data_split_step(
+            split_dataset_agent, config, iteration, last_split_strategy,
+            persistent_messages
+        )
+        # Accumulate state
+        persistent_messages += get_final_result_messages(messages)
+        structured_outputs.append(output)
+        
+        # Step 2: Data Representation
+        messages, output = await run_data_representation_step(
+            data_representation_agent, config, persistent_messages
+        )
+        # Accumulate state
+        persistent_messages += get_final_result_messages(messages)
+        structured_outputs.append(output)
+        
+        # Step 3: Model Architecture
+        messages, output = await run_model_architecture_step(
+            model_architecture_agent, config, persistent_messages
+        )
+        # Accumulate state
+        persistent_messages += get_final_result_messages(messages)
+        structured_outputs.append(output)
+        
+        # Step 4: Model Training
+        messages, training_output = await run_model_training_step(
+            training_agent, config, persistent_messages
+        )
+        # Accumulate state
+        persistent_messages += get_final_result_messages(messages)
+        structured_outputs.append(training_output)
+        
+        # Step 5: Model Inference
+        messages, model_inference_output = await run_model_inference_step(
+            inference_agent, config, training_output, persistent_messages
+        )
+        # Accumulate state
+        persistent_messages += get_final_result_messages(messages)
+        structured_outputs.append(model_inference_output)
+        
+        # Step 6: Prediction Exploration
+        messages, output = await run_prediction_exploration_step(
+            prediction_exploration_agent, config, iteration, model_inference_output,
+            persistent_messages
+        )
+        # Accumulate state
+        persistent_messages += get_final_result_messages(messages)
+        structured_outputs.append(output)
+    
+    # Save all outputs
     for structured_output in structured_outputs:
         save_step_output(config, type(structured_output).__name__, structured_output, iteration)
-
+    
     return structured_outputs
 
 @weave.op(call_display_name=lambda call: f"Iteration {call.inputs.get('iteration', 0)}")
-async def run_iteration(config: Config, model, iteration, feedback, tools, last_split_strategy):
+async def run_iteration(config: Config, model, iteration, feedback, tools, last_split_strategy, 
+                       resume_from: tuple = None):
+    """
+    Run a single iteration.
+    
+    Args:
+        resume_from: Optional tuple of (run_id, step_name, iteration) or 
+                     (run_id, step_name, iteration, source_user_prompt) to fork from
+    """
     agents_dict = create_agents(config=config, model=model, tools=tools)
+    
+    # Initialize RunManager (handles forking if resume_from is set)
+    # Extract source_user_prompt if provided
+    source_user_prompt = None
+    if resume_from and len(resume_from) == 4:
+        source_user_prompt = resume_from[3]
+    
+    run_manager = RunManager(config, resume_from=resume_from, source_user_prompt=source_user_prompt)
 
     if iteration == 0:
         base_prompt = get_iteration_0_prompt(config)
@@ -423,5 +581,6 @@ async def run_iteration(config: Config, model, iteration, feedback, tools, last_
         base_prompt=base_prompt,
         iteration=iteration,
         last_split_strategy=last_split_strategy,
+        run_manager=run_manager,
     )
     return structured_outputs

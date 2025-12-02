@@ -20,8 +20,14 @@ class PredictionExploration(BaseModel):
         """
     )
 
-def get_prediction_exploration_prompt(validation_path, inference_path):
-    return f"""
+def get_prediction_exploration_prompt(validation_path, inference_path, user_prompt: str = None, is_fork: bool = False):
+    base_prompt = f"""
         Your next task: Generate predictions on the validation set ({validation_path}) and identify where those predictions succeed, fail, and prediction biases.
         You can use but not modify the inference script ({inference_path}). If you need to write code for prediction generation and/or analysis, create a separate script.
         """
+    
+    # Include user prompt if provided
+    if user_prompt:
+        return f"{base_prompt.strip()}\n\nUser instructions: {user_prompt}"
+    
+    return base_prompt

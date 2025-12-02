@@ -45,6 +45,8 @@ def get_model_inference_prompt(config, training_artifacts_dir):
     
     #TODO "Except the target column" - use target/class/numeric_label?
     #TODO validate the script uses the artifacts-dir stuff and has not hard-coded paths
+    # Include user prompt if provided
+    user_instructions = f"\n\nUser instructions: {config.user_prompt}" if getattr(config, "user_prompt", None) else ""
     return f"""
     Your next task: create inference.py file.
     If your model can be accelerated by GPU, implement the code to use GPU.
@@ -54,7 +56,7 @@ def get_model_inference_prompt(config, training_artifacts_dir):
     --input (an input file path). This file is of the same format as your training data (except the target column)
     --output (the output file path). {output_file_description}
     --artifacts-dir (the folder that contains training artifacts from the training step that are needed to run inference (for example model weights, tokenizers, etc..). The following dir should be used as a default: '{training_artifacts_dir}'. If a different path is provided, your script must adapt to the new source. You can assume the artifact files will always have the same name. 
-    The script must not accept any other parameters.
+    The script must not accept any other parameters.{user_instructions}
     """
 
 def lock_inference_file(path_to_inference_file):

@@ -1,6 +1,7 @@
 import subprocess
 import traceback
 import shutil
+import warnings
 
 from pydantic import BaseModel, Field
 from pydantic.json_schema import SkipJsonSchema
@@ -29,22 +30,6 @@ class ModelTraining(BaseModel):
         List of files created during model training step. Populated programmatically.
         """
     )
-
-def get_model_training_prompt(config):
-    return f"""
-    Your next task: implement training code and train your model.
-    Training guidelines:
-    - Train until validation performance stops improving, and output the best checkpoint.
-    - Save all artifacts needed for inference (model file, tokenizers, etc...).
-    - If you failed to implement your intended model, when you call the final_output tool, put into unresolved issues what went wrong.
-    {"If your model can be accelerated by GPU, implement the code to use GPU." if config.check_gpu_availability() else ""}
-
-    The train script should take the following parameters
-    --train-data (a path to the training data csv)
-    --validation-data (a path to the validation data csv. For example for the purposes of early-stopping. If the training script doesn't need validation data, still include the argument for compatibility and don't use it.)
-    --artifacts-dir (path to a directory that will be populated by the training script with artifacts needed to use the trained model for predictions (e.g. produced model weights, produced tokenizers, ...). This directory should not contain any other external sources like imported scripts, conda packages, foundation models, etc..)
-    The script must not accept any other parameters.
-    """
 
 def retrain_and_check(config, train_data_path, valid_data_path, train_script_path, model_file_name):
     run_dir = config.runs_dir / config.agent_id
@@ -80,10 +65,17 @@ def retrain_and_check(config, train_data_path, valid_data_path, train_script_pat
         # Check if model file was created
         expected_model_path = temp_artifacts_dir / model_file_name
         if not expected_model_path.exists():
-            error_msg = f"Training script validation failed: After running the training script, model file '{model_file_name}' was not created in the specified artifacts folder. "
+            # List all files that were actually created
+            created_files = list(temp_artifacts_dir.iterdir())
+            created_files_names = [f.name for f in created_files]
+            error_msg = f"Training script validation failed: After running the training script, model file '{model_file_name}' was not created in the specified artifacts folder ({temp_artifacts_dir}). "
             error_msg += f"Return code: {training_out.returncode}. "
-            error_msg += f"Stderr: {training_out.stderr}"
-            error_msg += f"Stdout: {training_out.stdout}"
+            if created_files_names:
+                error_msg += f"Files found in artifacts folder: {created_files_names}. "
+            else:
+                error_msg += f"No files were created in the artifacts folder. "
+            error_msg += f"Stderr: {training_out.stderr.decode() if isinstance(training_out.stderr, bytes) else training_out.stderr} "
+            error_msg += f"Stdout: {training_out.stdout.decode() if isinstance(training_out.stdout, bytes) else training_out.stdout}"
             raise ModelRetry(error_msg)
         print('TRAINING REPRODUCIBILITY OK')
 
@@ -113,9 +105,20 @@ def get_dataset_subset(data_path, target_col, task_type):
 
     if task_type == 'classification':
         # For classification: balance samples per label
-        subset = df.groupby(target_col, group_keys=False).apply(
-            lambda x: x.sample(n=min(len(x), clf_per_label_samples), random_state=42)
-        ).reset_index(drop=True)
+        # Suppress FutureWarning about groupby.apply operating on grouping columns
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', category=FutureWarning)
+            try:
+                # Try with include_groups parameter (pandas >= 2.2.0)
+                subset = df.groupby(target_col, group_keys=False).apply(
+                    lambda x: x.sample(n=min(len(x), clf_per_label_samples), random_state=42),
+                    include_groups=False
+                ).reset_index(drop=True)
+            except TypeError:
+                # Fall back to old behavior if include_groups is not available
+                subset = df.groupby(target_col, group_keys=False).apply(
+                    lambda x: x.sample(n=min(len(x), clf_per_label_samples), random_state=42)
+                ).reset_index(drop=True)
     elif task_type == 'regression':
         # For regression: random sample from entire dataset
         total_samples = min(len(df), reg_samples)
@@ -124,3 +127,26 @@ def get_dataset_subset(data_path, target_col, task_type):
         raise ValueError(f"Unknown task type: {task_type}. Supported types are 'classification' and 'regression'.")
 
     return subset
+
+
+def get_model_training_prompt(user_prompt: str = None, is_fork: bool = False):
+    """
+    Prompt for implementing and running model training.
+
+    Supports an optional user_prompt (including when forking) that is
+    appended as explicit user instructions.
+    """
+    base_prompt = """
+    Your next task: implement any necessary code for training a model. Then train a single model.
+    The train script should save any files necessary to use the trained model for predictions (e.g. model file, tokenizers, ...).
+    If your model can be accelerated by GPU, implement the code to use GPU.
+    """
+    
+    if user_prompt:
+        return f"""
+    {base_prompt.strip()}
+    
+    User instructions: {user_prompt}
+    """
+    
+    return base_prompt
