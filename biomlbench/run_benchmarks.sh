@@ -1,32 +1,74 @@
 #!/usr/bin/env bash
 
-# Before running:
-# - fill in a and adjust biomlbench/agentomics-ml/config.yaml
-# - needs the conda agentomics_env created already
-# - ENV https_proxy (etc.) variables need to be hardcoded in dockerfiles if using a proxy
-REPOS_DIR="/home/$USER/repos" #this needs to be configured to the agentomics repository parent directory (biomlbench will be pulled as a sibling to the agentomics repo)
-SPEND_LIMIT=10
-DSET=proteingym-dms/SPIKE_SARS2_Starr_2020_binding
-# DSET=polarishub/tdcommons-caco2-wang
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --repos-dir)
+      REPOS_DIR="$2"
+      shift 2
+      ;;
+    --spend-limit)
+      SPEND_LIMIT="$2"
+      shift 2
+      ;;
+    --dset)
+      DSET="$2"
+      shift 2
+      ;;
+    --split-allowed-iterations)
+      SPLIT_ALLOWED_ITERATIONS="$2"
+      shift 2
+      ;;
+    --iterations)
+      ITERATIONS="$2"
+      shift 2
+      ;;
+    --model)
+      MODEL="$2"
+      shift 2
+      ;;
+    --user-prompt)
+      USER_PROMPT="$2"
+      shift 2
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
 
-# Drug discovery (polarishub/)
-# polaris-pkis2-egfr-wt-c-1 **pr_auc** CLF (targetcol CLASS_EGFR) README-OK
-# polaris-adme-fang-hclint-1 **pearsonr** REG README-OK
-# polaris-adme-fang-hppb-1 **pearsonr** REG README-OK
-# polaris-adme-fang-solu-1 **pearsonr** REG README-OK
-# tdcommons-cyp2d6-substrate-carbonmangels **pr_auc** CLF README-OK
-# tdcommons-lipophilicity-astrazeneca mean_absolute_error REG README-OK
-# tdcommons-herg roc_auc CLF README-OK
-# tdcommons-bbb-martins roc_auc CLF README-OK
-# tdcommons-caco2-wang mean_absolute_error REG README-OK
+update_config() {
+  set -a
+  source "$REPOS_DIR/agentomics-ml/.env" 2>/dev/null
+  set +a
 
-# Protein engineering (proteingym-dms/)
-# SPIKE_SARS2_Starr_2020_binding REG
-# SPA_STAAU_Tsuboyama_2023
-# PSAE_PICP2_indels
-# CBX4_HUMAN_multi-sub
-# Q8EG35_SHEON_indels
-# CSN4_MOUSE_indels
+  local cfg="$REPOS_DIR/agentomics-ml/biomlbench/agentomics-ml/config.yaml"
+  local escaped_prompt=$(printf '%s\n' "$USER_PROMPT" | sed -e 's/[\/&]/\\&/g')
+
+  for var in WANDB_API_KEY WANDB_PROJECT_NAME WANDB_ENTITY SPLIT_ALLOWED_ITERATIONS ITERATIONS MODEL; do
+    local val="${!var}"
+    if grep -q "^    $var:" "$cfg"; then
+      sed -i "s|^    $var:.*|    $var: $val|" "$cfg"
+    else
+      sed -i "/env_vars:/a\    $var: $val" "$cfg"
+    fi
+  done
+
+  if grep -q "^    USER_PROMPT:" "$cfg"; then
+    sed -i "s|^    USER_PROMPT:.*|    USER_PROMPT: \"$escaped_prompt\"|" "$cfg"
+  else
+    sed -i "/env_vars:/a\    USER_PROMPT: \"$escaped_prompt\"" "$cfg"
+  fi
+}
+
+ensure_agentomics_env() {
+  if ! conda env list | grep -q "^agentomics-env "; then
+    echo "Creating agentomics-env conda environment"
+    conda env create -f environment.yaml -q
+  fi
+}
+
+update_config
+ensure_agentomics_env
 
 # Create API key
 API_KEY_OUTPUT=$(cd "$REPOS_DIR/agentomics-ml" && PYTHONPATH="$REPOS_DIR/agentomics-ml/src" conda run -n agentomics-env python src/utils/api_keys_utils.py create --name "agentomics_run_$(date +%s)" --limit "$SPEND_LIMIT")
