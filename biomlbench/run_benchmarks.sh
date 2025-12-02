@@ -118,8 +118,8 @@ setup_biomlbench_repo() {
   ./scripts/pull_prebuilt_images.sh
   biomlbench prepare -t $DSET
 
-  # Update container config: set gpus to 1 and nano_cpus to 32000000000
-  sed -i 's/"nano_cpus": 12000000000/"nano_cpus": 32000000000/' "$REPOS_DIR/biomlbench/environment/config/container_configs/default.json"
+  # Update container config: set gpus to 1 and nano_cpus to 48000000000
+  sed -i 's/"nano_cpus": 12000000000/"nano_cpus": 48000000000/' "$REPOS_DIR/biomlbench/environment/config/container_configs/default.json"
   sed -i 's/"gpus": 0/"gpus": 1/' "$REPOS_DIR/biomlbench/environment/config/container_configs/default.json"
 }
 
