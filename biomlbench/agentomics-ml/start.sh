@@ -20,7 +20,7 @@ timeout $TIME_LIMIT_SECS /opt/conda/envs/agentomics-env/bin/python /home/agent/s
     --user-prompt "$USER_PROMPT" \
     --split-allowed-iterations $SPLIT_ALLOWED_ITERATIONS \
     --timeout $TIME_LIMIT_SECS \
-    --tags biomlbench_test_v0
+    --tags $TAGS
 
 if [ $? -eq 124 ]; then
   echo "Timed out after $TIME_LIMIT"
