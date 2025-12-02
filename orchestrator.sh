@@ -2,16 +2,23 @@
 
 REPOS_DIR="/home/$USER/repos" #this needs to be configured to the agentomics repository parent directory (biomlbench will be pulled as a sibling to the agentomics repo)
 
-SPEND_LIMIT=10
-MODELS=("openai/gpt-5" "openai/gpt-5-codex" "anthropic/claude-sonnet-4.5" "anthropic/claude-haiku-4.5")
+SPEND_LIMIT=100
+MODELS=("openai/gpt-5.1-codex")
 ITERATIONS=100 # Set to a large number because timeout will take precedence anyways
 TIME_BUDGET_S=$(( 8 * 60 * 60 )) # 8 hours, biomlbench datasets are set to 8h automatically and will not react to this
+# BASELINE_ITERS currently not parametrizable, hardcoded to 4
 SPLIT_ALLOWED_ITERS=4
 TAGS=("experiment_orchestrator" "test_run")
-REPETITIONS=2
+REPETITIONS=1
 USER_PROMPT="Create a machine learning model that will generalize to new unseen data."
 
-GENOMIC_DATASETS=("AGO2_CLASH_Hejret")
+GENOMIC_DATASETS=(
+    "AGO2_CLASH_Hejret"
+    "human_enhancers_cohn"
+    "human_enhancers_ensembl"
+    "human_ocr_ensembl"
+    "drosophila_enhancers_stark"
+)
 BIOMLBENCH_DATASETS=(
   "polarishub/polaris-pkis2-egfr-wt-c-1"
   "polarishub/polaris-adme-fang-hclint-1"
@@ -77,3 +84,4 @@ for repetition in $(seq 1 $REPETITIONS); do
         done
     done
 done
+echo 'Orchestrator done'
