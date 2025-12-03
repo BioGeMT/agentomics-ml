@@ -1,5 +1,6 @@
 from pathlib import Path
 import shutil
+from utils.snapshots import unlock_file
 
 def save_splits_to_fallback(config):
     runs_dir = config.runs_dir
@@ -28,6 +29,11 @@ def load_fallbacks_to_rundir(config, iteration):
     fallback_dir = Path(fallbacks_dir) / config.agent_id
     train_name = 'train.csv'
     val_name = 'validation.csv'
+    #make sure files are writeable and readable, run_dir files will get re-locked at the start of each iteration if needed
+    unlock_file(fallback_dir / train_name)
+    unlock_file(fallback_dir / val_name)
+    unlock_file(run_dir / train_name)
+    unlock_file(run_dir / val_name)
 
     failed_to_retrieve = False
     if (fallback_dir / train_name).exists():

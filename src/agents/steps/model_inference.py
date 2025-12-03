@@ -56,9 +56,3 @@ def get_model_inference_prompt(config, training_artifacts_dir):
     --artifacts-dir (the folder that contains training artifacts from the training step that are needed to run inference (for example model weights, tokenizers, etc..). The following dir should be used as a default: '{training_artifacts_dir}'. If a different path is provided, your script must adapt to the new source. You can assume the artifact files will always have the same name. 
     The script must not accept any other parameters.
     """
-
-def lock_inference_file(path_to_inference_file):
-    inference_file = Path(path_to_inference_file)
-    if inference_file.exists():
-        read_only_mode = stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH
-        os.chmod(inference_file, read_only_mode)

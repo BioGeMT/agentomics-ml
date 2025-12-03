@@ -11,7 +11,7 @@ from pydantic_ai.messages import ModelResponse, ToolCallPart, ToolReturnPart, Mo
 
 from agents.agent_utils import run_agent
 from agents.prompts.prompts_utils import get_iteration_prompt, get_system_prompt, get_iteration_0_prompt
-from agents.steps.model_inference import ModelInference, get_model_inference_prompt, lock_inference_file
+from agents.steps.model_inference import ModelInference, get_model_inference_prompt
 from agents.steps.data_split import DataSplit, get_data_split_prompt
 from agents.steps.model_architecture import ModelArchitecture, get_model_architecture_prompt
 from agents.steps.data_representation import DataRepresentation, get_data_representation_prompt
@@ -188,7 +188,6 @@ def create_agents(config: Config, model, tools):
             raise ModelRetry("Inference file contains references to dataset split files ('train.csv' or 'validation.csv' detected), which will not be accessible during final testing.")
         #TODO improve validation with info about the artifacts-dir
         run_inference_and_log(config, iteration=-1, evaluation_stage='dry_run')
-        lock_inference_file(result.path_to_inference_file)
         result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
         return result      
     

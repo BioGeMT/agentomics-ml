@@ -123,10 +123,20 @@ def reset_snapshot_if_val_split_changed(config, iteration, old_fingerprint, new_
 def lock_split_files(config):
     train_split = config.runs_dir / config.agent_id / 'train.csv'
     validation_split = config.runs_dir / config.agent_id / 'validation.csv'
-    
-    read_only_mode = stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH
-    os.chmod(train_split, read_only_mode)
-    os.chmod(validation_split, read_only_mode)
+    lock_file(train_split)
+    lock_file(validation_split)
+
+def lock_file(file_path):
+    file = Path(file_path)
+    if file.exists():
+        read_only_mode = stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH
+        os.chmod(file, read_only_mode)
+
+def unlock_file(file_path):
+    file = Path(file_path)
+    if file.exists():
+        write_bits = stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
+        os.chmod(file, os.stat(file).st_mode | write_bits)
 
 def snapshot(config, iteration, structured_outputs, delete_old_snapshot=True):
     snapshot_dir = config.snapshots_dir / config.agent_id
