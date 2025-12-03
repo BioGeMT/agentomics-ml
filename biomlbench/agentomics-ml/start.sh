@@ -1,6 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-git clone https://github.com/BioGeMT/agentomics-ml.git /home/agentomics-ml
+git clone -b $PULL_BRANCH https://github.com/BioGeMT/agentomics-ml.git /home/agentomics-ml
 
 cp -r /home/agentomics-ml/src /home/agent/src
 
