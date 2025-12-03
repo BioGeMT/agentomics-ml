@@ -68,7 +68,10 @@ class BashProcess:
 
                 return self.process_output(output, command)
             except subprocess.TimeoutExpired as e:
-                return f"Command timed out after {self.timeout} seconds: {e}"
+                msg = f"Command timed out after {self.timeout} seconds: {e}"
+                if "python" in command and ".py" in command:
+                    msg += "\nYou should use run_python_tool for running python scripts"
+                return msg
     
     def process_output(self, output: str, command: str) -> str:
         """
