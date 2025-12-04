@@ -538,7 +538,7 @@ else
     fi
     OLLAMA_FLAGS=()
     if [ "$OLLAMA" = true ]; then
-        OLLAMA_FLAGS+=(--add-host=host.docker.internal:host-gateway)
+        OLLAMA_FLAGS+=(--network="host")
     fi
 
     ENV_FILE_PATH="$(pwd)/.env"

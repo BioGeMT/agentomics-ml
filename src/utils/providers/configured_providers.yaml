@@ -16,8 +16,8 @@ providers:
 
   - name: "Ollama"
     apikey: ""
-    base_url: "http://host.docker.internal:11434/v1"
-    list_models_endpoint: "http://host.docker.internal:11434/api/tags"
+    base_url: "http://localhost:11434/v1"
+    list_models_endpoint: "http://localhost:11434/api/tags"
 
   #Custom provider example
   # - name: "Vercel"
