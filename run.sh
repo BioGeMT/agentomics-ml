@@ -228,7 +228,7 @@ else
     fi
     OLLAMA_FLAGS=()
     if [ "$OLLAMA" = true ]; then
-        OLLAMA_FLAGS+=(--add-host=host.docker.internal:host-gateway)
+        OLLAMA_FLAGS+=(--network="host")
     fi
 
     PROVIDERS_CONFIG_FILE="src/utils/providers/configured_providers.yaml"
