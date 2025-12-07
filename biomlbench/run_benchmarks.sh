@@ -179,8 +179,9 @@ CONFIG_PATH=$(find "$RESULTS_DIR" -name "config.json" -type f 2>/dev/null | head
 cd "$REPOS_DIR/agentomics-ml" && PYTHONPATH="$REPOS_DIR/agentomics-ml/src" conda run -n agentomics-env python src/utils/api_keys_utils.py cleanup-and-log --config-path "$CONFIG_PATH" --api-key-hash "$API_KEY_HASH"
 
 # Optional removal of conda (uses a lot of storage)
-cd "$REPOS_DIR/biomlbench"
-find . -type d -name ".conda" -exec rm -rf {} +
+# cd "$REPOS_DIR/biomlbench"
+# find . -type d -name ".conda" -exec rm -rf {} +
+
 echo DONE
 # Optional cleanup
 cleanup
