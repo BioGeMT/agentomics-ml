@@ -81,6 +81,7 @@ for repetition in $(seq 1 $REPETITIONS); do
                 --split-allowed-iterations "$SPLIT_ALLOWED_ITERS" \
                 --model "$model" \
                 --user-prompt "$USER_PROMPT" \
+                --pull-branch "$PULL_BRANCH" \
                 --tags "${TAGS[@]}"
         done
     done
