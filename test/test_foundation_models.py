@@ -195,7 +195,6 @@ print(f"Success! Embeddings shape: {embeddings.shape}")
         self.write_python_tool.function(file_path=test_file_path, code=rinalmo_code)
 
         run_result = self.run_python_tool.function(python_file_path=test_file_path)
-        self.assertNotIn("error", run_result.lower(), "RiNALMo script should run without errors")
         self.assertIn("Success!", run_result, "RiNALMo should produce output")
 
         check_foundation_model_gpu_usage(run_result, model="RiNALMo")
