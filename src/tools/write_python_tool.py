@@ -36,8 +36,8 @@ def create_write_python_tool(agent_id, max_retries, runs_dir):
         if not Path(file_path).parent.exists():
             return f"Error: Directory {Path(file_path).parent} does not exist."
         
-        if len(file_path) > 255:
-            return f"Error: {file_path} is too long: length {len(file_path)} > 255 characters."
+        if len(str(file_path)) > 255:
+            return f"Error: {file_path} is too long: length {len(str(file_path))} > 255 characters."
 
         # Write 
         with open(file_path, "w") as f:
