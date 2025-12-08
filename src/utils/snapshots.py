@@ -11,6 +11,8 @@ from run_logging.logging_helpers import is_wandb_active
 
 def get_metrics_from_file(file_path):
     metrics = {}
+    if not file_path.is_file():
+        return metrics
     with open(file_path, "r") as f:
         for line in f:
             key, value = line.strip().split(": ")
@@ -29,16 +31,10 @@ def get_valid_and_train_metrics(base_path):
     return all_metrics
 
 def get_best_metrics(config):
-    if(not best_metrics_exists(config)):
-        return {}
-    else:
-        return get_valid_and_train_metrics(config.snapshots_dir / config.agent_id)
+    return get_valid_and_train_metrics(config.snapshots_dir / config.agent_id)
 
 def get_new_metrics(config):
-    if(not new_metrics_exists(config)):
-        return {}
-    else:
-        return get_valid_and_train_metrics(config.runs_dir / config.agent_id)
+    return get_valid_and_train_metrics(config.runs_dir / config.agent_id)
 
 def get_new_and_best_metrics(config):
     return get_new_metrics(config), get_best_metrics(config)
