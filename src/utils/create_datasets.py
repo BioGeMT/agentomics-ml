@@ -113,3 +113,6 @@ def generate_genomic_benchmarks_files():
 def generate_dataset_files():
     generate_genomic_benchmarks_files()
     generate_mirbench_files()
+
+if __name__ == "__main__":
+    generate_dataset_files()
