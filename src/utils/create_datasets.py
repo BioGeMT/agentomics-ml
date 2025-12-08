@@ -28,22 +28,12 @@ def generate_mirbench_files():
         "AGO2_CLASH_Hejret2023": {1:1, 0:0},
     }
     class_col = "target"
-    numeric_label_col = "numeric_label"
     for dataset_name in dataset_names_splits.keys():
         local_dset_path = repo_path / "datasets" / dataset_name
         os.makedirs(local_dset_path, exist_ok=True)
 
         with open(f"{local_dset_path}/dataset_description.md", "w") as f:
             f.write(dataset_desrciption[dataset_name])
-
-        with open(f"{local_dset_path}/metadata.json", "w") as f:
-            metadata = {
-                "task_type" : "classification",
-                "label_to_scalar": dataset_label_to_scalar[dataset_name],
-                "class_col": class_col,
-                "numeric_label_col": numeric_label_col,
-            }
-            f.write(json.dumps(metadata, indent=4))
 
     for dataset_name, splits in dataset_names_splits.items():
         for split in splits:
@@ -52,9 +42,8 @@ def generate_mirbench_files():
             mirbench_download_dataset(dataset_name, download_path=download_path/'miRBench', split=split)
             df = pd.read_csv(download_path/'miRBench', sep="\t")
             df = df.rename(columns={"label": class_col})
-            df[numeric_label_col] = df[class_col].map(dataset_label_to_scalar[dataset_name])
-            df.drop(columns=[class_col]).to_csv(f"{local_dset_path}/{split}.csv", index=False)
-            df.drop(columns=[class_col, numeric_label_col]).to_csv(f"{local_dset_path}/{split}.no_label.csv", index=False)
+            # Keep original target column - 'numeric_label' will be created during preparation
+            df.to_csv(f"{local_dset_path}/{split}.csv", index=False)
 
 def generate_genomic_benchmarks_files():
     from genomic_benchmarks.loc2seq import download_dataset
@@ -83,20 +72,10 @@ def generate_genomic_benchmarks_files():
 
         local_dset_path = repo_path / "datasets" / dataset_name
         class_col = "target"
-        numeric_label_col = "numeric_label"
         os.makedirs(local_dset_path, exist_ok=True)
 
         with open(f"{local_dset_path}/dataset_description.md", "w") as f:
             f.write(dataset_description[dataset_name])
-
-        with open(f"{local_dset_path}/metadata.json", "w") as f:
-            metadata = {
-                "task_type" : "classification",
-                "label_to_scalar": dataset_label_to_scalar[dataset_name],
-                "class_col": class_col,
-                "numeric_label_col": numeric_label_col,
-            }
-            f.write(json.dumps(metadata, indent=4))
 
         for split in ["test","train"]:
             data = []
@@ -106,9 +85,8 @@ def generate_genomic_benchmarks_files():
                     seq = sequence_file.read_text().strip()
                     data.append({"sequence": seq, class_col: label})
             df = pd.DataFrame(data)
-            df[numeric_label_col] = df[class_col].map(dataset_label_to_scalar[dataset_name])
-            df.drop(columns=[class_col]).to_csv(f"{local_dset_path}/{split}.csv", index=False)
-            df.drop(columns=[class_col, numeric_label_col]).to_csv(f"{local_dset_path}/{split}.no_label.csv", index=False)
+            # Keep original target column - 'numeric_label' will be created during preparation
+            df.to_csv(f"{local_dset_path}/{split}.csv", index=False)
 
 def generate_dataset_files():
     generate_genomic_benchmarks_files()
