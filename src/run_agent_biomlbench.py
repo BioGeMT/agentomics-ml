@@ -200,6 +200,7 @@ def generate_preds_for_biomlbench_proteingym(config):
                 if inference_out.returncode != 0:
                     print("Error during inference:")
                     print(inference_out.stderr.decode())
+                    wandb.log({"error_flags/proteingym_cv_inference_error": f"{fold_col}_{current_test_fold_value}"}, step=iteration)
                 print('------INFERENCE OUTPUTS-------')
                 print(inference_out.stdout.decode() if isinstance(inference_out.stdout, bytes) else inference_out.stdout)
                 print(inference_out.stderr.decode() if isinstance(inference_out.stderr, bytes) else inference_out.stderr)
