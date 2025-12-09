@@ -14,7 +14,7 @@ REPETITIONS=1
 USER_PROMPT="Create a machine learning model that will generalize to new unseen data."
 
 GENOMIC_DATASETS=(
-    "AGO2_CLASH_Hejret"
+    "AGO2_CLASH_Hejret2023"
     "human_enhancers_cohn"
     "human_enhancers_ensembl"
     "human_ocr_ensembl"
