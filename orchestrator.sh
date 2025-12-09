@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-REPOS_DIR="/home/$USER/repos" #this needs to be configured to the agentomics repository parent directory (biomlbench will be pulled as a sibling to the agentomics repo)
+REPOS_DIR="/SCRATCH" #this needs to be configured to the agentomics repository parent directory (biomlbench will be pulled as a sibling to the agentomics repo)
 
 SPEND_LIMIT=100
-MODELS=("openai/gpt-5.1-codex")
+MODELS=("openai/gpt-5.1-codex-max")
 ITERATIONS=100 # Set to a large number because timeout will take precedence anyways
 TIME_BUDGET_S=$(( 8 * 60 * 60 )) # 8 hours, biomlbench datasets are set to 8h automatically and will not react to this
 SPLIT_ALLOWED_ITERS=4
