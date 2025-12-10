@@ -12,6 +12,11 @@ def save_splits_to_fallback(config):
 
     train_name = 'train.csv'
     val_name = 'validation.csv'
+    #make sure files are writeable and readable, run_dir files will get re-locked at the start of each iteration if needed
+    unlock_file(fallback_dir / train_name)
+    unlock_file(fallback_dir / val_name)
+    unlock_file(run_dir / train_name)
+    unlock_file(run_dir / val_name)
 
     if (run_dir / train_name).exists():
         shutil.copy2(run_dir / train_name, fallback_dir / train_name)
