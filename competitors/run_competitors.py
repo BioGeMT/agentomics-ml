@@ -19,20 +19,18 @@ os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_DIR = PROJECT_ROOT / "src"
 sys.path.insert(0, str(SRC_DIR))
-
 load_dotenv(PROJECT_ROOT / ".env")
 
-# Load config early to set provisioning key before api_keys import
+from evaluation import INFERENCE_STAGE, evaluate_submission, rerun_inference
+from utils.api_keys import create_new_api_key, delete_api_key, get_api_key_usage
+from utils.metrics import get_task_to_metrics_names
+
 HERE = Path(__file__).resolve().parent
 CONFIG_PATH = HERE / "config.yaml"
 with open(CONFIG_PATH, "r") as fh:
     _config = yaml.safe_load(fh)
     if _config.get("enable_cost_tracking") and _config.get("provisioning_key"):
         os.environ["PROVISIONING_OPENROUTER_API_KEY"] = _config["provisioning_key"]
-
-from evaluation import INFERENCE_STAGE, evaluate_submission, rerun_inference
-from utils.metrics import get_task_to_metrics_names
-from utils.api_keys import create_new_api_key, get_api_key_usage, delete_api_key
 
 CLONE_DIR = HERE / "biomlbench"
 RESULTS_DIR = HERE / "results"

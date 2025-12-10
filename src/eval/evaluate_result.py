@@ -1,9 +1,11 @@
 import argparse
-import sys
-import pandas as pd
-import numpy as np
-from utils.metrics import get_classification_metrics_functions, get_regression_metrics_functions
 import os
+import sys
+
+import numpy as np
+import pandas as pd
+
+from utils.metrics import get_classification_metrics_functions, get_regression_metrics_functions
 
 def get_metrics(results_file, test_file, task_type, output_file=None, numeric_label_col="numeric_label", 
                     pred_col="prediction", prob_col_prefix = 'probability_', delete_preds=False):
