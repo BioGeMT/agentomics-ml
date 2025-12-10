@@ -37,7 +37,7 @@ def create_key(args):
 def cleanup_and_log(args):
     dotenv.load_dotenv()
     config = load_run_config(args.config_path)
-    resume_wandb_run(config)
+    resume_wandb_run(config, dir='./cleanup_wandb_logs')
 
     usage = get_api_key_usage(args.api_key_hash)
     wandb.log({
