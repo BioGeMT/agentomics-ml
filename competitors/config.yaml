@@ -14,15 +14,15 @@ step_limit: 99999999  #  unlimited - agents controlled by time_limit_secs only
 
 agents:
   aide:
-    model: openai/gpt-5-mini
+    model: openai/o3
   biomni:
-    model: openai/gpt-5-mini
+    model: openai/gpt-5.1-codex-max
     self_critic: true
     iterations: 99999999
   stella:
-    model: openai/gpt-5-mini
+    model: openai/gpt-5.1-codex-max
   oneshot:
-    model: openai/gpt-5-mini
+    model: openai/gpt-5.1-codex-max
 
 datasets:
   - ago2_clash_hejret
