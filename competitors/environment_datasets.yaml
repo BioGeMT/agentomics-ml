@@ -1,0 +1,11 @@
+name: agentomics-datasets
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python>=3.10
+  - pandas
+  - pip
+  - pip:
+    - genomic-benchmarks
+    - miRBench
