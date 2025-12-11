@@ -76,6 +76,7 @@ def run_agent(config: dict, agent: str, dataset: str) -> Path:
         config["openrouter_key"] = key_result['key']
 
     try:
+        start_time = time.time()
         env = build_env(os.environ, config, agent)
         output_subdir = RESULTS_DIR / f"{dataset}_{agent}_{timestamp}"
         output_subdir.mkdir(parents=True, exist_ok=True)
@@ -105,10 +106,13 @@ def run_agent(config: dict, agent: str, dataset: str) -> Path:
                 check=False,
             )
 
+        duration_seconds = time.time() - start_time
+
         if result.returncode != 0:
             raise RuntimeError(f"Agent {agent} failed on dataset {dataset} with exit code {result.returncode}")
 
-        # Cost tracking: save usage
+        (output_subdir / "duration.json").write_text(json.dumps({"duration_seconds": duration_seconds}, indent=2))
+
         if key_hash:
             usage_data = get_api_key_usage(key_hash)
             (output_subdir / "cost.json").write_text(json.dumps({"cost_usd": usage_data['usage']}, indent=2))
@@ -208,6 +212,12 @@ def main() -> int:
                 cost_data = json.loads(cost_file.read_text())
                 cost_usd = cost_data.get("cost_usd")
 
+            duration_file = artifact_dir.parent / "duration.json"
+            duration_seconds = None
+            if duration_file.exists():
+                duration_data = json.loads(duration_file.read_text())
+                duration_seconds = duration_data.get("duration_seconds")
+
             wandb.init(
                 project=os.environ["WANDB_PROJECT_NAME"],
                 entity=os.environ["WANDB_ENTITY"],
@@ -223,6 +233,8 @@ def main() -> int:
             payload["inference_stage_id"] = INFERENCE_STAGE[inference_stage]
             if cost_usd is not None:
                 payload["cost_usd"] = cost_usd
+            if duration_seconds is not None:
+                payload["duration_seconds"] = duration_seconds
             wandb.log(payload)
             wandb.finish()
 
