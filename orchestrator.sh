@@ -38,7 +38,7 @@ BIOMLBENCH_DATASETS=(
   "proteingym-dms/CSN4_MOUSE_Tsuboyama_2023_1UFM_indels"
 )
 GENOMIC_DATASETS_VAL_METRICS=(
-    "AGO2_CLASH_Hejret:AUPRC"
+    "AGO2_CLASH_Hejret2023:AUPRC"
     "human_enhancers_cohn:ACC"
     "human_enhancers_ensembl:ACC"
     "human_ocr_ensembl:ACC"
