@@ -155,6 +155,10 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
         iter_to_metrics[run_index] = new_metrics
         iter_to_outputs[run_index] = structured_outputs
 
+        if config.time_deadline is not None and time.time() >= config.time_deadline:
+            print('Internal timeout reached, stopping the run.')
+            exit(0)
+
         is_current_new_best = is_new_best(config)
         if(is_current_new_best):
             log_new_best(iteration=run_index)
