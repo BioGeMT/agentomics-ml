@@ -23,6 +23,8 @@ from utils.report_logger import save_step_output
 from run_logging.evaluate_log_run import run_inference_and_log
 from rich.console import Console
 
+console = Console()
+
 def create_agents(config: Config, model, tools):
     data_exploration_agent = Agent(
         model=model,
@@ -291,7 +293,6 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
     persistent_messages = []
     structured_outputs = []
     ctx_replacer_msg = "\nSummarized outputs from your previous steps are in previous messages."
-    console = Console()
 
     data_exploration_deps = {'start_time': datetime.datetime.now()}
     console.print("[bold purple]DATA EXPLORATION STEP[/bold purple]")

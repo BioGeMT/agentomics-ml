@@ -61,13 +61,14 @@ class OpenRouterProvider(Provider):
             return None
         excluded_providers = ["nousresearch"]
         excluded_models = ["deepcogito/cogito-v2-preview-deepseek-671b",
+            "deepseek/deepseek-v3.2-speciale",
             "ibm-granite/granite-4.0-h-micro",
             "baidu/ernie-4.5-21b-a3b",
             "perplexity/sonar-pro-search",
                            ]
         filtered = []
         for model in models:
-            model_id = model.get("id", "")
+            model_id = model.get("id", "").lower()
             pricing = model.get("pricing", {})
             description = model.get("description", "").lower()
             research_keywords = ["deep research", "research model"]

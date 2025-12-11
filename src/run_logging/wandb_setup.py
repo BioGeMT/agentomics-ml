@@ -2,10 +2,31 @@ import wandb
 from dataclasses import asdict
 import dotenv
 import os
+from pathlib import Path
 
 from wandb.errors import CommError
 from run_logging.logging_helpers import login_to_wandb
 import weave
+
+def wandb_is_configured() -> bool:
+    """Return True if W&B looks configured; False otherwise."""
+    # Explicit "off" switches
+    if os.environ.get("WANDB_MODE", "").lower() == "disabled":
+        return False
+    if os.environ.get("WANDB_DISABLED", "").lower() in ("true", "1", "yes"):
+        return False
+
+    # API key present → configured
+    if os.environ.get("WANDB_API_KEY"):
+        return True
+
+    # netrc present → usually means wandb login was done
+    netrc_path = Path.home() / ".netrc"
+    if netrc_path.exists():
+        return True
+
+    return False
+
 
 def setup_logging(config, dir=None):
     dotenv.load_dotenv()
@@ -35,6 +56,12 @@ def setup_logging(config, dir=None):
         return False
 
 def resume_wandb_run(config, dir=None):
+
+    if not wandb_is_configured():
+        os.environ.setdefault("WANDB_MODE", "disabled")
+        print("W&B not configured; skipping wandb resume in test evaluation.")
+        return None
+
     api_key = os.getenv("WANDB_API_KEY")
     wandb_project_name = os.getenv("WANDB_PROJECT_NAME")
     wandb_entity = os.getenv("WANDB_ENTITY")
