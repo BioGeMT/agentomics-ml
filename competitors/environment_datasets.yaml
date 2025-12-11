@@ -7,5 +7,6 @@ dependencies:
   - pandas
   - pip
   - pip:
+    - rich
     - genomic-benchmarks
     - miRBench
