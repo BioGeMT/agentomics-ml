@@ -2,6 +2,17 @@
 
 Run the BioMLBench agents on agentomics datasets with OpenRouter models.
 
+## Prerequisites
+
+If you need to generate Agentomics datasets first (genomic benchmarks, miRBench):
+
+```bash
+conda env create -f environment_datasets.yaml
+conda activate agentomics-datasets
+python ../src/utils/create_datasets.py
+conda deactivate
+```
+
 ## Workflow
 
 1. Edit `config.yaml` to set your OpenRouter key/model, execution limits, agent names, and dataset names.
