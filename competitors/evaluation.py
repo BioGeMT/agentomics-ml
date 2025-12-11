@@ -122,9 +122,9 @@ def rerun_inference(
     if not env_yaml.exists():
         return "exists"
 
-    # For oneshot: just check files exist, skip actual rerun
+    # For zeroshot: just check files exist, skip actual rerun
     # (no tools = static code = deterministic. If we get predictions it means inference run sucessfully)
-    if agent == "oneshot":
+    if agent == "zeroshot":
         return "matches"
 
     # For tool-using agents: 
