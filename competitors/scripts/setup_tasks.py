@@ -8,7 +8,9 @@ import yaml
 
 
 def infer_target(train_df: pd.DataFrame) -> str:
-    return "target" if "target" in train_df.columns else train_df.columns[-1]
+    if "target" not in train_df.columns:
+        raise ValueError(f"Expected 'target' column in train dataframe for genomic benchmarks, but found columns: {list(train_df.columns)}")
+    return "target"
 
 
 def generate_task(clone_dir: Path, dataset_root: Path, templates_dir: Path, competitors_dir: Path, name: str) -> None:
