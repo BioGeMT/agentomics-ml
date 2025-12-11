@@ -15,7 +15,7 @@ from utils.biomlbench_target_utils import get_target_col_from_description
 def run_test_evaluation(config_path, predictions_path, labeled_test_path, label_col, output_metrics_file, biomlbench_grade_dict):
     dotenv.load_dotenv()
     config = load_run_config(config_path)
-    resume_wandb_run(config)
+    resume_wandb_run(config, dir='./cleanup_wandb_logs')
     is_proteingym = 'fitness_score_fold_random_5' in pd.read_csv(predictions_path).columns
     if(is_proteingym):
         print('PROTEINGYM TEST EVAL DETECTED')
