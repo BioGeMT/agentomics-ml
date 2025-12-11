@@ -13,15 +13,16 @@ def infer_target(train_df: pd.DataFrame) -> str:
     return "target"
 
 
-def generate_task(clone_dir: Path, dataset_root: Path, templates_dir: Path, competitors_dir: Path, name: str) -> None:
+def generate_task(clone_dir: Path, prepared_datasets_dir: Path, prepared_test_sets_dir: Path, templates_dir: Path, competitors_dir: Path, name: str) -> None:
     """
     Convert an Agentomics dataset to BioMLBench task format by creating task directory structure,
-    populates it with templated files (prepare.py, config.yaml, grade.py), copies raw data,
+    populates it with templated files (prepare.py, config.yaml, grade.py), copies prepared data,
     and executes the prepare script to generate public/private data splits for agent run.
     """
-    src = dataset_root / name
-    train_df = pd.read_csv(src / "train.csv")
-    test_df = pd.read_csv(src / "test.csv")
+    src_train = prepared_datasets_dir / name
+    src_test = prepared_test_sets_dir / name
+    train_df = pd.read_csv(src_train / "train.csv")
+    test_df = pd.read_csv(src_test / "test.csv")
     target_col = infer_target(train_df)
 
     tasks_pkg = clone_dir / "biomlbench/tasks/agentomics"
@@ -32,7 +33,7 @@ def generate_task(clone_dir: Path, dataset_root: Path, templates_dir: Path, comp
     task_dir.mkdir(parents=True, exist_ok=True)
     (task_dir / "__init__.py").write_text("")
 
-    desc_src = src / "dataset_description.md"
+    desc_src = src_train / "dataset_description.md"
     shutil.copy(desc_src, task_dir / "description.md")
 
     prepare_template = (templates_dir / "prepare_template.py").read_text()
@@ -53,8 +54,8 @@ def generate_task(clone_dir: Path, dataset_root: Path, templates_dir: Path, comp
     public_dir.mkdir(parents=True, exist_ok=True)
     private_dir.mkdir(parents=True, exist_ok=True)
 
-    shutil.copy(src / "train.csv", raw_dir / "train.csv")
-    shutil.copy(src / "test.csv", raw_dir / "test.csv")
+    shutil.copy(src_train / "train.csv", raw_dir / "train.csv")
+    shutil.copy(src_test / "test.csv", raw_dir / "test.csv")
 
     spec = util.spec_from_file_location("agentomics_prepare", task_dir / "prepare.py")
     module = util.module_from_spec(spec)
@@ -68,15 +69,16 @@ def main() -> None:
     script_dir = Path(__file__).resolve().parent
     competitors_dir = script_dir.parent
     clone_dir = competitors_dir / "biomlbench"
-    dataset_root = competitors_dir.parent / "datasets"
+    prepared_datasets_dir = competitors_dir.parent / "prepared_datasets"
+    prepared_test_sets_dir = competitors_dir.parent / "prepared_test_sets"
     templates_dir = competitors_dir / "templates"
 
-    # Prepare ALL datasets found in datasets directory
-    dataset_names = [d.name for d in dataset_root.iterdir() if d.is_dir()]
+    # Prepare ALL datasets found in prepared_datasets directory
+    dataset_names = [d.name for d in prepared_datasets_dir.iterdir() if d.is_dir()]
 
     for name in dataset_names:
         print(f"[setup_tasks] Preparing dataset: {name}")
-        generate_task(clone_dir, dataset_root, templates_dir, competitors_dir, name)
+        generate_task(clone_dir, prepared_datasets_dir, prepared_test_sets_dir, templates_dir, competitors_dir, name)
 
     print(f"[setup_tasks] Generated {len(dataset_names)} Agentomics tasks")
 
