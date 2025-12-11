@@ -42,12 +42,13 @@ def _write_json(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, indent=2))
 
 
-def evaluate_submission(
+def evaluate_classification_submission(
     dataset: str,
     artifact_root: Path,
     data_dir: Path,
     output_dir: Path,
 ) -> tuple[dict[str, float], str]:
+    """Evaluate binary classification submission (genomic benchmarks only)."""
     artifacts = EvaluationArtifacts(dataset=dataset, artifact_root=artifact_root)
     submission = pd.read_csv(artifacts.submission_path)
     dataset_dir = data_dir / "agentomics" / dataset / "raw"
