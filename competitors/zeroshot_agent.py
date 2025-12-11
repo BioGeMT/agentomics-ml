@@ -139,7 +139,7 @@ def generate_and_run_scripts(client, model, data_dir, work_dir, run_name, temper
         3. For inference.py:
         - Accept arguments: --input and --output
         - Load the model from: {submission_dir}/model.pkl
-        - Output a CSV with column 'target' containing a score from 0 to 1
+        - Output a CSV with column 'numeric_label' containing a score from 0 to 1
 
         4. For environment.yaml:
         - Create a conda environment file with all necessary packages

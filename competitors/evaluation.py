@@ -58,8 +58,8 @@ def evaluate_classification_submission(
     numeric_labels, uniques = pd.factorize(labels, sort=True)
     mapping = {str(value): idx for idx, value in enumerate(uniques)}
 
-    # Get probability for class 1 from target column
-    prob_1 = submission["target"].astype(float)
+    # Get probability for class 1 from numeric_label column
+    prob_1 = submission["numeric_label"].astype(float)
     prob_0 = 1 - prob_1
     predictions = (prob_1 >= 0.5).astype(int)
 
