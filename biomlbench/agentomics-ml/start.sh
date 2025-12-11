@@ -11,6 +11,7 @@ format_time() {
   local seconds=$((time_in_sec % 60))
   echo "${hours}hrs ${minutes}mins ${seconds}secs"
 }
+TIME_LIMIT_SECS=$(( 8 * 60 * 60 ))
 export TIME_LIMIT=$(format_time $TIME_LIMIT_SECS)
 
 echo -e "\033[0;31mStarting Agentomics-ML...\033[0m"
