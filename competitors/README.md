@@ -5,7 +5,7 @@ Run the BioMLBench agents on agentomics datasets with OpenRouter models.
 ## Workflow
 
 1. Edit `config.yaml` to set your OpenRouter key/model, execution limits, agent names, and dataset names.
-2. Set W&B credentials in `.env`: `WANDB_API_KEY`, `WANDB_PROJECT_NAME`, `WANDB_ENTITY`.
+2. Set W&B credentials in `agentomics-ml/.env`: `WANDB_API_KEY`, `WANDB_PROJECT_NAME`, `WANDB_ENTITY`.
 3. Run `./setup.sh` to create conda environment (`biomlbench-agents`), clone BioMLBench, install dependencies, and generate Agentomics tasks.
 4. Activate the environment: `conda activate biomlbench-agents`
 5. Execute `python run_competitors.py` to run all agents on all datasets specified in config.
