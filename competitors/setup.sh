@@ -34,7 +34,7 @@ docker rmi biomlbench-env:latest 2>/dev/null || true
 docker rmi aide:latest 2>/dev/null || true
 docker rmi biomni:latest 2>/dev/null || true
 docker rmi stella:latest 2>/dev/null || true
-docker rmi oneshot:latest 2>/dev/null || true
+docker rmi zeroshot:latest 2>/dev/null || true
 
 # Remove millerh1 tags to prevent Docker from reusing pulled images
 # These tags share the same image ID as local tags, so removing local tags
@@ -43,7 +43,7 @@ docker rmi millerh1/biomlbench-env:v0.1a 2>/dev/null || true
 docker rmi millerh1/aide:v0.1a 2>/dev/null || true
 docker rmi millerh1/biomni:v0.1a 2>/dev/null || true
 docker rmi millerh1/stella:v0.1a 2>/dev/null || true
-docker rmi millerh1/oneshot:v0.1a 2>/dev/null || true
+docker rmi millerh1/zeroshot:v0.1a 2>/dev/null || true
 docker rmi millerh1/dummy:v0.1a 2>/dev/null || true
 docker rmi millerh1/mlagentbench:v0.1a 2>/dev/null || true
 
@@ -67,7 +67,7 @@ bash scripts/build_agent.sh --force biomni
 echo "[setup] Building STELLA agent image (fresh build)..."
 bash scripts/build_agent.sh --force stella
 
-echo "[setup] Building 1-shot agent image (fresh build)..."
-bash scripts/build_agent.sh --force oneshot
+echo "[setup] Building zero-shot agent image (fresh build)..."
+bash scripts/build_agent.sh --force zeroshot
 
 echo "[setup] Done! Activate the environment with: conda activate $ENV_NAME"
