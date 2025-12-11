@@ -21,7 +21,7 @@ SRC_DIR = PROJECT_ROOT / "src"
 sys.path.insert(0, str(SRC_DIR))
 load_dotenv(PROJECT_ROOT / ".env")
 
-from evaluation import INFERENCE_STAGE, evaluate_submission, rerun_inference
+from evaluation import INFERENCE_STAGE, evaluate_classification_submission, rerun_inference
 from utils.api_keys import create_new_api_key, delete_api_key, get_api_key_usage
 from utils.metrics import get_task_to_metrics_names
 
@@ -181,7 +181,7 @@ def main() -> int:
             artifact_dir = run_agent(config, agent, dataset)
             output_subdir = artifact_dir.parent  # Use timestamped directory
 
-            metrics, task_type = evaluate_submission(
+            metrics, task_type = evaluate_classification_submission(
                 dataset=dataset,
                 artifact_root=artifact_dir,
                 data_dir=DATA_DIR,
