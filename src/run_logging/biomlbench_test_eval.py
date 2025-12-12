@@ -21,7 +21,8 @@ def run_test_evaluation(config_path, predictions_path, labeled_test_path, label_
         print('PROTEINGYM TEST EVAL DETECTED')
         all_metrics = {}
         unique_original_metrics = set()
-        fold_cols = ['fold_random_5','fold_modulo_5','fold_contiguous_5']
+        df_preds = pd.read_csv(predictions_path)
+        fold_cols = [col.replace('fitness_score_', '') for col in df_preds.columns if col.startswith('fitness_score_fold_')]
         for fold_col in fold_cols:
             fold_pred_col = f'fitness_score_{fold_col}'
             metrics = get_metrics(
