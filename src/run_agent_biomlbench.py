@@ -137,7 +137,8 @@ def generate_preds_for_biomlbench_proteingym(config):
         print('------CROSS VALIDATION LEAKAGE PREVENTION START-------')
         fold_col_to_preds = []
 
-        for fold_col in ['fold_random_5','fold_modulo_5','fold_contiguous_5']:
+        fold_col_types = [col for col in og_train_data.columns if col.startswith('fold_')]
+        for fold_col in fold_col_types:
             fold_predictions_dfs = []
             for current_test_fold_value in og_train_data[fold_col].unique():
                 # Pick an arbitrary validation that will be additionally separated from the train folds for validation purposes
