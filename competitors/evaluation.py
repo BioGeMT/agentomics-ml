@@ -66,11 +66,15 @@ def evaluate_classification_submission(
     results_csv = output_dir / "metrics_results.csv"
     test_csv = output_dir / "metrics_test.csv"
     pd.DataFrame({
+        "id": submission["id"],
         "prediction": predictions,
         "probability_0": prob_0,
         "probability_1": prob_1
     }).to_csv(results_csv, index=False)
-    pd.DataFrame({"numeric_label": numeric_labels}).to_csv(test_csv, index=False)
+    pd.DataFrame({
+        "id": test_df["id"],
+        "numeric_label": numeric_labels
+    }).to_csv(test_csv, index=False)
 
     ordered = get_task_to_metrics_names()["classification"]
     metrics = {name: float(value) for name, value in get_metrics(
