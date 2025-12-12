@@ -21,16 +21,16 @@ SRC_DIR = PROJECT_ROOT / "src"
 sys.path.insert(0, str(SRC_DIR))
 load_dotenv(PROJECT_ROOT / ".env")
 
-from evaluation import INFERENCE_STAGE, evaluate_classification_submission, rerun_inference
-from utils.api_keys import create_new_api_key, delete_api_key, get_api_key_usage
-from utils.metrics import get_task_to_metrics_names
-
 HERE = Path(__file__).resolve().parent
 CONFIG_PATH = HERE / "config.yaml"
 with open(CONFIG_PATH, "r") as fh:
     _config = yaml.safe_load(fh)
     if _config.get("enable_cost_tracking") and _config.get("provisioning_key"):
         os.environ["PROVISIONING_OPENROUTER_API_KEY"] = _config["provisioning_key"]
+
+from evaluation import INFERENCE_STAGE, evaluate_classification_submission, rerun_inference
+from utils.api_keys import create_new_api_key, delete_api_key, get_api_key_usage
+from utils.metrics import get_task_to_metrics_names
 
 CLONE_DIR = HERE / "biomlbench"
 RESULTS_DIR = HERE / "results"
@@ -63,10 +63,9 @@ def build_env(base: dict, config: dict, agent: str) -> dict:
     return env
 
 
-def run_agent(config: dict, agent: str, dataset: str) -> Path:
+def run_agent(config: dict, agent: str, dataset: str, cpu_only: bool = False) -> Path:
     timestamp = time.strftime("%Y-%m-%dT%H-%M-%S-%Z", time.gmtime())
 
-    # Cost tracking: create provisioned key
     key_hash = None
     if config.get("enable_cost_tracking", False):
         config = config.copy()
@@ -74,6 +73,9 @@ def run_agent(config: dict, agent: str, dataset: str) -> Path:
         key_result = create_new_api_key(key_name, config["spending_limit_per_run"])
         key_hash = key_result['hash']
         config["openrouter_key"] = key_result['key']
+    else:
+        config = config.copy()
+        config["openrouter_key"] = config.get("openrouter_key")
 
     try:
         start_time = time.time()
@@ -94,6 +96,8 @@ def run_agent(config: dict, agent: str, dataset: str) -> Path:
             "--data-dir",
             str(DATA_DIR),
         ]
+        if cpu_only:
+            cmd.append("--cpu-only")
 
         with open(log_file, "w") as f:
             result = subprocess.run(
@@ -165,6 +169,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Run BioMLBench agents on Agentomics datasets")
     parser.add_argument("--agents", nargs="+", help="Agents to run (filters config)")
     parser.add_argument("--datasets", nargs="+", help="Datasets to run (filters config)")
+    parser.add_argument("--cpu-only", action="store_true", help="Use CPU-only mode (no GPU)")
     args = parser.parse_args()
 
     config = load_config()
@@ -178,7 +183,7 @@ def main() -> int:
     for dataset, agent in iterate_targets(config, args):
         console.rule(f"{agent} on {dataset}")
         try:
-            artifact_dir = run_agent(config, agent, dataset)
+            artifact_dir = run_agent(config, agent, dataset, cpu_only=args.cpu_only)
             output_subdir = artifact_dir.parent  # Use timestamped directory
 
             metrics, task_type = evaluate_classification_submission(
