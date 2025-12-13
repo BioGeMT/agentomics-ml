@@ -109,6 +109,7 @@ def generate_preds_for_biomlbench_proteingym(config):
     # test_no_label = '/home/data/test_features.csv'
     SUBMISSION_DIR = os.getenv('SUBMISSION_DIR')
     CODE_DIR= os.getenv('CODE_DIR')
+    best_run_files_dir = Path(str(CODE_DIR))/'best_run_files'
     submission_path = os.path.join(SUBMISSION_DIR, 'submission.csv')
     temp_csv_files = []  # Track temp files for cleanup (initialize before try block)
     snapshots_dir = '/home/workspace/snapshots'
@@ -241,8 +242,7 @@ def generate_preds_for_biomlbench_proteingym(config):
         
         # TODO how are we using the original predictions? We compute metrics based on one col only, biomlbench averages three metrics -> what to do?
         copy_original_predictions(final_predictions_path, os.path.join(SUBMISSION_DIR, 'submission_extended.csv'))
-        copy_dir(source_dir='/home/workspace/snapshots', dest_dir=CODE_DIR)
-        copy_dir(source_dir='/home/workspace/reports', dest_dir=Path(str(CODE_DIR))/'reports')
+        copy_dir(source_dir='/home/workspace/snapshots', dest_dir=best_run_files_dir)
     except Exception as e:
         import traceback
         print('-------TRACEBACK------TRACEBACK------')
@@ -277,6 +277,8 @@ def generate_preds_for_biomlbench(config):
 
     test_no_label = '/home/data/test_features.csv'
     SUBMISSION_DIR = os.getenv('SUBMISSION_DIR', '')
+    CODE_DIR= os.getenv('CODE_DIR')
+    best_run_files_dir = Path(str(CODE_DIR))/'best_run_files'
     submission_path = os.path.join(SUBMISSION_DIR, 'submission.csv')
     try:
         predictions_path = run_inference_on_test_data(test_no_label)
@@ -287,8 +289,7 @@ def generate_preds_for_biomlbench(config):
             target_col=target_col #passed from outside the fn, refactor into reading prepared yaml metadata
         )
         copy_original_predictions(predictions_path, os.path.join(SUBMISSION_DIR, 'submission_extended.csv'))
-        copy_dir(source_dir='/home/workspace/snapshots', dest_dir=CODE_DIR)
-        copy_dir(source_dir='/home/workspace/reports', dest_dir=Path(str(CODE_DIR))/'reports')
+        copy_dir(source_dir='/home/workspace/snapshots', dest_dir=best_run_files_dir)
     except Exception as e:
         import traceback
         print('-------TRACEBACK------TRACEBACK------')
@@ -297,6 +298,29 @@ def generate_preds_for_biomlbench(config):
 
     print('---------------------------------')
     print('- FINISHED PREDS FOR BIOMLBENCH -')
+    print('---------------------------------')
+
+def save_run_dir_for_biomlbench(config):
+    print('---------------------------------')
+    print('- SAVING RUNDIR FOR BIOMLBENCH -')
+    print('---------------------------------')
+
+    CODE_DIR= os.getenv('CODE_DIR')
+    run_files_dir = Path(str(CODE_DIR))/'run_files'
+    extras_dir = Path(str(CODE_DIR))/'extras'
+    reports_dir = Path(str(CODE_DIR))/'reports'
+    try:
+        copy_dir(source_dir='/home/workspace/runs', dest_dir=run_files_dir)
+        copy_dir(source_dir='/home/workspace/extras', dest_dir=extras_dir)
+        copy_dir(source_dir='/home/workspace/reports', dest_dir=reports_dir)
+    except Exception as e:
+        import traceback
+        print('-------TRACEBACK------TRACEBACK------')
+        print(traceback.format_exc())
+        print('-------TRACEBACK------TRACEBACK------')
+
+    print('---------------------------------')
+    print('- FINISHED SAVING RUNDIR FOR BIOMLBENCH -')
     print('---------------------------------')
 
 def copy_and_format_predictions_for_biomlbench(preds_source_path, preds_dest_path, target_col, is_proteingym=False):
@@ -454,5 +478,6 @@ if __name__ == '__main__':
         provider=args.provider,
         split_allowed_iterations=args.split_allowed_iterations,
         on_new_best_callbacks=[generate_preds_for_biomlbench_proteingym if is_proteingym else generate_preds_for_biomlbench],
+        on_iteration_start_callbacks=[save_run_dir_for_biomlbench],
         timeout=args.timeout,
     ))
