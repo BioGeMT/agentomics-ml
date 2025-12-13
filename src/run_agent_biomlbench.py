@@ -215,7 +215,10 @@ def generate_preds_for_biomlbench_proteingym(config):
             # Concatenate all fold predictions for this fold column
             fold_preds = pd.concat(fold_predictions_dfs, ignore_index=True)
             if 'prediction' in fold_preds.columns:
-                fold_preds = fold_preds.rename(columns={'prediction': f'fitness_score_{fold_col}'}) #Col name required by biomlbench proteingym grade function
+                if(len(fold_col_types) == 1):
+                    fold_preds = fold_preds.rename(columns={'prediction': f'fitness_score'})
+                else:
+                    fold_preds = fold_preds.rename(columns={'prediction': f'fitness_score_{fold_col}'}) #Col name required by biomlbench proteingym grade function
             fold_col_to_preds.append(fold_preds)
 
         # Combine all predictions based on ID
