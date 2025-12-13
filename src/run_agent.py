@@ -32,7 +32,7 @@ from agents.steps.data_split import DataSplit
 
 async def main(model_name, feedback_model_name, dataset, tags, val_metric,
                workspace_dir, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir, iterations,
-               user_prompt, provider_name, on_new_best_callbacks, split_allowed_iterations, exploration_iterations, time_deadline):
+               user_prompt, provider_name, on_new_best_callbacks, split_allowed_iterations, exploration_iterations, on_iteration_start_callbacks, time_deadline):
     agent_id = os.getenv('AGENT_ID')
     # Initialize configuration 
     config = Config(
@@ -67,13 +67,13 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric,
     feedback_model = provider.create_model(config.feedback_model_name, config)
     #TODO Instantiate report logger model and pass it to add_summary_to_report
 
-    await run_agentomics(config=config, default_model=default_model, feedback_model=feedback_model, on_new_best_callbacks=on_new_best_callbacks, provider=provider)
+    await run_agentomics(config=config, default_model=default_model, feedback_model=feedback_model, on_new_best_callbacks=on_new_best_callbacks, on_iteration_start_callbacks=on_iteration_start_callbacks, provider=provider)
 
     if(wandb_logged_in):
         wandb.finish()
 
 @weave.op(call_display_name=lambda call: f"Agentomics run - agent_id: {call.inputs['config'].agent_id}")
-async def run_agentomics(config: Config, default_model, feedback_model, on_new_best_callbacks, provider):
+async def run_agentomics(config: Config, default_model, feedback_model, on_new_best_callbacks, on_iteration_start_callbacks, provider):
     tools = create_tools(config)
     
     iter_to_outputs = {}
@@ -86,6 +86,8 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
     print(f"Starting training loop with {config.iterations} iterations")
     for run_index in range(config.iterations):
         print(f"\n=== ITERATION {run_index} / {config.iterations - 1} ===")
+        for callback in on_iteration_start_callbacks:
+            callback(config)
         if(not config.can_iteration_split_data(run_index)):
             lock_split_files(config)
         split_fingerprint_before_iteration = create_split_fingerprint(config)
@@ -220,7 +222,7 @@ def parse_args():
 
 async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir,
                           workspace_dir, tags, iterations, user_prompt, provider, timeout,
-                          split_allowed_iterations=1, exploration_iterations=4, on_new_best_callbacks=[]):
+                          split_allowed_iterations=1, exploration_iterations=4, on_new_best_callbacks=[], on_iteration_start_callbacks=[]):      
     setup_nonsensitive_dataset_files_for_agent(
         prepared_datasets_dir=Path(prepared_datasets_dir),
         agent_datasets_dir=Path(agent_datasets_dir),
@@ -244,6 +246,7 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
             user_prompt=user_prompt,
             provider_name=provider,
             on_new_best_callbacks=on_new_best_callbacks,
+            on_iteration_start_callbacks=on_iteration_start_callbacks,
             split_allowed_iterations=split_allowed_iterations,
             exploration_iterations=exploration_iterations,
             prepared_test_sets_dir=prepared_test_sets_dir,
