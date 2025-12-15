@@ -82,16 +82,23 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
         split_version_to_iters=split_version_to_iters,
     )
 
-    if config.can_iteration_split_data(next_iteration_index):
-        #agent can split next iter
+    if config.can_iteration_split_now_cached(iteration = next_iteration_index): #cached method
         splitting_info = f"If you choose data splitting needs change, never suggest cross-validations split or any other split that would result in more than two files (train.csv and validation.csv). Keep in mind that using a more representative validation split will result in a better selected 'best iteration model' and therefore a better final hidden test set metrics."
         splitting_info += f"If the split should stay the same (current split version is {lastest_split_version}), instruct to 'Re-use the current split'."
         splitting_info += f'Based on the iteration history, if you suspect the current split is not representative and/or produces overfitted models, instruct to change the splitting strategy to a more representative and robust one.'
-        split_check_jump = 10
-        if config.can_iteration_split_data(next_iteration_index + split_check_jump):
-            splitting_info += f"\nSplitting is allowed for the next {split_check_jump} or more iteration/s{' or until the time runs out, whichever comes first' if config.time_deadline is not None else ''}. After that, the latest split version will be used for all future iterations."
+
+        split_budget_info = f"\nSplitting is allowed for the next "
+        if config.split_time_deadline is not None:
+            split_time_left_in_hours = (config.split_time_deadline - time.time()) / 3600
+            split_budget_info += f"({split_time_left_in_hours:.2f} hours."
         else:
-            splitting_info += f"\nSplitting is allowed for the next {config.split_allowed_iterations - next_iteration_index} iteration/s{' or until the time runs out, whichever comes first' if config.time_deadline is not None else ''}. After that, the latest split version will be used for all future iterations."
+            split_check_jump = 10
+            if config.can_iteration_split_data(next_iteration_index + split_check_jump):
+                split_budget_info += f"{split_check_jump} or more iteration/s. "
+            else:
+                split_budget_info += f"{config.split_allowed_iterations - next_iteration_index} iteration/s."
+        split_budget_info += " After that, the latest split version will be used for all future iterations."
+        splitting_info += split_budget_info
     else:
         #agent can NOT split next iter
         splitting_info = "Instruct to skip the splitting step, as the next iteration agent cannot split the data."
