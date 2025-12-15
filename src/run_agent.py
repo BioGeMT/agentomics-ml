@@ -32,7 +32,7 @@ from agents.steps.data_split import DataSplit
 
 async def main(model_name, feedback_model_name, dataset, tags, val_metric,
                workspace_dir, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir, iterations, 
-               user_prompt, provider_name, on_new_best_callbacks, on_iteration_start_callbacks, split_allowed_iterations, time_deadline):
+               user_prompt, provider_name, on_new_best_callbacks, on_iteration_start_callbacks, split_allowed_iterations, time_deadline, split_time_deadline):
     agent_id = os.getenv('AGENT_ID')
     # Initialize configuration 
     config = Config(
@@ -50,6 +50,7 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric,
         user_prompt=user_prompt,
         split_allowed_iterations=split_allowed_iterations,
         time_deadline=time_deadline,
+        split_time_deadline=split_time_deadline,
     )
     ensure_workspace_folders(config)
     create_run_and_snapshot_dirs(config)
@@ -87,7 +88,7 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
         print(f"\n=== ITERATION {run_index} / {config.iterations - 1} ===")
         for callback in on_iteration_start_callbacks:
             callback(config)
-        if(not config.can_iteration_split_data(run_index)):
+        if(not config.can_iteration_split_now_cached(run_index)):
             lock_split_files(config)
         split_fingerprint_before_iteration = create_split_fingerprint(config)
         start = time.time()
@@ -207,7 +208,8 @@ def parse_args():
     parser.add_argument('--tags', nargs='*', default=[], help='(Optional) Tags for a wandb run logging')
     parser.add_argument('--iterations', type=int, default=5, help='Number of training iterations to run')
     parser.add_argument("--timeout", type=int, help="Timeout before the run is shut down in seconds")
-    parser.add_argument('--split-allowed-iterations', type=int, default=1, help='Number of initial iterations that allow the agent to split the data into training and validation sets')
+    parser.add_argument("--split-timeout", type=int, help="Timeout before the data splitting is no longer allowed in seconds. If not provided, split iterations are used as the limit.")
+    parser.add_argument('--split-allowed-iterations', type=int, default=1, help='Number of initial iterations that allow the agent to split the data into training and validation sets. If --split-timeout is defined, this is ignored.')
 
     parser.add_argument('--user-prompt', type=str, default="Develop a machine learning model that generalizes well to new unseen data.", help='(Optional) Text to overwrite the default user prompt')
 
@@ -217,7 +219,7 @@ def parse_args():
     return parser.parse_args()
 
 async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir,
-                          workspace_dir, tags, iterations, user_prompt, provider, timeout, 
+                          workspace_dir, tags, iterations, user_prompt, provider, timeout, split_timeout,
                           split_allowed_iterations=1, on_new_best_callbacks=[], on_iteration_start_callbacks=[]):
     setup_nonsensitive_dataset_files_for_agent(
         prepared_datasets_dir=Path(prepared_datasets_dir),
@@ -227,6 +229,7 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
     FEEDBACK_MODEL = model
     timeouted_main = timeout_decorator(timeout)(main)
     time_deadline = time.time() + timeout if timeout is not None else None
+    split_time_deadline = time.time() + split_timeout if split_timeout is not None else None
     try:
         print(f'Starting a run with a {timeout} second timeout')
         await timeouted_main(
@@ -246,6 +249,7 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
             split_allowed_iterations=split_allowed_iterations,
             prepared_test_sets_dir=prepared_test_sets_dir,
             time_deadline=time_deadline,
+            split_time_deadline=split_time_deadline,
         )
     except TimeoutError:
         print('Timeout reached')
@@ -269,6 +273,7 @@ async def run_experiment_from_terminal():
         provider=args.provider,
         split_allowed_iterations=args.split_allowed_iterations,
         timeout=args.timeout,
+        split_timeout=args.split_timeout,
     )
 
 if __name__ == "__main__":
