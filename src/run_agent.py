@@ -10,7 +10,7 @@ import weave
 from timeout_function_decorator import timeout as timeout_decorator
 
 from run_logging.evaluate_log_run import run_inference_and_log
-from run_logging.logging_helpers import log_serial_metrics, log_feedback_failure, log_iteration_duration, log_new_best
+from run_logging.logging_helpers import log_serial_metrics, log_feedback_failure, log_iteration_duration, log_new_best, log_split_is_allowed
 from run_logging.wandb_setup import setup_logging
 from run_logging.log_files import log_files, export_config_to_snapshot
 from utils.env_utils import are_wandb_vars_available
@@ -89,7 +89,9 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
         print(f"\n=== ITERATION {run_index} / {config.iterations - 1} ===")
         for callback in on_iteration_start_callbacks:
             callback(config)
-        if(not config.can_iteration_split_now_cached(run_index)):
+        split_is_allowed = config.can_iteration_split_now_cached(run_index)
+        log_split_is_allowed(iteration=run_index, is_allowed=split_is_allowed)
+        if(not split_is_allowed):
             lock_split_files(config)
         split_fingerprint_before_iteration = create_split_fingerprint(config)
         start = time.time()
