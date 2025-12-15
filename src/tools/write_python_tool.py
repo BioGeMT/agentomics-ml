@@ -52,5 +52,6 @@ def create_write_python_tool(agent_id, max_retries, runs_dir):
         # description=None, # Infered from the function docstring
         require_parameter_descriptions=True,
         name="write_python",
+        sequential=True,
     )
     return write_python_tool

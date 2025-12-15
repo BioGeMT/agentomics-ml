@@ -47,5 +47,6 @@ def create_run_python_tool(agent_id, runs_dir, timeout, max_retries, proxy):
         max_retries=max_retries,
         require_parameter_descriptions=True,
         name="run_python",
+        sequential=True,
     )
     return run_python_tool

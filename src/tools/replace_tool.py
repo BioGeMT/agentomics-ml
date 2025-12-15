@@ -69,5 +69,6 @@ def create_replace_tool(agent_id, runs_dir, max_retries):
         max_retries=max_retries,
         require_parameter_descriptions=True,
         name="replace",
+        sequential=True,
     )
     return replace_tool
