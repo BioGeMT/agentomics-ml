@@ -203,6 +203,10 @@ while [[ $# -gt 0 ]]; do
             TIMEOUT_SECS="$2"
             shift 2
             ;;
+        --split-timeout)
+            AGENTOMICS_ARGS+=(--split-timeout "$2")
+            shift 2
+            ;;
         --split-allowed-iterations)
             require_opt_value "$1" "${2:-}"
             AGENTOMICS_ARGS+=(--split-allowed-iterations "$2")
