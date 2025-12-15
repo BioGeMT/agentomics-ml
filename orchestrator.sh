@@ -5,10 +5,10 @@ REPOS_DIR="/SCRATCH" #this needs to be configured to the agentomics repository p
 SPEND_LIMIT=100
 MODELS=("openai/gpt-5.1-codex-max")
 ITERATIONS=100 # Set to a large number because timeout will take precedence anyways
-TIME_BUDGET_S=$(( 8 * 60 * 60 )) # 8 hours, biomlbench datasets are set to 8h automatically and will not react to this
+TIME_BUDGET_S=$(( 8 * 60 * 60 )) # 8 hours
 SPLIT_TIME_BUDGET_S=$(( 4 * 60 * 60 )) # allowing to re-split for 4 hours
 # BASELINE_ITERS currently not parametrizable, hardcoded to 4
-SPLIT_ALLOWED_ITERS=4
+SPLIT_ALLOWED_ITERS=0 #SPLIT_TIME_BUDGET gets precedence over this
 PULL_BRANCH="run_experiments" #Branch to pull for biomlbench runs
 TAGS=("ismb2026_v2")
 REPETITIONS=1
@@ -84,6 +84,8 @@ for repetition in $(seq 1 $REPETITIONS); do
                 --model "$model" \
                 --user-prompt "$USER_PROMPT" \
                 --pull-branch "$PULL_BRANCH" \
+                --timeout "$TIME_BUDGET_S" \
+                --split-timeout "$SPLIT_TIME_BUDGET_S" \
                 --tags "${TAGS[@]}"
         done
     done
