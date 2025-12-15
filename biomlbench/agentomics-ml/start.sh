@@ -11,7 +11,6 @@ format_time() {
   local seconds=$((time_in_sec % 60))
   echo "${hours}hrs ${minutes}mins ${seconds}secs"
 }
-TIME_LIMIT_SECS=$(( 8 * 60 * 60 ))
 export TIME_LIMIT=$(format_time $TIME_LIMIT_SECS)
 
 echo -e "\033[0;31mStarting Agentomics-ML...\033[0m"
@@ -20,6 +19,7 @@ timeout $TIME_LIMIT_SECS /opt/conda/envs/agentomics-env/bin/python /home/agent/s
     --iterations $ITERATIONS \
     --user-prompt "$USER_PROMPT" \
     --split-allowed-iterations $SPLIT_ALLOWED_ITERATIONS \
+    --split-timeout $SPLIT_TIME_LIMIT_SECS \
     --timeout $TIME_LIMIT_SECS \
     --tags $TAGS
 

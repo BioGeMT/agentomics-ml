@@ -412,6 +412,7 @@ def parse_args():
     parser.add_argument('--model', type=str, help='Model id to use (depends on provider)')
     parser.add_argument('--iterations', type=int, help='Number of iterations to run')
     parser.add_argument('--timeout', type=int, help='Timeout in seconds')
+    parser.add_argument('--split-timeout', type=int, help='Timeout before the data splitting is no longer allowed in seconds')
     parser.add_argument('--tags', nargs='*', default=[], help='(Optional) Tags for a wandb run logging')
     parser.add_argument('--provider', type=str, default='openrouter', help='Provider name (e.g., openai, openrouter)')
     parser.add_argument('--user-prompt', type=str, default=None, help='Custom user prompt to guide the agent')
@@ -480,4 +481,5 @@ if __name__ == '__main__':
         on_new_best_callbacks=[generate_preds_for_biomlbench_proteingym if is_proteingym else generate_preds_for_biomlbench],
         on_iteration_start_callbacks=[save_run_dir_for_biomlbench],
         timeout=args.timeout,
+        split_timeout=args.split_timeout,
     ))
