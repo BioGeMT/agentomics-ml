@@ -18,6 +18,14 @@ while [[ $# -gt 0 ]]; do
       SPLIT_ALLOWED_ITERATIONS="$2"
       shift 2
       ;;
+    --timeout)
+      TIME_LIMIT_SECS="$2"
+      shift 2
+      ;;
+    --split-timeout)
+      SPLIT_TIME_LIMIT_SECS="$2"
+      shift 2
+      ;;
     --iterations)
       ITERATIONS="$2"
       shift 2
@@ -56,7 +64,7 @@ update_config() {
   local escaped_prompt=$(printf '%s\n' "$USER_PROMPT" | sed -e 's/[\/&]/\\&/g')
   local tags="${TAGS[*]}"
 
-  for var in WANDB_API_KEY WANDB_PROJECT_NAME WANDB_ENTITY SPLIT_ALLOWED_ITERATIONS ITERATIONS MODEL PULL_BRANCH; do
+  for var in WANDB_API_KEY WANDB_PROJECT_NAME WANDB_ENTITY SPLIT_ALLOWED_ITERATIONS ITERATIONS MODEL PULL_BRANCH TIME_LIMIT_SECS SPLIT_TIME_LIMIT_SECS; do
     local val="${!var}"
     if grep -q "^    $var:" "$cfg"; then
       sed -i "s|^    $var:.*|    $var: $val|" "$cfg"
