@@ -59,6 +59,11 @@ def log_iteration_duration(iteration, duration):
         return
     wandb.log({'duration':duration}, step=iteration)
 
+def log_split_is_allowed(iteration, is_allowed):
+    if not is_wandb_active():
+        return
+    wandb.log({'validation/splitting_allowed':int(is_allowed)}, step=iteration)
+
 def log_new_best(iteration):
     if not is_wandb_active():
         return
