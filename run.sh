@@ -101,6 +101,10 @@ while [[ $# -gt 0 ]]; do
             AGENTOMICS_ARGS+=(--timeout "$2")
             shift 2
             ;;
+        --split-timeout)
+            AGENTOMICS_ARGS+=(--split-timeout "$2")
+            shift 2
+            ;;
         --split-allowed-iterations)
             AGENTOMICS_ARGS+=(--split-allowed-iterations "$2")
             shift 2
