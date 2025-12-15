@@ -105,12 +105,15 @@ class Config:
     def can_split_data_at_time(self, split_time):
         return not self.explicit_valid_set_provided and split_time < self.split_time_deadline
 
-    @lru_cache(maxsize=128) # caches results -> whenver this is called the first time, save the result for future calls to avoid time.time() differences
     def can_iteration_split_now_cached(self, iteration):
         if(self.split_time_deadline is None): # time deadline takes precedence over iteration deadline
             return self.can_iteration_split_data(iteration=iteration)
-        # check current time
-        return self.can_split_data_at_time(split_time=time.time())
+        return self.can_split_data_at_time(split_time=Config.get_cached_iteration_time(iteration=iteration))
+    
+    @classmethod
+    @lru_cache(maxsize=128) # caches results -> whenver this is called the first time, save the result for future calls to avoid time.time() differences
+    def get_cached_iteration_time(cls, iteration):
+        return time.time()
 
     def check_gpu_availability(self) -> Optional[str]:
         try:
