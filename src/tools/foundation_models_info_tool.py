@@ -19,7 +19,8 @@ def create_foundation_models_info_tool(foundation_model_to_desc, max_retries):
         function=_get_foundation_models_info,
         takes_ctx=False,
         max_retries=max_retries,
-        name="get_foundation_models_info"
+        name="get_foundation_models_info",
+        sequential=True,
     )
 
     return foundation_models_info_tool
