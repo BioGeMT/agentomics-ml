@@ -304,9 +304,8 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
     persistent_messages+=get_final_result_messages(messages_data_exploration)
     structured_outputs.append(data_exploration_output)
     
-    split_allowed_iterations = config.split_allowed_iterations
     data_split_step = None
-    if not config.explicit_valid_set_provided and iteration < split_allowed_iterations:
+    if not config.explicit_valid_set_provided and config.can_iteration_split_now_cached(iteration=iteration):
         data_split_deps = {'start_time': datetime.datetime.now()}
         messages_split, data_split = await run_agent(
             agent=split_dataset_agent,
@@ -320,7 +319,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
         data_split_step=data_split
         structured_outputs.append(data_split)
     else:
-        assert last_split_strategy is not None, f'Agent didnt have a chance to split data, provide a non-0 allowed split iterations (currently {config.split_allowed_iterations})'
+        assert last_split_strategy is not None, f'Agent didnt have a chance to split data, provide a non-0 allowed split iterations (currently {config.split_allowed_iterations}) or increase time budget for splitting'
         manual_data_split_step = DataSplit(
             train_path = str(config.runs_dir / config.agent_id / 'train.csv'),
             val_path = str(config.runs_dir / config.agent_id / 'validation.csv'),
