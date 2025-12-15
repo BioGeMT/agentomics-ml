@@ -73,5 +73,5 @@ def get_iteration_prompt(config, run_index, feedback):
     Detailed outputs of any previous iteration and their summaries are available at {config.runs_dir / config.agent_id}/iteration_<iteration_number>/structured_outputs.txt
     Instructions to follow for the current iteration:
     {feedback}
-    {"You must not modify the train.csv and validation.csv files this iteration." if not config.can_iteration_split_data(run_index) else ""}
+    {"You must not modify the train.csv and validation.csv files this iteration." if not config.can_iteration_split_now_cached(run_index) else ""}
     """

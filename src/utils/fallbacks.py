@@ -60,6 +60,6 @@ def load_fallbacks_to_rundir(config, iteration):
                 split_path.unlink()
 
         # If no split was successful yet, increase the allowed split iteration budget
-        if(not config.can_iteration_split_data(iteration+1)): #check if next iter can split
+        if(not config.can_iteration_split_now_cached(iteration+1)): #check if next iter can split
             print("Increasing split iteration budget due to a nonexisting split fallback")
             config.split_allowed_iterations = config.split_allowed_iterations + 1

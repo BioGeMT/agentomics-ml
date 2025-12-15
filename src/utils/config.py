@@ -2,6 +2,8 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 import subprocess
+import time
+from functools import lru_cache
 from typing import List, Optional
 from .dataset_utils import get_task_type_from_prepared_dataset
 from .foundation_models_utils import build_foundation_model_catalog
@@ -61,6 +63,7 @@ class Config:
         split_allowed_iterations: int = 1,
         exploration_iterations: int = 3,
         time_deadline: Optional[int] = None,
+        split_time_deadline: Optional[int] = None,
     ):
         self.agent_id = agent_id
         self.model_name = model_name
@@ -84,6 +87,7 @@ class Config:
         self.split_allowed_iterations = split_allowed_iterations if not self.explicit_valid_set_provided else 0
         self.exploration_iterations = exploration_iterations
         self.time_deadline = time_deadline
+        self.split_time_deadline = split_time_deadline
         self.foundation_model_to_desc = build_foundation_model_catalog()
         
         if max_steps is not None:
@@ -97,6 +101,16 @@ class Config:
 
     def can_iteration_split_data(self, iteration):
         return not self.explicit_valid_set_provided and iteration < self.split_allowed_iterations
+
+    def can_split_data_at_time(self, split_time):
+        return not self.explicit_valid_set_provided and split_time < self.split_time_deadline
+
+    @lru_cache(maxsize=128) # caches results -> whenver this is called the first time, save the result for future calls to avoid time.time() differences
+    def can_iteration_split_now_cached(self, iteration):
+        if(self.split_time_deadline is None): # time deadline takes precedence over iteration deadline
+            return self.can_iteration_split_data(iteration=iteration)
+        # check current time
+        return self.can_split_data_at_time(split_time=time.time())
 
     def check_gpu_availability(self) -> Optional[str]:
         try:
@@ -155,6 +169,8 @@ class Config:
         print('AGENT ID:', self.agent_id)
         print('ITERATIONS:', self.iterations)
         print('SPLIT ALLOWED ITERATIONS:', self.split_allowed_iterations)
+        print('TIMEOUT IN HOURS:', (self.time_deadline - time.time()) / 3600 if self.time_deadline is not None else 'No timeout')
+        print('SPLIT TIMEOUT IN HOURS:', (self.split_time_deadline - time.time()) / 3600 if self.split_time_deadline is not None else 'No timeout')
         print('USER PROMPT:', self.user_prompt)
         print('RESOURCES SUMMARY:', self.get_resources_summary())
         print('===============================')
