@@ -43,6 +43,8 @@ ARG AGENT_DIR
 ENV AGENT_DIR=${AGENT_DIR}
 
 RUN mkdir ${LOGS_DIR} ${CODE_DIR} ${AGENT_DIR}
+# Create required directories
+RUN mkdir ${CODE_DIR}/run_files ${CODE_DIR}/extras ${CODE_DIR}/reports ${CODE_DIR}/best_run_files
 
 # Setup agent start environment
 ENV START_ENV_PKG=${AGENT_DIR}/agent_start_env.tar.gz
