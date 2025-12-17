@@ -2,6 +2,8 @@
 
 source "./bash_helpers.sh"
 
+ORIGINAL_ARGC=$#
+
 AGENTOMICS_ARGS=()
 LOCAL_MODE=false
 TEST_MODE=false
@@ -14,6 +16,7 @@ MODEL_NAME=""
 DATASET_NAME=""
 VAL_METRIC=""
 LIST_MODE=false
+FOUNDATION_MODEL_TYPE=""
 
 show_help() {
     cat << EOF
@@ -40,6 +43,8 @@ Operational Flags:
                       (Note: Only supported in Docker mode, not in local Conda mode.)
   --cpu-only          Force Docker/Conda to run using CPU only (skip GPU configuration).
   --ollama            Enable support for an Ollama server running on the host machine.
+  --foundation-model-type <dna|rna|molecule|protein>
+                      Enable foundation models of a specific type (Docker only). When omitted, no foundation models are used or pre-downloaded.
   --use-provisioning-key  Use OpenRouter provisioning key to create temporary API key and log costs.
   --spend-limit <N>   Only applies when --use-provisioning-key is passed. Spend limit for a temporary key (default: 10).
   --tags              (Optional) Space separated tags for Weights and Biases logging.
@@ -153,6 +158,11 @@ while [[ $# -gt 0 ]]; do
             SPEND_LIMIT="$2"
             shift 2
             ;;
+        --foundation-model-type)
+            require_opt_value "$1" "${2:-}"
+            FOUNDATION_MODEL_TYPE="$2"
+            shift 2
+            ;;
         --test)
             TEST_MODE=true
             shift
@@ -241,8 +251,44 @@ else
         fi
     fi
 
+    if [ -n "$FOUNDATION_MODEL_TYPE" ] && [[ "$FOUNDATION_MODEL_TYPE" != "dna" && "$FOUNDATION_MODEL_TYPE" != "rna" && "$FOUNDATION_MODEL_TYPE" != "molecule" && "$FOUNDATION_MODEL_TYPE" != "protein" ]]; then
+        echo -e "${RED}Error: Invalid --foundation-model-type '$FOUNDATION_MODEL_TYPE'. Allowed: dna, rna, molecule, protein.${NOCOLOR}" >&2
+        exit 1
+    fi
+
+    if [[ "$ORIGINAL_ARGC" -eq 0 && -z "$FOUNDATION_MODEL_TYPE" ]]; then
+        if [[ -t 0 ]]; then
+            echo ""
+            echo "Foundation models (optional)"
+            echo "Select which foundation model type should be pre-downloaded and made available to the agent:"
+            echo "  1) none"
+            echo "  2) DNA"
+            echo "  3) RNA"
+            echo "  4) Molecule"
+            echo "  5) Protein"
+            echo ""
+            read -r -p "Enter choice [1]: " fm_choice
+            fm_choice="${fm_choice:-1}"
+            case "$fm_choice" in
+                1) FOUNDATION_MODEL_TYPE="";;
+                2) FOUNDATION_MODEL_TYPE="dna";;
+                3) FOUNDATION_MODEL_TYPE="rna";;
+                4) FOUNDATION_MODEL_TYPE="molecule";;
+                5) FOUNDATION_MODEL_TYPE="protein";;
+                *) echo -e "${RED}Error: Invalid choice.${NOCOLOR}" >&2; exit 1;;
+            esac
+        fi
+    fi
+
+    FOUNDATION_MODEL_FLAGS=()
+    DOCKER_BUILD_ARGS=()
+    if [ -n "$FOUNDATION_MODEL_TYPE" ]; then
+        DOCKER_BUILD_ARGS+=(--build-arg "FOUNDATION_MODEL_TYPE=$FOUNDATION_MODEL_TYPE")
+        FOUNDATION_MODEL_FLAGS+=(-e "FOUNDATION_MODEL_TYPE=$FOUNDATION_MODEL_TYPE")
+    fi
+
     echo "Building the run image"
-    docker build -t agentomics_img -f Dockerfile .
+    docker build -t agentomics_img -f Dockerfile ${DOCKER_BUILD_ARGS[@]+"${DOCKER_BUILD_ARGS[@]}"} .
     echo "Build done"
     AGENT_ID=$(docker run --rm -u $(id -u):$(id -g) -v "$(pwd)":/repository:ro --entrypoint \
                /opt/conda/envs/agentomics-env/bin/python agentomics_img /repository/src/utils/create_user.py)
@@ -328,6 +374,7 @@ else
             ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
             -e AGENT_ID=${AGENT_ID} \
             -e PYTHONWARNINGS=ignore \
+            ${FOUNDATION_MODEL_FLAGS[@]+"${FOUNDATION_MODEL_FLAGS[@]}"} \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
             ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
@@ -345,6 +392,7 @@ else
             ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
             -e AGENT_ID=${AGENT_ID} \
             -e PYTHONWARNINGS=ignore \
+            ${FOUNDATION_MODEL_FLAGS[@]+"${FOUNDATION_MODEL_FLAGS[@]}"} \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
             ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
@@ -373,6 +421,7 @@ else
             -e AGENT_ID=${AGENT_ID} \
             -e PYTHONPATH=/repository/src \
             -e PYTHONWARNINGS=ignore \
+            ${FOUNDATION_MODEL_FLAGS[@]+"${FOUNDATION_MODEL_FLAGS[@]}"} \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
