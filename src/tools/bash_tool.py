@@ -6,7 +6,7 @@ import os
 import time
 
 from pydantic_ai import Tool
-from utils.text_processing_utils import collapse_repeated_lines
+from utils.text_processing_utils import collapse_repeated_lines, concise_output
 
 class BashProcess:
     def __init__(self, agent_id, runs_dir, autoconda=True, timeout=60, proxy=False):
@@ -64,8 +64,7 @@ class BashProcess:
 
                 if result.returncode != 0:
                     output = collapse_repeated_lines(output)
-                    if(len(output) > 5000):
-                        output = f"output truncated, too long, showing first 5000 and last 5000 characters. First 5000:\n{output[:5000]}\n...\nLast 5000:\n{output[-5000:]}"
+                    output = concise_output(output)
                     return f"Command failed with error code {result.returncode}:\n{output}"
 
                 return self.process_output(output, command)

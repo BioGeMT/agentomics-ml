@@ -18,3 +18,9 @@ def collapse_repeated_lines(output: str, threshold: int = 4) -> str:
                 i += count
 
         return '\n'.join(result)
+
+def concise_output(output: str, max_length: int = 5000):
+    if len(output) > max_length:
+        half_length = max_length // 2
+        return f"output truncated, too long, showing first and last {half_length} characters. First {half_length}:\n{output[:half_length]}\n...\nLast {half_length}:\n{output[-half_length:]}"
+    return output
