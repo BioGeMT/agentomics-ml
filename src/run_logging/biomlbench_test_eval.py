@@ -109,7 +109,7 @@ def main():
     submission_info_path = results_dir / 'submission.jsonl'
     run_info = load_submission_jsonl(submission_info_path)
 
-    code_dirs = [dir for dir in list(Path(run_info['code_path']).iterdir()) if dir.name != 'reports']
+    code_dirs = [dir for dir in list((Path(run_info['code_path']) / 'best_run_files').iterdir())]
     assert len(code_dirs) == 1, code_dirs
     config_path = code_dirs[0]/'config.json'
 
