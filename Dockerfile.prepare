@@ -1,9 +1,9 @@
-FROM continuumio/miniconda3:23.3.1-0
+FROM condaforge/mambaforge:23.3.1-0
 
 # Create preparation environment
 COPY environment_prepare.yaml .
-RUN conda env create -f environment_prepare.yaml \
-    && conda clean -afy
+RUN mamba env create -f environment_prepare.yaml \
+    && mamba clean -afy
 
 # Initialize conda
 RUN conda init bash
