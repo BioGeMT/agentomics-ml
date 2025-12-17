@@ -227,8 +227,8 @@ def does_file_contain_string(file_path, search_string) -> bool:
     with open(file_path, 'r') as file:
         content = file.read()
 
-    # the search_string must be withing a string in the python file (between ' or "), doesnt match comments, variables, etc.
-    pattern = rf"(['\"]).*?{re.escape(search_string)}.*?\1"
+    # the search_string must be withing a string in the python file (between ' or ") and start after the first quote symbol, doesnt match comments, variables, etc.
+    pattern = rf"(['\"]){re.escape(search_string)}.*?\1"
     return re.search(pattern, content, re.DOTALL) is not None
 
 def get_final_result_messages(all_messages):
