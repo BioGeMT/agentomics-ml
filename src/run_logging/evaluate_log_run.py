@@ -12,6 +12,8 @@ from rich.console import Console
 
 console = Console()
 
+from utils.text_processing_utils import concise_output, collapse_repeated_lines
+
 def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot=False):
     with open(config.prepared_dataset_dir / "metadata.json") as f:
         dataset_metadata = json.load(f)
@@ -108,7 +110,10 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
         console.print(f'[bold blue]RUNNING DRY RUN EVAL[/bold blue]')
         if inference_out.returncode != 0:
             print('DRY RUN EVAL FAIL during inference:', inference_out.stderr)
-            raise ModelRetry(f'Inference script validation failed: {str(inference_out)}')
+            message = f'Inference script validation failed: {str(inference_out)}'
+            message = collapse_repeated_lines(message)
+            message = concise_output(message)
+            raise ModelRetry(message)
         verify_file_and_row_count(input_path=stage_to_inference_input[evaluation_stage], predictions_path=stage_to_output[evaluation_stage], inference_out=inference_out)
         try:
             _ = get_metrics(
@@ -121,6 +126,8 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
             )
         except Exception as e:
             message = f"FAIL DURING DRY RUN METRICS COMPUTATION. {traceback.format_exc()}"
+            message = collapse_repeated_lines(message)
+            message = concise_output(message)
             print(message)
             raise ModelRetry(message)
         print('DRY RUN EVAL SUCCESS')
@@ -199,11 +206,16 @@ def remove_file(target_path: Path):
 
 def verify_file_and_row_count(input_path, predictions_path, inference_out):
     if not predictions_path.exists():
-        raise ModelRetry(f"Inference doesn't produce predictions. Stderr/stdout: {str(inference_out)}")
+        inference_out = str(inference_out)
+        inference_out = collapse_repeated_lines(inference_out)
+        inference_out = concise_output(inference_out)
+        raise ModelRetry(f"Inference doesn't produce predictions. Stderr/stdout: {inference_out}")
     try:
         actual_rows = len(pd.read_csv(predictions_path))
     except Exception as e:
         tb = traceback.format_exc()
+        tb = collapse_repeated_lines(tb)
+        tb = concise_output(tb)
         raise ModelRetry(f'Inference produced faulty predictions csv file. {e}\n{tb}') from e
     expected_rows = len(pd.read_csv(input_path))
     if actual_rows != expected_rows:
@@ -217,9 +229,6 @@ def verify_file_and_row_count(input_path, predictions_path, inference_out):
 
     except Exception as e:
         tb = traceback.format_exc()
-        raise ModelRetry(
-            f"Inference script must produce predicions with the 'id' column. {e}. Traceback: {tb}"
-        ) from e
-
-
-
+        tb = collapse_repeated_lines(tb)
+        tb = concise_output(tb)
+        raise ModelRetry(f'Inference script must produce predicions with the \'id\' column. {e}\n{tb}') from e

@@ -7,6 +7,8 @@ from pydantic.json_schema import SkipJsonSchema
 from pydantic_ai import ModelRetry
 import pandas as pd
 
+from utils.text_processing_utils import concise_output, collapse_repeated_lines
+
 class ModelTraining(BaseModel):
     path_to_train_file: str = Field(
         description="Absolute path to the generated 'train.py'"
@@ -75,7 +77,10 @@ def retrain_and_check(config, train_data_path, valid_data_path, train_script_pat
         command = f"{command_prefix} python \"{train_script_path}\" --train-data \"{temp_train_path}\" --validation-data \"{temp_valid_path}\" --artifacts-dir \"{temp_artifacts_dir}\""
         training_out = subprocess.run(command, shell=True, executable="/bin/bash", capture_output=True)
         if(training_out.returncode != 0):
-            raise ModelRetry(f"Training script validaiton failed: Return code: {training_out.returncode}\nStderr: {training_out.stderr}, Stdout: {training_out.stdout}")
+            message = f"Training script validaiton failed: Return code: {training_out.returncode}\nStderr: {training_out.stderr}, Stdout: {training_out.stdout}"
+            message = collapse_repeated_lines(message)
+            message = concise_output(message)
+            raise ModelRetry(message)
         
         # Check if model file was created
         expected_model_path = temp_artifacts_dir / model_file_name
@@ -84,6 +89,8 @@ def retrain_and_check(config, train_data_path, valid_data_path, train_script_pat
             error_msg += f"Return code: {training_out.returncode}. "
             error_msg += f"Stderr: {training_out.stderr}"
             error_msg += f"Stdout: {training_out.stdout}"
+            error_msg = collapse_repeated_lines(error_msg)
+            error_msg = concise_output(error_msg)
             raise ModelRetry(error_msg)
         print('TRAINING REPRODUCIBILITY OK')
 
@@ -96,6 +103,8 @@ def retrain_and_check(config, train_data_path, valid_data_path, train_script_pat
         if isinstance(e, ModelRetry):
             raise
         traceback_msg = traceback.format_exc()
+        traceback_msg = collapse_repeated_lines(traceback_msg)
+        traceback_msg = concise_output(traceback_msg)
         raise ModelRetry(f"Training script validation failed: {traceback_msg}")
     finally:
         # Clean up temporary files and folder
