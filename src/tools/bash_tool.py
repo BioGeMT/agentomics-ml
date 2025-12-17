@@ -74,7 +74,7 @@ class BashProcess:
                     msg += "\nYou should use run_python_tool for running python scripts"
                 return msg
             
-    def collapse_repeated_lines(self, output: str, threshold: int = 2) -> str:
+    def collapse_repeated_lines(self, output: str, threshold: int = 4) -> str:
         lines = output.split('\n')
         result = []
         i = 0
