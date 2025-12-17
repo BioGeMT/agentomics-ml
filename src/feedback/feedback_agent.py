@@ -85,7 +85,7 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
     if config.can_iteration_split_now_cached(iteration = next_iteration_index): #cached method
         splitting_info = f"If you choose data splitting needs change, never suggest cross-validations split or any other split that would result in more than two files (train.csv and validation.csv). Keep in mind that using a more representative validation split will result in a better selected 'best iteration model' and therefore a better final hidden test set metrics."
         splitting_info += f"If the split should stay the same (current split version is {lastest_split_version}), instruct to 'Re-use the current split'."
-        splitting_info += f'Based on the iteration history, if you suspect the current split is not representative and/or produces overfitted models, instruct to change the splitting strategy to a more representative and robust one.'
+        splitting_info += f'Based on the iteration history, if you suspect the current split is not representative and/or produces overfitted models, instruct to change the splitting strategy to a more representative and robust one. If you do instruct to change the split, also instruct to re-use the best iteration (currently iteration {best_metric_iteration}) representation, architecture, training scripts and inference scripts.'
 
         split_budget_info = f"\nSplitting is allowed for the next "
         if config.split_time_deadline is not None:
@@ -177,10 +177,10 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
     </foundation_models_info>
     The agent will have access to the following resources: {config.get_resources_summary()}
 
-    The iteration history consists of experiments that used some data representation (R) and model architecture (A) combinations (R x A).
+    The iteration history consists of experiments that used some train/validation split strategy (S), data representation (R), and model architecture (A) combinations (S x R x A).
     Based on the iteration history and remaining time choose to either:
-    A) explore combinations (R x A) not present in the iteration history 
-    B) further develop an existing promising (R x A) combination. If the iteration history already contains a further developed version of a (R x A) combination that did not result in a validation {config.val_metric} improvement, you must not develop it further again.
+    A) explore combinations (S x R x A) not present in the iteration history 
+    B) further develop an existing promising (S x R x A) combination. If the iteration history already contains a further developed version of a (S x R x A) combination that did not result in a validation {config.val_metric} improvement, you must not develop it further again.
 
     Once the next iteration finishes, the iterations summaries (iteration history) will be updated with its results and you will have an opportunity to provide another set of instructions etc.. until the run ends.
     </your_instructions>
