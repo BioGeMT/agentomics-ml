@@ -6,6 +6,7 @@ import os
 import time
 
 from pydantic_ai import Tool
+from utils.text_processing_utils import collapse_repeated_lines
 
 class BashProcess:
     def __init__(self, agent_id, runs_dir, autoconda=True, timeout=60, proxy=False):
@@ -62,7 +63,7 @@ class BashProcess:
                     output += result.stderr
 
                 if result.returncode != 0:
-                    output = self.collapse_repeated_lines(output)
+                    output = collapse_repeated_lines(output)
                     if(len(output) > 5000):
                         output = f"output truncated, too long, showing first 5000 and last 5000 characters. First 5000:\n{output[:5000]}\n...\nLast 5000:\n{output[-5000:]}"
                     return f"Command failed with error code {result.returncode}:\n{output}"
@@ -73,27 +74,6 @@ class BashProcess:
                 if "python" in command and ".py" in command:
                     msg += "\nYou should use run_python_tool for running python scripts"
                 return msg
-            
-    def collapse_repeated_lines(self, output: str, threshold: int = 4) -> str:
-        lines = output.split('\n')
-        result = []
-        i = 0
-        while i < len(lines):                                                                                                                                                  
-            current_line = lines[i]
-            count = 1
-            while i + count < len(lines) and lines[i + count] == current_line:
-                count += 1
-
-            if count >= threshold:
-                result.append(current_line)
-                result.append(f"... [line repeated {count - 1} more times] ...")
-                i += count #jump over next different line
-            else: #not enough repeats, keep all lines
-                for _ in range(count):
-                    result.append(current_line)
-                i += count
-
-        return '\n'.join(result)
     
     def process_output(self, output: str, command: str) -> str:
         """
@@ -106,7 +86,7 @@ class BashProcess:
         """
         pattern = re.escape(command) + r"\s*\n"
         output = re.sub(pattern, "", output, count=1)
-        output = self.collapse_repeated_lines(output)
+        output = collapse_repeated_lines(output)
         if(len(output) > 5000):
             output = output[:5000]+"\n ... (output truncated, too long)"
         return output.strip()
