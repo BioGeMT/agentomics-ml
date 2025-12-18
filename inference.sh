@@ -1,8 +1,33 @@
 #!/usr/bin/env bash
 
+if [ -z "${BASH_VERSION:-}" ]; then
+  exec /usr/bin/env bash "$0" "$@"
+fi
+
+set -euo pipefail
+
 DOCKER_MODE=true
 CPU_ONLY=false
 ARGS=()
+
+RED='\033[0;31m'
+NOCOLOR='\033[0m'
+
+die() {
+    echo -e "${RED}Error: $*${NOCOLOR}" >&2
+    exit 1
+}
+
+need_cmd() {
+    command -v "$1" >/dev/null 2>&1 || die "Missing required command: $1"
+}
+
+require_opt_value() {
+    local opt="$1"
+    local val="${2:-}"
+    [[ -n "$val" ]] || die "Missing value for $opt"
+}
+
 show_help() {
     echo "Usage: $0 --agent-dir <agent_folder_path> --input <input_path> --output <output_path> [--cpu-only] [--local]"
     echo "Options:"
@@ -12,26 +37,38 @@ show_help() {
     echo "  --cpu-only    Run without GPU (optional)"
     echo "  --local       Run locally without Docker (optional)"
     echo "  --help        Show this help message and exit"
-    exit 0
 }
+
+usage_error() {
+    show_help
+    exit 1
+}
+
+AGENT_DIR=""
+INPUT_PATH=""
+OUTPUT_PATH=""
 
 for arg in "$@"; do
     if [[ "$arg" == "--help" ]]; then
         show_help
+        exit 0
     fi
 done
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --agent-dir)
+            require_opt_value "$1" "${2:-}"
             AGENT_DIR="$2"
             shift 2
             ;;
         --input)
+            require_opt_value "$1" "${2:-}"
             INPUT_PATH="$2"
             shift 2
             ;;
         --output)
+            require_opt_value "$1" "${2:-}"
             OUTPUT_PATH="$2"
             shift 2
             ;;
@@ -45,6 +82,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         --help)
             show_help
+            exit 0
             ;;
         *)
             ARGS+=("$1")
@@ -55,8 +93,12 @@ done
 
 # ensure all required args are provided
 if [[ -z "$AGENT_DIR" || -z "$INPUT_PATH" || -z "$OUTPUT_PATH" ]]; then
-    show_help
+    usage_error
 fi
+
+[[ -d "$AGENT_DIR" ]] || die "--agent-dir does not exist: $AGENT_DIR"
+[[ -f "$INPUT_PATH" ]] || die "--input does not exist: $INPUT_PATH"
+[[ -d "$(dirname "$OUTPUT_PATH")" ]] || die "--output directory does not exist: $(dirname "$OUTPUT_PATH")"
 
 AGENT_NAME=$(basename "$AGENT_DIR")
 ENV_PATH="${AGENT_DIR}/best_run_files/.conda/envs/${AGENT_NAME}_env"
@@ -79,6 +121,13 @@ if [ "$CPU_ONLY" = false ]; then
 fi
 
 if [[ "$DOCKER_MODE" == true ]]; then
+    need_cmd docker
+    if ! docker info >/dev/null 2>&1; then
+        die "Docker is not running or not accessible (start Docker and retry)"
+    fi
+    if ! docker image inspect agentomics_img >/dev/null 2>&1; then
+        die "Docker image 'agentomics_img' not found. Run ./run.sh once to build it (or build it manually) and retry."
+    fi
     echo "Running inference in Docker..."
     AGENT_DIR_ABS="$(cd "$(dirname "$AGENT_DIR")" && pwd)/$(basename "$AGENT_DIR")"
     INPUT_PATH_ABS="$(cd "$(dirname "$INPUT_PATH")" && pwd)/$(basename "$INPUT_PATH")"
@@ -97,6 +146,7 @@ if [[ "$DOCKER_MODE" == true ]]; then
         --output "/output_dir/$(basename "$OUTPUT_PATH_ABS")" "${ARGS[@]}" 
     echo "Inference done"
 else
+    need_cmd conda
     echo "Running inference locally..."
     cd "$(dirname "$INFERENCE_PATH")"
     conda run -p "$ENV_PATH" \

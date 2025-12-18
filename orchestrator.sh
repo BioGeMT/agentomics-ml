@@ -1,6 +1,19 @@
 #!/bin/bash
 
+set -euo pipefail
+
+RED='\033[0;31m'
+NOCOLOR='\033[0m'
+
+die() {
+  echo -e "${RED}Error: $*${NOCOLOR}" >&2
+  exit 1
+}
+
 REPOS_DIR="/home/$USER/repos" #this needs to be configured to the agentomics repository parent directory (biomlbench will be pulled as a sibling to the agentomics repo)
+
+[[ -x "./run.sh" ]] || die "Expected ./run.sh to be executable (run from repo root)"
+[[ -d "$REPOS_DIR" ]] || die "REPOS_DIR does not exist: $REPOS_DIR (edit orchestrator.sh)"
 
 SPEND_LIMIT=100
 MODELS=("openai/gpt-5.1-codex")
