@@ -312,10 +312,9 @@ else
         OLLAMA_FLAGS+=(--add-host=host.docker.internal:host-gateway)
     fi
 
-    ENV_FILE_ARGS=()
-    if [[ -f "$(pwd)/.env" ]]; then
-        ENV_FILE_ARGS+=(--env-file "$(pwd)/.env")
-    fi
+    ENV_FILE_PATH="$(pwd)/.env"
+    [[ -f "$ENV_FILE_PATH" ]] || die "Env file not found: $ENV_FILE_PATH (create it from .env.example)"
+    ENV_FILE_ARGS=(--env-file "$ENV_FILE_PATH")
 
     PROVIDERS_CONFIG_FILE="src/utils/providers/configured_providers.yaml"
     [[ -f "$PROVIDERS_CONFIG_FILE" ]] || die "Missing providers config: $PROVIDERS_CONFIG_FILE"
