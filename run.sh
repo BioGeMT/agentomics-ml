@@ -190,6 +190,11 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+IS_INTERACTIVE_RUN=false
+if [[ -t 0 && ${#AGENTOMICS_ARGS[@]} -eq 0 && "$LOCAL_MODE" = false && "$TEST_MODE" = false ]]; then
+    IS_INTERACTIVE_RUN=true
+fi
+
 if [ "$LOCAL_MODE" = true ]; then
     need_cmd conda
     need_cmd python
@@ -258,22 +263,20 @@ else
         fi
     fi
 
-    if [[ "$ORIGINAL_ARGC" -eq 0 && "$PULL_IMAGES" = false ]]; then
-        if [[ -t 0 ]]; then
-            echo ""
-            echo "Docker images"
-            echo "Select how to obtain Docker images:"
-            echo "  1) build locally"
-            echo "  2) pull prebuilt (biogemt)"
-            echo ""
-            read -r -p "Enter choice [2]: " images_choice
-            images_choice="${images_choice:-2}"
-            case "$images_choice" in
-                1) PULL_IMAGES=false;;
-                2) PULL_IMAGES=true;;
-                *) echo -e "${RED}Error: Invalid choice.${NOCOLOR}" >&2; exit 1;;
-            esac
-        fi
+    if [[ "$IS_INTERACTIVE_RUN" = true && "$PULL_IMAGES" = false ]]; then
+        echo ""
+        echo "Docker images"
+        echo "Select how to obtain Docker images:"
+        echo "  1) build locally"
+        echo "  2) pull prebuilt (biogemt)"
+        echo ""
+        read -r -p "Enter choice [2]: " images_choice
+        images_choice="${images_choice:-2}"
+        case "$images_choice" in
+            1) PULL_IMAGES=false;;
+            2) PULL_IMAGES=true;;
+            *) echo -e "${RED}Error: Invalid choice.${NOCOLOR}" >&2; exit 1;;
+        esac
     fi
 
     if [ -n "$FOUNDATION_MODEL_TYPE" ] && [[ "$FOUNDATION_MODEL_TYPE" != "dna" && "$FOUNDATION_MODEL_TYPE" != "rna" && "$FOUNDATION_MODEL_TYPE" != "molecule" && "$FOUNDATION_MODEL_TYPE" != "protein" ]]; then
@@ -281,28 +284,26 @@ else
         exit 1
     fi
 
-    if [[ "$ORIGINAL_ARGC" -eq 0 && -z "$FOUNDATION_MODEL_TYPE" ]]; then
-        if [[ -t 0 ]]; then
-            echo ""
-            echo "Foundation models (optional)"
-            echo "Select which foundation model type should be pre-downloaded and made available to the agent:"
-            echo "  1) none"
-            echo "  2) DNA"
-            echo "  3) RNA"
-            echo "  4) Molecule"
-            echo "  5) Protein"
-            echo ""
-            read -r -p "Enter choice [1]: " fm_choice
-            fm_choice="${fm_choice:-1}"
-            case "$fm_choice" in
-                1) FOUNDATION_MODEL_TYPE="";;
-                2) FOUNDATION_MODEL_TYPE="dna";;
-                3) FOUNDATION_MODEL_TYPE="rna";;
-                4) FOUNDATION_MODEL_TYPE="molecule";;
-                5) FOUNDATION_MODEL_TYPE="protein";;
-                *) echo -e "${RED}Error: Invalid choice.${NOCOLOR}" >&2; exit 1;;
-            esac
-        fi
+    if [[ "$IS_INTERACTIVE_RUN" = true && -z "$FOUNDATION_MODEL_TYPE" ]]; then
+        echo ""
+        echo "Foundation models (optional)"
+        echo "Select which foundation model type should be pre-downloaded and made available to the agent:"
+        echo "  1) none"
+        echo "  2) DNA"
+        echo "  3) RNA"
+        echo "  4) Molecule"
+        echo "  5) Protein"
+        echo ""
+        read -r -p "Enter choice [1]: " fm_choice
+        fm_choice="${fm_choice:-1}"
+        case "$fm_choice" in
+            1) FOUNDATION_MODEL_TYPE="";;
+            2) FOUNDATION_MODEL_TYPE="dna";;
+            3) FOUNDATION_MODEL_TYPE="rna";;
+            4) FOUNDATION_MODEL_TYPE="molecule";;
+            5) FOUNDATION_MODEL_TYPE="protein";;
+            *) echo -e "${RED}Error: Invalid choice.${NOCOLOR}" >&2; exit 1;;
+        esac
     fi
 
     FOUNDATION_MODEL_FLAGS=()
