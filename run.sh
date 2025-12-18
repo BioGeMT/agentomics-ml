@@ -2,8 +2,6 @@
 
 source "./bash_helpers.sh"
 
-ORIGINAL_ARGC=$#
-
 AGENTOMICS_ARGS=()
 LOCAL_MODE=false
 TEST_MODE=false
@@ -337,7 +335,6 @@ else
         docker build -t "$PREPARE_IMAGE" -f Dockerfile.prepare .
         echo "Build done"
     fi
-
     AGENT_ID=$(docker run --rm -u $(id -u):$(id -g) -v "$(pwd)":/repository:ro --entrypoint \
                /opt/conda/envs/agentomics-env/bin/python "$AGENTOMICS_IMAGE" /repository/src/utils/create_user.py)
     docker run \
