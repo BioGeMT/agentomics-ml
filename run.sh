@@ -187,18 +187,18 @@ if [ "$LOCAL_MODE" = true ]; then
     mkdir -p outputs/${AGENT_ID}/best_run_files outputs/${AGENT_ID}/reports
     cp -r ../workspace/snapshots/${AGENT_ID}/. outputs/${AGENT_ID}/best_run_files/
     cp -r ../workspace/reports/${AGENT_ID}/. outputs/${AGENT_ID}/reports/
-	else
-	    echo "Building the run image"
-	    docker build -t agentomics_img -f Dockerfile .
-	    echo "Build done"
-	    AGENT_ID=$(docker run --rm -u $(id -u):$(id -g) -v "$(pwd)":/repository:ro --entrypoint \
-	               /opt/conda/envs/agentomics-env/bin/python agentomics_img /repository/src/utils/create_user.py)
+else
+    echo "Building the run image"
+    docker build -t agentomics_img -f Dockerfile .
+    echo "Build done"
+    AGENT_ID=$(docker run --rm -u $(id -u):$(id -g) -v "$(pwd)":/repository:ro --entrypoint \
+               /opt/conda/envs/agentomics-env/bin/python agentomics_img /repository/src/utils/create_user.py)
 
-	    echo "Building the data preparation image"
-	    docker build -t agentomics_prepare_img -f Dockerfile.prepare .
-	    echo "Build done"
-	    docker run \
-	        -u $(id -u):$(id -g) \
+    echo "Building the data preparation image"
+    docker build -t agentomics_prepare_img -f Dockerfile.prepare .
+    echo "Build done"
+    docker run \
+        -u $(id -u):$(id -g) \
         --rm \
         -it \
         --name agentomics_prepare_cont_${AGENT_ID} \
