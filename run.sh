@@ -260,11 +260,6 @@ else
         fi
     fi
 
-    DOCKER_TTY_ARGS=()
-    if has_tty; then
-        DOCKER_TTY_ARGS=(-it)
-    fi
-
     echo "Building the run image"
     docker build --progress=quiet -t agentomics_img -f Dockerfile .
     echo "Build done"
@@ -277,7 +272,7 @@ else
     docker run \
         -u $(id -u):$(id -g) \
         --rm \
-        ${DOCKER_TTY_ARGS[@]+"${DOCKER_TTY_ARGS[@]}"} \
+        -it \
         --name agentomics_prepare_cont_${AGENT_ID} \
         -v "$(pwd)":/repository \
         agentomics_prepare_img
@@ -333,7 +328,7 @@ else
 
     if [ "$TEST_MODE" = true ]; then
         docker run \
-            ${DOCKER_TTY_ARGS[@]+"${DOCKER_TTY_ARGS[@]}"} \
+            -it \
             --rm \
             --name agentomics_test_cont_${AGENT_ID} \
             ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
@@ -350,7 +345,7 @@ else
     else
         docker run \
             --rm \
-            ${DOCKER_TTY_ARGS[@]+"${DOCKER_TTY_ARGS[@]}"} \
+            -it \
             --name agentomics_cont_${AGENT_ID} \
             ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
             -e AGENT_ID=${AGENT_ID} \
