@@ -79,35 +79,34 @@ def _print_mode() -> str:
     return mode if mode in {"summary", "full"} else "summary"
 
 def _args_dict(tool_call_part: ToolCallPart) -> dict:
-    args = tool_call_part.args
-    return args if isinstance(args, dict) else {}
+    return tool_call_part.args_as_dict()
 
 def _tool_call_summary(part: ToolCallPart) -> str:
     tool = part.tool_name
     args = _args_dict(part)
 
     if tool == "bash":
-        return "agent runs bash command"
+        return f"{bcolors.OKCYAN}agent runs bash command{bcolors.ENDC}"
 
     if tool == "write_python":
         file_path = args.get("file_path")
         if file_path:
-            return f"agent writes python file {os.path.basename(str(file_path))}"
-        return "agent writes python file"
+            return f"{bcolors.OKCYAN}agent writes python file{bcolors.ENDC} {os.path.basename(str(file_path))}"
+        return f"{bcolors.OKCYAN}agent writes python file{bcolors.ENDC}"
 
     if tool == "run_python":
         python_file_path = args.get("python_file_path")
         if python_file_path:
-            return f"agent runs python file {os.path.basename(str(python_file_path))}"
-        return "agent runs python file"
+            return f"{bcolors.OKCYAN}agent runs python file{bcolors.ENDC} {os.path.basename(str(python_file_path))}"
+        return f"{bcolors.OKCYAN}agent runs python file{bcolors.ENDC}"
 
     if tool == "replace":
         file_path = args.get("file_path")
         if file_path:
-            return f"agent edits file {os.path.basename(str(file_path))}"
-        return "agent edits file"
+            return f"{bcolors.OKCYAN}agent edits file{bcolors.ENDC} {os.path.basename(str(file_path))}"
+        return f"{bcolors.OKCYAN}agent edits file{bcolors.ENDC}"
 
-    return f"agent calls tool {tool}"
+    return f"{bcolors.OKCYAN}agent calls tool {tool}{bcolors.ENDC}"
 
 def _tool_return_summary(part: ToolReturnPart) -> tuple[str, bool]:
     tool = part.tool_name
@@ -141,7 +140,8 @@ def pretty_print_node(node):
                 elif isinstance(part, ToolCallPart):
                     if part.tool_name == "final_result":
                         continue
-                    pretty_print(_tool_call_summary(part), color=bcolors.OKCYAN)
+                    # Print without wrapping so ANSI color codes don't confuse text wrapping.
+                    print(_tool_call_summary(part))
         elif isinstance(node, ModelRequestNode):
             for part in node.request.parts:
                 if isinstance(part, ToolReturnPart):
