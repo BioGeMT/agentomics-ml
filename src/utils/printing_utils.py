@@ -89,20 +89,20 @@ def _tool_call_summary(part: ToolCallPart) -> str:
     if tool == "write_python":
         file_path = args.get("file_path")
         if file_path:
-            return f"agent wrote py script {os.path.basename(str(file_path))}"
-        return "agent wrote py script"
+            return f"agent writes py script {os.path.basename(str(file_path))}"
+        return "agent writes py script"
 
     if tool == "run_python":
         python_file_path = args.get("python_file_path")
         if python_file_path:
-            return f"agent ran python {os.path.basename(str(python_file_path))}"
-        return "agent ran python"
+            return f"agent runs python {os.path.basename(str(python_file_path))}"
+        return "agent runs python"
 
     if tool == "replace":
         file_path = args.get("file_path")
         if file_path:
-            return f"agent edited file {os.path.basename(str(file_path))}"
-        return "agent edited file"
+            return f"agent edits file {os.path.basename(str(file_path))}"
+        return "agent edits file"
 
     return f"agent calls tool {tool}"
 
@@ -125,7 +125,7 @@ def _tool_return_summary(part: ToolReturnPart) -> tuple[str, bool]:
         if first_line:
             msg += f": {first_line}"
         return msg, True
-    return f"agent finished tool {tool}", False
+    return "", False
 
 def pretty_print_node(node):
     mode = _print_mode()
@@ -145,8 +145,8 @@ def pretty_print_node(node):
                     if part.tool_name == "final_result":
                         continue
                     msg, is_error = _tool_return_summary(part)
-                    color = bcolors.FAIL if is_error else bcolors.OKCYAN
-                    pretty_print(msg, color=color)
+                    if is_error:
+                        pretty_print(msg, color=bcolors.FAIL)
                 elif isinstance(part, RetryPromptPart):
                     pretty_print("agent output validation failed; retrying", color=bcolors.WARNING)
         elif isinstance(node, UserPromptNode):
