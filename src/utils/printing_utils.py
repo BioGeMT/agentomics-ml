@@ -86,17 +86,20 @@ def _tool_call_summary(part: ToolCallPart) -> str:
     tool = part.tool_name
     args = _args_dict(part)
 
+    if tool == "bash":
+        return "agent runs bash command"
+
     if tool == "write_python":
         file_path = args.get("file_path")
         if file_path:
-            return f"agent writes py script {os.path.basename(str(file_path))}"
-        return "agent writes py script"
+            return f"agent writes python file {os.path.basename(str(file_path))}"
+        return "agent writes python file"
 
     if tool == "run_python":
         python_file_path = args.get("python_file_path")
         if python_file_path:
-            return f"agent runs python {os.path.basename(str(python_file_path))}"
-        return "agent runs python"
+            return f"agent runs python file {os.path.basename(str(python_file_path))}"
+        return "agent runs python file"
 
     if tool == "replace":
         file_path = args.get("file_path")
