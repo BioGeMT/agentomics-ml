@@ -30,8 +30,9 @@ Use --local to run with a local Conda environment.
 Required Arguments (for non-interactive runs):
   --model <name>      The LLM model name (e.g., 'openai/gpt-4').
   --dataset <name>    The short identifier for the prepared dataset (e.g., 'breast_cancer').
-  --iterations <N>    Number of iterations to run the agent (e.g., 5).
-  --timeout <int>   Amount of seconds the agent is allowed to run for. This or --iterations will dictate the duration, whichever will expire first. 
+  --iterations <N>    Number of iterations to run the agent (recommended more than 5).
+  --timeout <int>   Amount of seconds the agent is allowed to run for. This or --iterations will dictate the duration, whichever will expire first. (recommended
+  ~480s)
   --split-allowed-iterations <N>    Number of initial iterations that are allowed to (re)split the data into train/validation (e.g., 1).
   --val-metric <name> The metric to optimize (e.g., 'ACC').
   --user-prompt <str> The main prompt/goal for the agent.
@@ -201,6 +202,7 @@ else
         -u $(id -u):$(id -g) \
         --rm \
         -it \
+        -e PYTHONWARNINGS=ignore \
         --name agentomics_prepare_cont_${AGENT_ID} \
         -v "$(pwd)":/repository \
         agentomics_prepare_img
@@ -252,6 +254,7 @@ else
             --name agentomics_test_cont_${AGENT_ID} \
             --env-file $(pwd)/.env \
             -e AGENT_ID=${AGENT_ID} \
+            -e PYTHONWARNINGS=ignore \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
             ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
@@ -268,6 +271,7 @@ else
             --name agentomics_cont_${AGENT_ID} \
             --env-file $(pwd)/.env \
             -e AGENT_ID=${AGENT_ID} \
+            -e PYTHONWARNINGS=ignore \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
             ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
@@ -276,6 +280,15 @@ else
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
             agentomics_img ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
 
+        ARTIFACT_PATH="/workspace/snapshots/${AGENT_ID}"
+
+        if ! docker run --rm -v temp_agentomics_volume_${AGENT_ID}:/workspace busybox test -d ${ARTIFACT_PATH}; then
+            echo -e "${RED}Agent didn't produce any valid model, skipping testing evaluation.${NOCOLOR}" >&2
+
+            docker volume rm temp_agentomics_volume_${AGENT_ID} || true
+            exit 1
+        fi
+
         echo "Running final evaluation on test set"
         docker run \
             --rm \
@@ -283,6 +296,7 @@ else
             --env-file $(pwd)/.env \
             -e AGENT_ID=${AGENT_ID} \
             -e PYTHONPATH=/repository/src \
+            -e PYTHONWARNINGS=ignore \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \

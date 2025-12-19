@@ -7,6 +7,7 @@ from wandb.errors import CommError
 from run_logging.logging_helpers import login_to_wandb
 import weave
 
+
 def setup_logging(config, dir=None):
     dotenv.load_dotenv()
     api_key = os.getenv("WANDB_API_KEY")
@@ -35,20 +36,26 @@ def setup_logging(config, dir=None):
         return False
 
 def resume_wandb_run(config, dir=None):
+    dotenv.load_dotenv()  # env handling consistent
+
     api_key = os.getenv("WANDB_API_KEY")
     wandb_project_name = os.getenv("WANDB_PROJECT_NAME")
     wandb_entity = os.getenv("WANDB_ENTITY")
 
+    if not (api_key and wandb_project_name and wandb_entity):
+        return None
+    if not getattr(config, "wandb_run_id", None):
+        return None
     success = login_to_wandb(api_key)
     if not success:
-        print("W&B login failed - cannot resume logging run")
-        return False
-    else:
+        return None
+    try:
         wandb.init(
             dir=config.extras_dir / 'test_logs' if dir is None else dir,
-            id = config.wandb_run_id,
+            id=config.wandb_run_id,
             project=wandb_project_name,
             entity=wandb_entity,
-            resume="must"
+            resume="allow"
         )
-        return True
+    except CommError:
+        return None

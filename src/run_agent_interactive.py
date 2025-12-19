@@ -119,7 +119,7 @@ def main():
         model = provider.interactive_model_selection(limit=50)
 
     if not iterations:
-        iterations = get_user_input_for_int("Enter number of iterations to run:", default=5)
+        iterations = get_user_input_for_int("Enter number of iterations to run (Recommended more than 5):", default=5)
     
     # Run the agent
     asyncio.run(run_experiment(
