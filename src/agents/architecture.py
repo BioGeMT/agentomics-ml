@@ -157,7 +157,7 @@ def create_agents(config: Config, model, tools):
         if Path(result.path_to_artifacts_dir).resolve() not in Path(result.path_to_model_file).parents:
             raise ModelRetry(f"Model file ({result.path_to_model_file}) must be inside the artifacts folder ({result.path_to_artifacts_dir})")
         if does_file_contain_string(result.path_to_train_file, "iteration_"):
-            raise ModelRetry("Train file contains path containing a forbidden string 'iteration_' or references an iteration folder, which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
+            raise ModelRetry(f"Train file ({result.path_to_train_file}) contains path containing a forbidden string 'iteration_' or references an iteration folder, which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
         created_files_names = retrain_and_check(
             config=config,
             train_data_path=ctx.deps['train_csv_path'],
@@ -170,13 +170,17 @@ def create_agents(config: Config, model, tools):
 
         # Check if created files match existing files in artifacts directory
         if set(created_files_names) != set(existing_files_names):
-            difference = set(existing_files_names) - set(created_files_names)
-            error_msg = f"Artifacts directory contains extra files, probably from a previous failed training attempt.\n"
-            error_msg += f"Files created using the current training script: {created_files_names}\n"
-            error_msg += f"Files existing in artifacts directory: {existing_files_names}\n"
-            error_msg += f"Extra files that should be cleaned up: {list(difference)}\n"
-            error_msg += f"Please clean up the artifacts directory at {result.path_to_artifacts_dir} and try again."
-            raise ModelRetry(error_msg)
+            extras_in_submitted_folder = set(existing_files_names) - set(created_files_names)
+            extras_in_retrain_folder = set(created_files_names) - set(existing_files_names)
+            if(len(extras_in_submitted_folder) > 0):
+                error_msg = f"Artifacts directory contains extra files, probably from a previous failed training attempt.\n"
+                error_msg += f"Files created using the current training script: {created_files_names}\n"
+                error_msg += f"Files existing in artifacts directory: {existing_files_names}\n"
+                error_msg += f"Extra files that should be cleaned up: {list(extras_in_submitted_folder)}\n"
+                error_msg += f"Please clean up the artifacts directory at {result.path_to_artifacts_dir} and try again."
+                raise ModelRetry(error_msg)
+            else:
+                print(f"Warning: Training script creates some extra files compared to the submitted training artifacts: {extras_in_retrain_folder}")
 
         result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
         return result
