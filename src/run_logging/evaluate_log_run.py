@@ -220,13 +220,15 @@ def verify_file_and_row_count(input_path, predictions_path, inference_out):
     input_ids = pd.read_csv(input_path)['id']
     try:
         prediction_ids = pd.read_csv(predictions_path)['id']
-        if not (input_ids.equals(prediction_ids)):
-            diff = input_ids.compare(prediction_ids, align_axis=0).head(n=20)
-            raise ModelRetry(f'Inference script must keep the id column from the input data the same. First 20 differences:\n{diff}')
+        input_set, pred_set = set(input_ids), set(prediction_ids)
+        if input_set != pred_set:
+            missing = list(input_set - pred_set)[:20] #keep just first 20
+            extra = list(pred_set - input_set)[:20] #keep just first 20
+            raise ModelRetry(f'Inference script must keep the id column from the input data the same. First (up to 20) missing ids: {missing}. First (up to 20) extra ids: {extra}')
 
     except Exception as e:
         tb = traceback.format_exc()
         tb = collapse_repeated_lines(tb)
         tb = concise_output(tb)
-        raise ModelRetry(f'Inference script must produce predicions with the \'id\' column. {e}\n{tb}') from e
+        raise ModelRetry(f'Inference script must produce predictions with the \'id\' column. {e}\n{tb}') from e
 
