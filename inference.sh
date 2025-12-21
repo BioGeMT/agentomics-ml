@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -e
 
 source "./bash_helpers.sh"
 
@@ -12,6 +13,7 @@ show_help() {
     echo "  --agent-dir   Path to agent folder (required)"
     echo "  --input       Path to input file (required)"
     echo "  --output      Path to output file (required)"
+    echo "  --code-path   Path to code files, points to best iteration files by default, must be relative to --agent-dir and a child of --agent-dir (optional)"
     echo "  --cpu-only    Run without GPU (optional)"
     echo "  --local       Run locally without Docker (optional)"
     echo "  --help        Show this help message and exit"
@@ -43,6 +45,10 @@ while [[ $# -gt 0 ]]; do
         --output)
             require_opt_value "$1" "${2:-}"
             OUTPUT_PATH="$2"
+            shift 2
+            ;;
+        --code-path)
+            CODE_PATH="$2"
             shift 2
             ;;
         --cpu-only)
@@ -80,12 +86,18 @@ fi
 [[ -d "$(dirname "$OUTPUT_PATH")" ]] || die "--output directory does not exist: $(dirname "$OUTPUT_PATH")"
 
 AGENT_NAME=$(basename "$AGENT_DIR")
-ENV_PATH="${AGENT_DIR}/best_run_files/.conda/envs/${AGENT_NAME}_env"
-INFERENCE_PATH="${AGENT_DIR}/best_run_files/inference.py"
+CODE_PATH=${CODE_PATH:-"best_run_files"}
+echo "Using code path: $CODE_PATH"
+ENV_PATH="${AGENT_DIR}/${CODE_PATH}/.conda/envs/${AGENT_NAME}_env"
+INFERENCE_PATH="${AGENT_DIR}/${CODE_PATH}/inference.py"
 
 if [[ ! -d "$ENV_PATH" ]]; then
     echo "Conda environment not found at: $ENV_PATH"
-    exit 1
+    if [[ ! -f "$AGENT_DIR/${CODE_PATH}/conda_environment.yml" ]]; then
+        echo "conda_environment.yml not found at: $AGENT_DIR/${CODE_PATH}/conda_environment.yml"
+        exit 1
+    fi
+    conda env create -f "$AGENT_DIR/${CODE_PATH}/conda_environment.yml" -p "$ENV_PATH"
 fi
 
 if [[ ! -f "$INFERENCE_PATH" ]]; then
@@ -126,7 +138,7 @@ if [[ "$DOCKER_MODE" == true ]]; then
     INPUT_PATH_ABS="$(cd "$(dirname "$INPUT_PATH")" && pwd)/$(basename "$INPUT_PATH")"
     OUTPUT_PATH_ABS="$(cd "$(dirname "$OUTPUT_PATH")" && pwd)/$(basename "$OUTPUT_PATH")"
     docker run --rm \
-        -v "${AGENT_DIR_ABS}/best_run_files:/workspace" \
+        -v "${AGENT_DIR_ABS}/${CODE_PATH}:/workspace" \
         -v "$(dirname "$INPUT_PATH_ABS"):/input_dir" \
         -v "$(dirname "$OUTPUT_PATH_ABS"):/output_dir" \
         ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
@@ -136,7 +148,8 @@ if [[ "$DOCKER_MODE" == true ]]; then
         agentomics_img \
         python inference.py \
         --input "/input_dir/$(basename "$INPUT_PATH_ABS")" \
-        --output "/output_dir/$(basename "$OUTPUT_PATH_ABS")" "${ARGS[@]}" 
+        --output "/output_dir/$(basename "$OUTPUT_PATH_ABS")" \
+        --artifacts-dir "/workspace/training_artifacts"
     echo "Inference done"
 else
     need_cmd conda
@@ -147,5 +160,4 @@ else
         --input "$INPUT_PATH" \
         --output "$OUTPUT_PATH" "${ARGS[@]}"
     echo "Inference done"
-    
 fi
