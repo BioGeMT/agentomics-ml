@@ -62,6 +62,8 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric,
         wandb_logged_in = setup_logging(config)
     else:
         wandb_logged_in = False
+    export_config_to_extras(config)
+
     # initialize LLMs
     provider = get_provider_from_string(provider_name)
     default_model = provider.create_model(config.model_name, config)
