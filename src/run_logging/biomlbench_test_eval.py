@@ -118,9 +118,8 @@ def main():
     submission_info_path = results_dir / 'submission.jsonl'
     run_info = load_submission_jsonl(submission_info_path)
 
-    code_dirs = [dir for dir in list((Path(run_info['code_path']) / 'best_run_files').iterdir())]
-    assert len(code_dirs) == 1, code_dirs
-    config_path = code_dirs[0]/'config.json'
+    extras_dir = Path(run_info['code_path']) / 'extras'
+    config_path = extras_dir/'config.json'
 
     preds_path = Path(run_info['submission_path']).parent / 'submission_extended.csv'
     task_id = run_info['task_id']
