@@ -5,6 +5,7 @@ source "./bash_helpers.sh"
 
 DOCKER_MODE=true
 CPU_ONLY=false
+REMOVE_CONDA_ENV=false
 ARGS=()
 
 show_help() {
@@ -14,6 +15,7 @@ show_help() {
     echo "  --input       Path to input file (required)"
     echo "  --output      Path to output file (required)"
     echo "  --code-path   Path to code files, points to best iteration files by default, must be relative to --agent-dir and a child of --agent-dir (optional)"
+    echo "  --remove-conda-env   Remove the conda environment after inference (optional)"
     echo "  --cpu-only    Run without GPU (optional)"
     echo "  --local       Run locally without Docker (optional)"
     echo "  --help        Show this help message and exit"
@@ -50,6 +52,10 @@ while [[ $# -gt 0 ]]; do
         --code-path)
             CODE_PATH="$2"
             shift 2
+            ;;
+        --remove-conda-env)
+            REMOVE_CONDA_ENV=true
+            shift
             ;;
         --cpu-only)
             CPU_ONLY=true
@@ -90,6 +96,11 @@ CODE_PATH=${CODE_PATH:-"best_run_files"}
 echo "Using code path: $CODE_PATH"
 ENV_PATH="${AGENT_DIR}/${CODE_PATH}/.conda/envs/${AGENT_NAME}_env"
 INFERENCE_PATH="${AGENT_DIR}/${CODE_PATH}/inference.py"
+
+if [[ ! -f "$INFERENCE_PATH" ]]; then
+    echo "inference.py not found at: $INFERENCE_PATH"
+    exit 1
+fi
 
 if [[ ! -d "$ENV_PATH" ]]; then
     echo "Conda environment not found at: $ENV_PATH"
@@ -160,4 +171,9 @@ else
         --input "$INPUT_PATH" \
         --output "$OUTPUT_PATH" "${ARGS[@]}"
     echo "Inference done"
+fi
+
+if [[ "$REMOVE_CONDA_ENV" == true ]]; then
+    echo "Removing conda environment at: $ENV_PATH"
+    rm -rf "$ENV_PATH"
 fi
