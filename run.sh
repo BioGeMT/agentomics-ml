@@ -664,7 +664,7 @@ else
 
         if [ "$USE_PROVISIONING_KEY" = true ]; then
             echo "Logging costs and cleaning up temporary API key"
-            CONFIG_PATH="outputs/${AGENT_ID}/best_run_files/config.json"
+            CONFIG_PATH="outputs/${AGENT_ID}/extras/config.json"
             PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys_utils.py cleanup-and-log --config-path "$CONFIG_PATH" --api-key-hash "$TEMP_API_KEY_HASH"
         fi
         write_outputs_readme "${AGENT_ID}"
