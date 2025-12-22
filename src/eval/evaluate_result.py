@@ -12,14 +12,15 @@ def get_metrics(results_file, test_file, task_type, output_file=None, numeric_la
     
     results = pd.read_csv(results_file)
     test = pd.read_csv(test_file)
-    merged = pd.merge(results, test, on='id', how='inner', suffixes=(None, '_y'))
+    if pred_col == numeric_label_col:
+        test = test.rename(columns={numeric_label_col: f"{numeric_label_col}_to_predict"})
+        numeric_label_col = f"{numeric_label_col}_to_predict"
+        
+    merged = pd.merge(results, test, on='id', how='inner')
     if(len(merged) != len(test)):
         print('WARNING: PREDICTIONS LENGTH DOESNT MATCH TEST DATASET')
 
-    if f'{numeric_label_col}_y' in merged.columns:
-        numeric_label_col = f'{numeric_label_col}_y'
     metrics = {}
-    
     if task_type == "classification":
         # For classification, ensure predictions and labels are integers
         merged[pred_col] = merged[pred_col].astype(int)
