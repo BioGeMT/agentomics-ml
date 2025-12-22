@@ -167,6 +167,7 @@ OUTPUT=$(biomlbench run-agent --agent agentomics-ml --task-id "$DSET" 2>&1 | tee
 RESULTS_DIR=$(echo "$OUTPUT" | grep -oP "Results saved to: \K.*" | head -1)
 submission_path=$(jq -r '."submission_path"' "$RESULTS_DIR/submission.jsonl")
 task_id=$(jq -r '."task_id"' "$RESULTS_DIR/submission.jsonl")
+code_path=$(jq -r '."code_path"' "$RESULTS_DIR/submission.jsonl")
 
 GRADE=$(biomlbench grade-sample "$submission_path" "$task_id" 2>&1 | tee /dev/tty)
 GRADE_JSON=$(echo "$GRADE" | perl -0777 -nle 'print $1 if /({.*?})/s')
@@ -183,7 +184,7 @@ cd "$REPOS_DIR"/agentomics-ml
 conda run -n agentomics-env python src/run_logging/biomlbench_test_eval.py --results-dir=$RESULTS_DIR --grade-json "$GRADE_JSON"
 
 # Get config path and log API usage, then delete key
-CONFIG_PATH=$(find "$RESULTS_DIR" -name "config.json" -type f 2>/dev/null | head -1)
+CONFIG_PATH="$code_path/extras/config.json"
 cd "$REPOS_DIR/agentomics-ml" && PYTHONPATH="$REPOS_DIR/agentomics-ml/src" conda run -n agentomics-env python src/utils/api_keys_utils.py cleanup-and-log --config-path "$CONFIG_PATH" --api-key-hash "$API_KEY_HASH"
 
 # Optional removal of conda (uses a lot of storage)
