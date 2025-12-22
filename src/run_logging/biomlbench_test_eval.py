@@ -44,11 +44,20 @@ def run_test_evaluation(config_path, predictions_path, labeled_test_path, label_
             all_metrics[metric] = statistics.mean([all_metrics[f'{metric}_{fold_col}'] for fold_col in fold_cols]) #take avg over all fold metrics (biomlbench style)
         log_inference_stage_and_metrics(2, metrics=all_metrics, task_type=config.task_type)
         log_biomlbench_grade(biomlbench_grade_dict)
-    else:
+    else: #branch still includes proteins without folds
+        df_preds = pd.read_csv(predictions_path)
+        if label_col in df_preds.columns:
+            pred_col = label_col  # ProteinGym
+        elif 'prediction' in df_preds.columns:
+            pred_col = 'prediction'  # standard BioMLbench
+        else:
+            raise ValueError(f"Cannot determine prediction column. Available columns: {df_preds.columns.tolist()}")
+
         metrics = get_metrics(
             results_file=predictions_path,
             test_file=labeled_test_path,
             output_file=output_metrics_file,
+            pred_col=pred_col,
             numeric_label_col=label_col,
             delete_preds=False,
             task_type=config.task_type,
