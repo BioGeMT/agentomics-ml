@@ -12,13 +12,10 @@ def get_metrics(results_file, test_file, task_type, output_file=None, numeric_la
     
     results = pd.read_csv(results_file)
     test = pd.read_csv(test_file)
-    merged = pd.merge(results, test, on='id', how='inner') # pandas adds suffixes to overlapping columns
+    merged = pd.merge(results, test, on='id', how='inner', suffixes=(None, '_y'))
     if(len(merged) != len(test)):
         print('WARNING: PREDICTIONS LENGTH DOESNT MATCH TEST DATASET')
 
-    #handle eventual column name clashes
-    if f'{pred_col}_x' in merged.columns:
-        pred_col = f'{pred_col}_x'
     if f'{numeric_label_col}_y' in merged.columns:
         numeric_label_col = f'{numeric_label_col}_y'
     metrics = {}
