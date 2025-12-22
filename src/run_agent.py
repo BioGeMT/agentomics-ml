@@ -12,7 +12,7 @@ from timeout_function_decorator import timeout as timeout_decorator
 from run_logging.evaluate_log_run import run_inference_and_log
 from run_logging.logging_helpers import log_serial_metrics, log_feedback_failure, log_iteration_duration, log_new_best, log_split_is_allowed
 from run_logging.wandb_setup import setup_logging
-from run_logging.log_files import log_files, export_config_to_snapshot
+from run_logging.log_files import log_files, export_config_to_extras
 from utils.env_utils import are_wandb_vars_available
 from utils.create_user import create_run_and_snapshot_dirs
 from utils.dataset_utils import setup_nonsensitive_dataset_files_for_agent
@@ -167,7 +167,7 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
         if(is_current_new_best):
             log_new_best(iteration=run_index)
             snapshot(config=config, iteration=run_index, structured_outputs=structured_outputs)  # Snapshotting overrides the previous snapshot, influencing the get_new_and_best_metrics function
-            export_config_to_snapshot(config)
+            export_config_to_extras(config)
             for callback in on_new_best_callbacks:
                 callback(config)
         populate_iteration_dir(config, run_index, is_best=is_current_new_best, structured_outputs=structured_outputs)
