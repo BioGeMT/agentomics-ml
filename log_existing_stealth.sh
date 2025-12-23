@@ -50,6 +50,8 @@ for search_dir in "${SEARCH_DIRS[@]}"; do
         # Check for config in extras first (priority), then fall back to best_run_files
         if [[ -f "$agent_folder/extras/config.json" ]]; then
             config_file="$agent_folder/extras/config.json"
+        elif [[ -f "$agent_folder/best_run_files/config.json" ]]; then
+            config_file="$agent_folder/best_run_files/config.json"
         elif [[ -d "$agent_folder/code/best_run_files" ]]; then
             # biomlbench structure with code folder
             config_file=$(find "$agent_folder/code/best_run_files" -maxdepth 2 -name "config.json" -type f 2>/dev/null | head -1)
