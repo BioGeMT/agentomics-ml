@@ -35,7 +35,7 @@ def evaluate_stealth_test(dataset, test_output_dir, experiment_folder):
     }
     config = Config(**config_constructor_params)
     config.wandb_run_id = config_dict.get('wandb_run_id')
-    resume_wandb_run(config)
+    run = resume_wandb_run(config)
 
     pred_files = list(test_output_dir.glob("iteration_*_test_predictions.csv"))
     pred_files.sort(key=lambda f: int(f.stem.split("_")[1]))
@@ -52,7 +52,8 @@ def evaluate_stealth_test(dataset, test_output_dir, experiment_folder):
             )
             for metric_name, metric_value in metrics.items():
                 # print(f"stealth_test/{metric_name} = {metric_value} at step {int(iteration_name.split('_')[1])}")
-                wandb.log({f"stealth_test/{metric_name}": metric_value}, step=int(iteration_name.split("_")[1]))
+                run.define_metric(step_metric = 'iteration_index', name = metric_name)
+                wandb.log({f"stealth_test/{metric_name}": metric_value, 'iteration_index': int(iteration_name.split("_")[1])})
         except Exception as e:
             print(f"Failed to evaluate {iteration_name}: {e}")
     wandb.finish()
