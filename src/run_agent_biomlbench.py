@@ -387,7 +387,7 @@ def extract_val_metric_from_description(description_path, is_proteingym):
                     return biomlbench_metric_to_agentomics_metric[biomlbench_metric]
 
 def extract_task_type_from_val_metric(val_metric):
-    if val_metric in ['AUPRC', 'AUROC']:
+    if val_metric in ['AUPRC', 'AUROC', 'ACC']:
         return 'classification'
     if val_metric in ['MAE', 'PEARSON', 'SPEARMAN']:
         return 'regression'

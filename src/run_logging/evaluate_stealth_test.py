@@ -5,6 +5,7 @@ from utils.config import Config
 from eval.evaluate_result import get_metrics
 from run_logging.wandb_setup import resume_wandb_run
 import wandb
+from run_agent_biomlbench import extract_task_type_from_val_metric
 
 def evaluate_stealth_test(dataset, test_output_dir, experiment_folder):
     test_output_dir = Path(test_output_dir)
@@ -27,11 +28,12 @@ def evaluate_stealth_test(dataset, test_output_dir, experiment_folder):
         'tags': config_dict['tags'],
         'val_metric': config_dict['val_metric'],
         'workspace_dir': Path(config_dict['workspace_dir']),
-        'prepared_datasets_dir': Path(config_dict['prepared_dataset_dir']).parent,
+        'prepared_datasets_dir': prepared_datasets_dir,
         'prepared_test_sets_dir': prepared_test_sets_dir,
         'agent_datasets_dir': Path(config_dict['agent_dataset_dir']).parent,
         'user_prompt': config_dict['user_prompt'],
         'iterations': config_dict['iterations'],
+        'task_type': extract_task_type_from_val_metric(config_dict['val_metric']),
     }
     config = Config(**config_constructor_params)
     config.wandb_run_id = config_dict.get('wandb_run_id')
