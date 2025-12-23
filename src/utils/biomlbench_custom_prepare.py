@@ -101,10 +101,14 @@ def prepare_biomlbench_dataset(
 
     if Path(prepared_src).exists():
         Path(prepared_dst).parent.mkdir(parents=True, exist_ok=True)
+        if(Path(prepared_dst).exists()):
+            shutil.rmtree(prepared_dst)
         shutil.move(prepared_src, prepared_dst)
 
     if Path(test_src).exists():
         Path(test_dst).parent.mkdir(parents=True, exist_ok=True)
+        if(Path(test_dst).exists()):
+            shutil.rmtree(test_dst)
         shutil.move(test_src, test_dst)
 
 if __name__ == "__main__":
