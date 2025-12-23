@@ -22,18 +22,19 @@ AGENT_ID=$(jq -r '.agent_id' "$CONFIG_FILE")
 DATASET=$(jq -r '.dataset' "$CONFIG_FILE")
 WANDB_RUN_ID=$(jq -r '.wandb_run_id' "$CONFIG_FILE")
 
-POLARIS_DATASETS=(
-    "polaris-pkis2-egfr-wt-c-1"
-    "polaris-adme-fang-hclint-1"
-    "polaris-adme-fang-hppb-1"
-    "polaris-adme-fang-solu-1"
-    "tdcommons-cyp2d6-substrate-carbonmangels"
-    "tdcommons-lipophilicity-astrazeneca"
-    "tdcommons-herg"
-    "tdcommons-bbb-martins"
-    "tdcommons-caco2-wang"
+POLARIS_DATASETS_WITH_POLARIS_PREFIX=(
+    "pkis2-egfr-wt-c-1"
+    "adme-fang-hclint-1"
+    "adme-fang-hppb-1"
+    "adme-fang-solu-1"
 )
-
+POLARIS_DATASETS_WITH_TDCOMMONS_PREFIX=(
+    "cyp2d6-substrate-carbonmangels"
+    "lipophilicity-astrazeneca"
+    "herg"
+    "bbb-martins"
+    "caco2-wang"
+)
 PROTEINGYM_DATASETS=(
     "SPIKE_SARS2_Starr_2020_binding"
     "SPA_STAAU_Tsuboyama_2023_1LP1"
@@ -43,11 +44,16 @@ PROTEINGYM_DATASETS=(
     "CSN4_MOUSE_Tsuboyama_2023_1UFM_indels"
 )
 
-# If dataset doesn't contain a slash, prefix it
 if [[ "$DATASET" != *"/"* ]]; then
-    for dset in "${POLARIS_DATASETS[@]}"; do
+    for dset in "${POLARIS_DATASETS_WITH_POLARIS_PREFIX[@]}"; do
         if [[ "$DATASET" == "$dset" ]]; then
-            DATASET="polarishub/$DATASET"
+            DATASET="polarishub/polaris-$DATASET"
+            break
+        fi
+    done
+    for dset in "${POLARIS_DATASETS_WITH_TDCOMMONS_PREFIX[@]}"; do
+        if [[ "$DATASET" == "$dset" ]]; then
+            DATASET="polarishub/tdcommons-$DATASET"
             break
         fi
     done
