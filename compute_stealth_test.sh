@@ -22,6 +22,44 @@ AGENT_ID=$(jq -r '.agent_id' "$CONFIG_FILE")
 DATASET=$(jq -r '.dataset' "$CONFIG_FILE")
 WANDB_RUN_ID=$(jq -r '.wandb_run_id' "$CONFIG_FILE")
 
+POLARIS_DATASETS=(
+    "polaris-pkis2-egfr-wt-c-1"
+    "polaris-adme-fang-hclint-1"
+    "polaris-adme-fang-hppb-1"
+    "polaris-adme-fang-solu-1"
+    "tdcommons-cyp2d6-substrate-carbonmangels"
+    "tdcommons-lipophilicity-astrazeneca"
+    "tdcommons-herg"
+    "tdcommons-bbb-martins"
+    "tdcommons-caco2-wang"
+)
+
+PROTEINGYM_DATASETS=(
+    "SPIKE_SARS2_Starr_2020_binding"
+    "SPA_STAAU_Tsuboyama_2023_1LP1"
+    "PSAE_PICP2_Tsuboyama_2023_1PSE_indels"
+    "CBX4_HUMAN_Tsuboyama_2023_2K28"
+    "Q8EG35_SHEON_Campbell_2022_indels"
+    "CSN4_MOUSE_Tsuboyama_2023_1UFM_indels"
+)
+
+# If dataset doesn't contain a slash, prefix it
+if [[ "$DATASET" != *"/"* ]]; then
+    for dset in "${POLARIS_DATASETS[@]}"; do
+        if [[ "$DATASET" == "$dset" ]]; then
+            DATASET="polarishub/$DATASET"
+            break
+        fi
+    done
+
+    for dset in "${PROTEINGYM_DATASETS[@]}"; do
+        if [[ "$DATASET" == "$dset" ]]; then
+            DATASET="proteingym-dms/$DATASET"
+            break
+        fi
+    done
+fi
+
 echo "Agent ID: $AGENT_ID"
 echo "Dataset: $DATASET"
 echo "WandB Run ID: $WANDB_RUN_ID"
@@ -32,7 +70,7 @@ for dir in "$EXPERIMENT_FOLDER/run_files"/iteration_[0-9]*; do
 done
 echo "Found ${#ITERATIONS[@]} iterations"
 
-conda activate agentomics-env && python src/utils/biomlbench_custom_prepare.py --agentomics-dir "$AGENTOMICS_DIR" --dataset-name "$DATASET"
+source activate agentomics-env && PYTHONPATH="${AGENTOMICS_DIR}/src" python src/utils/biomlbench_custom_prepare.py --agentomics-dir "$AGENTOMICS_DIR" --dataset-name "$DATASET"
 
 TEST_OUTPUT_DIR=$(mktemp -d)
 trap "rm -rf $TEST_OUTPUT_DIR" EXIT
