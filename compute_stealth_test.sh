@@ -71,9 +71,9 @@ echo "Dataset: $DATASET"
 echo "WandB Run ID: $WANDB_RUN_ID"
 
 ITERATIONS=()
-for dir in "$EXPERIMENT_FOLDER/run_files"/iteration_[0-9]*; do
+while IFS= read -r dir; do
     ITERATIONS+=("$(basename "$dir")")
-done
+done < <(find "$EXPERIMENT_FOLDER/run_files" -maxdepth 1 -type d -name "iteration_*" | sort -V)
 echo "Found ${#ITERATIONS[@]} iterations"
 
 source activate agentomics-env && PYTHONPATH="${AGENTOMICS_DIR}/src" python src/utils/biomlbench_custom_prepare.py --agentomics-dir "$AGENTOMICS_DIR" --dataset-name "$DATASET"
