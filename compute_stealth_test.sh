@@ -71,10 +71,11 @@ echo "Dataset: $DATASET"
 echo "WandB Run ID: $WANDB_RUN_ID"
 
 declare -A ITERATION_PATHS
+EXPERIMENT_FOLDER_NORMALIZED="${EXPERIMENT_FOLDER%/}"
 while IFS= read -r dir; do
     iteration_name="$(basename "$dir")"
     parent_path="${dir%/*}"
-    relative_parent="${parent_path#$EXPERIMENT_FOLDER/}"
+    relative_parent="${parent_path#$EXPERIMENT_FOLDER_NORMALIZED/}"
     relative_path="$relative_parent/$iteration_name"
     ITERATION_PATHS["$iteration_name"]="$relative_path"
 done < <(find "$EXPERIMENT_FOLDER" -maxdepth 3 -type d -name "iteration_*" | sort -V)
