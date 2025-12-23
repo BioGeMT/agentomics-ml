@@ -31,6 +31,7 @@ has_matching_tag() {
 
 # Find all experiments with matching tags
 MATCHING_EXPERIMENTS=()
+CONFIG_FILES=()
 declare -A EXPERIMENT_DATASETS
 for search_dir in "${SEARCH_DIRS[@]}"; do
     if [[ ! -d "$search_dir" ]]; then
@@ -73,6 +74,7 @@ for search_dir in "${SEARCH_DIRS[@]}"; do
             parent_folder=$(dirname "$agent_folder")
             exp_folder="$parent_folder/$config_agent_id"
             MATCHING_EXPERIMENTS+=("$exp_folder")
+            CONFIG_FILES+=("$config_file")
             EXPERIMENT_DATASETS["$exp_folder"]="$dataset"
 
             echo "  Found: $exp_folder"
@@ -90,7 +92,10 @@ echo "----------------------------------------"
 
 # Run compute_stealth_test.sh for each matching experiment
 FAILED_EXPERIMENTS=()
-for exp_folder in "${MATCHING_EXPERIMENTS[@]}"; do
+for idx in "${!MATCHING_EXPERIMENTS[@]}"; do
+    exp_folder="${MATCHING_EXPERIMENTS[$idx]}"
+    config_file="${CONFIG_FILES[$idx]}"
+    
     echo ""
     echo "========================================"
     echo "Processing experiment: $exp_folder"
@@ -117,6 +122,7 @@ for exp_folder in "${MATCHING_EXPERIMENTS[@]}"; do
     [[ "$skip_experiment" == true ]] && continue
 
     echo "Using dataset: $dataset"
+    cp "$config_file" "$exp_folder/extras/config.json"
 
     if ./compute_stealth_test.sh --exp-folder "$exp_folder" --agentomics-dir "SCRATCH/agentomics-ml"; then
         echo "✓ Stealth test completed successfully for $exp_folder"
