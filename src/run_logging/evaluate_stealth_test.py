@@ -13,8 +13,8 @@ def evaluate_stealth_test(dataset, test_output_dir, experiment_folder):
     with open(config_file) as f:
         config_dict = json.load(f)
 
-    prepared_test_sets_dir = Path(config_dict['prepared_test_set_dir']).parent
-    prepared_datasets_dir = Path(config_dict['prepared_dataset_dir']).parent
+    prepared_test_sets_dir = Path('/repository/prepared_test_sets')
+    prepared_datasets_dir = Path('/repository/prepared_datasets')
     with open(prepared_datasets_dir / dataset / "metadata.json") as f:
         dataset_metadata = json.load(f)
 
