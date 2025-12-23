@@ -73,7 +73,9 @@ echo "WandB Run ID: $WANDB_RUN_ID"
 declare -A ITERATION_PATHS
 while IFS= read -r dir; do
     iteration_name="$(basename "$dir")"
-    relative_path="${dir#$EXPERIMENT_FOLDER/}"
+    parent_path="${dir%/*}"
+    relative_parent="${parent_path#$EXPERIMENT_FOLDER/}"
+    relative_path="$relative_parent/$iteration_name"
     ITERATION_PATHS["$iteration_name"]="$relative_path"
 done < <(find "$EXPERIMENT_FOLDER" -maxdepth 3 -type d -name "iteration_*" | sort -V)
 echo "Found ${#ITERATION_PATHS[@]} iterations"
