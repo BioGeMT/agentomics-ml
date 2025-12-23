@@ -42,13 +42,13 @@ def resume_wandb_run(config, dir=None):
     success = login_to_wandb(api_key)
     if not success:
         print("W&B login failed - cannot resume logging run")
-        return False
+        return
     else:
-        wandb.init(
+        run = wandb.init(
             dir=config.extras_dir / 'test_logs' if dir is None else dir,
             id = config.wandb_run_id,
             project=wandb_project_name,
             entity=wandb_entity,
             resume="must"
         )
-        return True
+        return run
