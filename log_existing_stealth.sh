@@ -31,6 +31,7 @@ has_matching_tag() {
 
 # Find all experiments with matching tags
 MATCHING_EXPERIMENTS=()
+declare -A EXPERIMENT_DATASETS
 for search_dir in "${SEARCH_DIRS[@]}"; do
     if [[ ! -d "$search_dir" ]]; then
         echo "Warning: Directory $search_dir not found, skipping..."
@@ -70,6 +71,7 @@ for search_dir in "${SEARCH_DIRS[@]}"; do
             parent_folder=$(dirname "$agent_folder")
             exp_folder="$parent_folder/$config_agent_id"
             MATCHING_EXPERIMENTS+=("$exp_folder")
+            EXPERIMENT_DATASETS["$exp_folder"]="$dataset"
 
             echo "  Found: $exp_folder"
             echo "    Agent ID: $config_agent_id, Dataset: $dataset, Tags: [$tags]"
@@ -92,7 +94,29 @@ for exp_folder in "${MATCHING_EXPERIMENTS[@]}"; do
     echo "Processing experiment: $exp_folder"
     echo "========================================"
 
-    if ./compute_stealth_test.sh --exp-folder "$exp_folder"; then
+    PROTEINGYM_DATASETS=(
+        "SPIKE_SARS2_Starr_2020_binding"
+        "SPA_STAAU_Tsuboyama_2023_1LP1"
+        "PSAE_PICP2_Tsuboyama_2023_1PSE_indels"
+        "CBX4_HUMAN_Tsuboyama_2023_2K28"
+        "Q8EG35_SHEON_Campbell_2022_indels"
+        "CSN4_MOUSE_Tsuboyama_2023_1UFM_indels"
+    )
+
+    dataset="${EXPERIMENT_DATASETS[$exp_folder]}"
+    skip_experiment=false
+    for proteingym_dataset in "${PROTEINGYM_DATASETS[@]}"; do
+        if [[ "$dataset" == *"$proteingym_dataset"* ]]; then
+            echo "Skipping proteingym dataset: $dataset"
+            skip_experiment=true
+            break
+        fi
+    done
+    [[ "$skip_experiment" == true ]] && continue
+
+    echo "Using dataset: $dataset"
+
+    if ./compute_stealth_test.sh --exp-folder "$exp_folder" --agentomics-dir "SCRATCH/agentomics-ml"; then
         echo "✓ Stealth test completed successfully for $exp_folder"
     else
         echo "✗ Stealth test failed for $exp_folder"
