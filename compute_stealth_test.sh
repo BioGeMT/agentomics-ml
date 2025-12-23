@@ -7,6 +7,10 @@ while [[ $# -gt 0 ]]; do
             EXPERIMENT_FOLDER="$2"
             shift 2
             ;;
+        --agentomics-dir)
+            AGENTOMICS_DIR="$2"
+            shift 2
+            ;;
         *)
             shift
             ;;
@@ -27,6 +31,8 @@ for dir in "$EXPERIMENT_FOLDER/run_files"/iteration_[0-9]*; do
     ITERATIONS+=("$(basename "$dir")")
 done
 echo "Found ${#ITERATIONS[@]} iterations"
+
+conda activate agentomics-env && python src/utils/biomlbench_custom_prepare.py --agentomics-dir "$AGENTOMICS_DIR" --dataset-name "$DATASET"
 
 TEST_OUTPUT_DIR=$(mktemp -d)
 trap "rm -rf $TEST_OUTPUT_DIR" EXIT
