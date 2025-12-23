@@ -70,22 +70,25 @@ echo "Agent ID: $AGENT_ID"
 echo "Dataset: $DATASET"
 echo "WandB Run ID: $WANDB_RUN_ID"
 
-ITERATIONS=()
+declare -A ITERATION_PATHS
 while IFS= read -r dir; do
-    ITERATIONS+=("$(basename "$dir")")
+    iteration_name="$(basename "$dir")"
+    relative_path="${dir#$EXPERIMENT_FOLDER/}"
+    ITERATION_PATHS["$iteration_name"]="$relative_path"
 done < <(find "$EXPERIMENT_FOLDER" -maxdepth 3 -type d -name "iteration_*" | sort -V)
-echo "Found ${#ITERATIONS[@]} iterations"
+echo "Found ${#ITERATION_PATHS[@]} iterations"
 
 source activate agentomics-env && PYTHONPATH="${AGENTOMICS_DIR}/src" python src/utils/biomlbench_custom_prepare.py --agentomics-dir "$AGENTOMICS_DIR" --dataset-name "$DATASET"
 
 TEST_OUTPUT_DIR=$(mktemp -d)
 trap "rm -rf $TEST_OUTPUT_DIR" EXIT
-for iteration in "${ITERATIONS[@]}"; do
+for iteration in "${!ITERATION_PATHS[@]}"; do
+    CODE_PATH="${ITERATION_PATHS[$iteration]}"
     OUTPUT_FILE="$TEST_OUTPUT_DIR/${iteration}_test_predictions.csv"
-    echo "Processing $iteration..."
+    echo "Processing $iteration (code path: $CODE_PATH)..."
     ./inference.sh \
         --agent-dir "$EXPERIMENT_FOLDER" \
-        --code-path "run_files/$iteration" \
+        --code-path "$CODE_PATH" \
         --remove-conda-env \
         --input "prepared_test_sets/$DATASET/test.no_label.csv" \
         --output "$OUTPUT_FILE" || echo "Warning: Failed to run inference for $iteration"
