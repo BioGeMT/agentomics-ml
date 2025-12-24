@@ -2,6 +2,9 @@
 
 source "./bash_helpers.sh"
 
+# Get the absolute directory of this script
+AGENTOMICS_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 AGENTOMICS_ARGS=()
 LOCAL_MODE=false
 TEST_MODE=false
@@ -669,7 +672,7 @@ else
         fi
         write_outputs_readme "${AGENT_ID}"
 
-        ./compute_stealth_test.sh --exp-folder "outputs/${AGENT_ID}" --agentomics-dir $(pwd)
+        ./compute_stealth_test.sh --exp-folder "outputs/${AGENT_ID}" --agentomics-dir "$AGENTOMICS_DIR"
 
         echo -e "${GREEN}Run finished. Report and files can be found in outputs/${AGENT_ID}${NOCOLOR}"
         echo -e "${GREEN}To run inference on new data, use ./inference.sh --agent-dir outputs/${AGENT_ID} --input <path_to_input_csv> --output <path_to_output_csv>${NOCOLOR}"
