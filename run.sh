@@ -7,6 +7,9 @@ fi
 
 set -euo pipefail
 
+# Get the absolute directory of this script
+AGENTOMICS_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 # Color definitions
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -314,7 +317,7 @@ else
             PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys_utils.py cleanup-and-log --config-path "$CONFIG_PATH" --api-key-hash "$TEMP_API_KEY_HASH"
         fi
 
-        ./compute_stealth_test.sh --exp-folder "outputs/${AGENT_ID}" --agentomics-dir $(pwd)
+        ./compute_stealth_test.sh --exp-folder "outputs/${AGENT_ID}" --agentomics-dir "$AGENTOMICS_DIR"
 
         echo -e "${GREEN}Run finished. Report and files can be found in outputs/${AGENT_ID}${NOCOLOR}"
         echo -e "${GREEN}To run inference on new data, use ./inference.sh --agent-dir outputs/${AGENT_ID} --input <path_to_input_csv> --output <path_to_output_csv>${NOCOLOR}"
