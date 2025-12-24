@@ -101,25 +101,26 @@ for idx in "${!MATCHING_EXPERIMENTS[@]}"; do
     echo "Processing experiment: $exp_folder"
     echo "========================================"
 
-    PROTEINGYM_DATASETS=(
-        "SPIKE_SARS2_Starr_2020_binding"
-        "SPA_STAAU_Tsuboyama_2023_1LP1"
-        "PSAE_PICP2_Tsuboyama_2023_1PSE_indels"
-        "CBX4_HUMAN_Tsuboyama_2023_2K28"
-        "Q8EG35_SHEON_Campbell_2022_indels"
-        "CSN4_MOUSE_Tsuboyama_2023_1UFM_indels"
-    )
+    # PROTEINGYM_DATASETS=(
+    #     "SPIKE_SARS2_Starr_2020_binding"
+    #     "SPA_STAAU_Tsuboyama_2023_1LP1"
+    #     "PSAE_PICP2_Tsuboyama_2023_1PSE_indels"
+    #     "CBX4_HUMAN_Tsuboyama_2023_2K28"
+    #     "Q8EG35_SHEON_Campbell_2022_indels"
+    #     "CSN4_MOUSE_Tsuboyama_2023_1UFM_indels"
+    # )
 
-    dataset="${EXPERIMENT_DATASETS[$exp_folder]}"
-    skip_experiment=false
-    for proteingym_dataset in "${PROTEINGYM_DATASETS[@]}"; do
-        if [[ "$dataset" == *"$proteingym_dataset"* ]]; then
-            echo "Skipping proteingym dataset: $dataset"
-            skip_experiment=true
-            break
-        fi
-    done
-    [[ "$skip_experiment" == true ]] && continue
+    # dataset="${EXPERIMENT_DATASETS[$exp_folder]}"
+    # skip_experiment=false
+    # for proteingym_dataset in "${PROTEINGYM_DATASETS[@]}"; do
+    #     if [[ "$dataset" == *"$proteingym_dataset"* ]]; then
+    #         echo "Skipping proteingym dataset: $dataset"
+    #         #TODO parametrize protein skipping (they will take a long time!!!)
+    #         skip_experiment=true
+    #         break
+    #     fi
+    # done
+    # [[ "$skip_experiment" == true ]] && continue
 
     echo "Using dataset: $dataset"
     cp "$config_file" "$exp_folder/extras/config.json"

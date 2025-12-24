@@ -59,8 +59,8 @@ if [[ "$DATASET" != *"/"* ]]; then
     done
 
     for dset in "${PROTEINGYM_DATASETS[@]}"; do
-        if [[ "$DATASET" == "$dset" ]]; then
-            DATASET="proteingym-dms/$DATASET"
+        if [[ "$DATASET" == *"$dset"* ]]; then
+            DATASET="proteingym-dms/$dset"
             break
         fi
     done
@@ -81,21 +81,75 @@ while IFS= read -r dir; do
 done < <(find "$EXPERIMENT_FOLDER" -maxdepth 3 -type d -name "iteration_*" | sort -V)
 echo "Found ${#ITERATION_PATHS[@]} iterations"
 
-source activate agentomics-env && PYTHONPATH="${AGENTOMICS_DIR}/src" python src/utils/biomlbench_custom_prepare.py --agentomics-dir "$AGENTOMICS_DIR" --dataset-name "$DATASET"
+conda run -n agentomics-env bash -c "PYTHONPATH=\"${AGENTOMICS_DIR}/src\" python src/utils/biomlbench_custom_prepare.py --agentomics-dir \"$AGENTOMICS_DIR\" --dataset-name \"$DATASET\""
 
-TEST_OUTPUT_DIR=$(mktemp -d)
-trap "rm -rf $TEST_OUTPUT_DIR" EXIT
-for iteration in "${!ITERATION_PATHS[@]}"; do
-    CODE_PATH="${ITERATION_PATHS[$iteration]}"
-    OUTPUT_FILE="$TEST_OUTPUT_DIR/${iteration}_test_predictions.csv"
-    echo "Processing $iteration (code path: $CODE_PATH)..."
-    ./inference.sh \
-        --agent-dir "$EXPERIMENT_FOLDER" \
-        --code-path "$CODE_PATH" \
-        --remove-conda-env \
-        --input "prepared_test_sets/$DATASET/test.no_label.csv" \
-        --output "$OUTPUT_FILE" || echo "Warning: Failed to run inference for $iteration"
+# Check if dataset is a proteingym dataset
+IS_PROTEINGYM=false
+for dset in "${PROTEINGYM_DATASETS[@]}"; do
+    if [[ "$DATASET" == *"$dset"* ]]; then
+        IS_PROTEINGYM=true
+        break
+    fi
 done
+
+TEST_OUTPUT_DIR="$EXPERIMENT_FOLDER/temp_stealth_test_predictions"
+mkdir -p "$TEST_OUTPUT_DIR"
+trap "rm -rf $TEST_OUTPUT_DIR" EXIT
+
+if [[ "$IS_PROTEINGYM" == true ]]; then
+    echo "Detected proteingym dataset - using cross-validation retraining approach"
+
+    # For protein datasets, we need to retrain with CV and evaluate
+    TRAIN_DATA="prepared_datasets/$DATASET/train.csv"
+
+    for iteration in "${!ITERATION_PATHS[@]}"; do
+        CODE_PATH="${ITERATION_PATHS[$iteration]}"
+        ITERATION_DIR="$EXPERIMENT_FOLDER/$CODE_PATH"
+        OUTPUT_FILE="$TEST_OUTPUT_DIR/${iteration}_test_predictions.csv"
+
+        echo "Processing $iteration (code path: $CODE_PATH) with CV retraining..."
+
+        # Setup conda environment at agent level (shorter path to avoid conda padding issues)
+        AGENT_DIR="$(dirname "$ITERATION_DIR")"
+        ENV_PATH="$AGENT_DIR/.conda/envs/${AGENT_ID}_env"
+        if [[ ! -d "$ENV_PATH" ]]; then
+            echo "Conda environment not found at: $ENV_PATH"
+            if [[ ! -f "$ITERATION_DIR/conda_environment.yml" ]]; then
+                echo "conda_environment.yml not found at: $ITERATION_DIR/conda_environment.yml"
+                continue
+            fi
+            conda env create -f "$ITERATION_DIR/conda_environment.yml" -p "$ENV_PATH"
+        else
+            # Check if it's a valid conda environment
+            if ! conda list -p "$ENV_PATH" >/dev/null 2>&1; then
+                echo "Invalid conda environment at $ENV_PATH, recreating..."
+                rm -rf "$ENV_PATH"
+                conda env create -f "$ITERATION_DIR/conda_environment.yml" -p "$ENV_PATH"
+            fi
+        fi
+
+        # Run protein CV evaluation
+        conda run -n agentomics-env bash -c "PYTHONPATH=\"${AGENTOMICS_DIR}/src\" python src/utils/generate_protein_cv_preds.py \
+            --iteration-dir \"$ITERATION_DIR\" \
+            --train-csv \"$TRAIN_DATA\" \
+            --output-csv \"$OUTPUT_FILE\" \
+            --agent-name \"$AGENT_ID\"" || echo "Warning: Failed CV retraining for $iteration"
+    done
+else
+    echo "Using standard inference approach"
+
+    for iteration in "${!ITERATION_PATHS[@]}"; do
+        CODE_PATH="${ITERATION_PATHS[$iteration]}"
+        OUTPUT_FILE="$TEST_OUTPUT_DIR/${iteration}_test_predictions.csv"
+        echo "Processing $iteration (code path: $CODE_PATH)..."
+        ./inference.sh \
+            --agent-dir "$EXPERIMENT_FOLDER" \
+            --code-path "$CODE_PATH" \
+            --remove-conda-env \
+            --input "prepared_test_sets/$DATASET/test.no_label.csv" \
+            --output "$OUTPUT_FILE" || echo "Warning: Failed to run inference for $iteration"
+    done
+fi
 
 EXPERIMENT_FOLDER_ABS="$(cd "$(dirname "$EXPERIMENT_FOLDER")" && pwd)/$(basename "$EXPERIMENT_FOLDER")"
 docker run --rm \

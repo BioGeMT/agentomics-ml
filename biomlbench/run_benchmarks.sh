@@ -191,7 +191,7 @@ cd "$REPOS_DIR/agentomics-ml" && PYTHONPATH="$REPOS_DIR/agentomics-ml/src" conda
 # cd "$REPOS_DIR/biomlbench"
 # find . -type d -name ".conda" -exec rm -rf {} +
 
-./compute_stealth_test.sh --exp-folder "$code_path"
+./compute_stealth_test.sh --exp-folder "$code_path" --agentomics-dir "$REPOS_DIR/agentomics-ml"
 
 echo DONE
 # Optional cleanup
