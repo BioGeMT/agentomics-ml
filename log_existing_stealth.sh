@@ -123,6 +123,7 @@ for idx in "${!MATCHING_EXPERIMENTS[@]}"; do
     # [[ "$skip_experiment" == true ]] && continue
 
     echo "Using dataset: $dataset"
+    mkdir -p "$exp_folder/extras"
     cp "$config_file" "$exp_folder/extras/config.json"
 
     if ./compute_stealth_test.sh --exp-folder "$exp_folder" --agentomics-dir "SCRATCH/agentomics-ml"; then
