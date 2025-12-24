@@ -134,5 +134,13 @@ fi
 
 if [[ "$REMOVE_CONDA_ENV" == true ]]; then
     echo "Removing conda environment at: $ENV_PATH"
+    if [[ "$DOCKER_MODE" == true ]]; then
+        docker run --rm \
+            -v "${AGENT_DIR_ABS}/${CODE_PATH}:/workspace" \
+            --entrypoint "" \
+            agentomics_img \
+            bash -c "rm -rf /workspace/.conda/envs/${AGENT_NAME}_env"
+    else
     rm -rf "$ENV_PATH"
+fi
 fi
