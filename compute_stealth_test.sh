@@ -159,6 +159,7 @@ else
 fi
 
 EXPERIMENT_FOLDER_ABS="$(cd "$(dirname "$EXPERIMENT_FOLDER")" && pwd)/$(basename "$EXPERIMENT_FOLDER")"
+TEST_OUTPUT_DIR_ABS="$(cd "$(dirname "$TEST_OUTPUT_DIR")" && pwd)/$(basename "$TEST_OUTPUT_DIR")"
 docker run --rm \
     --env-file $(pwd)/.env \
     -e PYTHONPATH=/repository/src \
@@ -166,7 +167,7 @@ docker run --rm \
     -v "$(pwd)/prepared_test_sets":/repository/prepared_test_sets:ro \
     -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
     -v "$EXPERIMENT_FOLDER_ABS":/experiment:ro \
-    -v "$TEST_OUTPUT_DIR":/test_outputs:ro \
+    -v "$TEST_OUTPUT_DIR_ABS":/test_outputs:ro \
     --entrypoint /opt/conda/envs/agentomics-env/bin/python \
     agentomics_img src/run_logging/evaluate_stealth_test.py \
     --dataset "$DATASET" \
