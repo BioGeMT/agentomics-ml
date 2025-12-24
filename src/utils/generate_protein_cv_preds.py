@@ -102,9 +102,6 @@ def protein_cv_retrain_and_evaluate(
 
     print(f"Found fold columns: {fold_col_types}")
 
-    # Prepare command prefix
-    command_prefix = f"conda run -p {conda_env_path} --no-capture-output"
-
     # Create temporary directory for intermediate files
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_dir = Path(temp_dir)
@@ -162,7 +159,7 @@ def protein_cv_retrain_and_evaluate(
 
                 # Training command
                 train_cmd_dir = f"cd {iteration_dir} && "
-                train_cmd = f'{train_cmd_dir} {command_prefix} python "{train_script_path}" --train-data "{train_csv}" --validation-data "{valid_csv}" --artifacts-dir "{artifacts_dir}"'
+                train_cmd = f'{train_cmd_dir} python "{train_script_path}" --train-data "{train_csv}" --validation-data "{valid_csv}" --artifacts-dir "{artifacts_dir}"'
 
                 if not run_command(train_cmd, f"Training {fold_prefix}"):
                     print(f"Warning: Training failed for {fold_prefix}")
@@ -170,7 +167,7 @@ def protein_cv_retrain_and_evaluate(
 
                 # Inference command
                 inference_cmd_dir = f"cd {iteration_dir} && "
-                inference_cmd = f'{inference_cmd_dir} {command_prefix} python "{inference_script_path}" --input "{test_csv}" --output "{predictions_csv}" --artifacts-dir "{artifacts_dir}"'
+                inference_cmd = f'{inference_cmd_dir} python "{inference_script_path}" --input "{test_csv}" --output "{predictions_csv}" --artifacts-dir "{artifacts_dir}"'
 
                 if not run_command(inference_cmd, f"Inference {fold_prefix}"):
                     print(f"Warning: Inference failed for {fold_prefix}")
