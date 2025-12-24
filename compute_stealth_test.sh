@@ -144,12 +144,28 @@ if [[ "$IS_PROTEINGYM" == true ]]; then
             fi
         fi
 
-        # Run protein CV evaluation
-        conda run -n agentomics-env bash -c "PYTHONPATH=\"${AGENTOMICS_DIR}/src\" python src/utils/generate_protein_cv_preds.py \
-            --iteration-dir \"$ITERATION_DIR\" \
-            --train-csv \"$TRAIN_DATA\" \
-            --output-csv \"$OUTPUT_FILE\" \
-            --agent-name \"$AGENT_ID\"" || echo "Warning: Failed CV retraining for $iteration"
+        # Run protein CV evaluation inside Docker container
+        EXPERIMENT_FOLDER_ABS="$(cd "$(dirname "$EXPERIMENT_FOLDER")" && pwd)/$(basename "$EXPERIMENT_FOLDER")"
+        TRAIN_DATA_ABS="$(cd "$(dirname "$TRAIN_DATA")" && pwd)/$(basename "$TRAIN_DATA")"
+        OUTPUT_FILE_ABS="$(cd "$(dirname "$OUTPUT_FILE")" && pwd)/$(basename "$OUTPUT_FILE")"
+        ITERATION_DIR_REL="${ITERATION_DIR#$EXPERIMENT_FOLDER/}"
+        AGENT_DIR_REL="$(dirname "$ITERATION_DIR_REL")"
+
+        docker run --rm \
+            --gpus all \
+            --env NVIDIA_VISIBLE_DEVICES=all \
+            -e PYTHONPATH=/repository/src \
+            -e PATH="/experiment/$AGENT_DIR_REL/.conda/envs/${AGENT_ID}_env/bin:$PATH" \
+            -v "$(pwd)/src":/repository/src:ro \
+            -v "$(dirname "$TRAIN_DATA_ABS"):/train_data_dir:ro" \
+            -v "$EXPERIMENT_FOLDER_ABS:/experiment" \
+            -v "$(dirname "$OUTPUT_FILE_ABS"):/output_dir" \
+            --entrypoint /opt/conda/envs/agentomics-env/bin/python \
+            agentomics_img src/utils/generate_protein_cv_preds.py \
+            --iteration-dir "/experiment/$ITERATION_DIR_REL" \
+            --train-csv "/train_data_dir/$(basename "$TRAIN_DATA_ABS")" \
+            --output-csv "/output_dir/$(basename "$OUTPUT_FILE_ABS")" \
+            --agent-name "$AGENT_ID" || echo "Warning: Failed CV retraining for $iteration"
     done
 else
     echo "Using standard inference approach"
