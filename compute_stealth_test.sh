@@ -44,16 +44,19 @@ PROTEINGYM_DATASETS=(
     "CSN4_MOUSE_Tsuboyama_2023_1UFM_indels"
 )
 
+IS_BIOMLBENCH=false
 if [[ "$DATASET" != *"/"* ]]; then
     for dset in "${POLARIS_DATASETS_WITH_POLARIS_PREFIX[@]}"; do
         if [[ "$DATASET" == "$dset" ]]; then
             DATASET="polarishub/polaris-$DATASET"
+            IS_BIOMLBENCH=true
             break
         fi
     done
     for dset in "${POLARIS_DATASETS_WITH_TDCOMMONS_PREFIX[@]}"; do
         if [[ "$DATASET" == "$dset" ]]; then
             DATASET="polarishub/tdcommons-$DATASET"
+            IS_BIOMLBENCH=true
             break
         fi
     done
@@ -61,6 +64,7 @@ if [[ "$DATASET" != *"/"* ]]; then
     for dset in "${PROTEINGYM_DATASETS[@]}"; do
         if [[ "$DATASET" == *"$dset"* ]]; then
             DATASET="proteingym-dms/$dset"
+            IS_BIOMLBENCH=true
             break
         fi
     done
@@ -81,7 +85,10 @@ while IFS= read -r dir; do
 done < <(find "$EXPERIMENT_FOLDER" -maxdepth 3 -type d -name "iteration_*" | sort -V)
 echo "Found ${#ITERATION_PATHS[@]} iterations"
 
-conda run -n agentomics-env bash -c "PYTHONPATH=\"${AGENTOMICS_DIR}/src\" python src/utils/biomlbench_custom_prepare.py --agentomics-dir \"$AGENTOMICS_DIR\" --dataset-name \"$DATASET\""
+if [[ "$IS_BIOMLBENCH" == true ]]; then
+    echo "Preparing biomlbench dataset..."
+    conda run -n agentomics-env bash -c "PYTHONPATH=\"${AGENTOMICS_DIR}/src\" python src/utils/biomlbench_custom_prepare.py --agentomics-dir \"$AGENTOMICS_DIR\" --dataset-name \"$DATASET\""
+fi
 
 # Check if dataset is a proteingym dataset
 IS_PROTEINGYM=false
