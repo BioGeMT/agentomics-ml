@@ -46,23 +46,24 @@ PROTEINGYM_DATASETS=(
 
 IS_BIOMLBENCH=false
 if [[ "$DATASET" != *"/"* ]]; then
+    DATASET_LOWER=$(echo "$DATASET" | tr '[:upper:]' '[:lower:]')
     for dset in "${POLARIS_DATASETS_WITH_POLARIS_PREFIX[@]}"; do
-        if [[ "$DATASET" == "$dset" ]]; then
-            DATASET="polarishub/polaris-$DATASET"
+        if [[ "$DATASET_LOWER" == "$(echo "$dset" | tr '[:upper:]' '[:lower:]')" ]]; then
+            DATASET="polarishub/polaris-$dset"
             IS_BIOMLBENCH=true
             break
         fi
     done
     for dset in "${POLARIS_DATASETS_WITH_TDCOMMONS_PREFIX[@]}"; do
-        if [[ "$DATASET" == "$dset" ]]; then
-            DATASET="polarishub/tdcommons-$DATASET"
+        if [[ "$DATASET_LOWER" == "$(echo "$dset" | tr '[:upper:]' '[:lower:]')" ]]; then
+            DATASET="polarishub/tdcommons-$dset"
             IS_BIOMLBENCH=true
             break
         fi
     done
 
     for dset in "${PROTEINGYM_DATASETS[@]}"; do
-        if [[ "$DATASET" == *"$dset"* ]]; then
+        if [[ "$DATASET_LOWER" == *"$(echo "$dset" | tr '[:upper:]' '[:lower:]')"* ]]; then
             DATASET="proteingym-dms/$dset"
             IS_BIOMLBENCH=true
             break
