@@ -58,11 +58,9 @@ def prepare_biomlbench_dataset(
         shutil.copy(description_path, f'{raw_datasets_dir}/{dataset_name}/dataset_description.md')
 
     if is_proteingym:
-        # Copy the csv, but leave out the following columns: fold_random_5,fold_modulo_5,fold_contiguous_5
+        # Keep fold columns for protein datasets (needed for CV evaluation)
         df = pd.read_csv(train_data_path)
         df = df[df['fold_random_5'] != -1]
-        columns_to_drop = ['fold_random_5', 'fold_modulo_5', 'fold_contiguous_5']
-        df = df.drop(columns=[col for col in columns_to_drop if col in df.columns])
         df.to_csv(f'{raw_datasets_dir}/{dataset_name}/train.csv', index=False)
     else:
         shutil.copy(train_data_path, f'{raw_datasets_dir}/{dataset_name}/train.csv')
