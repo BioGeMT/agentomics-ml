@@ -86,8 +86,17 @@ done < <(find "$EXPERIMENT_FOLDER" -maxdepth 3 -type d -name "iteration_*" | sor
 echo "Found ${#ITERATION_PATHS[@]} iterations"
 
 if [[ "$IS_BIOMLBENCH" == true ]]; then
-    echo "Preparing biomlbench dataset..."
-    conda run -n agentomics-env bash -c "PYTHONPATH=\"${AGENTOMICS_DIR}/src\" python src/utils/biomlbench_custom_prepare.py --agentomics-dir \"$AGENTOMICS_DIR\" --dataset-name \"$DATASET\""
+    docker run --rm \
+        --env-file $(pwd)/.env \
+        -e PYTHONPATH=/repository/src \
+        -v "$(pwd)":/repository \
+        -v "$HOME/.cache/bioml-bench":/root/.cache/bioml-bench \
+        -w /repository \
+        --entrypoint /opt/conda/envs/agentomics-env/bin/python \
+        agentomics_img \
+        src/utils/biomlbench_custom_prepare.py \
+        --agentomics-dir /repository \
+        --dataset-name "$DATASET"
 fi
 
 # Check if dataset is a proteingym dataset
