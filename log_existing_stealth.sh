@@ -128,8 +128,16 @@ for idx in "${!MATCHING_EXPERIMENTS[@]}"; do
     cp "$config_file" "$exp_folder/extras/config.json"
     fi
 
+    # Check if stealth test has already been completed
+    if [[ -f "$exp_folder/extras/.stealth_test_complete" ]]; then
+        echo "⊙ Stealth test already completed for $exp_folder (skipping)"
+        continue
+    fi
+
     if ./compute_stealth_test.sh --exp-folder "$exp_folder" --agentomics-dir "SCRATCH/agentomics-ml"; then
         echo "✓ Stealth test completed successfully for $exp_folder"
+        # Create marker file to indicate completion
+        touch "$exp_folder/extras/.stealth_test_complete"
     else
         echo "✗ Stealth test failed for $exp_folder"
         FAILED_EXPERIMENTS+=("$exp_folder")
