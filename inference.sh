@@ -81,15 +81,6 @@ if [[ ! -f "$INFERENCE_PATH" ]]; then
     exit 1
 fi
 
-if [[ ! -d "$ENV_PATH" ]]; then
-    echo "Conda environment not found at: $ENV_PATH"
-    if [[ ! -f "$AGENT_DIR/${CODE_PATH}/conda_environment.yml" ]]; then
-        echo "conda_environment.yml not found at: $AGENT_DIR/${CODE_PATH}/conda_environment.yml"
-        exit 1
-    fi
-    conda env create -f "$AGENT_DIR/${CODE_PATH}/conda_environment.yml" -p "$ENV_PATH"
-fi
-
 GPU_FLAGS=()
 if [ "$CPU_ONLY" = false ]; then
     GPU_FLAGS+=(--gpus all)
@@ -97,10 +88,26 @@ if [ "$CPU_ONLY" = false ]; then
 fi
 
 if [[ "$DOCKER_MODE" == true ]]; then
-    echo "Running inference in Docker..."
     AGENT_DIR_ABS="$(cd "$(dirname "$AGENT_DIR")" && pwd)/$(basename "$AGENT_DIR")"
     INPUT_PATH_ABS="$(cd "$(dirname "$INPUT_PATH")" && pwd)/$(basename "$INPUT_PATH")"
     OUTPUT_PATH_ABS="$(cd "$(dirname "$OUTPUT_PATH")" && pwd)/$(basename "$OUTPUT_PATH")"
+
+    if [[ ! -d "$ENV_PATH" ]]; then
+        echo "Conda environment not found at: $ENV_PATH"
+        if [[ ! -f "$AGENT_DIR/${CODE_PATH}/conda_environment.yml" ]]; then
+            echo "conda_environment.yml not found at: $AGENT_DIR/${CODE_PATH}/conda_environment.yml"
+            exit 1
+        fi
+        echo "Creating conda environment inside Docker..."
+        docker run --rm \
+            -v "${AGENT_DIR_ABS}/${CODE_PATH}:/workspace" \
+            --entrypoint "" \
+            -w /workspace \
+            agentomics_img \
+            bash -c "conda install -n base mamba -c conda-forge -y && mamba env create -f /workspace/conda_environment.yml -p /workspace/.conda/envs/${AGENT_NAME}_env"
+    fi
+
+    echo "Running inference in Docker..."
     docker run --rm \
         -v "${AGENT_DIR_ABS}/${CODE_PATH}:/workspace" \
         -v "$(dirname "$INPUT_PATH_ABS"):/input_dir" \
