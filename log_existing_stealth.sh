@@ -124,7 +124,9 @@ for idx in "${!MATCHING_EXPERIMENTS[@]}"; do
 
     echo "Using dataset: $dataset"
     mkdir -p "$exp_folder/extras"
+    if [[ "$config_file" != "$exp_folder/extras/config.json" ]]; then
     cp "$config_file" "$exp_folder/extras/config.json"
+    fi
 
     if ./compute_stealth_test.sh --exp-folder "$exp_folder" --agentomics-dir "SCRATCH/agentomics-ml"; then
         echo "✓ Stealth test completed successfully for $exp_folder"
