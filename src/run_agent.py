@@ -31,16 +31,16 @@ from utils.snapshots import reset_snapshot_if_val_split_changed, create_split_fi
 from agents.steps.data_split import DataSplit
 
 async def main(model_name, feedback_model_name, dataset, tags, val_metric,
-               workspace_dir, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir, iterations, 
-               user_prompt, provider_name, on_new_best_callbacks, split_allowed_iterations, time_deadline):
+               workspace_dir, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir, iterations,
+               user_prompt, provider_name, on_new_best_callbacks, split_allowed_iterations, exploration_iterations, time_deadline):
     agent_id = os.getenv('AGENT_ID')
     # Initialize configuration 
     config = Config(
         agent_id=agent_id,
-        model_name=model_name, 
-        feedback_model_name=feedback_model_name, 
-        dataset=dataset, 
-        tags=tags, 
+        model_name=model_name,
+        feedback_model_name=feedback_model_name,
+        dataset=dataset,
+        tags=tags,
         val_metric=val_metric,
         workspace_dir=Path(workspace_dir),
         prepared_datasets_dir=Path(prepared_datasets_dir),
@@ -49,6 +49,7 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric,
         iterations=iterations,
         user_prompt=user_prompt,
         split_allowed_iterations=split_allowed_iterations,
+        exploration_iterations=exploration_iterations,
         time_deadline=time_deadline,
     )
     ensure_workspace_folders(config)
@@ -202,6 +203,7 @@ def parse_args():
     parser.add_argument('--iterations', type=int, default=5, help='Number of training iterations to run')
     parser.add_argument("--timeout", type=int, help="Timeout before the run is shut down in seconds")
     parser.add_argument('--split-allowed-iterations', type=int, default=1, help='Number of initial iterations that allow the agent to split the data into training and validation sets')
+    parser.add_argument('--exploration-iterations', type=int, default=4, help='Number of initial iterations that should focus on baseline/exploration models')
 
     parser.add_argument('--user-prompt', type=str, default="Develop a machine learning model that generalizes well to new unseen data.", help='(Optional) Text to overwrite the default user prompt')
 
@@ -211,8 +213,8 @@ def parse_args():
     return parser.parse_args()
 
 async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir,
-                          workspace_dir, tags, iterations, user_prompt, provider, timeout, 
-                          split_allowed_iterations=1, on_new_best_callbacks=[]):
+                          workspace_dir, tags, iterations, user_prompt, provider, timeout,
+                          split_allowed_iterations=1, exploration_iterations=4, on_new_best_callbacks=[]):
     setup_nonsensitive_dataset_files_for_agent(
         prepared_datasets_dir=Path(prepared_datasets_dir),
         agent_datasets_dir=Path(agent_datasets_dir),
@@ -224,19 +226,20 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
     try:
         print(f'Starting a run with a {timeout} second timeout')
         await timeouted_main(
-            model_name=model, 
-            feedback_model_name=FEEDBACK_MODEL, 
+            model_name=model,
+            feedback_model_name=FEEDBACK_MODEL,
             dataset=dataset_name,
             tags=tags,
-            val_metric=val_metric, 
-            workspace_dir=workspace_dir, 
-            prepared_datasets_dir=prepared_datasets_dir, 
+            val_metric=val_metric,
+            workspace_dir=workspace_dir,
+            prepared_datasets_dir=prepared_datasets_dir,
             agent_datasets_dir=agent_datasets_dir,
             iterations=iterations,
             user_prompt=user_prompt,
             provider_name=provider,
             on_new_best_callbacks=on_new_best_callbacks,
             split_allowed_iterations=split_allowed_iterations,
+            exploration_iterations=exploration_iterations,
             prepared_test_sets_dir=prepared_test_sets_dir,
             time_deadline=time_deadline,
         )
@@ -249,18 +252,19 @@ async def run_experiment_from_terminal():
     args = parse_args()
 
     await run_experiment(
-        model=args.model, 
-        dataset_name=args.dataset_name, 
-        val_metric=args.val_metric, 
-        prepared_datasets_dir=args.prepared_datasets_dir, 
+        model=args.model,
+        dataset_name=args.dataset_name,
+        val_metric=args.val_metric,
+        prepared_datasets_dir=args.prepared_datasets_dir,
         prepared_test_sets_dir=args.prepared_test_sets_dir,
-        agent_datasets_dir=args.agent_datasets_dir, 
-        workspace_dir=args.workspace_dir, 
+        agent_datasets_dir=args.agent_datasets_dir,
+        workspace_dir=args.workspace_dir,
         tags=args.tags,
         iterations=args.iterations,
         user_prompt=args.user_prompt,
         provider=args.provider,
         split_allowed_iterations=args.split_allowed_iterations,
+        exploration_iterations=args.exploration_iterations,
         timeout=args.timeout,
     )
 

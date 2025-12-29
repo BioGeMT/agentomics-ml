@@ -59,7 +59,7 @@ class Config:
         max_steps: Optional[int] = None,
         iterations: Optional[int] = 5,
         split_allowed_iterations: int = 1,
-        exploration_iterations: int = 3,
+        exploration_iterations: int = 4,
         time_deadline: Optional[int] = None,
     ):
         self.agent_id = agent_id
