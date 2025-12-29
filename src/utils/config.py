@@ -154,6 +154,7 @@ class Config:
         print('VAL METRIC:', self.val_metric)
         print('AGENT ID:', self.agent_id)
         print('ITERATIONS:', self.iterations)
+        print('EXPLORATION ITERATIONS:', self.exploration_iterations)
         print('SPLIT ALLOWED ITERATIONS:', self.split_allowed_iterations)
         print('USER PROMPT:', self.user_prompt)
         print('RESOURCES SUMMARY:', self.get_resources_summary())
