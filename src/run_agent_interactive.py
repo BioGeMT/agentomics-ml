@@ -40,7 +40,18 @@ def main():
     parser.add_argument("--dataset", help="Dataset name")
     parser.add_argument("--iterations", type=int, help="Number of iterations to run")
     parser.add_argument("--timeout", type=int, help="Timeout before the run is shut down in seconds")
-    parser.add_argument("--split-allowed-iterations", type=int, help="Number of initial iterations that are allowed to (re)split the data into train/validation", default=1)
+    parser.add_argument(
+        "--split-allowed-iterations",
+        type=int,
+        help="Number of initial iterations that are allowed to (re)split the data into train/validation",
+        default=1,
+    )
+    parser.add_argument(
+        "--exploration-iterations",
+        type=int,
+        help="Number of initial iterations that should focus on baseline/exploration models",
+        default=4,
+    )
     parser.add_argument("--tags", nargs="*", default=[], help="(Optional) Comma-separated tags to associate with the run")
     parser.add_argument('--user-prompt', type=str, default="Develop a machine learning model that generalizes well to new unseen data.", help='(Optional) Text to overwrite the default user prompt')
     parser.add_argument("--model", help="Model name. Should be compatible with the selected provider")
@@ -135,6 +146,7 @@ def main():
         user_prompt=args.user_prompt,
         provider=provider_name,
         split_allowed_iterations=args.split_allowed_iterations,
+        exploration_iterations=args.exploration_iterations,
         timeout=args.timeout,
     ))
     return 0

@@ -34,6 +34,7 @@ Required Arguments (for non-interactive runs):
   --timeout <int>   Amount of seconds the agent is allowed to run for. This or --iterations will dictate the duration, whichever will expire first. (recommended
   ~480s)
   --split-allowed-iterations <N>    Number of initial iterations that are allowed to (re)split the data into train/validation (e.g., 1).
+  --exploration-iterations <N>     Number of initial iterations that should focus on baseline/exploration models (e.g., 4).
   --val-metric <name> The metric to optimize (e.g., 'ACC').
   --user-prompt <str> The main prompt/goal for the agent.
                       (Default: "Create the best possible machine learning model that will generalize to new unseen data.")
@@ -104,6 +105,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --split-allowed-iterations)
             AGENTOMICS_ARGS+=(--split-allowed-iterations "$2")
+            shift 2
+            ;;
+        --exploration-iterations)
+            AGENTOMICS_ARGS+=(--exploration-iterations "$2")
             shift 2
             ;;
         --val-metric)
