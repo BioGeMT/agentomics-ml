@@ -1,9 +1,9 @@
 import time
-#import weave
+import weave
 from pydantic_ai.messages import ModelRequest, SystemPromptPart, UserPromptPart
 from pydantic_ai.models import ModelRequestParameters
 
-#@weave.op(call_display_name="Get Feedback")
+@weave.op(call_display_name="Get Feedback")
 async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, model, iteration, aggregated_feedback=None, extra_info="") -> str:
     if iteration == config.iterations - 1 : return "Last iteration, no feedback needed"
 

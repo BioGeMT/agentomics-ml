@@ -2,7 +2,7 @@ import os
 import json
 
 from pydantic_ai import Agent, ModelRetry
-#import weave
+import weave
 import pandas as pd
 
 from agents.agent_utils import run_agent
@@ -193,7 +193,7 @@ async def run_ablation_architecture(text_output_agent: Agent, inference_agent: A
 
     return messages
 
-#@weave.op(call_display_name=lambda call: f"Iteration {call.inputs.get('iteration', 0) + 1}")
+@weave.op(call_display_name=lambda call: f"Iteration {call.inputs.get('iteration', 0) + 1}")
 async def run_iteration(config: Config, model, iteration, feedback, tools, steps_to_skip):
     agents_dict = create_agents(config=config, model=model, tools=tools)
 
