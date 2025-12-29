@@ -146,7 +146,6 @@ else
     else
         docker run \
             -it \
-            --rm \
             --name agentomics_cont_${AGENT_ID} \
             --env-file $(pwd)/.env \
             -e AGENT_ID=${AGENT_ID} \
@@ -160,13 +159,11 @@ else
 
         echo "Running final evaluation on test set"
         docker run \
-            --rm \
             --name agentomics_test_eval_cont_${AGENT_ID} \
             --env-file $(pwd)/.env \
             -e AGENT_ID=${AGENT_ID} \
             -e PYTHONPATH=/repository/src \
             -v "$(pwd)/src":/repository/src:ro \
-            -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
             -v "$(pwd)/prepared_test_sets":/repository/prepared_test_sets:ro \
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
             --entrypoint /opt/conda/envs/agentomics-env/bin/python \
