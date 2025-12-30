@@ -330,7 +330,10 @@ def copy_and_format_predictions_for_biomlbench(preds_source_path, preds_dest_pat
     else:
         preds_df = pd.read_csv(preds_source_path)
         # preds_df['id'] = preds_df.index #TODO remove since id is kept now?
-        preds_df = preds_df[['id','prediction']].rename(columns={'prediction': target_col})
+        prediction_col_name = 'prediction'
+        if 'probability_1' in preds_df.columns:
+            prediction_col_name = 'probability_1'
+        preds_df = preds_df[['id',prediction_col_name]].rename(columns={prediction_col_name: target_col})
         preds_df.to_csv(preds_dest_path, index=False)
 
 def copy_original_predictions(preds_source_path, preds_dest_path):
