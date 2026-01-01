@@ -18,7 +18,16 @@ def get_data_split_prompt(config):
         extra_instructions = ""
     else:
         raise ValueError(f"Unknown task type: {config.task_type}. Supported types are 'classification' and 'regression'.")
-
+    
+    if 'data_split' in config.steps_to_skip:
+        return f"""
+        For the splitting strategy:
+        Split the training dataset into training and validation sets:
+        Ensure the validation split is representative of new unseen data, since it will be used for optimizing choices like architecture, hyperparameters, and training strategies.
+        {extra_instructions}
+        - Save 'train.csv' and 'validation.csv' in {config.runs_dir / config.agent_id}.
+        Return the absolute paths to these files.
+        """
     return f"""
         Split the training dataset into training and validation sets:
         Ensure the validation split is representative of new unseen data, since it will be used for optimizing choices like architecture, hyperparameters, and training strategies.

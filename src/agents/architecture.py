@@ -164,7 +164,7 @@ async def run_ablation_architecture(text_output_agent: Agent, inference_agent: A
         try:
             complete_output, messages, model_training = await run_agent(
                 agent=training_agent,
-                user_prompt=get_model_training_prompt(),
+                user_prompt=get_model_training_prompt(config),
                 max_steps=config.max_steps,
                 message_history=messages,
             )

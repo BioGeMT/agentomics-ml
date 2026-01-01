@@ -9,7 +9,11 @@ class ModelTraining(BaseModel):
         description="Absolute path to the trained model file"
     )
 
-def get_model_training_prompt():
+def get_model_training_prompt(config):
+    if 'model_training' in config.steps_to_skip:
+        return """
+        When training the model, the python file should be named train.py.
+        """
     return """
     Next task: implement any necessary code for training a model. Then train a single model.
     The train script should save any files necessary to use the trained model for predictions (e.g. model file, tokenizers, ...).

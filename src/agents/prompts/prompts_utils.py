@@ -1,5 +1,7 @@
 import json
 from agents.steps.final_outcome import get_final_outcome_prompt
+from agents.steps.data_split import get_data_split_prompt
+from agents.steps.model_training import get_model_training_prompt
 
 
 def get_system_prompt(config):
@@ -40,7 +42,13 @@ def get_system_prompt(config):
 def get_user_prompt(config):
     user_prompt = config.user_prompt
 
-    # If final_outcome step is skipped, add its requirements to the user prompt
+    #add to initial user prompt for skipped steps that are validated
+    if 'data_split' in config.steps_to_skip:
+        user_prompt += "\n\n" + get_data_split_prompt(config)
+    
+    if 'model_training' in config.steps_to_skip:
+        user_prompt += "\n\n" + get_model_training_prompt(config)
+
     if 'final_outcome' in config.steps_to_skip:
         user_prompt += "\n\n" + get_final_outcome_prompt(config)
         
