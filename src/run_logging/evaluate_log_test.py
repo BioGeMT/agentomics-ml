@@ -33,7 +33,7 @@ def run_test_evaluation(workspace_dir):
     replace_snapshot_path_with_relative(snapshot_dir = config.snapshots_dir / config.agent_id)
 
 def load_run_config(workspace_dir):
-    config_path = workspace_dir.resolve() / "config.json"
+    config_path = workspace_dir.resolve() / "extras" / "config.json"
     with open(config_path, 'r') as f:
         config_dict = json.load(f)
 
