@@ -130,7 +130,8 @@ def main():
         tags=None,
         iterations=iterations,
         user_prompt=args.user_prompt,
-        provider=provider_name
+        provider=provider_name,
+        steps_to_skip=[]
     ))
     return 0
         
