@@ -12,6 +12,8 @@ LOCAL_MODE=false
 TEST_MODE=false
 CPU_ONLY=false
 OLLAMA=false
+USE_PROVISIONING_KEY=false
+SPEND_LIMIT=10
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -50,6 +52,14 @@ while [[ $# -gt 0 ]]; do
         --cpu-only)
             CPU_ONLY=true
             shift
+            ;;
+        --use-provisioning-key)
+            USE_PROVISIONING_KEY=true
+            shift
+            ;;
+        --spend-limit)
+            SPEND_LIMIT="$2"
+            shift 2
             ;;
         *)
             shift
@@ -107,6 +117,19 @@ else
     docker volume create temp_agentomics_volume_${AGENT_ID}
     trap "docker volume rm temp_agentomics_volume_${AGENT_ID}" EXIT
 
+    TEMP_API_KEY_HASH=""
+    if [ "$USE_PROVISIONING_KEY" = true ]; then
+        if ! conda env list | grep -q "^agentomics-env "; then
+            echo "Creating agentomics-env conda environment"
+            conda env create -f environment.yaml -q
+        fi
+        echo "Creating temporary API key with spend limit: $SPEND_LIMIT"
+        API_KEY_OUTPUT=$(PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys_utils.py create --name "agentomics_run_$(date +%s)" --limit "$SPEND_LIMIT")
+        TEMP_API_KEY=$(echo "$API_KEY_OUTPUT" | cut -d',' -f1)
+        TEMP_API_KEY_HASH=$(echo "$API_KEY_OUTPUT" | cut -d',' -f2)
+        export OPENROUTER_API_KEY="$TEMP_API_KEY"
+    fi
+
     GPU_FLAGS=()
     if [ "$CPU_ONLY" = false ]; then
         GPU_FLAGS+=(--gpus all)
@@ -126,6 +149,10 @@ else
             echo "Adding API key env var to docker: $KEY_NAME"
         fi
     done
+
+    if [ "$USE_PROVISIONING_KEY" = true ]; then
+        DOCKER_API_KEY_ENV_VARS+=(-e "OPENROUTER_API_KEY=${OPENROUTER_API_KEY}")
+    fi
 
     if [ "$TEST_MODE" = true ]; then
         docker run \
@@ -169,13 +196,22 @@ else
             --entrypoint /opt/conda/envs/agentomics-env/bin/python \
             agentomics_img src/run_logging/evaluate_log_test.py
 
-        mkdir -p outputs/${AGENT_ID}/best_run_files outputs/${AGENT_ID}/reports
+        mkdir -p outputs/${AGENT_ID}/best_run_files outputs/${AGENT_ID}/reports outputs/${AGENT_ID}/extras
 
         # Copy best-run files and report
         docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox cp -r /source/snapshots/${AGENT_ID}/. /dest/best_run_files/
 
         # Copy reports from all iterations
         docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox cp -r /source/reports/${AGENT_ID}/. /dest/reports/
+
+        # Copy extras directory
+        docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox cp -r /source/extras/. /dest/extras/
+
+        if [ "$USE_PROVISIONING_KEY" = true ]; then
+            echo "Logging costs and cleaning up temporary API key"
+            CONFIG_PATH="outputs/${AGENT_ID}/extras/config.json"
+            PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys_utils.py cleanup-and-log --config-path "$CONFIG_PATH" --api-key-hash "$TEMP_API_KEY_HASH"
+        fi
 
     fi
 fi

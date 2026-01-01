@@ -20,6 +20,7 @@ class Config:
     snapshots_dir: Path
     runs_dir: Path
     reports_dir: Path
+    extras_dir: Path
     iterations: int
     task_type: str
     user_prompt: str
@@ -69,6 +70,7 @@ class Config:
         self.runs_dir = workspace_dir / "runs"
         self.snapshots_dir = workspace_dir / "snapshots"
         self.reports_dir = workspace_dir / "reports"
+        self.extras_dir = workspace_dir / "extras"
         self.iterations = iterations
         self.task_type = get_task_type_from_prepared_dataset(prepared_datasets_dir / dataset)
         self.user_prompt = user_prompt

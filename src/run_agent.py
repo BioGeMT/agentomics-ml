@@ -9,7 +9,7 @@ import wandb
 from run_logging.evaluate_log_run import run_inference_and_log
 from run_logging.logging_helpers import log_serial_metrics
 from run_logging.wandb_setup import setup_logging
-from run_logging.log_files import log_files, export_config_to_workspace
+from run_logging.log_files import log_files, export_config_to_extras
 from utils.env_utils import are_wandb_vars_available
 from utils.create_user import create_run_and_snapshot_dirs
 from utils.dataset_utils import setup_nonsensitive_dataset_files_for_agent
@@ -153,7 +153,7 @@ async def run_agentomics(config: Config, default_model, feedback_model, steps_to
 
     rename_best_iteration_report(config)
     log_files(config)
-    export_config_to_workspace(config)
+    export_config_to_extras(config)
 
 
 def parse_args():

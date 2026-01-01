@@ -42,6 +42,8 @@ TAGS=(
 # Runtime flags
 CPU_ONLY=false
 OLLAMA=true
+USE_PROVISIONING_KEY=false
+SPEND_LIMIT=10
 
 # ============================================
 # Ablation configurations
@@ -88,10 +90,10 @@ echo "Build done"
 
 PROVIDERS_CONFIG_FILE="src/utils/providers/configured_providers.yaml"
 API_KEY_NAMES=$(grep -E 'apikey:' "$PROVIDERS_CONFIG_FILE" | grep -o '\${[^}]*}' | tr -d '${}' | sort -u)
-DOCKER_API_KEY_ENV_VARS=()
+DOCKER_API_KEY_ENV_VARS_BASE=()
 for KEY_NAME in $API_KEY_NAMES; do
     if [ -n "${!KEY_NAME:-}" ]; then
-        DOCKER_API_KEY_ENV_VARS+=(-e "$KEY_NAME=${!KEY_NAME}")
+        DOCKER_API_KEY_ENV_VARS_BASE+=(-e "$KEY_NAME=${!KEY_NAME}")
         echo "Adding API key env var to docker: $KEY_NAME"
     fi
 done
@@ -138,6 +140,20 @@ for model in "${MODELS[@]}"; do
                 # Create volume for this run
                 docker volume create temp_agentomics_volume_${AGENT_ID}
 
+                # Create temporary API key for cost tracking if enabled
+                TEMP_API_KEY_HASH=""
+                if [ "$USE_PROVISIONING_KEY" = true ]; then
+                    if ! conda env list | grep -q "^agentomics-env "; then
+                        echo "Creating agentomics-env conda environment"
+                        conda env create -f environment.yaml -q
+                    fi
+                    echo "Creating temporary API key with spend limit: $SPEND_LIMIT"
+                    API_KEY_OUTPUT=$(PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys_utils.py create --name "ablation_${ABLATION_NAME}_${model}_${dataset}_rep${repetition}_$(date +%s)" --limit "$SPEND_LIMIT")
+                    TEMP_API_KEY=$(echo "$API_KEY_OUTPUT" | cut -d',' -f1)
+                    TEMP_API_KEY_HASH=$(echo "$API_KEY_OUTPUT" | cut -d',' -f2)
+                    export OPENROUTER_API_KEY="$TEMP_API_KEY"
+                fi
+
                 # Build arguments array
                 AGENTOMICS_ARGS=(
                     --model "$model"
@@ -157,6 +173,12 @@ for model in "${MODELS[@]}"; do
                 # Add steps to skip if not baseline
                 if [ -n "$STEPS_TO_SKIP" ]; then
                     AGENTOMICS_ARGS+=(--steps-to-skip "$STEPS_TO_SKIP")
+                fi
+
+                # Prepare API key environment variables for this run
+                DOCKER_API_KEY_ENV_VARS=("${DOCKER_API_KEY_ENV_VARS_BASE[@]}")
+                if [ "$USE_PROVISIONING_KEY" = true ]; then
+                    DOCKER_API_KEY_ENV_VARS+=(-e "OPENROUTER_API_KEY=${OPENROUTER_API_KEY}")
                 fi
 
                 echo "Debug: Full command arguments:"
@@ -192,7 +214,7 @@ for model in "${MODELS[@]}"; do
                     --entrypoint /opt/conda/envs/agentomics-env/bin/python \
                     agentomics_img src/run_logging/evaluate_log_test.py || echo "Test evaluation failed or skipped"
 
-                mkdir -p outputs/ablation_results/${AGENT_ID}/best_run_files outputs/ablation_results/${AGENT_ID}/reports outputs/ablation_results/${AGENT_ID}/agent_logs
+                mkdir -p outputs/ablation_results/${AGENT_ID}/best_run_files outputs/ablation_results/${AGENT_ID}/reports outputs/ablation_results/${AGENT_ID}/agent_logs outputs/ablation_results/${AGENT_ID}/extras
 
                 # Copy snapshot files if they exist
                 docker run --rm -u $(id -u):$(id -g) \
@@ -214,6 +236,20 @@ for model in "${MODELS[@]}"; do
                     -v $(pwd)/outputs/ablation_results/${AGENT_ID}:/dest \
                     busybox sh -c 'if [ -d /source/runs/${AGENT_ID}/agent_logs ]; then cp -r /source/runs/${AGENT_ID}/agent_logs/. /dest/agent_logs/; else echo "No agent logs to copy"; fi' \
                     || echo "Agent logs copy failed"
+
+                # Copy extras directory (contains config.json for cost logging)
+                docker run --rm -u $(id -u):$(id -g) \
+                    -v temp_agentomics_volume_${AGENT_ID}:/source \
+                    -v $(pwd)/outputs/ablation_results/${AGENT_ID}:/dest \
+                    busybox sh -c 'if [ -d /source/extras ]; then cp -r /source/extras/. /dest/extras/; else echo "No extras to copy"; fi' \
+                    || echo "Extras copy failed"
+
+                # Log costs and cleanup temporary API key if provisioning is enabled
+                if [ "$USE_PROVISIONING_KEY" = true ]; then
+                    echo "Logging costs and cleaning up temporary API key"
+                    CONFIG_PATH="outputs/ablation_results/${AGENT_ID}/extras/config.json"
+                    PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys_utils.py cleanup-and-log --config-path "$CONFIG_PATH" --api-key-hash "$TEMP_API_KEY_HASH" || echo "Cost logging failed"
+                fi
 
                 docker volume rm temp_agentomics_volume_${AGENT_ID}
             done
