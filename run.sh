@@ -191,6 +191,7 @@ else
             -e AGENT_ID=${AGENT_ID} \
             -e PYTHONPATH=/repository/src \
             -v "$(pwd)/src":/repository/src:ro \
+            -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
             -v "$(pwd)/prepared_test_sets":/repository/prepared_test_sets:ro \
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
             --entrypoint /opt/conda/envs/agentomics-env/bin/python \
