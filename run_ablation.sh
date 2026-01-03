@@ -9,8 +9,8 @@ set -euo pipefail
 
 # ABLATION STUDY CONFIGURATION
 MODELS=(
-    "gpt-oss:20b"
-    "qwen3-coder:30b"
+    "google/gemini-3-flash-preview"
+    # "qwen3-coder:30b"
     # "claude-3-5-sonnet"
 )
 
@@ -19,10 +19,10 @@ DATASETS=(
 )
 
 # LLM Provider (openrouter, anthropic, openai, ollama, google)
-PROVIDER="ollama"
+PROVIDER="openrouter"
 
 # Validation metric
-VAL_METRIC="ACC"
+VAL_METRIC="AUPRC"
 
 # Number of iterations per run
 ITERATIONS=5
@@ -35,14 +35,14 @@ USER_PROMPT="Create the best possible machine learning model that will generaliz
 
 # Additional W&B tags (optional)
 TAGS=(
-    "ablation_study_test_friday"
+    "ablation_v1"
     # "experiment_v1"
 )
 
 # Runtime flags
 CPU_ONLY=false
-OLLAMA=true
-USE_PROVISIONING_KEY=false
+OLLAMA=false
+USE_PROVISIONING_KEY=true
 SPEND_LIMIT=10
 
 # ============================================
