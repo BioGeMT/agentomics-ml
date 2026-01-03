@@ -25,7 +25,6 @@ def load_run_config(config_path):
         agent_datasets_dir=Path(config_dict['agent_dataset_dir']).parent,
         user_prompt=config_dict['user_prompt'],
         iterations=config_dict['iterations'],
-        task_type=config_dict['task_type'],
     )
     config.wandb_run_id = config_dict.get('wandb_run_id')
     return config
@@ -37,7 +36,7 @@ def create_key(args):
 def cleanup_and_log(args):
     dotenv.load_dotenv()
     config = load_run_config(args.config_path)
-    resume_wandb_run(config, dir='./cleanup_wandb_logs')
+    run = resume_wandb_run(config, dir='./cleanup_wandb_logs')
 
     usage = get_api_key_usage(args.api_key_hash)
     wandb.log({
@@ -47,6 +46,9 @@ def cleanup_and_log(args):
     print(f"Logged API usage: limit={usage['limit']}, usage={usage['usage']}")
 
     delete_api_key(args.api_key_hash)
+
+    if run:
+        wandb.finish()
 
 def main():
     parser = argparse.ArgumentParser(description="API key management")
