@@ -210,8 +210,15 @@ else
 
         if [ "$USE_PROVISIONING_KEY" = true ]; then
             echo "Logging costs and cleaning up temporary API key"
-            CONFIG_PATH="outputs/${AGENT_ID}/extras/config.json"
-            PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys_utils.py cleanup-and-log --config-path "$CONFIG_PATH" --api-key-hash "$TEMP_API_KEY_HASH"
+            docker run \
+                --rm \
+                --env-file $(pwd)/.env \
+                -e PROVISIONING_OPENROUTER_API_KEY="${PROVISIONING_OPENROUTER_API_KEY}" \
+                -v "$(pwd)/outputs/${AGENT_ID}/extras":/config:ro \
+                -v "$(pwd)/src":/repository/src:ro \
+                -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
+                --entrypoint /opt/conda/envs/agentomics-env/bin/python \
+                agentomics_img /repository/src/utils/api_keys_utils.py cleanup-and-log --config-path /config/config.json --api-key-hash "$TEMP_API_KEY_HASH"
         fi
 
     fi
