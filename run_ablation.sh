@@ -148,7 +148,7 @@ for model in "${MODELS[@]}"; do
                         conda env create -f environment.yaml -q
                     fi
                     echo "Creating temporary API key with spend limit: $SPEND_LIMIT"
-                    API_KEY_OUTPUT=$(PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys_utils.py create --name "ablation_${ABLATION_NAME}_${model}_${dataset}_rep${repetition}_$(date +%s)" --limit "$SPEND_LIMIT")
+                    API_KEY_OUTPUT=$(PYTHONPATH="$(pwd)/src" conda run -n cloudspace python src/utils/api_keys_utils.py create --name "ablation_${ABLATION_NAME}_${model}_${dataset}_rep${repetition}_$(date +%s)" --limit "$SPEND_LIMIT")
                     TEMP_API_KEY=$(echo "$API_KEY_OUTPUT" | cut -d',' -f1)
                     TEMP_API_KEY_HASH=$(echo "$API_KEY_OUTPUT" | cut -d',' -f2)
                     export OPENROUTER_API_KEY="$TEMP_API_KEY"
