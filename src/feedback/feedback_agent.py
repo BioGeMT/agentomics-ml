@@ -115,6 +115,7 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
         foundation_models_info = "No foundation models available"
     else:
         foundation_models_info = format_foundation_model_catalog(config.foundation_model_to_desc)
+        foundation_models_info += '\nWhen loading a foundation model weights with some huggingface automodel classes (for example transformers.AutoModelForSequenceClassification) a randomly initialized layer gets added on top of the loaded model. If not trained, this layer will harm prediction accuracy. If you instruct the agent to use a foundation model, also instruct the train and inference steps to properly save and load the foundation model and any additional layers connected to, and avoid using random weights in the inference script.'
 
     tools_info = ", ".join(tool_names)
 

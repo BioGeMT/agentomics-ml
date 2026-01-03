@@ -61,7 +61,7 @@ class Config:
         max_steps: Optional[int] = None,
         iterations: Optional[int] = 5,
         split_allowed_iterations: int = 1,
-        exploration_iterations: int = 3,
+        exploration_iterations: int = 0,
         time_deadline: Optional[int] = None,
         split_time_deadline: Optional[int] = None,
     ):
