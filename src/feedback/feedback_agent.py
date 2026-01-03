@@ -115,7 +115,7 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
         foundation_models_info = "No foundation models available"
     else:
         foundation_models_info = format_foundation_model_catalog(config.foundation_model_to_desc)
-        foundation_models_info += '\nWhen loading a foundation model weights with some huggingface automodel classes (for example transformers.AutoModelForSequenceClassification) a randomly initialized layer gets added on top of the loaded model. If not trained, this layer will harm prediction accuracy. If you instruct the agent to use a foundation model, also instruct the train and inference steps to properly save and load the foundation model and any additional layers connected to, and avoid using random weights in the inference script.'
+        foundation_models_info += '\n<foundation_model_guidelines>\nWhen loading foundation model weights in certain ways (for example transformers.AutoModelForSequenceClassification) a randomly initialized layer gets added on top of the loaded model. If not trained, this layer will harm prediction accuracy.\nIf you instruct the agent to use a foundation model, you must:\n1) Instruct the train script to train any layers that were automatically created and randomly initialized by the transformers library, and save them to the training artifacts directory\n2) Instruct the inference step to load these saved layers properly and avoid using randomly initialized layers in the inference.py script\n</foundation_model_guidelines>'
 
     tools_info = ", ".join(tool_names)
 
