@@ -32,6 +32,12 @@ def create_new_api_key(name, limit):
 def get_api_key(key_hash):
     headers = {"Authorization": f"Bearer {PROVISIONING_API_KEY}"}
     response = requests.get(f"{BASE_URL}/{key_hash}", headers=headers)
+
+    if response.status_code != 200:
+        print(f"API Error: Status {response.status_code}")
+        print(f"Response: {response.text}")
+        response.raise_for_status()
+
     return response.json()
 
 def get_all_api_keys():
@@ -46,6 +52,18 @@ def get_all_api_keys():
 
 def get_api_key_usage(key_hash):
     key_info = get_api_key(key_hash)
+
+    # Debug: print what we got
+    print(f"API Response type: {type(key_info)}")
+    print(f"API Response: {key_info}")
+
+    # Handle unexpected response formats
+    if not isinstance(key_info, dict):
+        raise ValueError(f"Expected dict from API, got {type(key_info)}: {key_info}")
+
+    if 'data' not in key_info:
+        raise ValueError(f"Missing 'data' key in API response. Keys: {list(key_info.keys())}")
+
     data = {
         'limit': key_info['data']['limit'],
         'usage': key_info['data']['usage'],

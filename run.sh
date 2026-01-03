@@ -213,7 +213,7 @@ else
             docker run \
                 --rm \
                 --env-file $(pwd)/.env \
-                -e PROVISIONING_OPENROUTER_API_KEY="${PROVISIONING_OPENROUTER_API_KEY}" \
+                -e PYTHONPATH=/repository/src \
                 -v "$(pwd)/outputs/${AGENT_ID}/extras":/config:ro \
                 -v "$(pwd)/src":/repository/src:ro \
                 -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
