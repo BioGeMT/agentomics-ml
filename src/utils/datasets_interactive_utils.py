@@ -96,8 +96,8 @@ def prepare_all_datasets(datasets_dir: str, prepared_datasets_dir: str, prepared
         console.print(f"[red]No datasets found in {datasets_dir}[/red]")
         console.print("")
         console.print("[blue]To add datasets:[/blue]")
-        console.print(f"   1. Create directories in {datasets_dir}/")
-        console.print("   2. Add train.csv (and optionally test.csv) to each directory")
+        console.print(f"   1. Create directories in {datasets_dir}/ (e.g. {datasets_dir}/my_dataset/)")
+        console.print("   2. Add train.csv (and optionally test.csv) to each dataset directory")
         console.print("   3. Run preparation again")
         sys.exit(1)
     
