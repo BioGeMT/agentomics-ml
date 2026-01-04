@@ -1,16 +1,6 @@
 #!/usr/bin/env bash
 
-# Ensure we are running under bash even if invoked via sh/zsh
-if [ -z "${BASH_VERSION:-}" ]; then
-  exec /usr/bin/env bash "$0" "$@"
-fi
-
-set -euo pipefail
-
-# Color definitions
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-NOCOLOR='\033[0m'
+source "./bash_helpers.sh"
 
 AGENTOMICS_ARGS=()
 LOCAL_MODE=false
@@ -19,6 +9,11 @@ CPU_ONLY=false
 OLLAMA=false
 USE_PROVISIONING_KEY=false
 SPEND_LIMIT=10
+TIMEOUT_SECS=""
+MODEL_NAME=""
+DATASET_NAME=""
+VAL_METRIC=""
+LIST_MODE=false
 
 show_help() {
     cat << EOF
@@ -73,14 +68,17 @@ while [[ $# -gt 0 ]]; do
             ;;
         --list-models)
             AGENTOMICS_ARGS+=(--list-models)
+            LIST_MODE=true
             shift
             ;;
         --list-datasets)
             AGENTOMICS_ARGS+=(--list-datasets)
+            LIST_MODE=true
             shift
             ;;
         --list-metrics)
             AGENTOMICS_ARGS+=(--list-metrics)
+            LIST_MODE=true
             shift
             ;;
         --root-privileges)
@@ -88,22 +86,30 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --model)
+            require_opt_value "$1" "${2:-}"
             AGENTOMICS_ARGS+=(--model "$2")
+            MODEL_NAME="$2"
             shift 2
             ;;
         --dataset)
+            require_opt_value "$1" "${2:-}"
             AGENTOMICS_ARGS+=(--dataset "$2")
+            DATASET_NAME="$2"
             shift 2
             ;;
         --iterations)
+            require_opt_value "$1" "${2:-}"
             AGENTOMICS_ARGS+=(--iterations "$2")
             shift 2
             ;;
         --timeout)
+            require_opt_value "$1" "${2:-}"
             AGENTOMICS_ARGS+=(--timeout "$2")
+            TIMEOUT_SECS="$2"
             shift 2
             ;;
         --split-allowed-iterations)
+            require_opt_value "$1" "${2:-}"
             AGENTOMICS_ARGS+=(--split-allowed-iterations "$2")
             shift 2
             ;;
@@ -112,10 +118,13 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --val-metric)
+            require_opt_value "$1" "${2:-}"
             AGENTOMICS_ARGS+=(--val-metric "$2")
+            VAL_METRIC="$2"
             shift 2
             ;;
         --user-prompt)
+            require_opt_value "$1" "${2:-}"
             AGENTOMICS_ARGS+=(--user-prompt "$2")
             shift 2
             ;;
@@ -140,6 +149,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --spend-limit)
+            require_opt_value "$1" "${2:-}"
             SPEND_LIMIT="$2"
             shift 2
             ;;
@@ -164,6 +174,17 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ "$LOCAL_MODE" = true ]; then
+    need_cmd conda
+    need_cmd python
+    if [ "$TEST_MODE" = true ]; then
+        die "--test is only supported in Docker mode (remove --test or remove --local)"
+    fi
+    if [[ "$LIST_MODE" = false ]] && ! has_tty; then
+        if [[ -z "$MODEL_NAME" || -z "$DATASET_NAME" || -z "$VAL_METRIC" ]]; then
+            die "Non-interactive runs require --model, --dataset, and --val-metric (or run in an interactive terminal)"
+        fi
+    fi
+
     echo -e "${RED}Running in local mode - this is only recommended if you run in a non-vulnerable environment!${NOCOLOR}"
     echo "For Docker mode (secure run), re-run without the --local flag."
     
@@ -183,10 +204,26 @@ if [ "$LOCAL_MODE" = true ]; then
 
     AGENT_ID=$(python src/utils/create_user.py)
     export AGENT_ID
-    timeout $TIME_LIMIT_SECS python src/run_agent_interactive.py ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
-    if [ $? -eq 124 ]; then
-        echo "Timed out after $TIME_LIMIT_SECS"
+    if [[ -n "$TIMEOUT_SECS" ]]; then
+        need_cmd timeout
+        [[ "$TIMEOUT_SECS" =~ ^[0-9]+$ ]] || die "--timeout must be an integer number of seconds (got: $TIMEOUT_SECS)"
+        set +e
+        timeout "$TIMEOUT_SECS" python src/run_agent_interactive.py ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
+        exit_code=$?
+        set -e
+        if [[ "$exit_code" -eq 124 ]]; then
+            echo "Timed out after $TIMEOUT_SECS seconds"
+        elif [[ "$exit_code" -ne 0 ]]; then
+            exit "$exit_code"
+        fi
+    else
+        python src/run_agent_interactive.py ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
     fi
+
+    if [[ "$LIST_MODE" = true ]]; then
+        exit 0
+    fi
+
     export PYTHONPATH=./src
     python src/run_logging/evaluate_log_test.py --workspace-dir ../workspace
 
@@ -194,6 +231,16 @@ if [ "$LOCAL_MODE" = true ]; then
     cp -r ../workspace/snapshots/${AGENT_ID}/. outputs/${AGENT_ID}/best_run_files/
     cp -r ../workspace/reports/${AGENT_ID}/. outputs/${AGENT_ID}/reports/
 else
+    need_cmd docker
+    if ! docker info >/dev/null 2>&1; then
+        die "Docker is not running or not accessible (start Docker and retry)"
+    fi
+    if [[ "$LIST_MODE" = false ]] && ! has_tty; then
+        if [[ -z "$MODEL_NAME" || -z "$DATASET_NAME" || -z "$VAL_METRIC" ]]; then
+            die "Non-interactive runs require --model, --dataset, and --val-metric (or run in an interactive terminal)"
+        fi
+    fi
+
     echo "Building the run image"
     docker build -t agentomics_img -f Dockerfile .
     echo "Build done"
@@ -213,10 +260,14 @@ else
         agentomics_prepare_img
 
     docker volume create temp_agentomics_volume_${AGENT_ID}
-    trap "docker volume rm temp_agentomics_volume_${AGENT_ID}" EXIT
+    cleanup() {
+        docker volume rm temp_agentomics_volume_${AGENT_ID} >/dev/null 2>&1 || true
+    }
+    trap cleanup EXIT
 
     TEMP_API_KEY_HASH=""
     if [ "$USE_PROVISIONING_KEY" = true ]; then
+        need_cmd conda
         if ! conda env list | grep -q "^agentomics-env "; then
             echo "Creating agentomics-env conda environment"
             conda env create -f environment.yaml -q
@@ -228,17 +279,34 @@ else
         export OPENROUTER_API_KEY="$TEMP_API_KEY"
     fi
 
+    if [ "$CPU_ONLY" = false ]; then
+        if ! docker_has_gpu; then
+            warn "GPU not available (nvidia-smi not found or Docker lacks GPU support)"
+            warn "Automatically switching to CPU-only mode"
+            warn "To suppress this warning, use --cpu-only flag"
+            CPU_ONLY=true
+        fi
+    fi
+
     GPU_FLAGS=()
     if [ "$CPU_ONLY" = false ]; then
         GPU_FLAGS+=(--gpus all)
         GPU_FLAGS+=(--env NVIDIA_VISIBLE_DEVICES=all)
+        info "GPU mode enabled"
+    else
+        info "Running in CPU-only mode"
     fi
     OLLAMA_FLAGS=()
     if [ "$OLLAMA" = true ]; then
         OLLAMA_FLAGS+=(--add-host=host.docker.internal:host-gateway)
     fi
 
+    ENV_FILE_PATH="$(pwd)/.env"
+    [[ -f "$ENV_FILE_PATH" ]] || die "Env file not found: $ENV_FILE_PATH (create it from .env.example)"
+    ENV_FILE_ARGS=(--env-file "$ENV_FILE_PATH")
+
     PROVIDERS_CONFIG_FILE="src/utils/providers/configured_providers.yaml"
+    [[ -f "$PROVIDERS_CONFIG_FILE" ]] || die "Missing providers config: $PROVIDERS_CONFIG_FILE"
     API_KEY_NAMES=$(grep -E 'apikey:' "$PROVIDERS_CONFIG_FILE" | grep -o '\${[^}]*}' | tr -d '${}' | sort -u)
     DOCKER_API_KEY_ENV_VARS=()
     for KEY_NAME in $API_KEY_NAMES; do
@@ -257,7 +325,7 @@ else
             -it \
             --rm \
             --name agentomics_test_cont_${AGENT_ID} \
-            --env-file $(pwd)/.env \
+            ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
             -e AGENT_ID=${AGENT_ID} \
             -e PYTHONWARNINGS=ignore \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
@@ -274,7 +342,7 @@ else
             --rm \
             -it \
             --name agentomics_cont_${AGENT_ID} \
-            --env-file $(pwd)/.env \
+            ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
             -e AGENT_ID=${AGENT_ID} \
             -e PYTHONWARNINGS=ignore \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
@@ -285,6 +353,8 @@ else
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
             agentomics_img ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
 
+        if [ "$LIST_MODE" = true ]; then
+            exit 0
         ARTIFACT_PATH="/workspace/snapshots/${AGENT_ID}"
 
         if ! docker run --rm -v temp_agentomics_volume_${AGENT_ID}:/workspace busybox test -d ${ARTIFACT_PATH}; then
@@ -298,7 +368,7 @@ else
         docker run \
             --rm \
             --name agentomics_test_eval_cont_${AGENT_ID} \
-            --env-file $(pwd)/.env \
+            ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
             -e AGENT_ID=${AGENT_ID} \
             -e PYTHONPATH=/repository/src \
             -e PYTHONWARNINGS=ignore \
@@ -333,6 +403,4 @@ else
         echo -e "${GREEN}To run inference on new data, use ./inference.sh --agent-dir outputs/${AGENT_ID} --input <path_to_input_csv> --output <path_to_output_csv>${NOCOLOR}"
 
     fi
-
-    docker volume rm temp_agentomics_volume_${AGENT_ID}
 fi
