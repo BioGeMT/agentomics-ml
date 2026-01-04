@@ -1,32 +1,10 @@
 #!/usr/bin/env bash
 
-if [ -z "${BASH_VERSION:-}" ]; then
-  exec /usr/bin/env bash "$0" "$@"
-fi
-
-set -euo pipefail
+source "./bash_helpers.sh"
 
 DOCKER_MODE=true
 CPU_ONLY=false
 ARGS=()
-
-RED='\033[0;31m'
-NOCOLOR='\033[0m'
-
-die() {
-    echo -e "${RED}Error: $*${NOCOLOR}" >&2
-    exit 1
-}
-
-need_cmd() {
-    command -v "$1" >/dev/null 2>&1 || die "Missing required command: $1"
-}
-
-require_opt_value() {
-    local opt="$1"
-    local val="${2:-}"
-    [[ -n "$val" ]] || die "Missing value for $opt"
-}
 
 show_help() {
     echo "Usage: $0 --agent-dir <agent_folder_path> --input <input_path> --output <output_path> [--cpu-only] [--local]"
@@ -114,10 +92,25 @@ if [[ ! -f "$INFERENCE_PATH" ]]; then
     exit 1
 fi
 
+if [[ "$DOCKER_MODE" == true ]]; then
+    # Auto-detect GPU availability if not explicitly set to CPU-only
+    if [ "$CPU_ONLY" = false ]; then
+        if ! docker_has_gpu; then
+            warn "GPU not available (nvidia-smi not found or Docker lacks GPU support)"
+            warn "Automatically switching to CPU-only mode"
+            warn "To suppress this warning, use --cpu-only flag"
+            CPU_ONLY=true
+        fi
+    fi
+fi
+
 GPU_FLAGS=()
 if [ "$CPU_ONLY" = false ]; then
     GPU_FLAGS+=(--gpus all)
     GPU_FLAGS+=(--env NVIDIA_VISIBLE_DEVICES=all)
+    info "GPU mode enabled"
+else
+    info "Running in CPU-only mode"
 fi
 
 if [[ "$DOCKER_MODE" == true ]]; then

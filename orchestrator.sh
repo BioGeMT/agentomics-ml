@@ -1,14 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-set -euo pipefail
-
-RED='\033[0;31m'
-NOCOLOR='\033[0m'
-
-die() {
-  echo -e "${RED}Error: $*${NOCOLOR}" >&2
-  exit 1
-}
+source "./bash_helpers.sh"
 
 REPOS_DIR="/home/$USER/repos" #this needs to be configured to the agentomics repository parent directory (biomlbench will be pulled as a sibling to the agentomics repo)
 
