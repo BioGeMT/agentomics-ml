@@ -94,7 +94,6 @@ if [[ ! -f "$INFERENCE_PATH" ]]; then
 fi
 
 if [[ "$DOCKER_MODE" == true ]]; then
-    # Auto-detect GPU availability if not explicitly set to CPU-only
     if [ "$CPU_ONLY" = false ]; then
         if ! docker_has_gpu; then
             warn "GPU not available (nvidia-smi not found or Docker lacks GPU support)"
