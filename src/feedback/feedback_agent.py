@@ -106,9 +106,9 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
 
     tools_info = ", ".join(tool_names)
 
-    if next_iteration_index <= config.exploration_iterations:
+    if next_iteration_index < config.exploration_iterations:
         exploration_guidance = f"""
-        You are still in the exploration phase (iteration {next_iteration_index} out of {config.exploration_iterations} exploration iterations).
+        You are still in the exploration phase (iteration {next_iteration_index} out of {int(config.exploration_iterations) - 1} exploration iterations).
         Your task is to instruct the agent to implement a baseline model. 
         Follow these instructions for these specific steps:
         - Data Representation: implement the most basic commonly used representation for the data type

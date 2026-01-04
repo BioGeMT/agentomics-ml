@@ -7,7 +7,6 @@ SPEND_LIMIT=100
 MODELS=("openai/gpt-5.1-codex")
 ITERATIONS=100 # Set to a large number because timeout will take precedence anyways
 TIME_BUDGET_S=$(( 8 * 60 * 60 )) # 8 hours, biomlbench datasets are set to 8h automatically and will not react to this
-# BASELINE_ITERS currently not parametrizable, hardcoded to 4
 SPLIT_ALLOWED_ITERS=4
 PULL_BRANCH="run_experiments" #Branch to pull for biomlbench runs
 TAGS=("experiment_orchestrator" "test_run")
