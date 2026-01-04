@@ -17,11 +17,6 @@ show_help() {
     echo "  --help        Show this help message and exit"
 }
 
-usage_error() {
-    show_help
-    exit 1
-}
-
 AGENT_DIR=""
 INPUT_PATH=""
 OUTPUT_PATH=""
@@ -70,8 +65,14 @@ while [[ $# -gt 0 ]]; do
 done
 
 # ensure all required args are provided
-if [[ -z "$AGENT_DIR" || -z "$INPUT_PATH" || -z "$OUTPUT_PATH" ]]; then
-    usage_error
+if [[ -z "$AGENT_DIR" ]]; then
+      die "Missing required argument: --agent-dir. Run '$0 --help' for usage"
+fi
+if [[ -z "$INPUT_PATH" ]]; then
+    die "Missing required argument: --input. Run '$0 --help' for usage"
+fi
+if [[ -z "$OUTPUT_PATH" ]]; then
+    die "Missing required argument: --output. Run '$0 --help' for usage"
 fi
 
 [[ -d "$AGENT_DIR" ]] || die "--agent-dir does not exist: $AGENT_DIR"
