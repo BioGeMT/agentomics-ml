@@ -214,6 +214,10 @@ if [ "$LOCAL_MODE" = true ]; then
         python src/run_agent_interactive.py ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
     fi
 
+    if [[ "$LIST_MODE" = true ]]; then
+        exit 0
+    fi
+
     export PYTHONPATH=./src
     python src/run_logging/evaluate_log_test.py --workspace-dir ../workspace
 
@@ -339,6 +343,10 @@ else
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
             agentomics_img ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
+
+        if [ "$LIST_MODE" = true ]; then
+            exit 0
+        fi
 
         echo "Running final evaluation on test set"
         docker run \
