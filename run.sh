@@ -100,6 +100,7 @@ Contents:
 - \`inference.py\` — inference script for predictions on new data
 - \`training_artifacts/\` — serialized artifacts (e.g. \`model.joblib\`)
 - \`validation_metrics.txt\`, \`train_metrics.txt\`
+- \`eval_predictions_train.csv\` ... - all predictions for all sets in csv format
 - \`structured_outputs.txt\`
 - \`config.json\`
 - \`conda_environment.yml\`
