@@ -8,6 +8,9 @@ from pydantic_ai import ModelRetry
 from eval.evaluate_result import get_metrics
 from utils.exceptions import AgentScriptFailed
 from run_logging.logging_helpers import log_inference_stage_and_metrics, log_serial_metrics
+from rich.console import Console
+
+console = Console()
 
 def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot=False):
     with open(config.prepared_dataset_dir / "metadata.json") as f:
@@ -79,9 +82,9 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
     if evaluation_stage == 'test':
         test_file_path = test_files_dir / "test.csv"
         if not test_file_path.exists():
-            print('TEST EVAL SKIPPED - NO TEST SET')
+            console.print("[bold blue]TEST EVAL SKIPPED - NO TEST SET[/bold blue]")
             return
-        print('RUNNING TEST EVAL')
+        console.print("[bold blue]RUNNING TEST EVAL[/bold blue]")
         if inference_out.returncode != 0:
             print('TEST EVAL FAIL', str(inference_out))
             log_inference_stage_and_metrics(1, task_type=config.task_type)
@@ -92,7 +95,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
                 test_file=test_file_path,
                 output_file=stage_to_metrics_file[evaluation_stage],
                 numeric_label_col=dataset_metadata['numeric_label_col'],
-                delete_preds=True,
+                delete_preds=False,
                 task_type=dataset_metadata['task_type']
             )
             log_inference_stage_and_metrics(2, metrics=test_metrics, task_type=config.task_type)
@@ -100,9 +103,9 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
             print('TEST EVAL FAIL', {traceback.format_exc()})
             log_inference_stage_and_metrics(1, task_type=config.task_type)
             return
-        print('TEST EVAL SUCCESS')
+        console.print(f"[bold blue]TEST EVAL SUCCESS[/bold blue]")
     if evaluation_stage == 'dry_run':
-        print('RUNNING DRY RUN EVAL')
+        console.print(f'[bold blue]RUNNING DRY RUN EVAL[/bold blue]')
         if inference_out.returncode != 0:
             print('DRY RUN EVAL FAIL during inference:', inference_out.stderr)
             raise ModelRetry(f'Inference script validation failed: {str(inference_out)}')
@@ -113,7 +116,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
                 test_file=config.prepared_dataset_dir / "train.csv",
                 output_file=stage_to_metrics_file[evaluation_stage],
                 numeric_label_col=dataset_metadata['numeric_label_col'],
-                delete_preds=False,
+                delete_preds=True,
                 task_type=dataset_metadata['task_type']
             )
         except Exception as e:
@@ -122,7 +125,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
             raise ModelRetry(message)
         print('DRY RUN EVAL SUCCESS')
     if evaluation_stage == 'validation':
-        print('RUNNING VALIDATION EVAL')
+        console.print(f"[bold blue]RUNNING VALIDATION EVAL[/bold blue]")
         if inference_out.returncode != 0:
             print('VALIDATION EVAL FAIL during inference:', inference_out.stderr)
             log_serial_metrics(prefix=evaluation_stage, metrics=None, iteration=iteration, task_type=config.task_type)
@@ -145,7 +148,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
             raise AgentScriptFailed(message) from e
         print('VALIDATION EVAL SUCCESS')
     if evaluation_stage == 'train':
-        print('RUNNING TRAIN EVAL')
+        console.print(f"[bold blue]RUNNING TRAIN EVAL[/bold blue]")
         if inference_out.returncode != 0:
             print('TRAIN EVAL FAIL during inference:', inference_out.stderr)
             raise AgentScriptFailed(f'Inference script validation failed: {str(inference_out)}')

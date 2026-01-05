@@ -4,11 +4,13 @@ channels:
 dependencies:
   - python==3.12
   - pandas==2.3.1
+  - matplotlib==3.8.4
   - pydantic-ai==1.7.0
   - pip
   - pip:
     - weave==0.52.14 #Often breaks with new versions, update as necessary
     - scikit-learn==1.7.1
+    - reportlab==4.2.0
     - wandb==0.21.1
     - hrid==0.3.0
     - timeout-function-decorator==2.0.0
