@@ -60,6 +60,85 @@ Output:
 EOF
 }
 
+write_outputs_readme() {
+    local agent_id="$1"
+    local out_dir="outputs/${agent_id}"
+    local best_iter="UNKNOWN"
+
+    if [[ -f "${out_dir}/best_run_files/iteration_number.txt" ]]; then
+        best_iter="$(cat "${out_dir}/best_run_files/iteration_number.txt" | tr -d '[:space:]')"
+        [[ -z "$best_iter" ]] && best_iter="UNKNOWN"
+    fi
+
+    mkdir -p "${out_dir}"
+
+    cat > "${out_dir}/README.md" << EOF
+
+This directory contains the full results of one run (**AGENT_ID: ${agent_id}**).
+It includes: (1) the **best model/run chosen across iterations**, (2) per-iteration run artifacts,
+(3) reports, and (4) logs/extras.
+
+---
+
+**Best iteration selected:** **${best_iter}**
+
+The best iteration number is stored in:
+- \`best_run_files/iteration_number.txt\`
+
+What to use:
+- **Best model + code:** \`best_run_files/\`
+- **Best report:** \`reports/run_report_iter_${best_iter}.txt\`
+
+---
+
+## Folder overview
+
+### 1) \`best_run_files/\`
+Selected best iteration’s runnable code + artifacts.
+Contents:
+- \`train.py\` — training script used to produce the best model
+- \`inference.py\` — inference script for predictions on new data
+- \`training_artifacts/\` — serialized artifacts (e.g. \`model.joblib\`)
+- \`validation_metrics.txt\`, \`train_metrics.txt\`
+- \`structured_outputs.txt\`
+- \`config.json\`
+- \`conda_environment.yml\`
+- \`iteration_number.txt\` — chosen best iteration index
+
+### 2) \`run_files/\` (all iterations)
+Contains per-iteration snapshots and split CSVs:
+- \`run_files/train.csv\`
+- \`run_files/validation.csv\`
+- \`run_files/iteration_0/\`, \`run_files/iteration_1/\`, ...
+
+### 3) \`reports/\` (human-readable run report per iteration)
+- \`reports/run_report_iter_0.txt\`
+- \`reports/run_report_iter_1.txt\`
+- ...
+
+### 4) \`extras/\` (logs and debugging info)
+Typically contains:
+- \`extras/run_logs/\`
+- \`extras/test_logs/\`
+
+---
+
+## Running inference on new data
+
+An inference helper command at the end, e.g.:
+
+\`\`\`bash
+./inference.sh --agent-dir outputs/${agent_id} --input <path_to_input_csv> --output <path_to_output_csv>
+\`\`\`
+
+Inference relies on:
+- \`best_run_files/inference.py\`
+- \`best_run_files/training_artifacts/\`
+
+EOF
+}
+
+
 while [[ $# -gt 0 ]]; do
     case $1 in
         -h|--help)
@@ -230,6 +309,7 @@ if [ "$LOCAL_MODE" = true ]; then
     mkdir -p outputs/${AGENT_ID}/best_run_files outputs/${AGENT_ID}/reports
     cp -r ../workspace/snapshots/${AGENT_ID}/. outputs/${AGENT_ID}/best_run_files/
     cp -r ../workspace/reports/${AGENT_ID}/. outputs/${AGENT_ID}/reports/
+    write_outputs_readme "${AGENT_ID}"
 else
     need_cmd docker
     if ! docker info >/dev/null 2>&1; then
@@ -399,9 +479,9 @@ else
             CONFIG_PATH="outputs/${AGENT_ID}/best_run_files/config.json"
             PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys_utils.py cleanup-and-log --config-path "$CONFIG_PATH" --api-key-hash "$TEMP_API_KEY_HASH"
         fi
-
+        write_outputs_readme "${AGENT_ID}"
         echo -e "${GREEN}Run finished. Report and files can be found in outputs/${AGENT_ID}${NOCOLOR}"
         echo -e "${GREEN}To run inference on new data, use ./inference.sh --agent-dir outputs/${AGENT_ID} --input <path_to_input_csv> --output <path_to_output_csv>${NOCOLOR}"
 
-    fi
-fi
+      fi
+  fi
