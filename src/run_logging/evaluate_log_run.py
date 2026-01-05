@@ -113,7 +113,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
                 test_file=config.prepared_dataset_dir / "train.csv",
                 output_file=stage_to_metrics_file[evaluation_stage],
                 numeric_label_col=dataset_metadata['numeric_label_col'],
-                delete_preds=True,
+                delete_preds=False,
                 task_type=dataset_metadata['task_type']
             )
         except Exception as e:
@@ -135,7 +135,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
                 numeric_label_col=dataset_metadata['numeric_label_col'],
                 iteration=iteration,
                 prefix=evaluation_stage,
-                delete_preds=True,
+                delete_preds=False,
                 task_type=dataset_metadata['task_type']
             )
         except Exception as e:
@@ -157,7 +157,7 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
                 numeric_label_col=dataset_metadata['numeric_label_col'],
                 iteration=iteration,
                 prefix=evaluation_stage,
-                delete_preds=True,
+                delete_preds=False,
                 task_type=dataset_metadata['task_type']
             )
         except Exception as e:
@@ -173,7 +173,7 @@ def get_metrics_and_serial_log(results_file, test_file, output_file, numeric_lab
         test_file=test_file,
         output_file=output_file,
         numeric_label_col=numeric_label_col,
-        delete_preds=delete_preds,
+        delete_preds=False,
         task_type=task_type
     )
     log_serial_metrics(prefix=prefix, metrics=metrics, iteration=iteration, task_type=task_type)
@@ -215,4 +215,6 @@ def verify_file_and_row_count(input_path, predictions_path, inference_out):
     except Exception as e:
         tb = traceback.format_exc()
         raise ModelRetry(f'Inference script must produce predicions with the \'id\' column. {e}\n{tb}') from e
+
+
 
