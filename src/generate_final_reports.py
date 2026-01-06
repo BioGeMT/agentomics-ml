@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 import re
 import textwrap
 from dataclasses import dataclass
@@ -12,8 +13,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
-
-# headless safe
+# Headless safe (works inside Docker)
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -22,16 +22,106 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 from reportlab.pdfgen import canvas
+from reportlab.platypus import (
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
+    PageBreak, Image as RLImage, KeepTogether
+)
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_LEFT
 
-
-# =========================
+# -------------------------
 # Matplotlib style (publication-ish, no extra deps)
-# =========================
-def apply_pub_style():
+# -------------------------
+
+from reportlab.lib import colors
+from reportlab.lib.styles import ParagraphStyle
+
+def build_styles():
+    styles = getSampleStyleSheet()
+
+    styles.add(ParagraphStyle(
+        name="H1",
+        parent=styles["Heading1"],
+        fontName="Helvetica-Bold",
+        fontSize=18,
+        textColor=colors.black,
+        spaceAfter=12,
+    ))
+
+    styles.add(ParagraphStyle(
+        name="H2",
+        parent=styles["Heading2"],
+        fontName="Helvetica-Bold",
+        fontSize=13,
+        textColor=colors.black,
+        spaceBefore=12,
+        spaceAfter=6,
+    ))
+
+    styles.add(ParagraphStyle(
+        name="Body",
+        parent=styles["BodyText"],
+        fontName="Helvetica",
+        fontSize=10,
+        leading=14,
+        textColor=colors.black,
+        spaceAfter=6,
+    ))
+
+    # 🔴 Less grey, more readable
+    styles.add(ParagraphStyle(
+        name="Muted",
+        parent=styles["BodyText"],
+        fontName="Helvetica",
+        fontSize=9.5,
+        leading=12,
+        textColor=colors.Color(0.25, 0.25, 0.25),  # dark slate grey
+        spaceAfter=6,
+    ))
+
+    # 🔴 Quotes now darker + visually distinct
+    styles.add(ParagraphStyle(
+        name="Quote",
+        parent=styles["BodyText"],
+        fontName="Helvetica-Oblique",
+        fontSize=9.8,
+        leading=13,
+        textColor=colors.Color(0.15, 0.15, 0.15),
+        leftIndent=14,
+        spaceBefore=4,
+        spaceAfter=8,
+    ))
+
+    styles.add(ParagraphStyle(
+        name="MiniHeader",
+        parent=styles["Body"],
+        fontName="Helvetica-Bold",
+        fontSize=10.5,
+        textColor=colors.black,
+        spaceBefore=8,
+        spaceAfter=4,
+    ))
+
+    styles.add(ParagraphStyle(
+        name="CodeBlock",
+        parent=styles["BodyText"],
+        fontName="Courier",
+        fontSize=9,
+        leading=11,
+        textColor=colors.black,
+        backColor=colors.Color(0.96, 0.96, 0.96),
+        borderPadding=6,
+        spaceBefore=4,
+        spaceAfter=8,
+    ))
+
+    return styles
+
+def apply_pub_style() -> None:
     plt.rcParams.update({
         "figure.dpi": 200,
         "savefig.dpi": 300,
-        "figure.figsize": (6.2, 4.2),
+        "figure.figsize": (6.2, 4.0),
         "font.size": 10,
         "axes.titlesize": 12,
         "axes.labelsize": 10,
@@ -52,9 +142,75 @@ def apply_pub_style():
     })
 
 
-# =========================
+# -------------------------
 # Helpers
-# =========================
+# -------------------------
+
+def _esc(s: str) -> str:
+    # minimal XML escaping for ReportLab Paragraph
+    return (s.replace("&", "&amp;")
+             .replace("<", "&lt;")
+             .replace(">", "&gt;"))
+
+def step_body_to_flowables(text: str, styles):
+    flows = []
+    buf = []
+
+    # Add a mini-header style once (or define it in build_styles())
+    if "MiniHeader" not in styles:
+        styles.add(ParagraphStyle(
+            name="MiniHeader",
+            parent=styles["Body"],
+            fontName="Helvetica-Bold",
+            fontSize=10,
+            textColor=colors.black,
+            spaceBefore=6,
+            spaceAfter=3,
+        ))
+
+    def flush_paragraph():
+        nonlocal buf
+        if not buf:
+            return
+        ptxt = " ".join([x.strip() for x in buf]).strip()
+        if ptxt:
+            flows.append(Paragraph(_esc(ptxt), styles["Body"]))
+        buf = []
+
+    for raw in text.splitlines():
+        line = raw.rstrip()
+
+        if not line.strip():
+            flush_paragraph()
+            flows.append(Spacer(1, 4))
+            continue
+
+        # Blockquote line
+        if line.lstrip().startswith(">"):
+            flush_paragraph()
+            q = line.lstrip()[1:].lstrip()
+            flows.append(Paragraph(_esc(q), styles["Quote"]))
+            continue
+
+        # Mini-header: short line ending with ":" (e.g., "Feature Analysis:")
+        # (Avoid matching long sentences that happen to end with ':')
+        s = line.strip()
+        if s.endswith(":") and len(s) <= 40 and " " in s:
+            flush_paragraph()
+            flows.append(Paragraph(_esc(s), styles["MiniHeader"]))
+            continue
+
+        # Code-ish / path-ish lines
+        if re.match(r"^(\/workspace\/|Path To |Train Path:|Val Path:|Test Path:)", line):
+            flush_paragraph()
+            flows.append(Paragraph(_esc(line), styles["CodeBlock"]))
+            continue
+
+        buf.append(line)
+
+    flush_paragraph()
+    return flows
+
 def find_first(paths: List[Path]) -> Optional[Path]:
     for p in paths:
         if p is not None and p.exists():
@@ -90,7 +246,7 @@ def parse_metrics_txt(path: Optional[Path]) -> Dict[str, float]:
 
 
 def detect_label_column(df: pd.DataFrame) -> Optional[str]:
-    for c in ["numeric_label", "class", "target", "label", "y"]:
+    for c in ["numeric_label", "numericlabel", "class", "target", "label", "y"]:
         if c in df.columns:
             return c
     return None
@@ -140,9 +296,9 @@ def ensure_dir(p: Path) -> None:
     p.mkdir(parents=True, exist_ok=True)
 
 
-# =========================
+# -------------------------
 # Task detection + config
-# =========================
+# -------------------------
 def load_config_json(agent_dir: Path) -> Dict:
     cfg = agent_dir / "best_run_files" / "config.json"
     if cfg.exists():
@@ -165,9 +321,9 @@ def load_val_metric(agent_dir: Path) -> Optional[str]:
     return vm.strip() if isinstance(vm, str) else None
 
 
-# =========================
+# -------------------------
 # Iteration discovery / inputs
-# =========================
+# -------------------------
 def discover_iterations(agent_dir: Path) -> List[int]:
     run_files = agent_dir / "run_files"
     iters: List[int] = []
@@ -206,10 +362,10 @@ def gather_iteration_inputs(agent_dir: Path, iteration: int) -> IterationInputs:
     if not report_md.exists():
         report_md = None
 
-    # labeled data (host output structure)
+    # labeled data
     train_csv = run_files / "train.csv"
     val_csv = run_files / "validation.csv"
-    test_csv = run_files / "test.csv"  # may not exist in outputs
+    test_csv = run_files / "test.csv"  # may not exist
 
     if not train_csv.exists():
         train_csv = None
@@ -218,7 +374,7 @@ def gather_iteration_inputs(agent_dir: Path, iteration: int) -> IterationInputs:
     if not test_csv.exists():
         test_csv = None
 
-    # predictions (iteration folder names from your pipeline)
+    # predictions
     train_preds = find_first([
         iter_dir / "eval_predictions_train.csv",
         iter_dir / "train_predictions.csv",
@@ -244,16 +400,26 @@ def gather_iteration_inputs(agent_dir: Path, iteration: int) -> IterationInputs:
         SplitArtifacts("train", train_csv, train_preds, parse_metrics_txt(train_metrics_path)),
         SplitArtifacts("validation", val_csv, val_preds, parse_metrics_txt(val_metrics_path)),
     ]
-    # include test if we have metrics or preds or labeled
-    if (test_csv and test_csv.exists()) or (test_preds and test_preds.exists()) or parse_metrics_txt(test_metrics_path):
-        splits.append(SplitArtifacts("test", test_csv, test_preds, parse_metrics_txt(test_metrics_path)))
+
+    test_metrics = parse_metrics_txt(test_metrics_path)
+    # include test if ANY of these exist
+    if (test_csv and test_csv.exists()) or (test_preds and test_preds.exists()) or bool(test_metrics):
+        splits.append(SplitArtifacts("test", test_csv, test_preds, test_metrics))
 
     return IterationInputs(iteration=iteration, report_md=report_md, splits=splits)
 
 
-# =========================
+# -------------------------
 # Plotting
-# =========================
+# -------------------------
+def _guess_task_from_labels(y: pd.Series) -> str:
+    yy = pd.to_numeric(y, errors="coerce").dropna()
+    uniq = set(yy.unique().tolist())
+    if uniq.issubset({0, 1}):
+        return "classification"
+    return "regression"
+
+
 def plot_regression_publication(y_true: pd.Series, y_pred: pd.Series, out_prefix: Path, title_prefix: str) -> List[Path]:
     apply_pub_style()
 
@@ -273,7 +439,7 @@ def plot_regression_publication(y_true: pd.Series, y_pred: pd.Series, out_prefix
     plt.ylim(lo, hi)
     plt.xlabel("Actual")
     plt.ylabel("Predicted")
-    plt.title(f"{title_prefix} — Predicted vs Actual")
+    plt.title(f"{title_prefix} - Predicted vs Actual")
     plt.tight_layout()
     plt.savefig(pva_path)
     plt.close()
@@ -294,7 +460,7 @@ def plot_regression_publication(y_true: pd.Series, y_pred: pd.Series, out_prefix
     plt.ylim(rlo, rhi)
     plt.xlabel("Predicted")
     plt.ylabel("Residual (pred − actual)")
-    plt.title(f"{title_prefix} — Residuals vs Predicted")
+    plt.title(f"{title_prefix} - Residuals vs Predicted")
     plt.tight_layout()
     plt.savefig(rvp_path)
     plt.close()
@@ -306,7 +472,7 @@ def plot_regression_publication(y_true: pd.Series, y_pred: pd.Series, out_prefix
     plt.axvline(0, linestyle="--", linewidth=1.2, alpha=0.9)
     plt.xlabel("Residual (pred − actual)")
     plt.ylabel("Count")
-    plt.title(f"{title_prefix} — Residual distribution")
+    plt.title(f"{title_prefix} - Residual distribution")
     plt.tight_layout()
     plt.savefig(rh_path)
     plt.close()
@@ -352,7 +518,7 @@ def plot_classification_publication(y_true: pd.Series, y_score: pd.Series, out_p
     plt.plot([0, 1], [0, 1], linestyle="--", linewidth=1.1, alpha=0.8)
     plt.xlabel("False positive rate")
     plt.ylabel("True positive rate")
-    plt.title(f"{title_prefix} — ROC curve")
+    plt.title(f"{title_prefix} - ROC curve")
     plt.xlim(0, 1)
     plt.ylim(0, 1)
     plt.tight_layout()
@@ -366,7 +532,7 @@ def plot_classification_publication(y_true: pd.Series, y_score: pd.Series, out_p
     plt.plot(recall, precision)
     plt.xlabel("Recall")
     plt.ylabel("Precision")
-    plt.title(f"{title_prefix} — Precision–Recall curve")
+    plt.title(f"{title_prefix} - Precision–Recall curve")
     plt.xlim(0, 1)
     plt.ylim(0, 1)
     plt.tight_layout()
@@ -376,15 +542,14 @@ def plot_classification_publication(y_true: pd.Series, y_score: pd.Series, out_p
     return [roc_path, pr_path]
 
 
-def _guess_task_from_labels(y: pd.Series) -> str:
-    yy = pd.to_numeric(y, errors="coerce").dropna()
-    uniq = set(yy.unique().tolist())
-    if uniq.issubset({0, 1}):
-        return "classification"
-    return "regression"
-
-
-def build_plots_for_split(task_type: str, split_name: str, labeled_csv: Optional[Path], preds_csv: Optional[Path], plots_dir: Path, iteration: int) -> List[Path]:
+def build_plots_for_split(
+    task_type: str,
+    split_name: str,
+    labeled_csv: Optional[Path],
+    preds_csv: Optional[Path],
+    plots_dir: Path,
+    iteration: int,
+) -> List[Path]:
     labeled = safe_read_csv(labeled_csv)
     preds = safe_read_csv(preds_csv)
     if labeled is None or preds is None:
@@ -407,25 +572,121 @@ def build_plots_for_split(task_type: str, split_name: str, labeled_csv: Optional
     return plot_regression_publication(y_true, y_pred, prefix, title_prefix)
 
 
-# =========================
-# PDF generation (metrics table only + plots pages)
-# =========================
-def _draw_page_number(c: canvas.Canvas, page_no: int):
+# -------------------------
+# Markdown cleanup + STEPS extraction
+# -------------------------
+DETAILS_BLOCK_RE = re.compile(r"<details>.*?</details>", flags=re.DOTALL | re.IGNORECASE)
+
+def _remove_details_blocks(md: str) -> str:
+    return re.sub(DETAILS_BLOCK_RE, "", md)
+
+def _remove_metrics_section(md: str) -> str:
+    # Remove "## Metrics" section completely (until next "## " heading or end)
+    lines = md.replace("\r\n", "\n").split("\n")
+    out: List[str] = []
+    skipping = False
+    for line in lines:
+        if re.match(r"^\s*##\s+metrics\s*$", line, flags=re.IGNORECASE):
+            skipping = True
+            continue
+        if skipping and re.match(r"^\s*##\s+", line):
+            skipping = False
+        if skipping:
+            continue
+        out.append(line)
+    return "\n".join(out)
+
+def _remove_inline_metric_bullets(md: str) -> str:
+    # Remove bullet lines like "- **train/MSE**: ..." or "• validation/ACC: ..."
+    lines = md.replace("\r\n", "\n").split("\n")
+    out: List[str] = []
+    for line in lines:
+        s = line.strip()
+        if re.match(r"^[-•]\s+\*\*(train|validation|test)/", s, flags=re.IGNORECASE):
+            continue
+        if re.match(r"^[-•]\s+(train|validation|test)/", s, flags=re.IGNORECASE):
+            continue
+        out.append(line)
+    return "\n".join(out)
+
+def _strip_basic_md(md: str) -> str:
+    # Keep headings (we’ll use them for STEPS), but remove bold/backticks for body
+    s = md.replace("\r\n", "\n")
+    s = re.sub(r"`([^`]+)`", r"\1", s)
+    s = re.sub(r"\*\*([^*]+)\*\*", r"\1", s)
+    return s
+
+def clean_report_md(md: str) -> str:
+    s = _remove_details_blocks(md)
+    s = _remove_metrics_section(s)
+    s = _remove_inline_metric_bullets(s)
+    s = _strip_basic_md(s)
+    return s.strip()
+
+@dataclass
+class Step:
+    title: str
+    body: str
+
+def extract_steps(md: str) -> Tuple[List[str], List[Step]]:
+    """
+    Returns (run_info_lines, steps).
+    - run_info_lines: content before first '## ' heading (excluding the top '# ...' title line)
+    - steps: each '## <something>' becomes one step
+    """
+    s = md.replace("\r\n", "\n")
+    lines = s.split("\n")
+
+    # Drop leading "# Title" line if present
+    if lines and re.match(r"^\s*#\s+", lines[0]):
+        lines = lines[1:]
+
+    # Find first step heading
+    first_h2 = None
+    for i, line in enumerate(lines):
+        if re.match(r"^\s*##\s+", line):
+            first_h2 = i
+            break
+
+    run_info = []
+    if first_h2 is None:
+        run_info = [ln.strip() for ln in lines if ln.strip()]
+        return run_info, []
+    else:
+        run_info = [ln.strip() for ln in lines[:first_h2] if ln.strip() and ln.strip() != "---"]
+
+    steps: List[Step] = []
+    cur_title = None
+    cur_body: List[str] = []
+
+    def flush():
+        nonlocal cur_title, cur_body
+        if cur_title is None:
+            return
+        body_txt = "\n".join(cur_body).strip()
+        steps.append(Step(title=cur_title.strip(), body=body_txt))
+        cur_title, cur_body = None, []
+
+    for line in lines[first_h2:]:
+        m = re.match(r"^\s*##\s+(.*)$", line)
+        if m:
+            flush()
+            cur_title = m.group(1)
+            continue
+        cur_body.append(line)
+
+    flush()
+    return run_info, steps
+
+
+# -------------------------
+# PDF rendering helpers
+# -------------------------
+def _draw_page_number(c: canvas.Canvas, page_no: int) -> None:
     c.setFont("Helvetica", 8)
     c.setFillColor(colors.grey)
     c.drawRightString(A4[0] - 1.5 * cm, 1.2 * cm, f"Page {page_no}")
     c.setFillColor(colors.black)
-
-
-def _strip_md_noise(md: str) -> str:
-    s = md.replace("\r\n", "\n")
-    s = re.sub(r"^#{1,6}\s*", "", s, flags=re.MULTILINE)
-    s = re.sub(r"^\s*[-*]\s+", "• ", s, flags=re.MULTILINE)
-    s = re.sub(r"`([^`]+)`", r"\1", s)
-    s = re.sub(r"\*\*([^*]+)\*\*", r"\1", s)
-    s = re.sub(r"_([^_]+)_", r"\1", s)
-    return s.strip()
-
 
 def _wrap_preserve_empty(text: str, width: int) -> List[str]:
     out: List[str] = []
@@ -436,79 +697,120 @@ def _wrap_preserve_empty(text: str, width: int) -> List[str]:
             out.extend(textwrap.wrap(raw, width=width))
     return out
 
+def _fmt_metric(v) -> str:
+    if v is None:
+        return "—"
+    if isinstance(v, (int, float)):
+        if abs(v) >= 1e6 or (abs(v) > 0 and abs(v) < 1e-3):
+            return f"{v:.3g}"
+        return f"{v:.6g}"
+    return str(v)
 
-def draw_metrics_table_3cols(
+def metrics_table_flowable(metrics_by_split, split_order, val_metric, styles):
+    present = [s for s in split_order if metrics_by_split.get(s)]
+    keys = sorted({k for s in present for k in metrics_by_split[s].keys()})
+    if not present or not keys:
+        return Paragraph("No metrics found.", styles["Muted"])
+
+    data = [["Metric"] + [s.title() for s in present]]
+    for k in keys:
+        row = [k] + [_fmt_metric(metrics_by_split[s].get(k)) for s in present]
+        data.append(row)
+
+    tbl = Table(data, hAlign="LEFT")
+    ts = TableStyle([
+        ("BACKGROUND", (0,0), (-1,0), colors.whitesmoke),
+        ("TEXTCOLOR", (0,0), (-1,0), colors.black),
+        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("FONTSIZE", (0,0), (-1,0), 9),
+        ("FONTSIZE", (0,1), (-1,-1), 9),
+        ("GRID", (0,0), (-1,-1), 0.25, colors.lightgrey),
+        ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.white, colors.Color(0.97,0.97,0.97)]),
+        ("ALIGN", (1,0), (-1,-1), "RIGHT"),
+    ])
+
+    # highlight the optimized metric row if present
+    if val_metric and val_metric in keys:
+        r = 1 + keys.index(val_metric)
+        ts.add("BACKGROUND", (0,r), (-1,r), colors.Color(1.0, 0.98, 0.90))
+
+    tbl.setStyle(ts)
+    return tbl
+
+
+
+def draw_steps_page(
     c: canvas.Canvas,
-    x: float,
-    y: float,
-    metrics_by_split: Dict[str, Dict[str, float]],
-    split_order: List[str],
-    title: str,
-) -> float:
-    # union of metric keys
-    all_keys = set()
-    for s in split_order:
-        all_keys |= set(metrics_by_split.get(s, {}).keys())
-    keys = sorted(all_keys)
-    if not keys:
+    width: float,
+    height: float,
+    page_no_start: int,
+    run_info: List[str],
+    steps: List[Step],
+) -> int:
+    page_no = page_no_start
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(2 * cm, height - 2.2 * cm, "STEPS")
+    y = height - 3.0 * cm
+
+    # Run info block (small, grey)
+    if run_info:
+        c.setFont("Helvetica", 9)
+        c.setFillColor(colors.grey)
+        for line in _wrap_preserve_empty("\n".join(run_info), 120):
+            if y < 2.2 * cm:
+                _draw_page_number(c, page_no)
+                c.showPage()
+                page_no += 1
+                c.setFont("Helvetica", 9)
+                c.setFillColor(colors.grey)
+                y = height - 2.2 * cm
+            c.drawString(2 * cm, y, line)
+            y -= 11
+        c.setFillColor(colors.black)
+        y -= 6
+
+    if not steps:
         c.setFont("Helvetica", 10)
         c.setFillColor(colors.grey)
-        c.drawString(x, y, "No metrics found.")
+        c.drawString(2 * cm, y, "No step headings (## ...) found in the run report.")
         c.setFillColor(colors.black)
-        return y - 16
+        return page_no
 
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(x, y, title)
-    y -= 14
-
-    # columns: metric + each split
-    col_metric = 6.5 * cm
-    col_w = 4.2 * cm
-    row_h = 14
-    table_w = col_metric + col_w * len(split_order)
-
-    # header
-    c.setFillColor(colors.whitesmoke)
-    c.rect(x, y - row_h + 2, table_w, row_h, fill=1, stroke=0)
-    c.setFillColor(colors.black)
-
-    c.setFont("Helvetica-Bold", 9)
-    c.drawString(x + 6, y - 10, "Metric")
-    for i, s in enumerate(split_order):
-        c.drawRightString(x + col_metric + col_w * (i + 1) - 6, y - 10, s.title())
-    y -= row_h
-
-    c.setFont("Helvetica", 9)
-    alt = False
-
-    def fmt(z):
-        if z is None:
-            return "—"
-        if isinstance(z, (int, float)):
-            if abs(z) >= 1e6 or (abs(z) > 0 and abs(z) < 1e-3):
-                return f"{z:.3g}"
-            return f"{z:.6g}"
-        return str(z)
-
-    for k in keys:
-        if y < 3.2 * cm:
+    for idx, step in enumerate(steps, start=1):
+        if y < 3.0 * cm:
+            _draw_page_number(c, page_no)
             c.showPage()
-            return y  # caller handles continuation (we keep it simple: only use on first page)
+            page_no += 1
+            y = height - 2.2 * cm
 
-        if alt:
-            c.setFillColor(colors.Color(0.97, 0.97, 0.97))
-            c.rect(x, y - row_h + 2, table_w, row_h, fill=1, stroke=0)
+        # Step title
+        c.setFont("Helvetica-Bold", 11)
+        c.drawString(2 * cm, y, f"{idx}. {step.title.strip()}")
+        y -= 14
+
+        # Step body
+        body = step.body.strip()
+        if body:
+            c.setFont("Helvetica", 10)
+            for line in _wrap_preserve_empty(body, 112):
+                if y < 2.2 * cm:
+                    _draw_page_number(c, page_no)
+                    c.showPage()
+                    page_no += 1
+                    c.setFont("Helvetica", 10)
+                    y = height - 2.2 * cm
+                c.drawString(2 * cm, y, line)
+                y -= 12
+        else:
+            c.setFont("Helvetica", 10)
+            c.setFillColor(colors.grey)
+            c.drawString(2 * cm, y, "(No details provided.)")
             c.setFillColor(colors.black)
-        alt = not alt
+            y -= 12
 
-        c.drawString(x + 6, y - 10, str(k))
-        for i, s in enumerate(split_order):
-            v = metrics_by_split.get(s, {}).get(k)
-            c.drawRightString(x + col_metric + col_w * (i + 1) - 6, y - 10, fmt(v))
-        y -= row_h
+        y -= 6
 
-    y -= 6
-    return y
+    return page_no
 
 
 def write_iteration_pdf(
@@ -516,137 +818,76 @@ def write_iteration_pdf(
     iteration: int,
     task_type: str,
     val_metric: Optional[str],
-    report_text: Optional[str],
+    report_text_raw: Optional[str],
     metrics_by_split: Dict[str, Dict[str, float]],
-    plot_groups: Dict[str, List[Path]],  # split -> list of plots
+    plot_groups: Dict[str, List[Path]],  # split -> plots
     split_order: List[str],
 ) -> None:
-    out_pdf.parent.mkdir(parents=True, exist_ok=True)
-    c = canvas.Canvas(str(out_pdf), pagesize=A4)
-    width, height = A4
-    page_no = 1
-
-    # ---- Title block
-    c.setFont("Helvetica-Bold", 18)
-    c.drawString(2 * cm, height - 2.3 * cm, f"Report — Iteration {iteration}")
-    c.setFont("Helvetica", 10)
-    sub = f"Task: {task_type}"
-    if val_metric:
-        sub += f"   |   Optimized: {val_metric}"
-    sub += f"   |   Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-    c.setFillColor(colors.grey)
-    c.drawString(2 * cm, height - 3.0 * cm, sub)
-    c.setFillColor(colors.black)
-
-    y = height - 3.8 * cm
-
-    # ---- Metrics table (ONLY place metrics appear)
-    y = draw_metrics_table_3cols(
-        c=c,
-        x=2 * cm,
-        y=y,
-        metrics_by_split=metrics_by_split,
-        split_order=split_order,
-        title="Metrics",
+    styles = build_styles()
+    doc = SimpleDocTemplate(
+        str(out_pdf),
+        pagesize=A4,
+        leftMargin=2 * cm, rightMargin=2 * cm,
+        topMargin=2 * cm, bottomMargin=1.6 * cm
     )
 
-    _draw_page_number(c, page_no)
+    story = []
+    story.append(Paragraph(f"Run Report — Iteration {iteration}", styles["H1"]))
+    story.append(
+        Paragraph(f"Task: {task_type} &nbsp;&nbsp;|&nbsp;&nbsp; Optimized: {val_metric or '—'}", styles["Muted"]))
+    story.append(Spacer(1, 10))
 
-    # ---- Report text
-    c.showPage()
-    page_no += 1
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(2 * cm, height - 2.2 * cm, "Run report")
-    c.setFont("Helvetica", 10)
-    y = height - 3.0 * cm
+    story.append(Paragraph("Metrics", styles["H2"]))
+    story.append(metrics_table_flowable(metrics_by_split, split_order, val_metric, styles))
+    story.append(PageBreak())
 
-    if report_text:
-        clean = _strip_md_noise(report_text)
-        for line in _wrap_preserve_empty(clean, 112):
-            if y < 2.2 * cm:
-                _draw_page_number(c, page_no)
-                c.showPage()
-                page_no += 1
-                c.setFont("Helvetica", 10)
-                y = height - 2.2 * cm
-            c.drawString(2 * cm, y, line)
-            y -= 12
-    else:
+    # Steps
+    if report_text_raw:
+        cleaned = clean_report_md(report_text_raw)  # update cleaner as noted above
+        run_info, steps = extract_steps(cleaned)
+
+        # Optional: summary extraction (from the “Summary” step)
+        # Optional: filter the “Summarizing user request” meta-lines for classification
+        story.append(Paragraph("Steps", styles["H1"]))
+        for i, st in enumerate(steps, start=1):
+            story.append(Paragraph(f"{i}. {st.title}", styles["H2"]))
+            story.extend(step_body_to_flowables(st.body, styles))
+            story.append(Spacer(1, 6))
+
+    # Plots
+    for split in split_order:
+        plots = plot_groups.get(split, [])
+        if not plots:
+            continue
+        story.append(PageBreak())
+        story.append(Paragraph(f"Plots - {split.title()}", styles["H1"]))
+        story.append(Paragraph("Generated from labeled data + prediction outputs (when available).", styles["Muted"]))
+        story.append(Spacer(1, 8))
+
+        for p in plots:
+            if not p.exists():
+                continue
+            story.append(
+                Paragraph(p.stem.replace(f"iter_{iteration}_{split}_", "").replace("_", " ").title(), styles["Muted"]))
+            story.append(RLImage(str(p), width=A4[0] - 4 * cm, height=8.5 * cm))
+            story.append(Spacer(1, 10))
+
+    def on_page(c, d):
+        c.setFont("Helvetica", 8)
         c.setFillColor(colors.grey)
-        c.drawString(2 * cm, y, "No report markdown found for this iteration.")
+        c.drawRightString(A4[0] - 1.6 * cm, 1.0 * cm, f"Page {d.page}")
         c.setFillColor(colors.black)
 
-    _draw_page_number(c, page_no)
-
-    # ---- Plots: include train/validation/test, each section titled
-    if any(plot_groups.get(s) for s in split_order):
-        c.showPage()
-        page_no += 1
-        y = height - 2.2 * cm
-
-        img_w = width - 4 * cm
-        img_h = 8.2 * cm
-
-        for split in split_order:
-            plots = plot_groups.get(split, [])
-            if not plots:
-                continue
-
-            # section title
-            c.setFont("Helvetica-Bold", 14)
-            c.drawString(2 * cm, y, f"Plots — {split.title()}")
-            y -= 18
-            c.setFont("Helvetica", 9)
-            c.setFillColor(colors.grey)
-            c.drawString(2 * cm, y, "Generated from labeled data + prediction outputs (when available).")
-            c.setFillColor(colors.black)
-            y -= 14
-
-            for p in plots:
-                if not p.exists():
-                    continue
-
-                # new page if needed
-                if y - img_h < 2.2 * cm:
-                    _draw_page_number(c, page_no)
-                    c.showPage()
-                    page_no += 1
-                    y = height - 2.2 * cm
-
-                c.setFont("Helvetica", 9)
-                c.setFillColor(colors.grey)
-                c.drawString(2 * cm, y, p.name)
-                c.setFillColor(colors.black)
-                y -= 10
-
-                c.drawImage(
-                    str(p),
-                    2 * cm,
-                    y - img_h,
-                    width=img_w,
-                    height=img_h,
-                    preserveAspectRatio=True,
-                    anchor="n",
-                )
-                y -= (img_h + 18)
-
-            # spacing before next split section
-            y -= 6
-            if y < 4 * cm:
-                _draw_page_number(c, page_no)
-                c.showPage()
-                page_no += 1
-                y = height - 2.2 * cm
-
-        _draw_page_number(c, page_no)
-
-    c.save()
+    doc.build(story, onFirstPage=on_page, onLaterPages=on_page)
 
 
-# =========================
+# -------------------------
 # Main
-# =========================
-def main():
+# -------------------------
+def main() -> None:
+    # If MPLCONFIGDIR was not set, ensure Matplotlib doesn't try to write to /.config
+    os.environ.setdefault("MPLCONFIGDIR", "/tmp/mplconfig")
+
     ap = argparse.ArgumentParser()
     ap.add_argument("--agent-dir", type=Path, required=True, help="Path to outputs/<agent_id>")
     args = ap.parse_args()
@@ -666,22 +907,18 @@ def main():
     ensure_dir(out_dir)
     ensure_dir(plots_dir)
 
-    # preferred ordering in tables/plots
     split_order = ["train", "validation", "test"]
 
     for it in iterations:
         inp = gather_iteration_inputs(agent_dir, it)
         report_text = inp.report_md.read_text(encoding="utf-8") if inp.report_md else None
 
-        # metrics map: split -> metrics
         metrics_by_split: Dict[str, Dict[str, float]] = {
             s.split_name: s.metrics for s in inp.splits if s.metrics
         }
 
-        # plots per split (train/val/test if possible)
         plot_groups: Dict[str, List[Path]] = {}
         for s in inp.splits:
-            # Only plot if we have labeled + preds
             plots = build_plots_for_split(
                 task_type=task_type,
                 split_name=s.split_name,
@@ -699,7 +936,7 @@ def main():
             iteration=it,
             task_type=task_type,
             val_metric=val_metric,
-            report_text=report_text,
+            report_text_raw=report_text,
             metrics_by_split=metrics_by_split,
             plot_groups=plot_groups,
             split_order=split_order,
