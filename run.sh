@@ -355,6 +355,7 @@ else
 
         if [ "$LIST_MODE" = true ]; then
             exit 0
+        fi
         ARTIFACT_PATH="/workspace/snapshots/${AGENT_ID}"
 
         if ! docker run --rm -v temp_agentomics_volume_${AGENT_ID}:/workspace busybox test -d ${ARTIFACT_PATH}; then
