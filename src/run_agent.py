@@ -141,7 +141,7 @@ async def run_agentomics(config: Config, default_model, feedback_model, on_new_b
             run_inference_and_log(config, iteration=run_index, evaluation_stage='validation')
         except AgentScriptFailed:
             exception_trace = traceback.format_exc()
-            print("Validated Inference faied:\n",exception_trace)
+            print("Validated Inference failed:\n",exception_trace)
             extra_info += f"Inference on validation data failed. Traceback:{exception_trace}"
         try:
             print("  Running training inference...")

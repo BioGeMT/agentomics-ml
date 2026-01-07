@@ -1,19 +1,33 @@
+from pathlib import PurePosixPath
 from pathlib import Path
 import textwrap
 import datetime
 
 from pydantic_ai.messages import ModelRequest, SystemPromptPart, UserPromptPart
 from pydantic_ai.models import ModelRequestParameters
-
 # Utilities
+
+def clean_path(iteration, text: str, config=None) -> str:
+    s = str(text).replace("\\", "/")
+    s = s.replace("/workspace/", "")
+    if config is None:
+        return s
+    root_files = {"train.csv", "test.csv", "validation.csv"}
+    name = PurePosixPath(s).name
+    is_root_file = name in root_files
+
+    if iteration is None:
+        replacement = "run_files/"
+    else:
+        replacement = "run_files/" if is_root_file else f"run_files/iteration_{iteration}/"
+    s = s.replace(f"runs/{config.agent_id}/", replacement)
+    return s
+
 def wrap_text(text, width=100):
     return "\n".join(textwrap.fill(line, width) for line in str(text).split("\n"))
 
-def _md_escape(text: str) -> str:
-    return str(text).replace("\r\n", "\n")
-
 def _md_block(value: str) -> str:
-    s = _md_escape(value).strip()
+    s = str(value).replace("\r\n", "\n").strip()
     if "\n" in s or len(s) > 120:
         return "\n".join([f"> {line}" if line.strip() else ">" for line in s.split("\n")])
     return s
@@ -28,7 +42,7 @@ def _md_header_if_missing(config, iteration: int):
         return
 
     header = (
-        f"# Agentomics Run Report — Iteration {iteration}\n\n"
+        f"# Run Report - Iteration {iteration}\n\n"
         f"**Agent ID:** `{config.agent_id}`  \n"
         f"**Dataset:** `{config.dataset}`  \n"
         f"**Model:** `{config.model_name}`  \n"
@@ -44,7 +58,12 @@ def _append_md_section(config, iteration: int, title: str, body: str):
     with open(md_path, "a", encoding="utf-8") as f:
         f.write(f"## {title}\n\n{body}\n\n")
 
-# Summary
+def _prepend_md_section(config, iteration: int, title: str, body: str):
+    md_path = config.reports_dir / config.agent_id / f"run_report_iter_{iteration}.md"
+    content = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
+    section = f"## {title}\n\n{body}\n\n"
+    md_path.write_text(section + content, encoding="utf-8")
+
 async def generate_summary(model, report_content):
     messages = [
         ModelRequest(
@@ -59,7 +78,6 @@ async def generate_summary(model, report_content):
             ]
         )
     ]
-
     response = await model.request(
         messages=messages,
         model_settings=None,
@@ -77,9 +95,8 @@ async def add_summary_to_report(model, config, iteration):
 
     _md_header_if_missing(config, iteration)
     bullets = "\n".join(f"- {line.strip()}" for line in summary.split("\n") if line.strip())
-    _append_md_section(config, iteration, "Summary", bullets or "_No summary._")
+    _prepend_md_section(config, iteration, "Summary", bullets or "_No summary._")
 
-# Step logging
 def save_step_output(config, step_name, step_data, iteration):
     report_dir = config.reports_dir / config.agent_id
     report_dir.mkdir(parents=True, exist_ok=True)
@@ -95,21 +112,34 @@ def save_step_output(config, step_name, step_data, iteration):
     # MD
     _md_header_if_missing(config, iteration)
     body = []
-
     dump = step_data.model_dump()
+    # Detect skipped step
+    text_values = [
+        str(v).lower()
+        for v in dump.values()
+        if isinstance(v, str) and v.strip()
+    ]
+    is_skipped = bool(text_values) and all("skipped" in v for v in text_values)
+    if is_skipped:
+        _md_header_if_missing(config, iteration)
+        _append_md_section(
+            config,
+            iteration,
+            step_name.replace("_", " ").title(),
+            "Step skipped for this iteration.",
+        )
+        return
     for k, v in dump.items():
         if k == "files_created":
             continue
+        if isinstance(v, str) and ("path" in k.lower() or "dir" in k.lower()):
+            v = clean_path(iteration, v, config)
         body.append(f"**{k.replace('_',' ').title()}:**\n\n{_md_block(v)}\n")
 
     files = dump.get("files_created")
     if files:
-        body.append(
-            "<details>\n<summary><b>Files created</b></summary>\n\n"
-            + "\n".join(f"- `{x}`" for x in files)
-            + "\n\n</details>"
-        )
-
+        nice = [Path(clean_path(iteration, x, config)).name for x in files]
+        body.append("**Files created:**\n\n" + "\n".join(f"- `{x}`" for x in nice))
     _append_md_section(
         config,
         iteration,

@@ -29,16 +29,9 @@ from reportlab.platypus import (
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_LEFT
 
-# -------------------------
-# Matplotlib style (publication-ish, no extra deps)
-# -------------------------
-
-from reportlab.lib import colors
-from reportlab.lib.styles import ParagraphStyle
-
+# Matplotlib style
 def build_styles():
     styles = getSampleStyleSheet()
-
     styles.add(ParagraphStyle(
         name="H1",
         parent=styles["Heading1"],
@@ -47,7 +40,6 @@ def build_styles():
         textColor=colors.black,
         spaceAfter=12,
     ))
-
     styles.add(ParagraphStyle(
         name="H2",
         parent=styles["Heading2"],
@@ -57,7 +49,6 @@ def build_styles():
         spaceBefore=12,
         spaceAfter=6,
     ))
-
     styles.add(ParagraphStyle(
         name="Body",
         parent=styles["BodyText"],
@@ -67,8 +58,6 @@ def build_styles():
         textColor=colors.black,
         spaceAfter=6,
     ))
-
-    # 🔴 Less grey, more readable
     styles.add(ParagraphStyle(
         name="Muted",
         parent=styles["BodyText"],
@@ -78,8 +67,6 @@ def build_styles():
         textColor=colors.Color(0.25, 0.25, 0.25),  # dark slate grey
         spaceAfter=6,
     ))
-
-    # 🔴 Quotes now darker + visually distinct
     styles.add(ParagraphStyle(
         name="Quote",
         parent=styles["BodyText"],
@@ -91,7 +78,6 @@ def build_styles():
         spaceBefore=4,
         spaceAfter=8,
     ))
-
     styles.add(ParagraphStyle(
         name="MiniHeader",
         parent=styles["Body"],
@@ -101,7 +87,6 @@ def build_styles():
         spaceBefore=8,
         spaceAfter=4,
     ))
-
     styles.add(ParagraphStyle(
         name="CodeBlock",
         parent=styles["BodyText"],
@@ -114,7 +99,6 @@ def build_styles():
         spaceBefore=4,
         spaceAfter=8,
     ))
-
     return styles
 
 def apply_pub_style() -> None:
@@ -141,13 +125,8 @@ def apply_pub_style() -> None:
         "savefig.pad_inches": 0.08,
     })
 
-
-# -------------------------
 # Helpers
-# -------------------------
-
 def _esc(s: str) -> str:
-    # minimal XML escaping for ReportLab Paragraph
     return (s.replace("&", "&amp;")
              .replace("<", "&lt;")
              .replace(">", "&gt;"))
@@ -155,8 +134,6 @@ def _esc(s: str) -> str:
 def step_body_to_flowables(text: str, styles):
     flows = []
     buf = []
-
-    # Add a mini-header style once (or define it in build_styles())
     if "MiniHeader" not in styles:
         styles.add(ParagraphStyle(
             name="MiniHeader",
@@ -179,28 +156,20 @@ def step_body_to_flowables(text: str, styles):
 
     for raw in text.splitlines():
         line = raw.rstrip()
-
         if not line.strip():
             flush_paragraph()
             flows.append(Spacer(1, 4))
             continue
-
-        # Blockquote line
         if line.lstrip().startswith(">"):
             flush_paragraph()
             q = line.lstrip()[1:].lstrip()
             flows.append(Paragraph(_esc(q), styles["Quote"]))
             continue
-
-        # Mini-header: short line ending with ":" (e.g., "Feature Analysis:")
-        # (Avoid matching long sentences that happen to end with ':')
         s = line.strip()
         if s.endswith(":") and len(s) <= 40 and " " in s:
             flush_paragraph()
             flows.append(Paragraph(_esc(s), styles["MiniHeader"]))
             continue
-
-        # Code-ish / path-ish lines
         if re.match(r"^(\/workspace\/|Path To |Train Path:|Val Path:|Test Path:)", line):
             flush_paragraph()
             flows.append(Paragraph(_esc(line), styles["CodeBlock"]))
@@ -217,7 +186,6 @@ def find_first(paths: List[Path]) -> Optional[Path]:
             return p
     return None
 
-
 def safe_read_csv(path: Optional[Path]) -> Optional[pd.DataFrame]:
     if not path or not path.exists():
         return None
@@ -225,7 +193,6 @@ def safe_read_csv(path: Optional[Path]) -> Optional[pd.DataFrame]:
         return pd.read_csv(path)
     except Exception:
         return None
-
 
 def parse_metrics_txt(path: Optional[Path]) -> Dict[str, float]:
     metrics: Dict[str, float] = {}
@@ -244,13 +211,11 @@ def parse_metrics_txt(path: Optional[Path]) -> Dict[str, float]:
             continue
     return metrics
 
-
 def detect_label_column(df: pd.DataFrame) -> Optional[str]:
     for c in ["numeric_label", "numericlabel", "class", "target", "label", "y"]:
         if c in df.columns:
             return c
     return None
-
 
 def detect_prediction_column(df: pd.DataFrame) -> Optional[str]:
     for c in ["prediction", "predictions", "y_pred", "pred", "score", "prob", "proba", "p"]:
@@ -258,7 +223,6 @@ def detect_prediction_column(df: pd.DataFrame) -> Optional[str]:
             return c
     numeric_cols = [c for c in df.columns if c != "id" and pd.api.types.is_numeric_dtype(df[c])]
     return numeric_cols[0] if numeric_cols else None
-
 
 def merge_labels_and_preds(labeled: pd.DataFrame, preds: pd.DataFrame) -> Tuple[pd.Series, pd.Series]:
     if "id" not in labeled.columns or "id" not in preds.columns:
@@ -271,7 +235,6 @@ def merge_labels_and_preds(labeled: pd.DataFrame, preds: pd.DataFrame) -> Tuple[
         raise ValueError("Could not detect prediction column in predictions file.")
     merged = labeled[["id", y_col]].merge(preds[["id", pred_col]], on="id", how="inner")
     return merged[y_col], merged[pred_col]
-
 
 def _as_num(s: pd.Series) -> pd.Series:
     return pd.to_numeric(s, errors="coerce")
@@ -295,10 +258,7 @@ def _robust_limits(x: pd.Series, y: pd.Series, pad_frac: float = 0.05) -> Tuple[
 def ensure_dir(p: Path) -> None:
     p.mkdir(parents=True, exist_ok=True)
 
-
-# -------------------------
 # Task detection + config
-# -------------------------
 def load_config_json(agent_dir: Path) -> Dict:
     cfg = agent_dir / "best_run_files" / "config.json"
     if cfg.exists():
@@ -308,22 +268,17 @@ def load_config_json(agent_dir: Path) -> Dict:
             return {}
     return {}
 
-
 def load_task_type(agent_dir: Path) -> str:
     d = load_config_json(agent_dir)
     t = d.get("task_type")
     return str(t).strip().lower() if isinstance(t, str) else "unknown"
-
 
 def load_val_metric(agent_dir: Path) -> Optional[str]:
     d = load_config_json(agent_dir)
     vm = d.get("val_metric")
     return vm.strip() if isinstance(vm, str) else None
 
-
-# -------------------------
 # Iteration discovery / inputs
-# -------------------------
 def discover_iterations(agent_dir: Path) -> List[int]:
     run_files = agent_dir / "run_files"
     iters: List[int] = []
@@ -335,7 +290,6 @@ def discover_iterations(agent_dir: Path) -> List[int]:
                 except Exception:
                     pass
     return sorted(set(iters))
-
 
 @dataclass
 class SplitArtifacts:
@@ -362,7 +316,6 @@ def gather_iteration_inputs(agent_dir: Path, iteration: int) -> IterationInputs:
     if not report_md.exists():
         report_md = None
 
-    # labeled data
     train_csv = run_files / "train.csv"
     val_csv = run_files / "validation.csv"
     test_csv = run_files / "test.csv"  # may not exist
@@ -408,17 +361,13 @@ def gather_iteration_inputs(agent_dir: Path, iteration: int) -> IterationInputs:
 
     return IterationInputs(iteration=iteration, report_md=report_md, splits=splits)
 
-
-# -------------------------
 # Plotting
-# -------------------------
 def _guess_task_from_labels(y: pd.Series) -> str:
     yy = pd.to_numeric(y, errors="coerce").dropna()
     uniq = set(yy.unique().tolist())
     if uniq.issubset({0, 1}):
         return "classification"
     return "regression"
-
 
 def plot_regression_publication(y_true: pd.Series, y_pred: pd.Series, out_prefix: Path, title_prefix: str) -> List[Path]:
     apply_pub_style()
@@ -428,8 +377,6 @@ def plot_regression_publication(y_true: pd.Series, y_pred: pd.Series, out_prefix
     df = pd.DataFrame({"y": y_true, "p": y_pred}).dropna()
     if df.empty:
         return []
-
-    # 1) Pred vs Actual
     pva_path = out_prefix.with_name(out_prefix.name + "_pred_vs_actual.png")
     lo, hi = _robust_limits(df["y"], df["p"])
     plt.figure()
@@ -452,7 +399,6 @@ def plot_regression_publication(y_true: pd.Series, y_pred: pd.Series, out_prefix
         if rlo == rhi:
             rlo, rhi = rlo - 1.0, rhi + 1.0
 
-    # 2) Residuals vs Predicted
     rvp_path = out_prefix.with_name(out_prefix.name + "_residuals_vs_pred.png")
     plt.figure()
     plt.scatter(df["p"], resid, s=18, alpha=0.85, edgecolors="none")
@@ -465,7 +411,6 @@ def plot_regression_publication(y_true: pd.Series, y_pred: pd.Series, out_prefix
     plt.savefig(rvp_path)
     plt.close()
 
-    # 3) Residuals histogram
     rh_path = out_prefix.with_name(out_prefix.name + "_residuals_hist.png")
     plt.figure()
     plt.hist(resid.dropna(), bins=min(30, max(8, int(len(resid) / 2))), alpha=0.9)
@@ -610,7 +555,6 @@ def _remove_inline_metric_bullets(md: str) -> str:
     return "\n".join(out)
 
 def _strip_basic_md(md: str) -> str:
-    # Keep headings (we’ll use them for STEPS), but remove bold/backticks for body
     s = md.replace("\r\n", "\n")
     s = re.sub(r"`([^`]+)`", r"\1", s)
     s = re.sub(r"\*\*([^*]+)\*\*", r"\1", s)
@@ -629,19 +573,12 @@ class Step:
     body: str
 
 def extract_steps(md: str) -> Tuple[List[str], List[Step]]:
-    """
-    Returns (run_info_lines, steps).
-    - run_info_lines: content before first '## ' heading (excluding the top '# ...' title line)
-    - steps: each '## <something>' becomes one step
-    """
     s = md.replace("\r\n", "\n")
     lines = s.split("\n")
 
-    # Drop leading "# Title" line if present
     if lines and re.match(r"^\s*#\s+", lines[0]):
         lines = lines[1:]
 
-    # Find first step heading
     first_h2 = None
     for i, line in enumerate(lines):
         if re.match(r"^\s*##\s+", line):
@@ -678,10 +615,7 @@ def extract_steps(md: str) -> Tuple[List[str], List[Step]]:
     flush()
     return run_info, steps
 
-
-# -------------------------
 # PDF rendering helpers
-# -------------------------
 def _draw_page_number(c: canvas.Canvas, page_no: int) -> None:
     c.setFont("Helvetica", 8)
     c.setFillColor(colors.grey)
@@ -832,7 +766,7 @@ def write_iteration_pdf(
     )
 
     story = []
-    story.append(Paragraph(f"Run Report — Iteration {iteration}", styles["H1"]))
+    story.append(Paragraph(f"Run Report | Iteration {iteration}", styles["H1"]))
     story.append(
         Paragraph(f"Task: {task_type} &nbsp;&nbsp;|&nbsp;&nbsp; Optimized: {val_metric or '—'}", styles["Muted"]))
     story.append(Spacer(1, 10))
@@ -881,9 +815,6 @@ def write_iteration_pdf(
     doc.build(story, onFirstPage=on_page, onLaterPages=on_page)
 
 
-# -------------------------
-# Main
-# -------------------------
 def main() -> None:
     # If MPLCONFIGDIR was not set, ensure Matplotlib doesn't try to write to /.config
     os.environ.setdefault("MPLCONFIGDIR", "/tmp/mplconfig")
