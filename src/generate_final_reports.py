@@ -13,7 +13,6 @@ from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 
-# Headless safe (works inside Docker too)
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -33,14 +32,12 @@ from reportlab.platypus import (
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 
-# -------------------------
 # Data models
-# -------------------------
 @dataclass(frozen=True)
 class DatasetMeta:
-    task_type: str                # "classification" | "regression"
-    numeric_label_col: str        # e.g. "numeric_label"
-    label_to_scalar: Optional[Dict[str, int]] = None  # classification only
+    task_type: str
+    numeric_label_col: str
+    label_to_scalar: Optional[Dict[str, int]] = None
 
 
 @dataclass(frozen=True)
@@ -74,10 +71,7 @@ class Step:
     title: str
     body: str
 
-
-# -------------------------
 # Styles
-# -------------------------
 def build_styles():
     styles = getSampleStyleSheet()
     styles.add(
@@ -163,7 +157,6 @@ def build_styles():
     )
     return styles
 
-
 def apply_pub_style() -> None:
     plt.rcParams.update(
         {
@@ -190,20 +183,15 @@ def apply_pub_style() -> None:
         }
     )
 
-
-# -------------------------
 # IO helpers
-# -------------------------
 def ensure_dir(p: Path) -> None:
     p.mkdir(parents=True, exist_ok=True)
-
 
 def find_first(paths: List[Path]) -> Optional[Path]:
     for p in paths:
         if p is not None and p.exists():
             return p
     return None
-
 
 def safe_read_csv(path: Optional[Path]) -> Optional[pd.DataFrame]:
     if not path or not path.exists():
@@ -212,7 +200,6 @@ def safe_read_csv(path: Optional[Path]) -> Optional[pd.DataFrame]:
         return pd.read_csv(path)
     except Exception:
         return None
-
 
 def parse_metrics_txt(path: Optional[Path]) -> Dict[str, float]:
     metrics: Dict[str, float] = {}
@@ -229,7 +216,6 @@ def parse_metrics_txt(path: Optional[Path]) -> Dict[str, float]:
             continue
     return metrics
 
-
 def load_config_json(agent_dir: Path) -> Dict:
     cfg = agent_dir / "best_run_files" / "config.json"
     if cfg.exists():
@@ -238,7 +224,6 @@ def load_config_json(agent_dir: Path) -> Dict:
         except Exception:
             return {}
     return {}
-
 
 def load_run_meta(agent_dir: Path) -> RunMeta:
     cfg = load_config_json(agent_dir)
@@ -252,19 +237,16 @@ def load_run_meta(agent_dir: Path) -> RunMeta:
         exploration_iterations=cfg.get("exploration_iterations"),
     )
 
-
 def load_prepared_dataset_meta(agent_dir: Path) -> DatasetMeta:
     cfg = load_config_json(agent_dir)
     dataset = cfg.get("dataset")
     if not dataset:
         raise SystemExit("config.json missing required key: 'dataset'")
-
     # Script is <repo_root>/src/generate_final_reports.py
     repo_root = Path(__file__).resolve().parents[1]
     meta_path = repo_root / "prepared_datasets" / str(dataset) / "metadata.json"
     if not meta_path.exists():
         raise SystemExit(f"prepared dataset metadata not found: {meta_path}")
-
     try:
         d = json.loads(meta_path.read_text(encoding="utf-8"))
     except Exception as e:
@@ -273,11 +255,9 @@ def load_prepared_dataset_meta(agent_dir: Path) -> DatasetMeta:
     task_type = str(d.get("task_type", "")).strip().lower()
     if task_type not in ("classification", "regression"):
         raise SystemExit(f"Invalid or missing task_type in metadata.json: {task_type!r}")
-
     numeric_label_col = d.get("numeric_label_col")
     if not numeric_label_col:
         raise SystemExit("metadata.json missing required key: 'numeric_label_col'")
-
     label_to_scalar = d.get("label_to_scalar")
     if task_type == "classification":
         if not isinstance(label_to_scalar, dict) or not label_to_scalar:
@@ -289,10 +269,7 @@ def load_prepared_dataset_meta(agent_dir: Path) -> DatasetMeta:
         label_to_scalar=label_to_scalar if isinstance(label_to_scalar, dict) else None,
     )
 
-
-# -------------------------
 # Iteration discovery / inputs
-# -------------------------
 def discover_iterations(agent_dir: Path) -> List[int]:
     run_files = agent_dir / "run_files"
     iters: List[int] = []
@@ -304,7 +281,6 @@ def discover_iterations(agent_dir: Path) -> List[int]:
                 except Exception:
                     pass
     return sorted(set(iters))
-
 
 def gather_iteration_inputs(agent_dir: Path, iteration: int) -> IterationInputs:
     reports_dir = agent_dir / "reports"
@@ -343,10 +319,7 @@ def gather_iteration_inputs(agent_dir: Path, iteration: int) -> IterationInputs:
 
     return IterationInputs(iteration=iteration, report_md=report_md, splits=splits)
 
-
-# -------------------------
 # Deterministic merge labels + predictions (metadata-driven)
-# -------------------------
 def merge_labels_and_preds(labeled: pd.DataFrame, preds: pd.DataFrame, meta: DatasetMeta) -> Tuple[pd.Series, pd.Series]:
     if "id" not in labeled.columns or "id" not in preds.columns:
         raise ValueError("Both labeled and predictions CSV must include an 'id' column.")
@@ -373,10 +346,7 @@ def merge_labels_and_preds(labeled: pd.DataFrame, preds: pd.DataFrame, meta: Dat
 
     return merged[y_col], merged[pred_col]
 
-
-# -------------------------
 # Plotting
-# -------------------------
 def _as_num(s: pd.Series) -> pd.Series:
     return pd.to_numeric(s, errors="coerce")
 
@@ -394,7 +364,6 @@ def _robust_limits(x: pd.Series, y: pd.Series, pad_frac: float = 0.05) -> Tuple[
             lo, hi = lo - 1.0, hi + 1.0
     pad = (hi - lo) * pad_frac
     return lo - pad, hi + pad
-
 
 def plot_regression(y_true: pd.Series, y_pred: pd.Series, out_prefix: Path, title_prefix: str) -> List[Path]:
     apply_pub_style()
@@ -448,7 +417,6 @@ def plot_regression(y_true: pd.Series, y_pred: pd.Series, out_prefix: Path, titl
     out.append(rh_path)
 
     return out
-
 
 def plot_classification(y_true: pd.Series, y_score: pd.Series, out_prefix: Path, title_prefix: str) -> List[Path]:
     apply_pub_style()
@@ -512,7 +480,6 @@ def plot_classification(y_true: pd.Series, y_score: pd.Series, out_prefix: Path,
 
     return [roc_path, pr_path]
 
-
 def build_plots_for_split(
     meta: DatasetMeta,
     split: SplitArtifacts,
@@ -537,10 +504,7 @@ def build_plots_for_split(
         return plot_classification(y_true, y_pred, prefix, title_prefix)
     return plot_regression(y_true, y_pred, prefix, title_prefix)
 
-
-# -------------------------
 # Markdown cleanup + step extraction
-# -------------------------
 def _remove_section_by_h2(md: str, title: str) -> str:
     lines = md.replace("\r\n", "\n").split("\n")
     out: List[str] = []
@@ -570,14 +534,10 @@ def clean_report_md(md: str) -> str:
 
 def extract_steps(md: str) -> Tuple[List[str], List[Step]]:
     lines = md.replace("\r\n", "\n").split("\n")
-
-    # Remove any "# ..." headings anywhere (your reports may have Summary first)
     lines = [ln for ln in lines if not re.match(r"^\s*#\s+", ln)]
-
     first_h2 = next((i for i, ln in enumerate(lines) if re.match(r"^\s*##\s+", ln)), None)
     if first_h2 is None:
         return [ln.strip() for ln in lines if ln.strip()], []
-
     run_info = [ln.strip() for ln in lines[:first_h2] if ln.strip() and ln.strip() != "---"]
 
     steps: List[Step] = []
@@ -603,7 +563,7 @@ def extract_steps(md: str) -> Tuple[List[str], List[Step]]:
     return run_info, steps
 
 
-def prettify_step_title(t: str) -> str:
+def prettify_step_title(t: str) -> str:  # NOTE IT
     # "Dataexploration" -> "Data exploration"
     t = re.sub(r"(?<!^)([A-Z])", r" \1", t).strip()
     t = re.sub(r"^Data(?=[A-Z])", "Data ", t)
@@ -615,9 +575,6 @@ def _esc(s: str) -> str:
     return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
 
 def _plot_key(p: Path) -> int:
-    """
-    Ensure deterministic plot ordering regardless of how plot functions return them.
-    """
     name = p.name.lower()
     order = [
         "_pred_vs_actual",
@@ -639,69 +596,53 @@ def plots_compare_splits_page_flowables(
     split_order: List[str],
     styles,
 ) -> List:
-    """
-    One page:
-      columns = splits (Train / Validation / Test if exists)
-      rows    = plot types (2 for classification, 3 for regression)
-    """
-    # Keep only splits that actually have plots
     present_splits = [s for s in split_order if plot_groups.get(s)]
     if not present_splits:
         return []
 
-    # Decide which plot "rows" we expect
     task_type = (task_type or "").strip().lower()
     if task_type == "classification":
-        row_defs = [
-            ("ROC", "_roc"),
-            ("PR", "_pr"),
-        ]
-    else:  # regression (default)
-        row_defs = [
-            ("Pred vs Actual", "_pred_vs_actual"),
-            ("Residuals vs Pred", "_residuals_vs_pred"),
-            ("Residuals Hist", "_residuals_hist"),
-        ]
+        row_suffixes = ["_roc", "_pr"]
+    else:
+        row_suffixes = ["_pred_vs_actual", "_residuals_vs_pred", "_residuals_hist"]
 
     # Build lookup: split -> suffix -> Path
     split_to_suffix: Dict[str, Dict[str, Path]] = {}
     for split in present_splits:
-        paths = [p for p in plot_groups.get(split, []) if p and p.exists()]
-        paths = sorted(paths, key=_plot_key)
         m: Dict[str, Path] = {}
-        for p in paths:
-            nm = p.name.lower()
-            for _, suf in row_defs:
-                if suf in nm:
+        for p in plot_groups.get(split, []):
+            if not p or not p.exists():
+                continue
+            lname = p.name.lower()
+            for suf in row_suffixes:
+                if suf in lname:
                     m[suf] = p
         split_to_suffix[split] = m
 
-    # Layout sizing
-    content_w = A4[0] - 4 * cm  # margins 2cm + 2cm
-    ncols = 1 + len(present_splits)  # +1 for left label column
-    label_w = 3.0 * cm
+    content_w = A4[0] - 4 * cm
+    ncols = len(present_splits)
     gap = 0.25 * cm
-    remaining_w = content_w - label_w - gap * (ncols - 1)
-    col_w = remaining_w / max(1, len(present_splits))
+    col_w = (content_w - gap * (ncols - 1)) / ncols
 
-    # Heights tuned for A4: keep conservative so it fits
     if task_type == "classification":
         img_h = 6.6 * cm
     else:
-        img_h = 4.6 * cm  # 3 rows
+        img_h = 4.6 * cm
 
     flows: List = []
     flows.append(PageBreak())
     flows.append(Paragraph(f"Plots comparison (Iteration {iteration})", styles["H1"]))
-    flows.append(Paragraph("Columns are splits; rows are plot types for easy side-by-side comparison.", styles["Muted"]))
+    flows.append(
+        Paragraph(
+            "Columns are dataset splits (train / validation / test). "
+            "Rows correspond to the same plot type across splits.",
+            styles["Muted"],
+        )
+    )
     flows.append(Spacer(1, 8))
-
-    # Header row: empty cell + split names
-    header = [""] + [s.title() for s in present_splits]
-
-    table_data = [header]
-    for row_label, suf in row_defs:
-        row = [Paragraph(_esc(row_label), styles["MiniHeader"])]
+    table_data = [[s.title() for s in present_splits]]
+    for suf in row_suffixes:
+        row = []
         for split in present_splits:
             p = split_to_suffix.get(split, {}).get(suf)
             if p and p.exists():
@@ -712,7 +653,7 @@ def plots_compare_splits_page_flowables(
 
     tbl = Table(
         table_data,
-        colWidths=[label_w] + [col_w] * len(present_splits),
+        colWidths=[col_w] * ncols,
         hAlign="LEFT",
     )
     tbl.setStyle(TableStyle([
@@ -728,92 +669,6 @@ def plots_compare_splits_page_flowables(
     ]))
 
     flows.append(tbl)
-    return flows
-
-def plots_page_flowables(
-    iteration: int,
-    split: str,
-    plot_paths: List[Path],
-    styles,
-) -> List:
-    """
-    Render all plots for a split on ONE page.
-    - classification: 2 plots (ROC, PR) side-by-side
-    - regression: 3 plots (Pred vs Actual, Residuals vs Pred, Residuals Hist)
-      in a 2-row layout (2 on top, 1 full-width below).
-    """
-    # Filter to existing files
-    paths = [p for p in plot_paths if p and p.exists()]
-    if not paths:
-        return []
-
-    page_width = A4[0]
-    content_w = page_width - 4 * cm  # matches your left/right margins (2cm each)
-
-    gap = 0.3 * cm
-    half_w = (content_w - gap) / 2.0
-
-    # Heights tuned to fit A4 comfortably with headings
-    top_h = 7.0 * cm
-    bottom_h = 7.0 * cm
-
-    flows: List = []
-    flows.append(PageBreak())
-    flows.append(Paragraph(f"Plots - {split.title()} (Iteration {iteration})", styles["H1"]))
-    flows.append(Paragraph("All plots for this split shown together for easy comparison.", styles["Muted"]))
-    flows.append(Spacer(1, 8))
-
-    # Decide layout by count (robust)
-    if len(paths) == 2:
-        # classification layout: 2 plots side-by-side
-        img_left = RLImage(str(paths[0]), width=half_w, height=top_h)
-        img_right = RLImage(str(paths[1]), width=half_w, height=top_h)
-
-        tbl = Table(
-            [[img_left, img_right]],
-            colWidths=[half_w, half_w],
-            hAlign="LEFT",
-        )
-        tbl.setStyle(TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 0),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-            ("TOPPADDING", (0, 0), (-1, -1), 0),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-        ]))
-        flows.append(tbl)
-        return flows
-
-    # regression layout: expect 3, but handle >=3 gracefully (use first 3)
-    if len(paths) >= 3:
-        p1, p2, p3 = paths[0], paths[1], paths[2]
-
-        img1 = RLImage(str(p1), width=half_w, height=top_h)
-        img2 = RLImage(str(p2), width=half_w, height=top_h)
-        img3 = RLImage(str(p3), width=content_w, height=bottom_h)
-
-        tbl = Table(
-            [
-                [img1, img2],
-                [img3, ""],  # second cell empty; we span img3 across both cols
-            ],
-            colWidths=[half_w, half_w],
-            hAlign="LEFT",
-        )
-        tbl.setStyle(TableStyle([
-            ("SPAN", (0, 1), (1, 1)),         # img3 spans both columns
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 0),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-            ("TOPPADDING", (0, 0), (-1, -1), 0),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-        ]))
-        flows.append(tbl)
-        return flows
-
-    # Fallback: if only 1 plot exists, show it centered-ish full width
-    img = RLImage(str(paths[0]), width=content_w, height=8.0 * cm)
-    flows.append(img)
     return flows
 
 def run_meta_flowables(meta: RunMeta):
@@ -845,17 +700,7 @@ def run_meta_flowables(meta: RunMeta):
     )
     return table
 
-
 def step_body_to_flowables(text: str, styles):
-    """
-    Predictable parsing:
-    - blank lines -> spacing
-    - "- item" -> list items (each line kept separate)
-    - "Mini header:" lines -> MiniHeader style
-    - "> quote" -> Quote style
-    - path-ish lines -> CodeBlock style
-    - everything else -> wrapped paragraphs
-    """
     flows = []
     buf: List[str] = []
 
@@ -870,33 +715,27 @@ def step_body_to_flowables(text: str, styles):
 
     for raw in text.splitlines():
         line = raw.rstrip()
-
         if not line.strip():
             flush_paragraph()
             flows.append(Spacer(1, 4))
             continue
-
         if line.lstrip().startswith(">"):
             flush_paragraph()
             flows.append(Paragraph(_esc(line.lstrip()[1:].lstrip()), styles["Quote"]))
             continue
-
         if re.match(r"^\s*[-*]\s+\S+", line):
             flush_paragraph()
             flows.append(Paragraph(_esc(line.strip()), styles["Body"]))
             continue
-
         s = line.strip()
         if s.endswith(":") and len(s) <= 40 and " " in s:
             flush_paragraph()
             flows.append(Paragraph(_esc(s), styles["MiniHeader"]))
             continue
-
         if re.match(r"^(\/workspace\/|run_files\/|Path To |Train Path:|Val Path:|Test Path:)", line):
             flush_paragraph()
             flows.append(Paragraph(_esc(line), styles["CodeBlock"]))
             continue
-
         buf.append(line)
 
     flush_paragraph()
@@ -990,7 +829,7 @@ def write_iteration_pdf(
     story.extend(
         plots_compare_splits_page_flowables(
             iteration=iteration,
-            task_type=run_meta.task_type,  # or dataset_meta.task_type if you prefer
+            task_type=run_meta.task_type,
             plot_groups=plot_groups,
             split_order=split_order,
             styles=styles,
@@ -1019,7 +858,6 @@ def main() -> None:
     run_meta = load_run_meta(agent_dir)
     dataset_meta = load_prepared_dataset_meta(agent_dir)
 
-    # Optional sanity: config should match dataset metadata
     if run_meta.task_type in ("classification", "regression") and run_meta.task_type != dataset_meta.task_type:
         print(f"[WARN] task_type mismatch: config={run_meta.task_type} metadata={dataset_meta.task_type}")
 
@@ -1031,7 +869,6 @@ def main() -> None:
     plots_dir = out_dir / "plots"
     ensure_dir(out_dir)
     ensure_dir(plots_dir)
-
     split_order = ["train", "validation", "test"]
 
     for it in iterations:
@@ -1064,7 +901,6 @@ def main() -> None:
             split_order=split_order,
         )
         print(f"Wrote: {out_pdf}")
-
     print(f"\nDone.\nPDFs: {out_dir}\nPlots: {plots_dir}\n")
 
 

@@ -17,7 +17,6 @@ if [[ ! -d "$AGENT_DIR_HOST" ]]; then
   exit 1
 fi
 
-# Ensure the docker image exists (build only if missing)
 if ! docker image inspect agentomics_img >/dev/null 2>&1; then
   echo "agentomics_img not found, building..."
   docker build -t agentomics_img -f Dockerfile .
