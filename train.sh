@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 
+source "./bash_helpers.sh"
+
 DOCKER_MODE=true
 CPU_ONLY=false
 ARGS=()
+
 show_help() {
     echo "Usage: $0 --agent-dir <agent_folder_path> --train-data <train_data_path> --validation-data <validation_data_path> --artifacts-dir <artifacts_dir_path> [--cpu-only] [--local]"
     echo "Options:"
@@ -16,27 +19,37 @@ show_help() {
     exit 0
 }
 
+AGENT_DIR=""
+TRAIN_DATA_PATH=""
+VALIDATION_DATA_PATH=""
+ARTIFACTS_DIR=""
+
 for arg in "$@"; do
     if [[ "$arg" == "--help" ]]; then
         show_help
+        exit 0
     fi
 done
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --agent-dir)
+            require_opt_value "$1" "${2:-}"
             AGENT_DIR="$2"
             shift 2
             ;;
         --train-data)
+            require_opt_value "$1" "${2:-}"
             TRAIN_DATA_PATH="$2"
             shift 2
             ;;
         --validation-data)
+            require_opt_value "$1" "${2:-}"
             VALIDATION_DATA_PATH="$2"
             shift 2
             ;;
         --artifacts-dir)
+            require_opt_value "$1" "${2:-}"
             ARTIFACTS_DIR="$2"
             shift 2
             ;;
@@ -59,22 +72,37 @@ while [[ $# -gt 0 ]]; do
 done
 
 # ensure all required args are provided
-if [[ -z "$AGENT_DIR" || -z "$TRAIN_DATA_PATH" || -z "$VALIDATION_DATA_PATH" || -z "$ARTIFACTS_DIR" ]]; then
-    show_help
+if [[ -z "$AGENT_DIR" ]]; then
+      die "Missing required argument: --agent-dir. Run '$0 --help' for usage"
 fi
+if [[ -z "$TRAIN_DATA_PATH" ]]; then
+    die "Missing required argument: --train-data. Run '$0 --help' for usage"
+fi
+if [[ -z "$VALIDATION_DATA_PATH" ]]; then
+    die "Missing required argument: --validation-data. Run '$0 --help' for usage"
+fi
+if [[ -z "$ARTIFACTS_DIR" ]]; then
+    die "Missing required argument: --artifacts-dir. Run '$0 --help' for usage"
+fi
+
+[[ -d "$AGENT_DIR" ]] || die "--agent-dir does not exist: $AGENT_DIR"
 
 AGENT_NAME=$(basename "$AGENT_DIR")
 ENV_PATH="${AGENT_DIR}/best_run_files/.conda/envs/${AGENT_NAME}_env"
 TRAIN_PATH="${AGENT_DIR}/best_run_files/train.py"
 
-if [[ ! -d "$ENV_PATH" ]]; then
-    echo "Conda environment not found at: $ENV_PATH"
-    exit 1
-fi
+[[ -f "$TRAIN_DATA_PATH" ]] || die "--train-data does not exist: $TRAIN_DATA_PATH"
+[[ -f "$VALIDATION_DATA_PATH" ]] || die "--validation-data does not exist: $VALIDATION_DATA_PATH"
 
-if [[ ! -f "$TRAIN_PATH" ]]; then
-    echo "train.py not found at: $TRAIN_PATH"
-    exit 1
+if [[ "$DOCKER_MODE" == true ]]; then
+    if [ "$CPU_ONLY" = false ]; then
+        if ! docker_has_gpu; then
+            warn "GPU not available (nvidia-smi not found or Docker lacks GPU support)"
+            warn "Automatically switching to CPU-only mode"
+            warn "To suppress this warning, use --cpu-only flag"
+            CPU_ONLY=true
+        fi
+    fi
 fi
 
 GPU_FLAGS=()
@@ -104,6 +132,13 @@ print_summary() {
 }
 
 if [[ "$DOCKER_MODE" == true ]]; then
+    need_cmd docker
+    if ! docker info >/dev/null 2>&1; then
+        die "Docker is not running or not accessible (start Docker and retry)"
+    fi
+    if ! docker image inspect agentomics_img >/dev/null 2>&1; then
+        die "Docker image 'agentomics_img' not found. Run ./run.sh once to build it (or build it manually) and retry."
+    fi
     echo "Running training in Docker..."
     AGENT_DIR_ABS="$(cd "$(dirname "$AGENT_DIR")" && pwd)/$(basename "$AGENT_DIR")"
     TRAIN_DATA_PATH_ABS="$(cd "$(dirname "$TRAIN_DATA_PATH")" && pwd)/$(basename "$TRAIN_DATA_PATH")"
@@ -126,6 +161,7 @@ if [[ "$DOCKER_MODE" == true ]]; then
     echo "Training done"
     print_summary "$ARTIFACTS_DIR"
 else
+    need_cmd conda
     echo "Running training locally..."
     cd "$(dirname "$TRAIN_PATH")"
     conda run -p "$ENV_PATH" \
