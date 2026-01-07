@@ -1,6 +1,7 @@
 import pprint
 import textwrap
 import json
+import os
 
 from pydantic_ai.messages import SystemPromptPart, UserPromptPart, TextPart, ToolCallPart, ToolReturnPart, RetryPromptPart ,ThinkingPart
 from pydantic_ai import CallToolsNode, ModelRequestNode, UserPromptNode
@@ -73,7 +74,94 @@ def pretty_print_code(code):
 
     print(footer)
 
+def _print_mode() -> str:
+    mode = os.getenv("AGENTOMICS_PRINT_MODE", "summary").strip().lower()
+    return mode if mode in {"summary", "full"} else "summary"
+
+def _args_dict(tool_call_part: ToolCallPart) -> dict:
+    return tool_call_part.args_as_dict()
+
+def _tool_call_summary(part: ToolCallPart) -> str:
+    tool = part.tool_name
+    args = _args_dict(part)
+
+    if tool == "bash":
+        return f"{bcolors.OKCYAN}agent runs bash command{bcolors.ENDC}"
+
+    if tool == "write_python":
+        file_path = args.get("file_path")
+        if file_path:
+            return f"{bcolors.OKCYAN}agent writes python file{bcolors.ENDC} {os.path.basename(str(file_path))}"
+        return f"{bcolors.OKCYAN}agent writes python file{bcolors.ENDC}"
+
+    if tool == "run_python":
+        python_file_path = args.get("python_file_path")
+        if python_file_path:
+            return f"{bcolors.OKCYAN}agent runs python file{bcolors.ENDC} {os.path.basename(str(python_file_path))}"
+        return f"{bcolors.OKCYAN}agent runs python file{bcolors.ENDC}"
+
+    if tool == "replace":
+        file_path = args.get("file_path")
+        if file_path:
+            return f"{bcolors.OKCYAN}agent edits file{bcolors.ENDC} {os.path.basename(str(file_path))}"
+        return f"{bcolors.OKCYAN}agent edits file{bcolors.ENDC}"
+
+    return f"{bcolors.OKCYAN}agent calls tool {tool}{bcolors.ENDC}"
+
+def _tool_return_summary(part: ToolReturnPart) -> tuple[str, bool]:
+    tool = part.tool_name
+    content_str = str(part.content or "")
+    lower = content_str.lower()
+    is_error = (
+        "traceback" in lower
+        or "error:" in lower
+        or "exception" in lower
+        or "command failed" in lower
+        or "timed out" in lower
+    )
+    if is_error:
+        first_line = next((ln.strip() for ln in content_str.splitlines() if ln.strip()), "")
+        if len(first_line) > 90:
+            first_line = first_line[:90] + "..."
+        msg = f"agent tool {tool} error"
+        if first_line:
+            msg += f": {first_line}"
+        return msg, True
+    return "", False
+
 def pretty_print_node(node):
+    mode = _print_mode()
+    if mode == "summary":
+        if isinstance(node, CallToolsNode):
+            for part in node.model_response.parts:
+                if isinstance(part, TextPart):
+                    if str(part.content).strip():
+                        pretty_print(part.content)
+                elif isinstance(part, ToolCallPart):
+                    if part.tool_name == "final_result":
+                        continue
+                    # Print without wrapping so ANSI color codes don't confuse text wrapping.
+                    print(_tool_call_summary(part))
+        elif isinstance(node, ModelRequestNode):
+            for part in node.request.parts:
+                if isinstance(part, ToolReturnPart):
+                    if part.tool_name == "final_result":
+                        continue
+                    msg, is_error = _tool_return_summary(part)
+                    if is_error:
+                        pretty_print(msg, color=bcolors.FAIL)
+                elif isinstance(part, RetryPromptPart):
+                    pretty_print("agent output validation failed; retrying", color=bcolors.WARNING)
+        elif isinstance(node, UserPromptNode):
+            pass
+        elif isinstance(node, End):
+            output = node.data.output
+            for attr, value in output.__dict__.items():
+                if attr not in ["tool_name", "tool_call_id"]:
+                    pretty_print(attr, color=bcolors.BOLD + bcolors.ORANGE)
+                    pretty_print(value)
+        return
+
     if(isinstance(node, CallToolsNode)):
         # print(node.model_response.parts)
         for part in node.model_response.parts:
