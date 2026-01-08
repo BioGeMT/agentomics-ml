@@ -9,22 +9,29 @@ from rich.console import Group
 from utils.user_input import get_user_input_for_int
 from .provider import Provider
 
+
 class OpenRouterProvider(Provider):
+    REQUIRED_MODELS = {
+        "openai/gpt-5o",
+        "openai/gpt-5.1",
+        "openai/gpt-5.2-codex",
+        "openai/gpt-5.1-codex-mini ",
+    }
     def __init__(self, api_key: str, base_url: str, list_models_endpoint: str):
         super().__init__(name="OpenRouter", api_key=api_key, base_url=base_url, list_models_endpoint=list_models_endpoint)
         self.headers = {"Authorization": f"Bearer {api_key}"}
-    
+
     def is_byok_model(self, model: Dict) -> bool:
         """Check if model requires separate API key (BYOK)."""
         description = model.get("description", "").lower()
-        
+
         # Check for BYOK indicators
         byok_indicators = ["byok", "requires api key", "add your api key", "bring your own key"]
         if any(indicator in description for indicator in byok_indicators):
             return True
 
         return False
-    
+
     def is_coding_model(self, model: Dict) -> bool:
         model_id = model.get("id", "").lower()
         description = model.get("description", "").lower()
@@ -34,26 +41,26 @@ class OpenRouterProvider(Provider):
             return False
 
         return True
-    
+
     def supports_tool_use(self, model: Dict) -> bool:
         """Check if model supports tool use/function calling."""
         # Check supported_parameters field for tool support
         supported_parameters = model.get("supported_parameters", [])
         if "tools" in supported_parameters or "tool_choice" in supported_parameters:
             return True
-        
+
         # Fallback: Check for explicit tool use support in description
         model_id = model.get("id", "").lower()
         description = model.get("description", "").lower()
-        
+
         tool_keywords = ["tool", "function", "function calling", "tool calling", "tools"]
         if any(keyword in description for keyword in tool_keywords):
             return True
-        
 
-        
+
+
         return False
-    
+
     def get_filtered_models(self, limit: int = 20) -> Optional[List[Dict]]:
         """Get filtered coding/reasoning models from OpenRouter API."""
         models = self.fetch_models()
@@ -112,7 +119,53 @@ class OpenRouterProvider(Provider):
             except (ValueError, TypeError):
                 continue
 
-        return filtered[:limit]
+        # --- Force-include specific OpenAI models (if available) ---
+        required_ids = [m.lower() for m in self.REQUIRED_MODELS]
+        # Build a quick lookup of raw models by id
+        raw_by_id = {m.get("id", "").lower(): m for m in models if m.get("id")}
+
+        forced = []
+        for rid in required_ids:
+            raw = raw_by_id.get(rid)
+            if not raw:
+                continue
+            pricing = raw.get("pricing", {})
+            if not pricing:
+                continue
+            if self.is_byok_model(raw) or (":free" in rid) or (":thinking" in rid) or rid.startswith("openrouter/"):
+                continue
+            if not self.is_coding_model(raw) or not self.supports_tool_use(raw):
+                continue
+
+            try:
+                prompt_cost = float(pricing.get("prompt", "0"))
+                completion_cost = float(pricing.get("completion", "0"))
+                if prompt_cost == 0 and completion_cost == 0:
+                    continue
+            except (ValueError, TypeError):
+                continue
+
+            forced.append({
+                "id": rid,
+                "provider": "openai",
+                "prompt_cost_per_million": prompt_cost * 1_000_000,
+                "completion_cost_per_million": completion_cost * 1_000_000,
+                "description": raw.get("description", ""),
+                "context_length": raw.get("context_length", 0),
+                "supports_tools": True,
+            })
+
+        # Combine forced + normal, de-duplicate by id, preserve order
+        combined = forced + filtered
+        seen = set()
+        deduped = []
+        for m in combined:
+            mid = m.get("id")
+            if mid and mid not in seen:
+                seen.add(mid)
+                deduped.append(m)
+
+        return deduped[:limit]
 
     def display_models(self, models: List[Dict] = None) -> List[Dict]:
         if models is None:
@@ -180,7 +233,7 @@ class OpenRouterProvider(Provider):
             col_max_widths[min_col] = max(col_max_widths[min_col], panel_width)
         display_order_models = [model for col in model_columns for model in col]
 
-        
+
         col_renderables = []
         global_index = 1
         max_num_width = len(str(len(models)))
@@ -201,17 +254,17 @@ class OpenRouterProvider(Provider):
         self.console.print(Columns(col_renderables, padding=(0, 1), expand=False))
         self.console.print("\n[dim]Prices per million tokens[/dim]")
         return display_order_models
-    
+
     def interactive_model_selection(self, limit: int = 20) -> Optional[str]:
         """Ovveriding method in Provider class. Interactive model selection for OpenRouter models."""
         models = self.get_filtered_models(limit)
-        
+
         if not models:
             self.console.print("Could not fetch models")
             return None
-        
+
         display_order_models = self.display_models(models)
-        
+
         choice = get_user_input_for_int(
           prompt_text=f"Select model (1-{len(display_order_models)}) or Enter for first",
           default=1,
@@ -220,5 +273,5 @@ class OpenRouterProvider(Provider):
 
         if choice:
             return display_order_models[choice - 1].get("id")
-        
+
         return None
