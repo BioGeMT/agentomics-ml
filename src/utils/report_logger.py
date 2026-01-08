@@ -5,8 +5,9 @@ import datetime
 
 from pydantic_ai.messages import ModelRequest, SystemPromptPart, UserPromptPart
 from pydantic_ai.models import ModelRequestParameters
-# Utilities
 
+
+# Utilities
 def clean_path(iteration, text: str, config=None) -> str:
     s = str(text).replace("\\", "/")
     s = s.replace("/workspace/", "")
@@ -23,14 +24,36 @@ def clean_path(iteration, text: str, config=None) -> str:
     s = s.replace(f"runs/{config.agent_id}/", replacement)
     return s
 
+
 def wrap_text(text, width=100):
     return "\n".join(textwrap.fill(line, width) for line in str(text).split("\n"))
+
 
 def _md_block(value: str) -> str:
     s = str(value).replace("\r\n", "\n").strip()
     if "\n" in s or len(s) > 120:
         return "\n".join([f"> {line}" if line.strip() else ">" for line in s.split("\n")])
     return s
+
+
+def humanize_step_title(step_name: str) -> str:
+    """
+    Make headings readable in MD/PDF.
+    Examples: dataexploration -> Data exploration, modeltraining -> Model training
+    """
+    s = step_name.replace("_", " ").strip()
+    fixes = {
+        "dataexploration": "Data Exploration",
+        "predictionexploration": "Prediction Exploration",
+        "modelarchitecture": "Model Architecture",
+        "modeltraining": "Model Training",
+        "modelinference": "Model Inference",
+        "datarepresentation": "Data Representation",
+        "datasplit": "Data Split",
+    }
+    key = s.replace(" ", "").lower()
+    return fixes.get(key, s.title())
+
 
 # Markdown helpers
 def _md_header_if_missing(config, iteration: int):
@@ -53,16 +76,19 @@ def _md_header_if_missing(config, iteration: int):
     )
     md_path.write_text(header, encoding="utf-8")
 
+
 def _append_md_section(config, iteration: int, title: str, body: str):
     md_path = config.reports_dir / config.agent_id / f"run_report_iter_{iteration}.md"
     with open(md_path, "a", encoding="utf-8") as f:
         f.write(f"## {title}\n\n{body}\n\n")
+
 
 def _prepend_md_section(config, iteration: int, title: str, body: str):
     md_path = config.reports_dir / config.agent_id / f"run_report_iter_{iteration}.md"
     content = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
     section = f"## {title}\n\n{body}\n\n"
     md_path.write_text(section + content, encoding="utf-8")
+
 
 async def generate_summary(model, report_content):
     messages = [
@@ -97,6 +123,7 @@ async def add_summary_to_report(model, config, iteration):
     bullets = "\n".join(f"- {line.strip()}" for line in summary.split("\n") if line.strip())
     _prepend_md_section(config, iteration, "Summary", bullets or "_No summary._")
 
+
 def save_step_output(config, step_name, step_data, iteration):
     report_dir = config.reports_dir / config.agent_id
     report_dir.mkdir(parents=True, exist_ok=True)
@@ -111,8 +138,8 @@ def save_step_output(config, step_name, step_data, iteration):
 
     # MD
     _md_header_if_missing(config, iteration)
-    body = []
     dump = step_data.model_dump()
+
     # Detect skipped step
     text_values = [
         str(v).lower()
@@ -121,17 +148,26 @@ def save_step_output(config, step_name, step_data, iteration):
     ]
     is_skipped = bool(text_values) and all("skipped" in v for v in text_values)
     if is_skipped:
-        _md_header_if_missing(config, iteration)
+        # Do not include an empty Data exploration placeholder section
+        if step_name.replace("_", "").lower() == "dataexploration":
+            return
+
         _append_md_section(
             config,
             iteration,
-            step_name.replace("_", " ").title(),
+            humanize_step_title(step_name),
             "Step skipped for this iteration.",
         )
         return
+
+    body = []
     for k, v in dump.items():
         if k == "files_created":
             continue
+        # Do not show unresolved issues section/field
+        if k == "unresolved_issues":
+            continue
+
         if isinstance(v, str) and ("path" in k.lower() or "dir" in k.lower()):
             v = clean_path(iteration, v, config)
         body.append(f"**{k.replace('_',' ').title()}:**\n\n{_md_block(v)}\n")
@@ -140,12 +176,14 @@ def save_step_output(config, step_name, step_data, iteration):
     if files:
         nice = [Path(clean_path(iteration, x, config)).name for x in files]
         body.append("**Files created:**\n\n" + "\n".join(f"- `{x}`" for x in nice))
+
     _append_md_section(
         config,
         iteration,
-        step_name.replace("_", " ").title(),
+        humanize_step_title(step_name),
         "\n".join(body).strip(),
     )
+
 
 # Metrics
 def add_metrics_to_report(config, iteration, metrics_dict):
@@ -162,6 +200,7 @@ def add_metrics_to_report(config, iteration, metrics_dict):
     _md_header_if_missing(config, iteration)
     lines = [f"- **{k}**: {v}" for k, v in metrics_dict.items()]
     _append_md_section(config, iteration, "Metrics", "\n".join(lines) or "_No metrics._")
+
 
 # Final test metrics (best iteration only)
 def add_final_test_metrics_to_best_report(config):

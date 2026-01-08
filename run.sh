@@ -69,9 +69,6 @@ write_outputs_readme() {
         best_iter="$(cat "${out_dir}/best_run_files/iteration_number.txt" | tr -d '[:space:]')"
         [[ -z "$best_iter" ]] && best_iter="UNKNOWN"
     fi
-
-    mkdir -p "${out_dir}"
-
     cat > "${out_dir}/README.md" << EOF
 
 This directory contains the full results of one run (**AGENT_ID: ${agent_id}**).
