@@ -44,8 +44,8 @@ Operational Flags:
   --cpu-only          Force Docker/Conda to run using CPU only (skip GPU configuration).
   --ollama            Enable support for an Ollama server running on the host machine.
   --pull-images       Pull prebuilt Docker images from Docker Hub instead of building locally (uses biogemt images).
-  --foundation-model-type <dna|rna|molecule|protein>
-                      Enable foundation models of a specific type (Docker only). When omitted, no foundation models are used or pre-downloaded.
+  --foundation-model-type <dna|rna|molecule|protein|all>
+                      Enable foundation models of a specific type (Docker only). Use 'all' to download all types. When omitted, no foundation models are used or pre-downloaded.
   --use-provisioning-key  Use OpenRouter provisioning key to create temporary API key and log costs.
   --spend-limit <N>   Only applies when --use-provisioning-key is passed. Spend limit for a temporary key (default: 10).
   --tags              (Optional) Space separated tags for Weights and Biases logging.
@@ -277,8 +277,8 @@ else
         esac
     fi
 
-    if [ -n "$FOUNDATION_MODEL_TYPE" ] && [[ "$FOUNDATION_MODEL_TYPE" != "dna" && "$FOUNDATION_MODEL_TYPE" != "rna" && "$FOUNDATION_MODEL_TYPE" != "molecule" && "$FOUNDATION_MODEL_TYPE" != "protein" ]]; then
-        echo -e "${RED}Error: Invalid --foundation-model-type '$FOUNDATION_MODEL_TYPE'. Allowed: dna, rna, molecule, protein.${NOCOLOR}" >&2
+    if [ -n "$FOUNDATION_MODEL_TYPE" ] && [[ "$FOUNDATION_MODEL_TYPE" != "dna" && "$FOUNDATION_MODEL_TYPE" != "rna" && "$FOUNDATION_MODEL_TYPE" != "molecule" && "$FOUNDATION_MODEL_TYPE" != "protein" && "$FOUNDATION_MODEL_TYPE" != "all" ]]; then
+        echo -e "${RED}Error: Invalid --foundation-model-type '$FOUNDATION_MODEL_TYPE'. Allowed: dna, rna, molecule, protein, all.${NOCOLOR}" >&2
         exit 1
     fi
 
@@ -291,6 +291,7 @@ else
         echo "  3) RNA"
         echo "  4) Molecule"
         echo "  5) Protein"
+        echo "  6) All"
         echo ""
         read -r -p "Enter choice [1]: " fm_choice
         fm_choice="${fm_choice:-1}"
@@ -300,6 +301,7 @@ else
             3) FOUNDATION_MODEL_TYPE="rna";;
             4) FOUNDATION_MODEL_TYPE="molecule";;
             5) FOUNDATION_MODEL_TYPE="protein";;
+            6) FOUNDATION_MODEL_TYPE="all";;
             *) echo -e "${RED}Error: Invalid choice.${NOCOLOR}" >&2; exit 1;;
         esac
     fi

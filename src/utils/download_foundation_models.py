@@ -27,7 +27,7 @@ def main():
         return
 
     for _, family_data in config.items():
-        if family_data.get("type") != enabled_type:
+        if enabled_type != "all" and family_data.get("type") != enabled_type:
             continue
         models = family_data.get('models')
         hf_class = AutoModel if family_data.get('can_load_with_hf_automodel') else AutoModelForMaskedLM
