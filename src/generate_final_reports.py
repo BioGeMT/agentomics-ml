@@ -653,7 +653,7 @@ def plots_compare_splits_page_flowables(
     flows.append(Paragraph(f"Plots comparison (Iteration {iteration})", styles["H1"]))
     flows.append(
         Paragraph(
-            "Columns are dataset splits (train / validation / test). "
+            "Columns are dataset splits (train / validation / test if exists). "
             "Rows correspond to the same plot type across splits.",
             styles["Muted"],
         )
@@ -831,12 +831,11 @@ def write_iteration_pdf(
     story.append(run_meta_flowables(run_meta))
     story.append(Spacer(1, 10))
 
-    # Metrics table directly after the first table, no forced new page
     story.append(Paragraph("Metrics", styles["H2"]))
     story.append(metrics_table_flowable(metrics_by_split, split_order, run_meta.val_metric, styles))
     story.append(Spacer(1, 10))
 
-    # Plots directly after metrics (no forced new page)
+    story.append(PageBreak())
     story.extend(
         plots_compare_splits_page_flowables(
             iteration=iteration,
@@ -846,10 +845,7 @@ def write_iteration_pdf(
             styles=styles,
         )
     )
-
-    # Now start the narrative text on a new page
     story.append(PageBreak())
-
     if report_text_raw:
         cleaned = clean_report_md(report_text_raw)
         run_info, steps = extract_steps(cleaned)
