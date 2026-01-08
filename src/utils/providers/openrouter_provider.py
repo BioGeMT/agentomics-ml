@@ -14,8 +14,7 @@ class OpenRouterProvider(Provider):
     REQUIRED_MODELS = {
         "openai/gpt-5o",
         "openai/gpt-5.1",
-        "openai/gpt-5.2-codex",
-        "openai/gpt-5.1-codex-mini ",
+        "openai/gpt-5.1-codex-mini",
     }
     def __init__(self, api_key: str, base_url: str, list_models_endpoint: str):
         super().__init__(name="OpenRouter", api_key=api_key, base_url=base_url, list_models_endpoint=list_models_endpoint)
@@ -50,15 +49,10 @@ class OpenRouterProvider(Provider):
             return True
 
         # Fallback: Check for explicit tool use support in description
-        model_id = model.get("id", "").lower()
         description = model.get("description", "").lower()
-
         tool_keywords = ["tool", "function", "function calling", "tool calling", "tools"]
         if any(keyword in description for keyword in tool_keywords):
             return True
-
-
-
         return False
 
     def get_filtered_models(self, limit: int = 20) -> Optional[List[Dict]]:
@@ -99,10 +93,8 @@ class OpenRouterProvider(Provider):
             try:
                 prompt_cost = float(pricing.get("prompt", "0"))
                 completion_cost = float(pricing.get("completion", "0"))
-
                 if prompt_cost == 0 and completion_cost == 0:
                     continue
-
                 # Format model data
                 provider = model_id.split("/")[0] if "/" in model_id else "unknown"
                 model_data = {
@@ -118,12 +110,10 @@ class OpenRouterProvider(Provider):
 
             except (ValueError, TypeError):
                 continue
-
-        # --- Force-include specific OpenAI models (if available) ---
+        # --- Force-include specific OpenAI models ---
         required_ids = [m.lower() for m in self.REQUIRED_MODELS]
         # Build a quick lookup of raw models by id
         raw_by_id = {m.get("id", "").lower(): m for m in models if m.get("id")}
-
         forced = []
         for rid in required_ids:
             raw = raw_by_id.get(rid)
@@ -136,7 +126,6 @@ class OpenRouterProvider(Provider):
                 continue
             if not self.is_coding_model(raw) or not self.supports_tool_use(raw):
                 continue
-
             try:
                 prompt_cost = float(pricing.get("prompt", "0"))
                 completion_cost = float(pricing.get("completion", "0"))
@@ -144,17 +133,15 @@ class OpenRouterProvider(Provider):
                     continue
             except (ValueError, TypeError):
                 continue
-
             forced.append({
                 "id": rid,
-                "provider": "openai",
+                "provider": rid.split("/")[0] if "/" in rid else "unknown",
                 "prompt_cost_per_million": prompt_cost * 1_000_000,
                 "completion_cost_per_million": completion_cost * 1_000_000,
                 "description": raw.get("description", ""),
                 "context_length": raw.get("context_length", 0),
                 "supports_tools": True,
             })
-
         # Combine forced + normal, de-duplicate by id, preserve order
         combined = forced + filtered
         seen = set()
@@ -164,7 +151,6 @@ class OpenRouterProvider(Provider):
             if mid and mid not in seen:
                 seen.add(mid)
                 deduped.append(m)
-
         return deduped[:limit]
 
     def display_models(self, models: List[Dict] = None) -> List[Dict]:
@@ -233,7 +219,6 @@ class OpenRouterProvider(Provider):
             col_max_widths[min_col] = max(col_max_widths[min_col], panel_width)
         display_order_models = [model for col in model_columns for model in col]
 
-
         col_renderables = []
         global_index = 1
         max_num_width = len(str(len(models)))
@@ -270,7 +255,6 @@ class OpenRouterProvider(Provider):
           default=1,
           valid_options=list(range(1, len(display_order_models) + 1))
         )
-
         if choice:
             return display_order_models[choice - 1].get("id")
 
