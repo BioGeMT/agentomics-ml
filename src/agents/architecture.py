@@ -325,7 +325,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
         data_split_step=data_split
         structured_outputs.append(data_split)
     else:
-        # If the user provided an explicit validation set, we don't need a split strategy from a prior iteration.
+        # Explicit validation set
         if config.explicit_valid_set_provided:
             console.print("[bold yellow]Validation set provided by user — skipping data splitting step.[/bold yellow]")
             split_strategy = last_split_strategy or "provided"
@@ -336,7 +336,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
                 files_created=[],
             )
         else:
-            # No explicit validation set: we should only be here if we previously split.
+            # No explicit validation set
             assert last_split_strategy is not None, (
                 f"Agent didnt have a chance to split data, provide a non-0 allowed split iterations "
                 f"(currently {config.split_allowed_iterations})"
