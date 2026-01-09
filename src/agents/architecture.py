@@ -143,6 +143,8 @@ def create_agents(config: Config, model, tools):
             raise ModelRetry(f"Train file does not exist. {result.path_to_train_file}")
         if not Path(result.path_to_train_file).name.strip() == 'train.py':
             raise ModelRetry(f"Train file must be called 'train.py' , currently is named {Path(result.path_to_train_file).name.strip()}")
+        if os.path.islink(result.path_to_train_file):
+            raise ModelRetry(f"Train file ({result.path_to_train_file}) cannot be a symbolic link, create a non-symlinked copy of it.")
         if not os.path.exists(result.path_to_model_file):
             raise ModelRetry(f"Model file does not exist at {result.path_to_model_file}")
         if ctx.deps['run_dir'] not in Path(result.path_to_artifacts_dir).parents:
@@ -186,6 +188,8 @@ def create_agents(config: Config, model, tools):
     async def validate_inference(ctx: RunContext[dict], result: ModelInference) -> ModelInference:
         if not os.path.exists(result.path_to_inference_file):
             raise ModelRetry(f"Inference file does not exist at {result.path_to_inference_file}")
+        if os.path.islink(result.path_to_inference_file):
+            raise ModelRetry(f"Inference file ({result.path_to_inference_file}) cannot be a symbolic link, create a non-symlinked copy of it.")
         if does_file_contain_iteration_pattern(result.path_to_inference_file):
             raise ModelRetry("Inference file contains path containing a forbidden string 'iteration_' or references an iteration folder, which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
         if does_file_contain_string(result.path_to_inference_file, "train.csv") or does_file_contain_string(result.path_to_inference_file, "validation.csv"):
