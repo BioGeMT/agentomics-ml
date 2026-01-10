@@ -38,7 +38,7 @@ def build_foundation_model_catalog():
 def get_foundation_model_family_info(family):
     models_config = load_models_config()
     if family not in models_config.keys():
-        return f"Family {family} not found. Available options: {list(models_config.keys())}."
+        return f"Family {family} not found. Use 'All' for an overview or one of the available options: {list(models_config.keys())}."
     meta = models_config[family]
     if(not Path(meta['path_to_info']).exists()):
         print(f'{family} README is missing')
