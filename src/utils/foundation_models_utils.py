@@ -66,7 +66,8 @@ def get_foundation_model_family_info(family):
         if enabled_type == "all" or meta.get("type") == enabled_type
     ]
     if family not in models_config.keys() or family not in allowed_families:
-        return f"Family {family} not found. Available options: {allowed_families}."
+        return f"Family {family} not found. Use 'All' for an overview or one of the available options: {allowed_families}."
+
     meta = models_config[family]
     if(not Path(meta['path_to_info']).exists()):
         print(f'{family} README is missing')

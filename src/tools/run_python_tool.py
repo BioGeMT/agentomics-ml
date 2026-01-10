@@ -13,7 +13,7 @@ def create_run_python_tool(agent_id, runs_dir, timeout, max_retries, proxy):
         proxy = proxy
     )
 
-    def _run_python(python_file_path: str, kwargs: dict):
+    def _run_python(python_file_path: str, kwargs: str):
         """
         A tool used to run a python file with the specified kwargs
         When you call this, you must always provide both python_file_path and kwargs parameters
@@ -23,7 +23,7 @@ def create_run_python_tool(agent_id, runs_dir, timeout, max_retries, proxy):
         
         Args:
             python_file_path: A full absolute path to the python file to run. Must be a path to an existing python file
-            kwargs: A dictionary of arguments to pass to the python script as command line arguments. Example : {"--arg1": "value1", "--arg2": "value2"} or {} for no arguments
+            kwargs: A string in a specific structure containing arguments to pass to the python script as command line arguments. Example : "--arg1:value1,--arg2:value2" or "" for no arguments
         """
         start_time = time.time()
         # validate path is a file
@@ -32,8 +32,14 @@ def create_run_python_tool(agent_id, runs_dir, timeout, max_retries, proxy):
         
         #TODO allow to accept arguments + validate they don't break the bash (requiring input etc)
         env_path = runs_dir / agent_id / ".conda" / "envs" / f"{agent_id}_env"
+        kwargs_dict = {}
+        # Fix for openai-api parsing bug for lists and dicts
         if kwargs:
-            args = " ".join([f"{key} {value}" for key, value in kwargs.items()])
+            for pair in kwargs.split(','):
+                key, value = pair.split(':')
+                kwargs_dict[key.strip()] = value.strip()
+        if kwargs_dict:
+            args = " ".join([f"{key} {value}" for key, value in kwargs_dict.items()])
             command = f"conda run -p {env_path} --no-capture-output python {python_file_path} {args}"
         else:
             command = f"conda run -p {env_path} --no-capture-output python {python_file_path}"
