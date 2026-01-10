@@ -11,17 +11,18 @@ class Edit(BaseModel):
     replace_all: bool = Field(description="Whether to replace all occurrences. If False, replaces only the first occurrence.", default=False)
 
 def create_replace_tool(agent_id, runs_dir, max_retries):
-    def _replace(file_path: str, edit: Edit|list[Edit]):
+    def _replace(file_path: str, old:str, new:str, replace_all:bool):
         """
         A tool used to replace specific text in a file
         Only use this tool on text files (e.g. .py, .txt, .md)
         Multi-line strings are supported
-        Can specify a single edit or a list of edits in one call
         Prefer this tool over write_python_tool and shell sed command for editing files
         
         Args:
             file_path: A full absolute path to the file to edit
-            edit: The edit(s) to apply to the file. You can provide a single edit or a list of edits.
+            old: The old string to replace. Can be multi-line.
+            new: The new string to replace with. Can be multi-line.
+            replace_all: Whether to replace all occurrences. If False, replaces only the first occurrence.
         """
         start_time = time.time()
 
@@ -35,6 +36,7 @@ def create_replace_tool(agent_id, runs_dir, max_retries):
         with open(file_path, "r") as f:
             content = f.read()
 
+        edit = Edit(old=old, new=new, replace_all=replace_all)
         edits = edit if isinstance(edit, list) else [edit]
         for i, single_edit in enumerate(edits):
             result = _apply_edit(content, single_edit)
