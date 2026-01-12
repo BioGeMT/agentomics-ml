@@ -188,13 +188,11 @@ def apply_pub_style() -> None:
 def ensure_dir(p: Path) -> None:
     p.mkdir(parents=True, exist_ok=True)
 
-
 def find_first(paths: List[Path]) -> Optional[Path]:
     for p in paths:
         if p is not None and p.exists():
             return p
     return None
-
 
 def safe_read_csv(path: Optional[Path]) -> Optional[pd.DataFrame]:
     if not path or not path.exists():
@@ -203,7 +201,6 @@ def safe_read_csv(path: Optional[Path]) -> Optional[pd.DataFrame]:
         return pd.read_csv(path)
     except Exception:
         return None
-
 
 def parse_metrics_txt(path: Optional[Path]) -> Dict[str, float]:
     metrics: Dict[str, float] = {}
@@ -220,7 +217,6 @@ def parse_metrics_txt(path: Optional[Path]) -> Dict[str, float]:
             continue
     return metrics
 
-
 def load_config_json(agent_dir: Path) -> Dict:
     cfg = agent_dir / "best_run_files" / "config.json"
     if cfg.exists():
@@ -229,7 +225,6 @@ def load_config_json(agent_dir: Path) -> Dict:
         except Exception:
             return {}
     return {}
-
 
 def load_run_meta(agent_dir: Path) -> RunMeta:
     cfg = load_config_json(agent_dir)
@@ -242,7 +237,6 @@ def load_run_meta(agent_dir: Path) -> RunMeta:
         split_allowed_iterations=cfg.get("split_allowed_iterations"),
         exploration_iterations=cfg.get("exploration_iterations"),
     )
-
 
 def load_prepared_dataset_meta(agent_dir: Path) -> DatasetMeta:
     cfg = load_config_json(agent_dir)
@@ -276,7 +270,6 @@ def load_prepared_dataset_meta(agent_dir: Path) -> DatasetMeta:
         label_to_scalar=label_to_scalar if isinstance(label_to_scalar, dict) else None,
     )
 
-
 # Iteration discovery / inputs
 def discover_iterations(agent_dir: Path) -> List[int]:
     run_files = agent_dir / "run_files"
@@ -289,7 +282,6 @@ def discover_iterations(agent_dir: Path) -> List[int]:
                 except Exception:
                     pass
     return sorted(set(iters))
-
 
 def gather_iteration_inputs(agent_dir: Path, iteration: int) -> IterationInputs:
     reports_dir = agent_dir / "reports"
@@ -328,7 +320,6 @@ def gather_iteration_inputs(agent_dir: Path, iteration: int) -> IterationInputs:
 
     return IterationInputs(iteration=iteration, report_md=report_md, splits=splits)
 
-
 # Deterministic merge labels + predictions (metadata-driven)
 def merge_labels_and_preds(labeled: pd.DataFrame, preds: pd.DataFrame, meta: DatasetMeta) -> Tuple[pd.Series, pd.Series]:
     if "id" not in labeled.columns or "id" not in preds.columns:
@@ -356,11 +347,9 @@ def merge_labels_and_preds(labeled: pd.DataFrame, preds: pd.DataFrame, meta: Dat
 
     return merged[y_col], merged[pred_col]
 
-
 # Plotting
 def _as_num(s: pd.Series) -> pd.Series:
     return pd.to_numeric(s, errors="coerce")
-
 
 def _robust_limits(x: pd.Series, y: pd.Series, pad_frac: float = 0.05) -> Tuple[float, float]:
     df = pd.DataFrame({"x": _as_num(x), "y": _as_num(y)}).dropna()
@@ -375,7 +364,6 @@ def _robust_limits(x: pd.Series, y: pd.Series, pad_frac: float = 0.05) -> Tuple[
             lo, hi = lo - 1.0, hi + 1.0
     pad = (hi - lo) * pad_frac
     return lo - pad, hi + pad
-
 
 def plot_regression(y_true: pd.Series, y_pred: pd.Series, out_prefix: Path, title_prefix: str) -> List[Path]:
     apply_pub_style()
@@ -429,7 +417,6 @@ def plot_regression(y_true: pd.Series, y_pred: pd.Series, out_prefix: Path, titl
     out.append(rh_path)
 
     return out
-
 
 def plot_classification(y_true: pd.Series, y_score: pd.Series, out_prefix: Path, title_prefix: str) -> List[Path]:
     apply_pub_style()
@@ -493,7 +480,6 @@ def plot_classification(y_true: pd.Series, y_score: pd.Series, out_prefix: Path,
 
     return [roc_path, pr_path]
 
-
 def build_plots_for_split(
     meta: DatasetMeta,
     split: SplitArtifacts,
@@ -518,7 +504,6 @@ def build_plots_for_split(
         return plot_classification(y_true, y_pred, prefix, title_prefix)
     return plot_regression(y_true, y_pred, prefix, title_prefix)
 
-
 # Markdown cleanup + step extraction
 def _remove_section_by_h2(md: str, title: str) -> str:
     lines = md.replace("\r\n", "\n").split("\n")
@@ -535,17 +520,16 @@ def _remove_section_by_h2(md: str, title: str) -> str:
         out.append(line)
     return "\n".join(out)
 
-
 def clean_report_md(md: str) -> str:
     s = md.replace("\r\n", "\n")
     s = _remove_section_by_h2(s, "Metrics")
-    # normalize accidental "- - " bullets
     s = re.sub(r"(?m)^\s*-\s*-\s+", "- ", s)
-    # strip light markdown
     s = re.sub(r"`([^`]+)`", r"\1", s)
     s = re.sub(r"\*\*([^*]+)\*\*", r"\1", s)
+    s = re.sub(r"(?m)^\s*#\s*Run Report.*\n?", "", s)
+    s = re.sub(r"(?mi)^\s*(Agent ID|Dataset|Model|Task|Validation metric|Val Metric|Optimized Metric|Generated)\s*:\s*.*\n?","",s)
+    s = re.sub(r"(?m)^\s*---\s*$\n?", "", s)
     return s.strip()
-
 
 def extract_steps(md: str) -> Tuple[List[str], List[Step]]:
     lines = md.replace("\r\n", "\n").split("\n")
@@ -553,7 +537,26 @@ def extract_steps(md: str) -> Tuple[List[str], List[Step]]:
     first_h2 = next((i for i, ln in enumerate(lines) if re.match(r"^\s*##\s+", ln)), None)
     if first_h2 is None:
         return [ln.strip() for ln in lines if ln.strip()], []
-    run_info = [ln.strip() for ln in lines[:first_h2] if ln.strip() and ln.strip() != "---"]
+
+    run_info = []
+    drop_prefixes = (
+        "agent id:",
+        "dataset:",
+        "model:",
+        "task:",
+        "validation metric:",
+        "val metric:",
+        "optimized metric:",
+        "generated:",
+    )
+    for ln in lines[:first_h2]:
+        s = ln.strip()
+        if not s or s == "---":
+            continue
+        # After clean_report_md(), '**Agent ID:**' becomes 'Agent ID:'
+        if s.lower().startswith(drop_prefixes):
+            continue
+        run_info.append(s)
 
     steps: List[Step] = []
     cur_title: Optional[str] = None
@@ -577,13 +580,11 @@ def extract_steps(md: str) -> Tuple[List[str], List[Step]]:
     flush()
     return run_info, steps
 
-
 def prettify_step_title(t: str) -> str:  # NOTE IT
     # "Dataexploration" -> "Data exploration"
     t = re.sub(r"(?<!^)([A-Z])", r" \1", t).strip()
     t = re.sub(r"^Data(?=[A-Z])", "Data ", t)
     return t[:1].upper() + t[1:] if t else t
-
 
 # Rendering helpers
 def _esc(s: str) -> str:
@@ -671,7 +672,6 @@ def plots_compare_splits_page_flowables(
     flows.append(tbl)
     return flows
 
-
 def run_meta_flowables(meta: RunMeta):
     rows = [
         ("Agent ID", meta.agent_id),
@@ -700,7 +700,6 @@ def run_meta_flowables(meta: RunMeta):
         )
     )
     return table
-
 
 def step_body_to_flowables(text: str, styles):
     flows = []
@@ -743,7 +742,6 @@ def step_body_to_flowables(text: str, styles):
     flush_paragraph()
     return flows
 
-
 def _fmt_metric(v) -> str:
     if v is None:
         return "—"
@@ -752,7 +750,6 @@ def _fmt_metric(v) -> str:
             return f"{v:.3g}"
         return f"{v:.6g}"
     return str(v)
-
 
 def metrics_table_flowable(metrics_by_split, split_order, val_metric, styles):
     present = [s for s in split_order if metrics_by_split.get(s)]
@@ -785,7 +782,6 @@ def metrics_table_flowable(metrics_by_split, split_order, val_metric, styles):
 
     tbl.setStyle(ts)
     return tbl
-
 
 def write_iteration_pdf(
     out_pdf: Path,
@@ -848,7 +844,6 @@ def write_iteration_pdf(
 
     doc.build(story, onFirstPage=on_page, onLaterPages=on_page)
 
-
 def main() -> None:
     os.environ.setdefault("MPLCONFIGDIR", "/tmp/mplconfig")
 
@@ -907,7 +902,6 @@ def main() -> None:
         )
         print(f"Wrote: {out_pdf}")
     print(f"\nDone.\nPDFs: {out_dir}\nPlots: {plots_dir}\n")
-
 
 if __name__ == "__main__":
     main()
