@@ -217,7 +217,9 @@ def verify_file_and_row_count(input_path, predictions_path, inference_out):
 
     except Exception as e:
         tb = traceback.format_exc()
-        raise ModelRetry(f'Inference script must produce predicions with the \'id\' column. {e}\n{tb}') from e
+        raise ModelRetry(
+            f"Inference script must produce predicions with the 'id' column. {e}. Traceback: {tb}"
+        ) from e
 
 
 
