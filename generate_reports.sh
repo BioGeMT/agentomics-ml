@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Docker-only script.
+# Local-mode execution is not supported yet and must be added
 set -euo pipefail
 
 AGENT_ID="${1:-}"
