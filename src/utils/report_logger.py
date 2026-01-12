@@ -109,7 +109,14 @@ async def generate_summary(model, report_content):
         model_settings=None,
         model_request_parameters=ModelRequestParameters(allow_text_output=True),
     )
-    return response.parts[0].content
+    def _extract_text_output(response) -> str:
+        # Prefer the last non-empty text content part.
+        for p in reversed(getattr(response, "parts", []) or []):
+            content = getattr(p, "content", None)
+            if isinstance(content, str) and content.strip():
+                return content.strip()
+        return ""
+    return _extract_text_output(response)
 
 
 async def add_summary_to_report(model, config, iteration):
