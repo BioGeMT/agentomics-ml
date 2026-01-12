@@ -406,7 +406,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
     if not config.explicit_valid_set_provided:
         val_path = config.runs_dir / config.agent_id / 'validation.csv'
     else:
-        val_path = config.agent_dataset_dir / config.dataset / "validation.csv"
+        val_path = config.agent_dataset_dir / "validation.csv"
 
     prediction_deps = {'iteration': iteration, 'start_time': datetime.datetime.now()}
     console.print("[bold purple]PREDICTION EXPLORATION STEP[/bold purple]")
