@@ -5,7 +5,7 @@ import datetime
 
 from pydantic_ai.messages import ModelRequest, SystemPromptPart, UserPromptPart
 from pydantic_ai.models import ModelRequestParameters
-
+from utils.snapshots import get_best_iteration
 
 # Utilities
 def clean_path(iteration, text: str, config=None) -> str:
@@ -204,8 +204,6 @@ def add_metrics_to_report(config, iteration, metrics_dict):
 
 # Final test metrics (best iteration only)
 def add_final_test_metrics_to_best_report(config):
-    from utils.snapshots import get_best_iteration
-
     best_iter = get_best_iteration(config)
     if best_iter is None:
         return
