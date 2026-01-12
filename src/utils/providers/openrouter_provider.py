@@ -12,7 +12,7 @@ from .provider import Provider
 
 class OpenRouterProvider(Provider):
     REQUIRED_MODELS = {
-        "openai/gpt-5o",
+        "openai/gpt-5.1-codex-max",
         "openai/gpt-5.1",
         "openai/gpt-5.1-codex-mini",
     }
