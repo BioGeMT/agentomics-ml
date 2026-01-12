@@ -1,5 +1,3 @@
-# generate_final_reports.py
-#!/usr/bin/env python
 from __future__ import annotations
 
 import argparse
@@ -7,7 +5,6 @@ import json
 import math
 import os
 import re
-import textwrap
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
