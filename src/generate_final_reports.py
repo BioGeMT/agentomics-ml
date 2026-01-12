@@ -592,22 +592,6 @@ def prettify_step_title(t: str) -> str:  # NOTE IT
 def _esc(s: str) -> str:
     return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
 
-
-def _plot_key(p: Path) -> int:
-    name = p.name.lower()
-    order = [
-        "_pred_vs_actual",
-        "_residuals_vs_pred",
-        "_residuals_hist",
-        "_roc",
-        "_pr",
-    ]
-    for i, tok in enumerate(order):
-        if tok in name:
-            return i
-    return 999
-
-
 def plots_compare_splits_page_flowables(
     iteration: int,
     task_type: str,
