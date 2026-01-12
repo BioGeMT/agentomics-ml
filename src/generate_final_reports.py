@@ -553,7 +553,6 @@ def extract_steps(md: str) -> Tuple[List[str], List[Step]]:
         s = ln.strip()
         if not s or s == "---":
             continue
-        # After clean_report_md(), '**Agent ID:**' becomes 'Agent ID:'
         if s.lower().startswith(drop_prefixes):
             continue
         run_info.append(s)
@@ -580,7 +579,7 @@ def extract_steps(md: str) -> Tuple[List[str], List[Step]]:
     flush()
     return run_info, steps
 
-def prettify_step_title(t: str) -> str:  # NOTE IT
+def prettify_step_title(t: str) -> str:
     # "Dataexploration" -> "Data exploration"
     t = re.sub(r"(?<!^)([A-Z])", r" \1", t).strip()
     t = re.sub(r"^Data(?=[A-Z])", "Data ", t)
