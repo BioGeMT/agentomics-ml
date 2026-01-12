@@ -79,6 +79,8 @@ It includes: (1) the **best model/run chosen across iterations**, (2) per-iterat
 
 **Best iteration selected:** **${best_iter}**
 
+**Note:** Iterations are **0-indexed** (first iteration is `0`).
+
 The best iteration number is stored in:
 - \`best_run_files/iteration_number.txt\`
 
