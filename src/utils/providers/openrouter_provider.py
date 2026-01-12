@@ -238,6 +238,8 @@ class OpenRouterProvider(Provider):
 
         self.console.print(Columns(col_renderables, padding=(0, 1), expand=False))
         self.console.print("\n[dim]Prices per million tokens[/dim]")
+        self.console.print("[dim]If target model is not displayed here, browse from OpenRouter: https://openrouter.ai/models and pass it through " \
+            "the --model argument to run.sh (e.g. ./run.sh --model openai/gpt-5-mini)[/dim]")
         return display_order_models
 
     def interactive_model_selection(self, limit: int = 20) -> Optional[str]:
