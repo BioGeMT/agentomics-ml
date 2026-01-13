@@ -35,7 +35,7 @@ class OpenRouterProvider(Provider):
         model_id = model.get("id", "").lower()
         description = model.get("description", "").lower()
 
-        exclude_patterns = ["whisper", "dall-e", "tts", "embedding", "vision", "image", "audio", "research"]
+        exclude_patterns = ["whisper", "dall-e", "tts", "embedding", "vision", "image", "audio", "research model"]
         if any(pattern in f"{model_id} {description}" for pattern in exclude_patterns):
             return False
 
