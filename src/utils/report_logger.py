@@ -118,32 +118,21 @@ async def generate_summary(model, report_content):
         return ""
     return _extract_text_output(response)
 
-
 async def add_summary_to_report(model, config, iteration):
-    report_path = config.reports_dir / config.agent_id / f"run_report_iter_{iteration}.txt"
-    content = report_path.read_text()
-
-    summary = await generate_summary(model, content)
-    report_path.write_text(f"SUMMARY\n{wrap_text(summary)}\n\n{content}")
-
     _md_header_if_missing(config, iteration)
+    md_path = config.reports_dir / config.agent_id / f"run_report_iter_{iteration}.md"
+    report_content = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
+
+    summary = await generate_summary(model, report_content)
+
     bullets = "\n".join(f"- {line.strip()}" for line in summary.split("\n") if line.strip())
     _prepend_md_section(config, iteration, "Summary", bullets or "_No summary._")
-
 
 def save_step_output(config, step_name, step_data, iteration):
     report_dir = config.reports_dir / config.agent_id
     report_dir.mkdir(parents=True, exist_ok=True)
 
-    # TXT
-    txt_path = report_dir / f"run_report_iter_{iteration}.txt"
-    with open(txt_path, "a") as f:
-        f.write(f"[{step_name.upper()}]\n")
-        for k, v in step_data.model_dump().items():
-            f.write(f"{k}: {wrap_text(v)}\n")
-        f.write("\n")
-
-    # MD
+    # MD report
     _md_header_if_missing(config, iteration)
     dump = step_data.model_dump()
 
@@ -155,7 +144,6 @@ def save_step_output(config, step_name, step_data, iteration):
     ]
     is_skipped = bool(text_values) and all("skipped" in v for v in text_values)
     if is_skipped:
-        # Do not include an empty Data exploration placeholder section
         if step_name.replace("_", "").lower() == "dataexploration":
             return
 
@@ -171,7 +159,6 @@ def save_step_output(config, step_name, step_data, iteration):
     for k, v in dump.items():
         if k == "files_created":
             continue
-        # Do not show unresolved issues section/field
         if k == "unresolved_issues":
             continue
 
@@ -191,18 +178,10 @@ def save_step_output(config, step_name, step_data, iteration):
         "\n".join(body).strip(),
     )
 
-
 # Metrics
 def add_metrics_to_report(config, iteration, metrics_dict):
     report_dir = config.reports_dir / config.agent_id
     report_dir.mkdir(parents=True, exist_ok=True)
-
-    txt_path = report_dir / f"run_report_iter_{iteration}.txt"
-    with open(txt_path, "a") as f:
-        f.write("[METRICS]\n")
-        for k, v in metrics_dict.items():
-            f.write(f"{k}: {v}\n")
-        f.write("\n")
 
     _md_header_if_missing(config, iteration)
     lines = [f"- **{k}**: {v}" for k, v in metrics_dict.items()]
@@ -220,9 +199,6 @@ def add_final_test_metrics_to_best_report(config):
         return
 
     test_metrics = test_metrics_path.read_text().strip()
-
-    txt_path = config.reports_dir / config.agent_id / f"run_report_iter_{best_iter}.txt"
-    txt_path.write_text(txt_path.read_text() + f"\n[Test Metrics]\n{test_metrics}\n")
 
     _md_header_if_missing(config, best_iter)
     _append_md_section(config, best_iter, "Test metrics", f"```\n{test_metrics}\n```")

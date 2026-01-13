@@ -66,6 +66,7 @@ class OpenRouterProvider(Provider):
             "ibm-granite/granite-4.0-h-micro",
             "baidu/ernie-4.5-21b-a3b",
             "perplexity/sonar-pro-search",
+            "meituan/longcat-flash-chat",
             ]
         filtered = []
         for model in models:
