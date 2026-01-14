@@ -69,7 +69,7 @@ write_outputs_readme() {
         best_iter="$(cat "${out_dir}/best_run_files/iteration_number.txt" | tr -d '[:space:]')"
         [[ -z "$best_iter" ]] && best_iter="UNKNOWN"
     fi
-    cat > "${out_dir}/README.md" << 'EOF'
+    cat > "${out_dir}/README.md" << EOF
 
 This directory contains the full results of one run (**AGENT_ID: ${agent_id}**).
 It includes: (1) the **best model/run chosen across iterations**, (2) per-iteration run artifacts,
@@ -79,7 +79,7 @@ It includes: (1) the **best model/run chosen across iterations**, (2) per-iterat
 
 **Best iteration selected:** **${best_iter}**
 
-**Note:** Iterations are **0-indexed** (first iteration is `0`).
+**Note:** Iterations are **0-indexed** (first iteration is \`0\`).
 
 The best iteration number is stored in:
 - \`best_run_files/iteration_number.txt\`
