@@ -109,7 +109,11 @@ async def generate_summary(model, report_content):
         model_settings=None,
         model_request_parameters=ModelRequestParameters(allow_text_output=True),
     )
-    return response.parts[0].content
+
+    text = response.text
+    if text:
+        return text.strip()
+    return "No summary available"
 
 async def add_summary_to_report(model, config, iteration):
     _md_header_if_missing(config, iteration)
