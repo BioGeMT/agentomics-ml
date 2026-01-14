@@ -69,7 +69,7 @@ write_outputs_readme() {
         best_iter="$(cat "${out_dir}/best_run_files/iteration_number.txt" | tr -d '[:space:]')"
         [[ -z "$best_iter" ]] && best_iter="UNKNOWN"
     fi
-    cat > "${out_dir}/README.md" << EOF
+    cat > "${out_dir}/README.md" << 'EOF'
 
 This directory contains the full results of one run (**AGENT_ID: ${agent_id}**).
 It includes: (1) the **best model/run chosen across iterations**, (2) per-iteration run artifacts,
@@ -118,6 +118,13 @@ outputs/${agent_id}/
 │   ├── run_report_iter_1.md
 │   └── ...
 │
+├── pdf_reports/                    # PDF reports + plots per iteration (auto-generated)
+│   ├── iteration_0.pdf
+│   ├── iteration_1.pdf
+│   └── ...
+│   └── plots/
+│       └── iter_<i>_<split>_*.png
+│
 ├── extras/                         # Logs and debugging information
 │   ├── run_logs/
 │   └── test_logs/
@@ -125,14 +132,6 @@ outputs/${agent_id}/
 └── README.md                       # This file
 \`\`\`
 ---
-
-## Creating structured PDF reports
-
-Run a helper for plot visualization of the results
-
-\`\`\`bash
-./generate_reports.sh <output_folder_name>
-\`\`\`
 
 ## Running inference on new data
 
@@ -484,6 +483,20 @@ else
         docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox cp -r /source/reports/${AGENT_ID}/. /dest/reports/
 
         docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox cp -r /source/extras/. /dest/extras/
+
+        # Matplotlib warning fix: make config/cache writable in container
+        MPLCONFIGDIR_IN_CONTAINER="/tmp/mplconfig"
+
+        docker run --rm \
+          -u "$(id -u):$(id -g)" \
+          -e MPLCONFIGDIR="$MPLCONFIGDIR_IN_CONTAINER" \
+          -v "$(pwd)":/repository \
+          -v "$(pwd)/outputs/${AGENT_ID}":/agent_out \
+          --entrypoint /opt/conda/envs/agentomics-env/bin/python \
+          agentomics_img /repository/src/generate_final_reports.py \
+            --agent-dir /agent_out
+
+        echo "PDF reports ready at: outputs/${AGENT_ID}/pdf_reports/"
 
         if [ "$USE_PROVISIONING_KEY" = true ]; then
             echo "Logging costs and cleaning up temporary API key"

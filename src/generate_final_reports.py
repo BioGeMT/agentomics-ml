@@ -243,7 +243,6 @@ def load_prepared_dataset_meta(agent_dir: Path) -> DatasetMeta:
     dataset = cfg.get("dataset")
     if not dataset:
         raise SystemExit("config.json missing required key: 'dataset'")
-    # Script is <repo_root>/src/generate_final_reports.py
     repo_root = Path(__file__).resolve().parents[1]
     meta_path = repo_root / "prepared_datasets" / str(dataset) / "metadata.json"
     if not meta_path.exists():
@@ -864,7 +863,7 @@ def main() -> None:
     if not iterations:
         raise SystemExit("No iteration folders found under run_files/iteration_*")
 
-    out_dir = agent_dir / "final_reports"
+    out_dir = agent_dir / "pdf_reports"
     plots_dir = out_dir / "plots"
     ensure_dir(out_dir)
     ensure_dir(plots_dir)
@@ -899,8 +898,8 @@ def main() -> None:
             plot_groups=plot_groups,
             split_order=split_order,
         )
-        print(f"Wrote: {out_pdf}")
-    print(f"\nDone.\nPDFs: {out_dir}\nPlots: {plots_dir}\n")
+        #print(f"Wrote: {out_pdf}")
+    #print(f"\nDone.\nPDFs: {out_dir}\nPlots: {plots_dir}\n")
 
 if __name__ == "__main__":
     main()
