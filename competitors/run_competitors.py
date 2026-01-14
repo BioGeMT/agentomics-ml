@@ -113,7 +113,8 @@ def run_agent(config: dict, agent: str, dataset: str, cpu_only: bool = False) ->
         duration_seconds = time.time() - start_time
 
         if result.returncode != 0:
-            raise RuntimeError(f"Agent {agent} failed on dataset {dataset} with exit code {result.returncode}")
+            print("Zero-shot agent failed")
+            return None, False
 
         (output_subdir / "duration.json").write_text(json.dumps({"duration_seconds": duration_seconds}, indent=2))
 
@@ -121,7 +122,7 @@ def run_agent(config: dict, agent: str, dataset: str, cpu_only: bool = False) ->
             usage_data = get_api_key_usage(key_hash)
             (output_subdir / "cost.json").write_text(json.dumps({"cost_usd": usage_data['usage']}, indent=2))
 
-        return copy_run_artifacts(agent, dataset, output_subdir)
+        return copy_run_artifacts(agent, dataset, output_subdir), True
 
     finally:
         # ALWAYS cleanup the provisioned key, even on failure
@@ -183,69 +184,97 @@ def main() -> int:
     for dataset, agent in iterate_targets(config, args):
         console.rule(f"{agent} on {dataset}")
         try:
-            artifact_dir = run_agent(config, agent, dataset, cpu_only=args.cpu_only)
-            output_subdir = artifact_dir.parent  # Use timestamped directory
+            artifact_dir, success = run_agent(config, agent, dataset, cpu_only=args.cpu_only)
 
-            metrics, task_type = evaluate_classification_submission(
-                dataset=dataset,
-                artifact_root=artifact_dir,
-                data_dir=DATA_DIR,
-                output_dir=output_subdir,
-            )
+            if success: 
+                output_subdir = artifact_dir.parent  # Use timestamped directory
 
-            inference_stage = rerun_inference(
-                dataset=dataset,
-                artifact_root=artifact_dir,
-                data_dir=DATA_DIR,
-                output_dir=output_subdir,
-                agent=agent,
-            )
-            (output_subdir / "inference_stage.json").write_text(
-                json.dumps(
-                    {
-                        "inference_stage": inference_stage,
-                        "inference_stage_id": INFERENCE_STAGE[inference_stage],
-                    },
-                    indent=2,
+                metrics, task_type = evaluate_classification_submission(
+                    dataset=dataset,
+                    artifact_root=artifact_dir,
+                    data_dir=DATA_DIR,
+                    output_dir=output_subdir,
                 )
-            )
 
-            # Load cost data if available
-            cost_file = artifact_dir.parent / "cost.json"
-            cost_usd = None
-            if cost_file.exists():
-                cost_data = json.loads(cost_file.read_text())
-                cost_usd = cost_data.get("cost_usd")
+                inference_stage = rerun_inference(
+                    dataset=dataset,
+                    artifact_root=artifact_dir,
+                    data_dir=DATA_DIR,
+                    output_dir=output_subdir,
+                    agent=agent,
+                )
+                (output_subdir / "inference_stage.json").write_text(
+                    json.dumps(
+                        {
+                            "inference_stage": inference_stage,
+                            "inference_stage_id": INFERENCE_STAGE[inference_stage],
+                        },
+                        indent=2,
+                    )
+                )
 
-            duration_file = artifact_dir.parent / "duration.json"
-            duration_seconds = None
-            if duration_file.exists():
-                duration_data = json.loads(duration_file.read_text())
-                duration_seconds = duration_data.get("duration_seconds")
+                # Load cost data if available
+                cost_file = artifact_dir.parent / "cost.json"
+                cost_usd = None
+                if cost_file.exists():
+                    cost_data = json.loads(cost_file.read_text())
+                    cost_usd = cost_data.get("cost_usd")
 
-            wandb.init(
-                project=os.environ["WANDB_PROJECT_NAME"],
-                entity=os.environ["WANDB_ENTITY"],
-                name=f"{dataset}-{agent}-{json.loads((artifact_dir / 'metadata.json').read_text())['created_at']}",
-                config={
-                    "dataset": dataset,
-                    "agent": agent,
-                    "task_type": task_type,
-                    "model": config["agents"][agent]["model"],
-                },
-            )
-            payload = {name: float(value) for name, value in metrics.items()}
-            payload["inference_stage_id"] = INFERENCE_STAGE[inference_stage]
-            if cost_usd is not None:
-                payload["cost_usd"] = cost_usd
-            if duration_seconds is not None:
-                payload["duration_seconds"] = duration_seconds
-            wandb.log(payload)
-            wandb.finish()
+                duration_file = artifact_dir.parent / "duration.json"
+                duration_seconds = None
+                if duration_file.exists():
+                    duration_data = json.loads(duration_file.read_text())
+                    duration_seconds = duration_data.get("duration_seconds")
 
-            console.print(f"Metrics: {json.dumps(metrics, indent=2)}")
-            console.print(f"Inference stage: {inference_stage}")
-            summary.append((dataset, agent, highlight_metric(metrics, task_type)))
+                wandb.init(
+                    project=os.environ["WANDB_PROJECT_NAME"],
+                    entity=os.environ["WANDB_ENTITY"],
+                    name=f"{dataset}-{agent}-{json.loads((artifact_dir / 'metadata.json').read_text())['created_at']}",
+                    config={
+                        "dataset": dataset,
+                        "agent": agent,
+                        "task_type": task_type,
+                        "model": config["agents"][agent]["model"],
+                    },
+                    tags=["ismb2026_zeroshot_v1"]
+                )
+                payload = {name: float(value) for name, value in metrics.items()}
+                payload["inference_stage_id"] = INFERENCE_STAGE[inference_stage]
+                if cost_usd is not None:
+                    payload["cost_usd"] = cost_usd
+                if duration_seconds is not None:
+                    payload["duration_seconds"] = duration_seconds
+                wandb.log(payload)
+                wandb.finish()
+
+                console.print(f"Metrics: {json.dumps(metrics, indent=2)}")
+                console.print(f"Inference stage: {inference_stage}")
+                summary.append((dataset, agent, highlight_metric(metrics, task_type)))
+            else:
+                wandb.init(
+                    project=os.environ["WANDB_PROJECT_NAME"],
+                    entity=os.environ["WANDB_ENTITY"],
+                    name=f"{dataset}-{agent}-{time.strftime('%Y-%m-%dT%H-%M-%S-%Z', time.gmtime())}",
+                    config={
+                        "dataset": dataset,
+                        "agent": agent,
+                        "task_type": "classification",
+                        "model": config["agents"][agent]["model"],
+                    },
+                    tags=["ismb2026_zeroshot_v1"]
+                )
+                failure_metrics = {
+                    "ACC": -1,
+                    "AUPRC": -1,
+                    "AUROC": -1,
+                    "F1": -1,
+                    "LOG_LOSS": -1,
+                    "MCC": -1,
+                }
+
+                payload = {name: float(value) for name, value in failure_metrics.items()}
+                wandb.log(payload)
+                wandb.finish()
         except Exception as e:
             console.print(f"[red]FAILED: {e}[/red]")
             summary.append((dataset, agent, f"FAILED: {str(e)}"))
