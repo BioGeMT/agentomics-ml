@@ -1,6 +1,7 @@
 import argparse
 import sys
 import asyncio
+import os
 from pathlib import Path
 from rich.console import Console
 from rich.panel import Panel
@@ -69,12 +70,13 @@ def main():
 
     repository_dir = Path(__file__).parent.parent.resolve()
     repository_parent_dir = repository_dir.parent.resolve()
+    workspace_dir = Path(os.environ.get("AGENTOMICS_WORKSPACE_DIR", str(repository_parent_dir / "workspace"))).resolve()
     paths = {
         "datasets_dir": str(repository_dir / "datasets"),
         "prepared_datasets_dir": str(repository_dir / "prepared_datasets"),
         "prepared_test_sets_dir": str(repository_dir / "prepared_test_sets"),
-        "workspace_dir": str(repository_parent_dir / "workspace"), 
-        "agent_datasets_dir": str(repository_parent_dir / "workspace" / "datasets")
+        "workspace_dir": str(workspace_dir),
+        "agent_datasets_dir": str(workspace_dir / "datasets")
     }
 
     api_key, provider_name = get_provider_and_api_key()

@@ -45,7 +45,7 @@ Operational Flags:
   --ollama            Enable support for an Ollama server running on the host machine.
   --pull-images       Pull prebuilt Docker images from Docker Hub instead of building locally (uses biogemt images).
   --foundation-model-type <dna|rna|molecule|protein|all>
-                      Enable foundation models of a specific type (Docker only). Use 'all' to download all types. When omitted, no foundation models are used or pre-downloaded.
+                      Enable foundation models of a specific type. Use 'all' to download all types. When omitted, no foundation models are used or pre-downloaded.
   --use-provisioning-key  Use OpenRouter provisioning key to create temporary API key and log costs.
   --spend-limit <N>   Only applies when --use-provisioning-key is passed. Spend limit for a temporary key (default: 10).
   --tags              (Optional) Space separated tags for Weights and Biases logging.
@@ -278,8 +278,37 @@ while [[ $# -gt 0 ]]; do
 done
 
 IS_INTERACTIVE_RUN=false
-if [[ -t 0 && ${#AGENTOMICS_ARGS[@]} -eq 0 && "$LOCAL_MODE" = false && "$TEST_MODE" = false ]]; then
+if [[ -t 0 && ${#AGENTOMICS_ARGS[@]} -eq 0 && "$TEST_MODE" = false ]]; then
     IS_INTERACTIVE_RUN=true
+fi
+
+if [ -n "$FOUNDATION_MODEL_TYPE" ] && [[ "$FOUNDATION_MODEL_TYPE" != "dna" && "$FOUNDATION_MODEL_TYPE" != "rna" && "$FOUNDATION_MODEL_TYPE" != "molecule" && "$FOUNDATION_MODEL_TYPE" != "protein" && "$FOUNDATION_MODEL_TYPE" != "all" ]]; then
+    echo -e "${RED}Error: Invalid --foundation-model-type '$FOUNDATION_MODEL_TYPE'. Allowed: dna, rna, molecule, protein, all.${NOCOLOR}" >&2
+    exit 1
+fi
+
+if [[ "$IS_INTERACTIVE_RUN" = true && -z "$FOUNDATION_MODEL_TYPE" ]]; then
+    echo ""
+    echo "Foundation models (optional)"
+    echo "Select which foundation model type should be pre-downloaded and made available to the agent:"
+    echo "  1) none"
+    echo "  2) DNA"
+    echo "  3) RNA"
+    echo "  4) Molecule"
+    echo "  5) Protein"
+    echo "  6) All"
+    echo ""
+    read -r -p "Enter choice [1]: " fm_choice
+    fm_choice="${fm_choice:-1}"
+    case "$fm_choice" in
+        1) FOUNDATION_MODEL_TYPE="";;
+        2) FOUNDATION_MODEL_TYPE="dna";;
+        3) FOUNDATION_MODEL_TYPE="rna";;
+        4) FOUNDATION_MODEL_TYPE="molecule";;
+        5) FOUNDATION_MODEL_TYPE="protein";;
+        6) FOUNDATION_MODEL_TYPE="all";;
+        *) echo -e "${RED}Error: Invalid choice.${NOCOLOR}" >&2; exit 1;;
+    esac
 fi
 
 if [ "$LOCAL_MODE" = true ]; then
@@ -294,6 +323,21 @@ if [ "$LOCAL_MODE" = true ]; then
         fi
     fi
 
+    WORKSPACE_DIR="$(pwd)/workspace"
+    export AGENTOMICS_WORKSPACE_DIR="$WORKSPACE_DIR"
+    export FOUNDATION_MODELS_YAML="$(pwd)/foundation_models/models.yaml"
+    mkdir -p "$WORKSPACE_DIR"
+
+    if [ "$CPU_ONLY" = true ]; then
+        export CUDA_VISIBLE_DEVICES=""
+    fi
+
+    if [ -n "$FOUNDATION_MODEL_TYPE" ]; then
+        export FOUNDATION_MODEL_TYPE="$FOUNDATION_MODEL_TYPE"
+        export HF_HOME="$WORKSPACE_DIR/foundation_models"
+        mkdir -p "$HF_HOME"
+    fi
+
     echo -e "${RED}Running in local mode - this is only recommended if you run in a non-vulnerable environment!${NOCOLOR}"
     echo "For Docker mode (secure run), re-run without the --local flag."
     
@@ -306,6 +350,37 @@ if [ "$LOCAL_MODE" = true ]; then
 
     if ! conda env list | grep -q "agentomics-env"; then
         conda env create -f environment.yaml -q
+    fi
+
+    if ! conda env list | grep -q "^agent_start_env "; then
+        conda env create -f environment_agent.yaml -q
+    fi
+    START_ENV_PKG_PATH="$WORKSPACE_DIR/agent_start_env.tar"
+    if [[ ! -f "$START_ENV_PKG_PATH" ]]; then
+        if [[ -f "$WORKSPACE_DIR/agent_start_env.tar.gz" ]]; then
+            START_ENV_PKG_PATH="$WORKSPACE_DIR/agent_start_env.tar.gz"
+        else
+            echo "Packing agent start environment to ${START_ENV_PKG_PATH}"
+            conda run -n agent_start_env conda-pack --format tar -o "$START_ENV_PKG_PATH"
+        fi
+    fi
+    export START_ENV_PKG="$START_ENV_PKG_PATH"
+
+    if [ -n "$FOUNDATION_MODEL_TYPE" ]; then
+        FOUNDATION_MODELS_MARKER="$HF_HOME/.downloaded_${FOUNDATION_MODEL_TYPE}"
+        if [[ ! -f "$FOUNDATION_MODELS_MARKER" ]]; then
+            conda run -n agentomics-env python src/utils/download_foundation_models.py
+            touch "$FOUNDATION_MODELS_MARKER"
+        fi
+    fi
+
+    TEMP_API_KEY_HASH=""
+    if [ "$USE_PROVISIONING_KEY" = true ]; then
+        echo "Creating temporary API key with spend limit: $SPEND_LIMIT"
+        API_KEY_OUTPUT=$(PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys_utils.py create --name "agentomics_run_$(date +%s)" --limit "$SPEND_LIMIT")
+        TEMP_API_KEY=$(echo "$API_KEY_OUTPUT" | cut -d',' -f1)
+        TEMP_API_KEY_HASH=$(echo "$API_KEY_OUTPUT" | cut -d',' -f2)
+        export OPENROUTER_API_KEY="$TEMP_API_KEY"
     fi
 
     eval "$(conda shell.bash hook)"
@@ -333,13 +408,34 @@ if [ "$LOCAL_MODE" = true ]; then
         exit 0
     fi
 
-    export PYTHONPATH=./src
-    python src/run_logging/evaluate_log_test.py --workspace-dir ../workspace
+    ARTIFACT_PATH="${WORKSPACE_DIR}/snapshots/${AGENT_ID}"
+    if [[ ! -d "$ARTIFACT_PATH" ]]; then
+        echo -e "${RED}Agent didn't produce any valid model, skipping testing evaluation.${NOCOLOR}" >&2
+        exit 1
+    fi
+    if [[ ! -f "${ARTIFACT_PATH}/config.json" ]]; then
+        echo -e "${RED}Snapshot config not found: ${ARTIFACT_PATH}/config.json${NOCOLOR}" >&2
+        exit 1
+    fi
 
-    mkdir -p outputs/${AGENT_ID}/best_run_files outputs/${AGENT_ID}/reports
-    cp -r ../workspace/snapshots/${AGENT_ID}/. outputs/${AGENT_ID}/best_run_files/
-    cp -r ../workspace/reports/${AGENT_ID}/. outputs/${AGENT_ID}/reports/
+    export PYTHONPATH=./src
+    python src/run_logging/evaluate_log_test.py --workspace-dir "$WORKSPACE_DIR" --agent-id "$AGENT_ID"
+
+    mkdir -p outputs/${AGENT_ID}/best_run_files outputs/${AGENT_ID}/reports outputs/${AGENT_ID}/run_files outputs/${AGENT_ID}/extras
+    cp -r "${WORKSPACE_DIR}/snapshots/${AGENT_ID}/." outputs/${AGENT_ID}/best_run_files/
+    cp -r "${WORKSPACE_DIR}/runs/${AGENT_ID}/." outputs/${AGENT_ID}/run_files/
+    cp -r "${WORKSPACE_DIR}/reports/${AGENT_ID}/." outputs/${AGENT_ID}/reports/
+    cp -r "${WORKSPACE_DIR}/extras/." outputs/${AGENT_ID}/extras/
+
+    if [ "$USE_PROVISIONING_KEY" = true ]; then
+        echo "Logging costs and cleaning up temporary API key"
+        CONFIG_PATH="outputs/${AGENT_ID}/best_run_files/config.json"
+        PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys_utils.py cleanup-and-log --config-path "$CONFIG_PATH" --api-key-hash "$TEMP_API_KEY_HASH"
+    fi
+
     write_outputs_readme "${AGENT_ID}"
+    echo -e "${GREEN}Run finished. Report and files can be found in outputs/${AGENT_ID}${NOCOLOR}"
+    echo -e "${GREEN}To run inference on new data, use ./inference.sh --agent-dir outputs/${AGENT_ID} --input <path_to_input_csv> --output <path_to_output_csv>${NOCOLOR}"
 else
     need_cmd docker
     if ! docker info >/dev/null 2>&1; then
@@ -363,35 +459,6 @@ else
         case "$images_choice" in
             1) PULL_IMAGES=false;;
             2) PULL_IMAGES=true;;
-            *) echo -e "${RED}Error: Invalid choice.${NOCOLOR}" >&2; exit 1;;
-        esac
-    fi
-
-    if [ -n "$FOUNDATION_MODEL_TYPE" ] && [[ "$FOUNDATION_MODEL_TYPE" != "dna" && "$FOUNDATION_MODEL_TYPE" != "rna" && "$FOUNDATION_MODEL_TYPE" != "molecule" && "$FOUNDATION_MODEL_TYPE" != "protein" && "$FOUNDATION_MODEL_TYPE" != "all" ]]; then
-        echo -e "${RED}Error: Invalid --foundation-model-type '$FOUNDATION_MODEL_TYPE'. Allowed: dna, rna, molecule, protein, all.${NOCOLOR}" >&2
-        exit 1
-    fi
-
-    if [[ "$IS_INTERACTIVE_RUN" = true && -z "$FOUNDATION_MODEL_TYPE" ]]; then
-        echo ""
-        echo "Foundation models (optional)"
-        echo "Select which foundation model type should be pre-downloaded and made available to the agent:"
-        echo "  1) none"
-        echo "  2) DNA"
-        echo "  3) RNA"
-        echo "  4) Molecule"
-        echo "  5) Protein"
-        echo "  6) All"
-        echo ""
-        read -r -p "Enter choice [1]: " fm_choice
-        fm_choice="${fm_choice:-1}"
-        case "$fm_choice" in
-            1) FOUNDATION_MODEL_TYPE="";;
-            2) FOUNDATION_MODEL_TYPE="dna";;
-            3) FOUNDATION_MODEL_TYPE="rna";;
-            4) FOUNDATION_MODEL_TYPE="molecule";;
-            5) FOUNDATION_MODEL_TYPE="protein";;
-            6) FOUNDATION_MODEL_TYPE="all";;
             *) echo -e "${RED}Error: Invalid choice.${NOCOLOR}" >&2; exit 1;;
         esac
     fi
@@ -545,6 +612,12 @@ else
             docker volume rm temp_agentomics_volume_${AGENT_ID} || true
             exit 1
         fi
+        if ! docker run --rm -v temp_agentomics_volume_${AGENT_ID}:/workspace busybox test -f ${ARTIFACT_PATH}/config.json; then
+            echo -e "${RED}Snapshot config not found: ${ARTIFACT_PATH}/config.json${NOCOLOR}" >&2
+
+            docker volume rm temp_agentomics_volume_${AGENT_ID} || true
+            exit 1
+        fi
 
         echo "Running final evaluation on test set"
         docker run \
@@ -561,7 +634,7 @@ else
             -v "$(pwd)/prepared_test_sets":/repository/prepared_test_sets:ro \
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
             --entrypoint /opt/conda/envs/agentomics-env/bin/python \
-            "$AGENTOMICS_IMAGE" src/run_logging/evaluate_log_test.py
+            "$AGENTOMICS_IMAGE" src/run_logging/evaluate_log_test.py --agent-id "${AGENT_ID}"
 
         mkdir -p outputs/${AGENT_ID}/best_run_files outputs/${AGENT_ID}/reports outputs/${AGENT_ID}/run_files outputs/${AGENT_ID}/extras
 

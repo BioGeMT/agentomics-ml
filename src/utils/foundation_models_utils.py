@@ -3,14 +3,23 @@ import yaml
 from pathlib import Path
 
 BASE_DIR = os.environ.get('HF_HOME', '/cache/foundation_models')
-MODELS_YAML = os.path.join('/foundation_models', 'models.yaml')
+MODELS_YAML = os.environ.get('FOUNDATION_MODELS_YAML', os.path.join('/foundation_models', 'models.yaml'))
 FOUNDATION_MODEL_TYPE_ENV = "FOUNDATION_MODEL_TYPE"
 
 def load_models_config():
-    if not Path(MODELS_YAML).exists():
+    models_path = Path(MODELS_YAML)
+    if not models_path.exists():
         return None
-    with open(MODELS_YAML, 'r') as f:
-        return yaml.safe_load(f)
+    with open(models_path, 'r') as f:
+        config = yaml.safe_load(f)
+    if not config:
+        return config
+    base_dir = models_path.parent
+    for meta in config.values():
+        path_to_info = meta.get("path_to_info")
+        if path_to_info and not Path(path_to_info).is_absolute():
+            meta["path_to_info"] = str(base_dir / path_to_info)
+    return config
 
 def build_foundation_model_catalog():
     """

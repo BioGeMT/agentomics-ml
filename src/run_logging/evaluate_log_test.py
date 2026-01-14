@@ -9,12 +9,12 @@ from run_logging.logging_helpers import log_inference_stage_and_metrics, log_tes
 from run_logging.wandb_setup import resume_wandb_run
 from utils.snapshots import replace_python_paths
 
-def run_test_evaluation(workspace_dir):
+def run_test_evaluation(workspace_dir, agent_id=None):
     start = time.time()
     print("\nRunning final test evaluation...")
     config = None
     try:
-        config = load_run_config(snapshots_dir = Path(workspace_dir) / 'snapshots')
+        config = load_run_config(snapshots_dir=Path(workspace_dir) / 'snapshots', agent_id=agent_id)
         resume_wandb_run(config)
         run_inference_and_log(config, iteration=None, evaluation_stage='test', use_best_snapshot=True)
     except Exception as e:
@@ -25,11 +25,15 @@ def run_test_evaluation(workspace_dir):
             log_inference_stage_and_metrics(1, task_type='classification') #fallback
     log_test_inference_duration(time.time() - start)
 
-def load_run_config(snapshots_dir):
-    subdirs = [d for d in snapshots_dir.iterdir() if d.is_dir()]
-    assert len(subdirs) > 0, 'No snapshot folder found'
-    assert len(subdirs) == 1, f'Expected 1 snapshot folder, found {len(subdirs)}'
-    snapshot_dir = subdirs[0]
+def load_run_config(snapshots_dir, agent_id=None):
+    if agent_id:
+        snapshot_dir = snapshots_dir / agent_id
+        assert snapshot_dir.is_dir(), f"Snapshot folder not found: {snapshot_dir}"
+    else:
+        subdirs = [d for d in snapshots_dir.iterdir() if d.is_dir()]
+        assert len(subdirs) > 0, 'No snapshot folder found'
+        assert len(subdirs) == 1, f'Expected 1 snapshot folder, found {len(subdirs)}'
+        snapshot_dir = subdirs[0]
     config_path = snapshot_dir.resolve() / "config.json"
     with open(config_path, 'r') as f:
         config_dict = json.load(f)
@@ -57,9 +61,10 @@ def load_run_config(snapshots_dir):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--workspace-dir', type=Path, default=Path('/workspace').resolve(), help='Path to workspace directory')
+    parser.add_argument('--agent-id', type=str, help='Agent id for snapshot selection')
     args = parser.parse_args()
 
-    run_test_evaluation(args.workspace_dir)
+    run_test_evaluation(args.workspace_dir, agent_id=args.agent_id)
 
 if __name__ == "__main__":
     main()
