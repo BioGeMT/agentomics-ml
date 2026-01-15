@@ -180,16 +180,18 @@ def purge_conda_from_all_iteration_folders(config):
             if conda_env.exists():
                 shutil.rmtree(conda_env)
 
-def delete_metrics_from_iteration_dir(config, iteration):
+def move_metrics_files_to_extras(config, iteration):
     run_dir = config.runs_dir / config.agent_id
     iteration_dir = run_dir / f"iteration_{iteration}"
     train_metrics_path = iteration_dir / "train_metrics.txt"
     validation_metrics_path = iteration_dir / "validation_metrics.txt"
 
+    config.extras_dir.mkdir(parents=True, exist_ok=True)
+    
     if train_metrics_path.exists():
-        train_metrics_path.unlink()
+        shutil.move(str(train_metrics_path), str(config.extras_dir / f"train_metrics_iter_{iteration}.txt"))
     if validation_metrics_path.exists():
-        validation_metrics_path.unlink()
+        shutil.move(str(validation_metrics_path), str(config.extras_dir / f"validation_metrics_iter_{iteration}.txt"))
 
 def populate_iteration_dir(config, run_index, is_best, structured_outputs):
     run_dir = config.runs_dir / config.agent_id
