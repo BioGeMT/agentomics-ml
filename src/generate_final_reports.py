@@ -282,22 +282,31 @@ def discover_iterations(agent_dir: Path) -> List[int]:
                     pass
     return sorted(set(iters))
 
-def gather_iteration_inputs(agent_dir: Path, iteration: int) -> IterationInputs:
+def gather_iteration_inputs(agent_dir: Path, prepared_datasets: Path, prepared_tests: Path, iteration: int) -> IterationInputs:
     reports_dir = agent_dir / "reports"
     run_files = agent_dir / "run_files"
     best = agent_dir / "best_run_files"
     iter_dir = run_files / f"iteration_{iteration}"
+    dataset_name = load_run_meta(agent_dir).dataset
 
     report_md = reports_dir / f"run_report_iter_{iteration}.md"
     if not report_md.exists():
         report_md = None
 
+    #TODO refactor? This might be taken from config if valid set provided instead of checking the paths
     train_csv = run_files / "train.csv"
-    val_csv = run_files / "validation.csv"
-    test_csv = run_files / "test.csv"
-
+    if not train_csv.exists():
+      train_csv = prepared_datasets / dataset_name / "train.csv"
     train_csv = train_csv if train_csv.exists() else None
+
+    val_csv = run_files / "validation.csv"
+    if not val_csv.exists():
+      val_csv = prepared_datasets / dataset_name / "validation.csv"
     val_csv = val_csv if val_csv.exists() else None
+
+    test_csv = run_files / "test.csv"
+    if not test_csv.exists():
+      test_csv = prepared_tests / dataset_name / "test.csv"
     test_csv = test_csv if test_csv.exists() else None
 
     train_preds = find_first([iter_dir / "eval_predictions_train.csv"])
@@ -847,11 +856,16 @@ def main() -> None:
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--agent-dir", type=Path, required=True, help="Path to outputs/<agent_id>")
+    ap.add_argument("--prepared-datasets", type=Path, required=True, help="Path to prepared_datasets/ directory")
+    ap.add_argument("--prepared-tests", type=Path, required=True, help="Path to prepared_tests/ directory")
     args = ap.parse_args()
 
     agent_dir: Path = args.agent_dir.resolve()
     if not agent_dir.exists():
         raise SystemExit(f"Agent dir not found: {agent_dir}")
+
+    prepared_datasets: Path = args.prepared_datasets.resolve()
+    prepared_tests: Path = args.prepared_tests.resolve()
 
     run_meta = load_run_meta(agent_dir)
     dataset_meta = load_prepared_dataset_meta(agent_dir)
@@ -870,7 +884,7 @@ def main() -> None:
     split_order = ["train", "validation", "test"]
 
     for it in iterations:
-        inp = gather_iteration_inputs(agent_dir, it)
+        inp = gather_iteration_inputs(agent_dir, prepared_datasets, prepared_tests, it)
         report_text = inp.report_md.read_text(encoding="utf-8") if inp.report_md else None
 
         metrics_by_split: Dict[str, Dict[str, float]] = {
@@ -898,8 +912,6 @@ def main() -> None:
             plot_groups=plot_groups,
             split_order=split_order,
         )
-        #print(f"Wrote: {out_pdf}")
-    #print(f"\nDone.\nPDFs: {out_dir}\nPlots: {plots_dir}\n")
 
 if __name__ == "__main__":
     main()

@@ -494,7 +494,8 @@ else
           -v "$(pwd)/outputs/${AGENT_ID}":/agent_out \
           --entrypoint /opt/conda/envs/agentomics-env/bin/python \
           agentomics_img /repository/src/generate_final_reports.py \
-            --agent-dir /agent_out
+            --agent-dir /agent_out --prepared-datasets /repository/prepared_datasets \
+            --prepared-tests /repository/prepared_test_sets
 
         echo "PDF reports ready at: outputs/${AGENT_ID}/pdf_reports/"
 
