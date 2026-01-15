@@ -5,7 +5,6 @@ import datetime
 
 from pydantic_ai.messages import ModelRequest, SystemPromptPart, UserPromptPart
 from pydantic_ai.models import ModelRequestParameters
-from utils.snapshots import get_best_iteration
 
 # Utilities
 def clean_path(iteration, text: str, config=None) -> str:
@@ -183,19 +182,3 @@ def add_metrics_to_report(config, iteration, metrics_dict):
     _md_header_if_missing(config, iteration)
     lines = [f"- **{k}**: {v}" for k, v in metrics_dict.items()]
     _append_md_section(config, iteration, "Metrics", "\n".join(lines) or "_No metrics._")
-
-
-# Final test metrics (best iteration only)
-def add_final_test_metrics_to_best_report(config):
-    best_iter = get_best_iteration(config)
-    if best_iter is None:
-        return
-
-    test_metrics_path = Path(config.runs_dir) / config.agent_id / "test_metrics.txt"
-    if not test_metrics_path.exists():
-        return
-
-    test_metrics = test_metrics_path.read_text().strip()
-
-    _md_header_if_missing(config, best_iter)
-    _append_md_section(config, best_iter, "Test metrics", f"```\n{test_metrics}\n```")

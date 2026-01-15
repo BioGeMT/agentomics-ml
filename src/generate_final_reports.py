@@ -188,12 +188,6 @@ def apply_pub_style() -> None:
 def ensure_dir(p: Path) -> None:
     p.mkdir(parents=True, exist_ok=True)
 
-def find_first(paths: List[Path]) -> Optional[Path]:
-    for p in paths:
-        if p is not None and p.exists():
-            return p
-    return None
-
 def safe_read_csv(path: Optional[Path]) -> Optional[pd.DataFrame]:
     if not path or not path.exists():
         return None
@@ -282,11 +276,16 @@ def discover_iterations(agent_dir: Path) -> List[int]:
                     pass
     return sorted(set(iters))
 
+def get_best_iter_number(agent_dir: Path) -> int:
+    best_iter_dir_file = agent_dir / "best_run_files" / "iteration_number.txt"
+    best_iter_number = best_iter_dir_file.read_text().strip()
+    return int(best_iter_number)
+
 def gather_iteration_inputs(agent_dir: Path, prepared_datasets: Path, prepared_tests: Path, iteration: int) -> IterationInputs:
     reports_dir = agent_dir / "reports"
     run_files = agent_dir / "run_files"
-    best = agent_dir / "best_run_files"
     iter_dir = run_files / f"iteration_{iteration}"
+    extras_dir = agent_dir / "extras"
     dataset_name = load_run_meta(agent_dir).dataset
 
     report_md = reports_dir / f"run_report_iter_{iteration}.md"
@@ -309,22 +308,23 @@ def gather_iteration_inputs(agent_dir: Path, prepared_datasets: Path, prepared_t
       test_csv = prepared_tests / dataset_name / "test.csv"
     test_csv = test_csv if test_csv.exists() else None
 
-    train_preds = find_first([iter_dir / "eval_predictions_train.csv"])
-    val_preds = find_first([iter_dir / "eval_predictions_validation.csv", iter_dir / "val_predictions.csv"])
-    test_preds = find_first([iter_dir / "eval_predictions_test.csv"])
+    train_preds = iter_dir / "eval_predictions_train.csv"
+    val_preds = iter_dir / "eval_predictions_validation.csv"
+    test_preds = run_files / "eval_predictions_test.csv"
 
-    train_metrics_path = find_first([iter_dir / "train_metrics.txt", best / "train_metrics.txt"])
-    val_metrics_path = find_first([iter_dir / "validation_metrics.txt", best / "validation_metrics.txt"])
-    test_metrics_path = find_first([iter_dir / "test_metrics.txt", best / "test_metrics.txt"])
+    train_metrics_path = extras_dir / f"train_metrics_iter_{iteration}.txt"
+    val_metrics_path = extras_dir / f"validation_metrics_iter_{iteration}.txt"
+    test_metrics_path = run_files / "test_metrics.txt"
 
     splits: List[SplitArtifacts] = [
         SplitArtifacts("train", train_csv, train_preds, parse_metrics_txt(train_metrics_path)),
         SplitArtifacts("validation", val_csv, val_preds, parse_metrics_txt(val_metrics_path)),
     ]
 
-    test_metrics = parse_metrics_txt(test_metrics_path)
-    if (test_csv and test_csv.exists()) or (test_preds and test_preds.exists()) or bool(test_metrics):
-        splits.append(SplitArtifacts("test", test_csv, test_preds, test_metrics))
+    if iteration == get_best_iter_number(agent_dir):
+        test_metrics = parse_metrics_txt(test_metrics_path)
+        if (test_csv and test_csv.exists()) or (test_preds and test_preds.exists()) or bool(test_metrics):
+            splits.append(SplitArtifacts("test", test_csv, test_preds, test_metrics))
 
     return IterationInputs(iteration=iteration, report_md=report_md, splits=splits)
 
