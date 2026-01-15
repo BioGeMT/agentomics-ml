@@ -147,10 +147,8 @@ def main():
         help='Name of the run to process'
     )
     parser.add_argument(
-        '--base-path',
+        '--iters-path',
         type=str,
-        default='/SCRATCH/agentomics-ml/outputs',
-        help='Base path where run outputs are stored (default: /SCRATCH/agentomics-ml/outputs)'
     )
     parser.add_argument(
         '--output-path',
@@ -161,12 +159,21 @@ def main():
 
     args = parser.parse_args()
 
-    base_path = Path(args.base_path)
+    # base_path = Path(args.base_path)
     run_name = args.run_name
     output_path = Path(args.output_path)
 
-    run_out_dir = base_path / run_name
-    iters_dir = run_out_dir / 'run_files'
+    # run_out_dir = base_path / run_name
+    # iters_dir = run_out_dir / 'run_files'
+    iters_dir = Path(args.iters_path)
+    # if not any(d.is_dir() and d.name.startswith('iteration_') for d in iters_dir.iterdir()):
+        # iters_dir = run_out_dir / 'run_files' / run_name 
+
+    if not iters_dir.exists():
+        with open(output_path, 'w') as f:
+            f.write(f"Architecture Summary for Run: {run_name}\n\nError: iters path does not exist: {iters_dir}\n")
+        print(f"Architecture summary written to {output_path} (iters path not found)")
+        return
 
     iteration_dirs = sorted(
         [d for d in iters_dir.iterdir() if d.is_dir() and d.name.startswith('iteration_')],
@@ -198,3 +205,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+# python ./src/eval/arch_summary.py --run-name ferocious_lustre_carved --iters-path /SCRATCH/biomlbench/runs/2025-12-18T22-19-59-GMT_run-group_agentomics-ml/polarishub/tdcommons-herg_80a3b004-8436-49ff-bb1b-58e32cbe85a5/code/run_files/ferocious_lustre_carved --output-path archsumms/ferocious_lustre_carved.txt
+# /SCRATCH/biomlbench/runs/2025-12-18T22-19-59-GMT_run-group_agentomics-ml/polarishub/tdcommons-herg_80a3b004-8436-49ff-bb1b-58e32cbe85a5/code/run_files/ferocious_lustre_carved
