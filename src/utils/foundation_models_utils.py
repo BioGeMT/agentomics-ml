@@ -26,7 +26,7 @@ def build_foundation_model_catalog():
         return catalog
 
     for family_name, meta in models_config.items():
-        if meta.get("type") != enabled_type:
+        if enabled_type != "all" and meta.get("type") != enabled_type:
             continue
         catalog[family_name] = {
             "summary": meta.get("summary"),
@@ -54,7 +54,7 @@ def get_foundation_model_family_info(family):
     allowed_families = [
         family_name
         for family_name, meta in models_config.items()
-        if meta.get("type") == enabled_type
+        if enabled_type == "all" or meta.get("type") == enabled_type
     ]
     if family not in models_config.keys() or family not in allowed_families:
         return f"Family {family} not found. Available options: {allowed_families}."
