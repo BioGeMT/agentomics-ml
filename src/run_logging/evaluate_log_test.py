@@ -4,7 +4,6 @@ import argparse
 import time
 
 from utils.config import Config
-from utils.report_logger import add_final_test_metrics_to_best_report
 from run_logging.evaluate_log_run import run_inference_and_log
 from run_logging.logging_helpers import log_inference_stage_and_metrics, log_test_inference_duration
 from run_logging.wandb_setup import resume_wandb_run
@@ -18,7 +17,6 @@ def run_test_evaluation(workspace_dir):
         config = load_run_config(snapshots_dir = Path(workspace_dir) / 'snapshots')
         resume_wandb_run(config)
         run_inference_and_log(config, iteration=None, evaluation_stage='test', use_best_snapshot=True)
-        add_final_test_metrics_to_best_report(config)
     except Exception as e:
         print('FINAL TEST EVAL FAIL', str(e))
         if config is not None:
