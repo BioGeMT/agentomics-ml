@@ -357,12 +357,8 @@ if [ "$LOCAL_MODE" = true ]; then
     fi
     START_ENV_PKG_PATH="$WORKSPACE_DIR/agent_start_env.tar"
     if [[ ! -f "$START_ENV_PKG_PATH" ]]; then
-        if [[ -f "$WORKSPACE_DIR/agent_start_env.tar.gz" ]]; then
-            START_ENV_PKG_PATH="$WORKSPACE_DIR/agent_start_env.tar.gz"
-        else
-            echo "Packing agent start environment to ${START_ENV_PKG_PATH}"
-            conda run -n agent_start_env conda-pack --format tar -o "$START_ENV_PKG_PATH"
-        fi
+        echo "Packing agent start environment to ${START_ENV_PKG_PATH}"
+        conda run -n agent_start_env conda-pack --format tar -o "$START_ENV_PKG_PATH"
     fi
     export START_ENV_PKG="$START_ENV_PKG_PATH"
 
