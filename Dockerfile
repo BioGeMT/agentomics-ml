@@ -24,6 +24,8 @@ RUN conda init bash \
 # Pre-download foundation models
 RUN mkdir -p /foundation_models /cache/foundation_models
 ENV HF_HOME=/cache/foundation_models
+ARG FOUNDATION_MODEL_TYPE=
+ENV FOUNDATION_MODEL_TYPE=${FOUNDATION_MODEL_TYPE}
 COPY foundation_models/ /foundation_models/
 COPY src/utils/foundation_models_utils.py /repository/src/utils/foundation_models_utils.py
 COPY src/utils/download_foundation_models.py /repository/src/utils/download_foundation_models.py

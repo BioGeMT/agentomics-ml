@@ -1,4 +1,5 @@
 ESM-2:
+  type: protein
   models:
     - name: facebook/esm2_t6_8M_UR50D
       params: 8M
@@ -16,6 +17,7 @@ ESM-2:
   can_load_with_hf_automodel: true
 
 HyenaDNA:
+  type: dna
   models:
     - name: LongSafari/hyenadna-tiny-1k-seqlen-hf
       params: 1K
@@ -32,6 +34,7 @@ HyenaDNA:
   can_load_with_hf_automodel: true
 
 NucleotideTransformer:
+  type: dna
   models:
     - name: InstaDeepAI/nucleotide-transformer-500m-human-ref
       params: 500M
@@ -56,6 +59,7 @@ NucleotideTransformer:
   can_load_with_hf_automodel: false
 
 rinalmo:
+  type: rna
   models:
     - name: multimolecule/rinalmo-micro
       params: 33M
@@ -68,6 +72,7 @@ rinalmo:
   can_load_with_hf_automodel: true
 
 ChemBERTa:
+  type: molecule
   models:
     - name: DeepChem/ChemBERTa-100M-MLM
       params: 100M
@@ -88,6 +93,7 @@ ChemBERTa:
   can_load_with_hf_automodel: false
 
 MolFormerXL:
+  type: molecule
   models:
     - name: ibm-research/MoLFormer-XL-both-10pct
       params: 47M

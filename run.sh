@@ -14,6 +14,9 @@ MODEL_NAME=""
 DATASET_NAME=""
 VAL_METRIC=""
 LIST_MODE=false
+FOUNDATION_MODEL_TYPE=""
+PULL_IMAGES=false
+DOCKERHUB_USERNAME="biogemt"
 
 show_help() {
     cat << EOF
@@ -40,6 +43,9 @@ Operational Flags:
                       (Note: Only supported in Docker mode, not in local Conda mode.)
   --cpu-only          Force Docker/Conda to run using CPU only (skip GPU configuration).
   --ollama            Enable support for an Ollama server running on the host machine.
+  --pull-images       Pull prebuilt Docker images from Docker Hub instead of building locally (uses biogemt images).
+  --foundation-model-type <dna|rna|molecule|protein|all>
+                      Enable foundation models of a specific type (Docker only). Use 'all' to download all types. When omitted, no foundation models are used or pre-downloaded.
   --use-provisioning-key  Use OpenRouter provisioning key to create temporary API key and log costs.
   --spend-limit <N>   Only applies when --use-provisioning-key is passed. Spend limit for a temporary key (default: 10).
   --tags              (Optional) Space separated tags for Weights and Biases logging.
@@ -242,6 +248,15 @@ while [[ $# -gt 0 ]]; do
             SPEND_LIMIT="$2"
             shift 2
             ;;
+        --pull-images)
+            PULL_IMAGES=true
+            shift
+            ;;
+        --foundation-model-type)
+            require_opt_value "$1" "${2:-}"
+            FOUNDATION_MODEL_TYPE="$2"
+            shift 2
+            ;;
         --test)
             TEST_MODE=true
             shift
@@ -261,6 +276,11 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+IS_INTERACTIVE_RUN=false
+if [[ -t 0 && ${#AGENTOMICS_ARGS[@]} -eq 0 && "$LOCAL_MODE" = false && "$TEST_MODE" = false ]]; then
+    IS_INTERACTIVE_RUN=true
+fi
 
 if [ "$LOCAL_MODE" = true ]; then
     need_cmd conda
@@ -331,15 +351,84 @@ else
         fi
     fi
 
-    echo "Building the run image"
-    docker build -t agentomics_img -f Dockerfile .
-    echo "Build done"
-    AGENT_ID=$(docker run --rm -u $(id -u):$(id -g) -v "$(pwd)":/repository:ro --entrypoint \
-               /opt/conda/envs/agentomics-env/bin/python agentomics_img /repository/src/utils/create_user.py)
+    if [[ "$IS_INTERACTIVE_RUN" = true && "$PULL_IMAGES" = false ]]; then
+        echo ""
+        echo "Docker images"
+        echo "Select how to obtain Docker images:"
+        echo "  1) build locally"
+        echo "  2) pull prebuilt (biogemt)"
+        echo ""
+        read -r -p "Enter choice [2]: " images_choice
+        images_choice="${images_choice:-2}"
+        case "$images_choice" in
+            1) PULL_IMAGES=false;;
+            2) PULL_IMAGES=true;;
+            *) echo -e "${RED}Error: Invalid choice.${NOCOLOR}" >&2; exit 1;;
+        esac
+    fi
 
-    echo "Building the data preparation image"
-    docker build -t agentomics_prepare_img -f Dockerfile.prepare .
-    echo "Build done"
+    if [ -n "$FOUNDATION_MODEL_TYPE" ] && [[ "$FOUNDATION_MODEL_TYPE" != "dna" && "$FOUNDATION_MODEL_TYPE" != "rna" && "$FOUNDATION_MODEL_TYPE" != "molecule" && "$FOUNDATION_MODEL_TYPE" != "protein" && "$FOUNDATION_MODEL_TYPE" != "all" ]]; then
+        echo -e "${RED}Error: Invalid --foundation-model-type '$FOUNDATION_MODEL_TYPE'. Allowed: dna, rna, molecule, protein, all.${NOCOLOR}" >&2
+        exit 1
+    fi
+
+    if [[ "$IS_INTERACTIVE_RUN" = true && -z "$FOUNDATION_MODEL_TYPE" ]]; then
+        echo ""
+        echo "Foundation models (optional)"
+        echo "Select which foundation model type should be pre-downloaded and made available to the agent:"
+        echo "  1) none"
+        echo "  2) DNA"
+        echo "  3) RNA"
+        echo "  4) Molecule"
+        echo "  5) Protein"
+        echo "  6) All"
+        echo ""
+        read -r -p "Enter choice [1]: " fm_choice
+        fm_choice="${fm_choice:-1}"
+        case "$fm_choice" in
+            1) FOUNDATION_MODEL_TYPE="";;
+            2) FOUNDATION_MODEL_TYPE="dna";;
+            3) FOUNDATION_MODEL_TYPE="rna";;
+            4) FOUNDATION_MODEL_TYPE="molecule";;
+            5) FOUNDATION_MODEL_TYPE="protein";;
+            6) FOUNDATION_MODEL_TYPE="all";;
+            *) echo -e "${RED}Error: Invalid choice.${NOCOLOR}" >&2; exit 1;;
+        esac
+    fi
+
+    FOUNDATION_MODEL_FLAGS=()
+    DOCKER_BUILD_ARGS=()
+    if [ -n "$FOUNDATION_MODEL_TYPE" ]; then
+        DOCKER_BUILD_ARGS+=(--build-arg "FOUNDATION_MODEL_TYPE=$FOUNDATION_MODEL_TYPE")
+        FOUNDATION_MODEL_FLAGS+=(-e "FOUNDATION_MODEL_TYPE=$FOUNDATION_MODEL_TYPE")
+    fi
+
+    AGENTOMICS_IMAGE="agentomics_img"
+    PREPARE_IMAGE="agentomics_prepare_img"
+
+    if [ "$PULL_IMAGES" = true ]; then
+        FM_TAG="NONE"
+        if [ -n "$FOUNDATION_MODEL_TYPE" ]; then
+            FM_TAG="$(echo "$FOUNDATION_MODEL_TYPE" | tr '[:lower:]' '[:upper:]')"
+        fi
+        AGENTOMICS_IMAGE="${DOCKERHUB_USERNAME}/agentomics:FM-${FM_TAG}-latest"
+        PREPARE_IMAGE="${DOCKERHUB_USERNAME}/agentomics-prepare:latest"
+
+        echo "Pulling the run image"
+        docker pull "$AGENTOMICS_IMAGE"
+        echo "Pulling the data preparation image"
+        docker pull "$PREPARE_IMAGE"
+    else
+        echo "Building the run image"
+        docker build -t "$AGENTOMICS_IMAGE" -f Dockerfile ${DOCKER_BUILD_ARGS[@]+"${DOCKER_BUILD_ARGS[@]}"} .
+        echo "Build done"
+
+        echo "Building the data preparation image"
+        docker build -t "$PREPARE_IMAGE" -f Dockerfile.prepare .
+        echo "Build done"
+    fi
+    AGENT_ID=$(docker run --rm -u $(id -u):$(id -g) -v "$(pwd)":/repository:ro --entrypoint \
+               /opt/conda/envs/agentomics-env/bin/python "$AGENTOMICS_IMAGE" /repository/src/utils/create_user.py)
     docker run \
         -u $(id -u):$(id -g) \
         --rm \
@@ -347,7 +436,7 @@ else
         -e PYTHONWARNINGS=ignore \
         --name agentomics_prepare_cont_${AGENT_ID} \
         -v "$(pwd)":/repository \
-        agentomics_prepare_img
+        "$PREPARE_IMAGE"
 
     docker volume create temp_agentomics_volume_${AGENT_ID}
     cleanup() {
@@ -418,6 +507,7 @@ else
             ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
             -e AGENT_ID=${AGENT_ID} \
             -e PYTHONWARNINGS=ignore \
+            ${FOUNDATION_MODEL_FLAGS[@]+"${FOUNDATION_MODEL_FLAGS[@]}"} \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
             ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
@@ -426,7 +516,7 @@ else
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
             --entrypoint /opt/conda/envs/agentomics-env/bin/python \
-            agentomics_img -m test.run_all_tests
+            "$AGENTOMICS_IMAGE" -m test.run_all_tests
     else
         docker run \
             --rm \
@@ -435,13 +525,14 @@ else
             ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
             -e AGENT_ID=${AGENT_ID} \
             -e PYTHONWARNINGS=ignore \
+            ${FOUNDATION_MODEL_FLAGS[@]+"${FOUNDATION_MODEL_FLAGS[@]}"} \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
             ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
-            agentomics_img ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
+            "$AGENTOMICS_IMAGE" ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
 
         if [ "$LIST_MODE" = true ]; then
             exit 0
@@ -463,13 +554,14 @@ else
             -e AGENT_ID=${AGENT_ID} \
             -e PYTHONPATH=/repository/src \
             -e PYTHONWARNINGS=ignore \
+            ${FOUNDATION_MODEL_FLAGS[@]+"${FOUNDATION_MODEL_FLAGS[@]}"} \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
             -v "$(pwd)/prepared_test_sets":/repository/prepared_test_sets:ro \
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
             --entrypoint /opt/conda/envs/agentomics-env/bin/python \
-            agentomics_img src/run_logging/evaluate_log_test.py
+            "$AGENTOMICS_IMAGE" src/run_logging/evaluate_log_test.py
 
         mkdir -p outputs/${AGENT_ID}/best_run_files outputs/${AGENT_ID}/reports outputs/${AGENT_ID}/run_files outputs/${AGENT_ID}/extras
 

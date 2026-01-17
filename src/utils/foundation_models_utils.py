@@ -4,6 +4,7 @@ from pathlib import Path
 
 BASE_DIR = os.environ.get('HF_HOME', '/cache/foundation_models')
 MODELS_YAML = os.path.join('/foundation_models', 'models.yaml')
+FOUNDATION_MODEL_TYPE_ENV = "FOUNDATION_MODEL_TYPE"
 
 def load_models_config():
     if not Path(MODELS_YAML).exists():
@@ -15,12 +16,18 @@ def build_foundation_model_catalog():
     """
     Returns a catalog of foundation models with their summaries, model names, parameters, and documentation paths.
     """
+    enabled_type = os.environ.get(FOUNDATION_MODEL_TYPE_ENV)
+    if not enabled_type:
+        return {}
+
     models_config = load_models_config()
     catalog = {}
     if(models_config is None):
         return catalog
 
     for family_name, meta in models_config.items():
+        if enabled_type != "all" and meta.get("type") != enabled_type:
+            continue
         catalog[family_name] = {
             "summary": meta.get("summary"),
             "path_to_info": meta.get("path_to_info"),
@@ -36,9 +43,21 @@ def build_foundation_model_catalog():
     return catalog
 
 def get_foundation_model_family_info(family):
+    enabled_type = os.environ.get(FOUNDATION_MODEL_TYPE_ENV)
+    if not enabled_type:
+        return f"Family {family} not found. Available options: []."
+
     models_config = load_models_config()
-    if family not in models_config.keys():
-        return f"Family {family} not found. Available options: {list(models_config.keys())}."
+    if models_config is None:
+        return f"Family {family} not found. Available options: []."
+
+    allowed_families = [
+        family_name
+        for family_name, meta in models_config.items()
+        if enabled_type == "all" or meta.get("type") == enabled_type
+    ]
+    if family not in models_config.keys() or family not in allowed_families:
+        return f"Family {family} not found. Available options: {allowed_families}."
     meta = models_config[family]
     if(not Path(meta['path_to_info']).exists()):
         print(f'{family} README is missing')

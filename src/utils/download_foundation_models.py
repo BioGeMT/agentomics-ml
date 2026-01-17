@@ -1,3 +1,4 @@
+import os
 from foundation_models_utils import load_models_config
 from transformers import AutoTokenizer, AutoModel, AutoModelForMaskedLM
 import multimolecule
@@ -16,12 +17,18 @@ def download_model(model_name, model_class):
         print(f"Error: {str(e)}")
 
 def main():
+    enabled_type = os.environ.get("FOUNDATION_MODEL_TYPE")
+    if not enabled_type:
+        return
+
     config = load_models_config()
     if config is None:
         print('INFO: NO FOUNDATION MODELS FOUND IN CONFIG')
         return
 
     for _, family_data in config.items():
+        if enabled_type != "all" and family_data.get("type") != enabled_type:
+            continue
         models = family_data.get('models')
         hf_class = AutoModel if family_data.get('can_load_with_hf_automodel') else AutoModelForMaskedLM
         for model_data in models:
