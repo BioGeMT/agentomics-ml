@@ -406,12 +406,10 @@ if [ "$LOCAL_MODE" = true ]; then
 
     ARTIFACT_PATH="${WORKSPACE_DIR}/snapshots/${AGENT_ID}"
     if [[ ! -d "$ARTIFACT_PATH" ]]; then
-        echo -e "${RED}Agent didn't produce any valid model, skipping testing evaluation.${NOCOLOR}" >&2
-        exit 1
+        die "Agent didn't produce any valid model, skipping testing evaluation."
     fi
     if [[ ! -f "${ARTIFACT_PATH}/config.json" ]]; then
-        echo -e "${RED}Snapshot config not found: ${ARTIFACT_PATH}/config.json${NOCOLOR}" >&2
-        exit 1
+        die "Snapshot config not found: ${ARTIFACT_PATH}/config.json."
     fi
 
     export PYTHONPATH=./src
