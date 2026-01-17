@@ -433,7 +433,7 @@ if [ "$LOCAL_MODE" = true ]; then
 else
     need_cmd docker
     if ! docker info >/dev/null 2>&1; then
-        die "Docker is not running or not accessible (start Docker and retry)"
+        die "Docker is not running or not accessible (start Docker and retry). Alternatively, run with --local argument(./run.sh --local), if you are running in a non-vulnerable environment."
     fi
     if [[ "$LIST_MODE" = false ]] && ! has_tty; then
         if [[ -z "$MODEL_NAME" || -z "$DATASET_NAME" || -z "$VAL_METRIC" ]]; then
