@@ -283,7 +283,7 @@ if [[ -t 0 && ${#AGENTOMICS_ARGS[@]} -eq 0 && "$TEST_MODE" = false ]]; then
 fi
 
 if [ -n "$FOUNDATION_MODEL_TYPE" ] && [[ "$FOUNDATION_MODEL_TYPE" != "dna" && "$FOUNDATION_MODEL_TYPE" != "rna" && "$FOUNDATION_MODEL_TYPE" != "molecule" && "$FOUNDATION_MODEL_TYPE" != "protein" && "$FOUNDATION_MODEL_TYPE" != "all" ]]; then
-    echo -e "${RED}Error: Invalid --foundation-model-type '$FOUNDATION_MODEL_TYPE'. Allowed: dna, rna, molecule, protein, all.${NOCOLOR}" >&2
+    die "Invalid --foundation-model-type '$FOUNDATION_MODEL_TYPE'. Allowed: dna, rna, molecule, protein, all."
     exit 1
 fi
 
@@ -298,7 +298,7 @@ if [[ "$IS_INTERACTIVE_RUN" = true && -z "$FOUNDATION_MODEL_TYPE" ]]; then
     echo "  5) Protein"
     echo "  6) All"
     echo ""
-    read -r -p "Enter choice [1]: " fm_choice
+    read -r -p "Enter choice (default: 1): " fm_choice
     fm_choice="${fm_choice:-1}"
     case "$fm_choice" in
         1) FOUNDATION_MODEL_TYPE="";;
@@ -307,7 +307,7 @@ if [[ "$IS_INTERACTIVE_RUN" = true && -z "$FOUNDATION_MODEL_TYPE" ]]; then
         4) FOUNDATION_MODEL_TYPE="molecule";;
         5) FOUNDATION_MODEL_TYPE="protein";;
         6) FOUNDATION_MODEL_TYPE="all";;
-        *) echo -e "${RED}Error: Invalid choice.${NOCOLOR}" >&2; exit 1;;
+        *) die "Invalid foundation model choice.";;
     esac
 fi
 
@@ -455,7 +455,7 @@ else
         case "$images_choice" in
             1) PULL_IMAGES=false;;
             2) PULL_IMAGES=true;;
-            *) echo -e "${RED}Error: Invalid choice.${NOCOLOR}" >&2; exit 1;;
+            *) die "Invalid choice.";;
         esac
     fi
 
