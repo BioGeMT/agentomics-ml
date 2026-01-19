@@ -2,8 +2,6 @@
 
 REPOS_DIR="/home/$USER/repos" #this needs to be configured to the agentomics repository parent directory (biomlbench will be pulled as a sibling to the agentomics repo)
 
-RUN_COMPETITORS_ZEROSHOT=true
-
 SPEND_LIMIT=100
 MODELS=("openai/gpt-5.1-codex")
 ITERATIONS=100 # Set to a large number because timeout will take precedence anyways
@@ -88,10 +86,8 @@ for repetition in $(seq 1 $REPETITIONS); do
     done
 done
 
-if [[ "$RUN_COMPETITORS_ZEROSHOT" == "true" ]]; then
-    ./competitors/setup.sh
-    for repetition in $(seq 1 $REPETITIONS); do
-        conda run -n biomlbench-agents python competitors/run_competitors.py --agents zeroshot
-    done
-fi
+./competitors/setup.sh
+for repetition in $(seq 1 $REPETITIONS); do
+    conda run -n biomlbench-agents python competitors/run_competitors.py --agents zeroshot
+done
 echo 'Orchestrator done'
