@@ -1,18 +1,18 @@
-/* Links - dark green (but NOT buttons) */
+/* Links - deep purple (but NOT buttons) */
 a:not(.md-button) {
-  color: #009688 !important;
+  color: #673ab7 !important;
 }
 
 a:not(.md-button):hover {
-  color: #00796b !important;
+  color: #512da8 !important;
 }
 
-/* Primary buttons - white text on green */
+/* Primary buttons - white text on purple */
 .md-content a.md-button.md-button--primary,
 a.md-button.md-button--primary,
 .md-button.md-button--primary {
-  background-color: #009688 !important;
-  border-color: #009688 !important;
+  background-color: #673ab7 !important;
+  border-color: #673ab7 !important;
   color: #ffffff !important;
 }
 
@@ -25,23 +25,23 @@ a.md-button.md-button--primary *,
 .md-content a.md-button.md-button--primary:hover,
 a.md-button.md-button--primary:hover,
 .md-button.md-button--primary:hover {
-  background-color: #00796b !important;
-  border-color: #00796b !important;
+  background-color: #512da8 !important;
+  border-color: #512da8 !important;
   color: #ffffff !important;
 }
 
-/* Secondary buttons - green outline */
+/* Secondary buttons - purple outline */
 .md-content a.md-button:not(.md-button--primary),
 a.md-button:not(.md-button--primary),
 .md-button:not(.md-button--primary) {
-  border-color: #009688 !important;
-  color: #009688 !important;
+  border-color: #673ab7 !important;
+  color: #673ab7 !important;
 }
 
 .md-content a.md-button:not(.md-button--primary):hover,
 a.md-button:not(.md-button--primary):hover,
 .md-button:not(.md-button--primary):hover {
-  background-color: #009688 !important;
+  background-color: #673ab7 !important;
   color: #ffffff !important;
 }
 
