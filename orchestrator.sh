@@ -2,15 +2,16 @@
 
 REPOS_DIR="/home/$USER/repos" #this needs to be configured to the agentomics repository parent directory (biomlbench will be pulled as a sibling to the agentomics repo)
 
+RUN_COMPETITORS_ZEROSHOT=true
 
 SPEND_LIMIT=100
 MODELS=("openai/gpt-5.1-codex")
-ITERATIONS=100 # Set to a large number because timeout will take precedence anyways
+ITERATIONS=1000000 # Set very high so timeout is the limiting factor
 TIME_BUDGET_S=$(( 8 * 60 * 60 )) # 8 hours, biomlbench datasets are set to 8h automatically and will not react to this
 SPLIT_ALLOWED_ITERS=4
 PULL_BRANCH="run_experiments" #Branch to pull for biomlbench runs
 TAGS=("experiment_orchestrator" "test_run")
-REPETITIONS=1
+REPETITIONS=3
 USER_PROMPT="Create a machine learning model that will generalize to new unseen data."
 
 GENOMIC_DATASETS=(
@@ -86,4 +87,10 @@ for repetition in $(seq 1 $REPETITIONS); do
         done
     done
 done
+
+if [[ "$RUN_COMPETITORS_ZEROSHOT" == "true" ]]; then
+    for repetition in $(seq 1 $REPETITIONS); do
+        conda run -n biomlbench-agents python competitors/run_competitors.py --agents zeroshot
+    done
+fi
 echo 'Orchestrator done'
