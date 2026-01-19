@@ -51,18 +51,25 @@ a.md-button:not(.md-button--primary):hover,
 }
 
 /* Header logo - white */
-.md-header .md-logo {
+.md-header .md-logo,
+.md-header .md-logo *,
+.md-header__button.md-logo,
+.md-header__button.md-logo * {
   color: #ffffff !important;
+  fill: #ffffff !important;
 }
 
 .md-header .md-logo svg,
-.md-header .md-logo svg path,
+.md-header .md-logo svg *,
 .md-header__button.md-logo svg,
-.md-header__button.md-logo svg path,
+.md-header__button.md-logo svg *,
+[data-md-component="logo"],
+[data-md-component="logo"] *,
 [data-md-component="logo"] svg,
-[data-md-component="logo"] svg path {
+[data-md-component="logo"] svg * {
   fill: #ffffff !important;
   color: #ffffff !important;
+  stroke: #ffffff !important;
 }
 
 .md-header .md-logo img {
