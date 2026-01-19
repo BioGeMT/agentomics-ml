@@ -11,9 +11,11 @@ a:hover {
 .md-button--primary {
   background-color: #009688 !important;
   border-color: #009688 !important;
+  color: white !important;
 }
 
 .md-button--primary:hover {
   background-color: #00796b !important;
   border-color: #00796b !important;
+  color: white !important;
 }
