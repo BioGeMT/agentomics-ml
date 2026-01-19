@@ -31,6 +31,7 @@ theme:
   icon:
     repo: fontawesome/brands/github
     logo: material/dna
+  favicon: https://raw.githubusercontent.com/BioGeMT/Agentomics-ML/main/docs/assets/favicon.ico
 
 nav:
   - Home: index.md
