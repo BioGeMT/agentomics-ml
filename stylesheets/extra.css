@@ -1,0 +1,19 @@
+/* Links */
+a {
+  color: #009688 !important;
+}
+
+a:hover {
+  color: #00796b !important;
+}
+
+/* Buttons */
+.md-button--primary {
+  background-color: #009688 !important;
+  border-color: #009688 !important;
+}
+
+.md-button--primary:hover {
+  background-color: #00796b !important;
+  border-color: #00796b !important;
+}
