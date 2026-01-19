@@ -89,6 +89,7 @@ for repetition in $(seq 1 $REPETITIONS); do
 done
 
 if [[ "$RUN_COMPETITORS_ZEROSHOT" == "true" ]]; then
+    ./competitors/setup.sh
     for repetition in $(seq 1 $REPETITIONS); do
         conda run -n biomlbench-agents python competitors/run_competitors.py --agents zeroshot
     done
