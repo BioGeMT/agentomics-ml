@@ -45,7 +45,7 @@ Complete reference for `run.sh` command-line options.
 ### Basic Run
 
 ```bash
-./run.sh --model openai/gpt-4o --dataset breast_cancer --iterations 10
+./run.sh --model openai/gpt-5.2-codex --dataset breast_cancer --iterations 10
 ```
 
 ### Quick Start with Pre-built Images
@@ -57,37 +57,37 @@ Complete reference for `run.sh` command-line options.
 ### Local Mode
 
 ```bash
-./run.sh --local --model openai/gpt-4o --dataset my_data
+./run.sh --local --model openai/gpt-5.2-codex --dataset my_data
 ```
 
 ### With Time Limit
 
 ```bash
-./run.sh --timeout 3600 --model openai/gpt-4o --dataset my_data
+./run.sh --timeout 3600 --model openai/gpt-5.2-codex --dataset my_data
 ```
 
 ### Custom Optimization Goal
 
 ```bash
-./run.sh --user-prompt "Focus on interpretable models only" --model openai/gpt-4o
+./run.sh --user-prompt "Focus on interpretable models only" --model openai/gpt-5.2-codex
 ```
 
 ### Using Ollama
 
 ```bash
-./run.sh --ollama --model llama3.1:70b
+./run.sh --ollama
 ```
 
 ### CPU Only
 
 ```bash
-./run.sh --cpu-only --model openai/gpt-4o --dataset my_data
+./run.sh --cpu-only --model openai/gpt-5.2-codex --dataset my_data
 ```
 
 ### Pre-download Foundation Models
 
 ```bash
-./run.sh --foundation-model-type protein --model openai/gpt-4o
+./run.sh --foundation-model-type protein --model openai/gpt-5.2-codex
 ```
 
 ## Validation Metrics
@@ -121,10 +121,10 @@ CLI options can also be set via environment variables. See [Environment Variable
 
 Model names are provider-specific:
 
-- **OpenRouter:** `openai/gpt-4o`, `anthropic/claude-3.5-sonnet`, etc.
-- **OpenAI:** `gpt-4o`, `gpt-4-turbo`, etc.
-- **Anthropic:** `claude-3-5-sonnet-20241022`, etc.
-- **Ollama:** `llama3.1:70b`, `mixtral:8x7b`, etc.
+- **OpenRouter:** `openai/gpt-5.2-codex` (default)
+- **OpenAI:** `gpt-5.2-codex`
+- **Anthropic:** Available via OpenRouter
+- **Ollama:** Local models
 
 Use `--list-models` to see available models for your configured providers.
 

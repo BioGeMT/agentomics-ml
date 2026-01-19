@@ -23,7 +23,7 @@ Supply parameters directly to skip prompts:
 
 ```bash
 ./run.sh \
-  --model openai/gpt-4o \
+  --model openai/gpt-5.2-codex \
   --dataset breast_cancer \
   --iterations 10 \
   --val-metric ACC
@@ -33,7 +33,7 @@ Supply parameters directly to skip prompts:
 
 | Option | Description | Example |
 |--------|-------------|---------|
-| `--model` | LLM model to use | `--model openai/gpt-4o` |
+| `--model` | LLM model to use | `--model openai/gpt-5.2-codex` |
 | `--dataset` | Dataset name | `--dataset my_data` |
 | `--iterations` | Number of iterations | `--iterations 15` |
 | `--val-metric` | Validation metric | `--val-metric AUROC` |

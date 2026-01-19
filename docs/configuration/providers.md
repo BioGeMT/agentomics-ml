@@ -7,9 +7,9 @@ Agentomics-ML supports multiple LLM providers out of the box.
 | Provider | Environment Variable | Models |
 |----------|---------------------|--------|
 | [OpenRouter](https://openrouter.ai/) | `OPENROUTER_API_KEY` | 100+ models |
-| [OpenAI](https://openai.com/) | `OPENAI_API_KEY` | GPT-4, GPT-4o, etc. |
+| [OpenAI](https://openai.com/) | `OPENAI_API_KEY` | gpt-5.2-codex |
 | [Anthropic](https://anthropic.com/) | `ANTHROPIC_API_KEY` | Claude 3.5, Claude 3, etc. |
-| [Ollama](https://ollama.ai/) | Local setup | Llama, Mixtral, etc. |
+| [Ollama](https://ollama.ai/) | Local setup | Local models |
 
 ## OpenRouter
 
@@ -28,12 +28,9 @@ export OPENROUTER_API_KEY="sk-or-v1-xxxxxxxxxxxx"
 ./run.sh --list-models
 ```
 
-Popular choices:
+Default model:
 
-- `openai/gpt-4o` - Fast and capable
-- `anthropic/claude-3.5-sonnet` - Strong reasoning
-- `google/gemini-pro-1.5` - Large context
-- `meta-llama/llama-3.1-405b-instruct` - Open source
+- `openai/gpt-5.2-codex` - Recommended for best results
 
 ### Provisioning Key
 
@@ -58,9 +55,7 @@ export OPENAI_API_KEY="sk-xxxxxxxxxxxx"
 
 ### Available Models
 
-- `gpt-4o` - Most capable
-- `gpt-4-turbo` - Faster, lower cost
-- `gpt-4` - Original GPT-4
+- `gpt-5.2-codex` - Default, recommended
 
 ---
 
@@ -77,9 +72,7 @@ export ANTHROPIC_API_KEY="sk-ant-xxxxxxxxxxxx"
 
 ### Available Models
 
-- `claude-3-5-sonnet-20241022` - Best balance
-- `claude-3-opus-20240229` - Most capable
-- `claude-3-haiku-20240307` - Fastest
+Available via OpenRouter with `anthropic/` prefix.
 
 ---
 
@@ -90,7 +83,7 @@ Run models locally for privacy or offline use.
 ### Requirements
 
 1. Install [Ollama](https://ollama.ai/)
-2. Pull a model: `ollama pull llama3.1:70b`
+2. Pull a model: `ollama pull <model-name>`
 
 ### Docker Mode (Recommended)
 
@@ -126,10 +119,7 @@ export OLLAMA_BASE_URL="http://localhost:11434/v1"
 
 ### Popular Models
 
-- `llama3.1:70b` - Strong general purpose
-- `mixtral:8x7b` - Fast mixture of experts
-- `codellama:34b` - Code-focused
-- `deepseek-coder:33b` - Code generation
+Run `ollama list` to see available models.
 
 ---
 
@@ -172,10 +162,8 @@ The interactive mode groups models by provider for easy selection.
 
 | Use Case | Recommended Model |
 |----------|-------------------|
-| Best quality | `anthropic/claude-3.5-sonnet` or `openai/gpt-4o` |
-| Budget-friendly | `openai/gpt-4o-mini` or `anthropic/claude-3-haiku` |
-| Privacy/Offline | `llama3.1:70b` via Ollama |
-| Large datasets | `google/gemini-pro-1.5` (long context) |
+| Default | `openai/gpt-5.2-codex` |
+| Privacy/Offline | Ollama local models |
 
 ---
 

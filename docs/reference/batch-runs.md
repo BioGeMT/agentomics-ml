@@ -31,9 +31,7 @@ Edit `orchestrator.sh` to configure:
 
 ```bash
 MODELS=(
-    "openai/gpt-4o"
-    "anthropic/claude-3.5-sonnet"
-    "openai/gpt-4-turbo"
+    "openai/gpt-5.2-codex"
 )
 ```
 
@@ -73,9 +71,8 @@ Results are organized by model and dataset:
 
 ```
 outputs/
-├── gpt-4o_breast_cancer_<timestamp>/
-├── gpt-4o_gene_expression_<timestamp>/
-├── claude-3.5-sonnet_breast_cancer_<timestamp>/
+├── gpt-5.2-codex_breast_cancer_<timestamp>/
+├── gpt-5.2-codex_gene_expression_<timestamp>/
 └── ...
 ```
 
@@ -114,8 +111,7 @@ TIMEOUT=7200  # 2 hours per run
 
 # Models to test
 MODELS=(
-    "openai/gpt-4o"
-    "anthropic/claude-3.5-sonnet"
+    "openai/gpt-5.2-codex"
 )
 
 # Datasets to use
@@ -160,8 +156,8 @@ For parallel runs on multiple machines:
 Each run outputs progress to console:
 
 ```
-[1/6] Running: gpt-4o on breast_cancer
-[2/6] Running: gpt-4o on gene_expression
+[1/2] Running: gpt-5.2-codex on breast_cancer
+[2/2] Running: gpt-5.2-codex on gene_expression
 ...
 ```
 

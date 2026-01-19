@@ -90,7 +90,7 @@ Custom prompts work with all other options:
 ```bash
 ./run.sh \
   --user-prompt "Use only sklearn models, no neural networks" \
-  --model openai/gpt-4o \
+  --model openai/gpt-5.2-codex \
   --dataset my_data \
   --iterations 15 \
   --val-metric AUROC
