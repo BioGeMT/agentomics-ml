@@ -8,9 +8,11 @@ Complete reference for `run.sh` command-line options.
 |--------|-------------|---------|
 | `--model <name>` | LLM model to use | Interactive selection |
 | `--dataset <name>` | Dataset name | Interactive selection |
-| `--iterations <n>` | Number of iterations | 10 |
-| `--val-metric <metric>` | Validation metric to optimize | ACC |
+| `--iterations <n>` | Number of iterations | Prompted in interactive mode (default 5) |
+| `--val-metric <metric>` | Validation metric to optimize | Interactive selection |
 | `--timeout <seconds>` | Time limit for entire run | None |
+
+The run stops when either the iteration count is reached or the timeout expires.
 
 ## Deployment Options
 
@@ -35,17 +37,18 @@ Complete reference for `run.sh` command-line options.
 | Option | Description |
 |--------|-------------|
 | `--user-prompt <text>` | Custom prompt for the agent |
-| `--foundation-model-type <type>` | Pre-download foundation models (dna, rna, protein, molecule) |
+| `--foundation-model-type <type>` | Pre-download foundation models (`dna`, `rna`, `protein`, `molecule`, `all`) |
 | `--use-provisioning-key` | Use OpenRouter temporary API key |
-| `--split-allowed-iterations <n>` | Iterations that can modify train/val split |
-| `--exploration-iterations <n>` | Baseline exploration iterations |
+| `--spend-limit <n>` | Spend limit for provisioning key (requires `--use-provisioning-key`) |
+| `--split-allowed-iterations <n>` | Iterations that can modify train/val split (default 1) |
+| `--exploration-iterations <n>` | Baseline exploration iterations (default 4) |
 
 ## Examples
 
 ### Basic Run
 
 ```bash
-./run.sh --model openai/gpt-5.2-codex --dataset breast_cancer --iterations 10
+./run.sh --model openai/gpt-4 --dataset breast_cancer --iterations 10
 ```
 
 ### Quick Start with Pre-built Images
@@ -57,19 +60,19 @@ Complete reference for `run.sh` command-line options.
 ### Local Mode
 
 ```bash
-./run.sh --local --model openai/gpt-5.2-codex --dataset my_data
+./run.sh --local --model openai/gpt-4 --dataset my_data
 ```
 
 ### With Time Limit
 
 ```bash
-./run.sh --timeout 3600 --model openai/gpt-5.2-codex --dataset my_data
+./run.sh --timeout 3600 --model openai/gpt-4 --dataset my_data
 ```
 
 ### Custom Optimization Goal
 
 ```bash
-./run.sh --user-prompt "Focus on interpretable models only" --model openai/gpt-5.2-codex
+./run.sh --user-prompt "Focus on interpretable models only" --model openai/gpt-4
 ```
 
 ### Using Ollama
@@ -81,13 +84,13 @@ Complete reference for `run.sh` command-line options.
 ### CPU Only
 
 ```bash
-./run.sh --cpu-only --model openai/gpt-5.2-codex --dataset my_data
+./run.sh --cpu-only --model openai/gpt-4 --dataset my_data
 ```
 
 ### Pre-download Foundation Models
 
 ```bash
-./run.sh --foundation-model-type protein --model openai/gpt-5.2-codex
+./run.sh --foundation-model-type protein --model openai/gpt-4
 ```
 
 ## Validation Metrics
@@ -99,34 +102,28 @@ Available metrics for `--val-metric`:
 - `ACC` - Accuracy
 - `AUROC` - Area Under ROC Curve
 - `AUPRC` - Area Under Precision-Recall Curve
-- `F1` - F1 Score
-- `PRECISION` - Precision
-- `RECALL` - Recall
+- `F1` - F1 Score (macro)
+- `LOG_LOSS` - Log loss
 - `MCC` - Matthews Correlation Coefficient
-- `BALANCED_ACC` - Balanced Accuracy
 
 **Regression:**
 
 - `MSE` - Mean Squared Error
 - `RMSE` - Root Mean Squared Error
 - `MAE` - Mean Absolute Error
-- `R2` - R-squared
+- `MAPE` - Mean Absolute Percentage Error
 - `PEARSON` - Pearson Correlation
+- `SPEARMAN` - Spearman Correlation
+- `R2` - R-squared
 
 ## Environment Variables
 
-CLI options can also be set via environment variables. See [Environment Variables](environment.md).
+API keys and logging settings come from environment variables or `.env`. See
+[Environment Variables](environment.md).
 
 ## Model Names
 
-Model names are provider-specific:
-
-- **OpenRouter:** `openai/gpt-5.2-codex` (default)
-- **OpenAI:** `gpt-5.2-codex`
-- **Anthropic:** Available via OpenRouter
-- **Ollama:** Local models
-
-Use `--list-models` to see available models for your configured providers.
+Model names are provider-specific. Use `--list-models` to see available models for your configured providers.
 
 ## Exit Codes
 

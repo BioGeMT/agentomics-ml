@@ -10,12 +10,14 @@ Running without arguments launches interactive mode:
 ./run.sh
 ```
 
+Docker mode expects a `.env` file in the repo root (copy `.env.example`).
+
 You'll be prompted to select:
 
 1. **LLM Model** - Choose from available models
 2. **Dataset** - Select a prepared dataset
-3. **Iterations** - Number of optimization cycles (default: 10)
-4. **Validation Metric** - Metric to optimize (ACC, AUROC, etc.)
+3. **Iterations** - Number of optimization cycles (default prompt: 5)
+4. **Validation Metric** - Metric to optimize (see `./run.sh --list-metrics`)
 
 ## Non-Interactive Mode
 
@@ -23,21 +25,26 @@ Supply parameters directly to skip prompts:
 
 ```bash
 ./run.sh \
-  --model openai/gpt-5.2-codex \
+  --model openai/gpt-4 \
   --dataset breast_cancer \
   --iterations 10 \
   --val-metric ACC
 ```
 
+For non-interactive runs, provide at least `--model`, `--dataset`, `--val-metric`,
+and `--iterations`.
+
 ## Common Options
 
 | Option | Description | Example |
 |--------|-------------|---------|
-| `--model` | LLM model to use | `--model openai/gpt-5.2-codex` |
+| `--model` | LLM model to use | `--model openai/gpt-4` |
 | `--dataset` | Dataset name | `--dataset my_data` |
 | `--iterations` | Number of iterations | `--iterations 15` |
 | `--val-metric` | Validation metric | `--val-metric AUROC` |
 | `--timeout` | Time limit in seconds | `--timeout 3600` |
+| `--use-provisioning-key` | Use a provisioning key for OpenRouter | `--use-provisioning-key` |
+| `--spend-limit` | Spend limit for provisioning key | `--spend-limit 25` |
 
 ## Listing Available Options
 
@@ -72,6 +79,17 @@ Pre-download domain-specific foundation models:
 ```
 
 Available types: `dna`, `rna`, `protein`, `molecule`
+Also supported: `all`
+
+### Data Split and Exploration Controls
+
+```bash
+./run.sh --split-allowed-iterations 1 --exploration-iterations 4
+```
+
+`--split-allowed-iterations` controls how many early iterations are allowed to resplit
+train/validation (ignored if you provide `validation.csv`). `--exploration-iterations`
+controls how long the agent spends on baseline/exploration models.
 
 ### Time Limits
 

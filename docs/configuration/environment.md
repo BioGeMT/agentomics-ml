@@ -20,6 +20,8 @@ cp .env.example .env
 # Edit .env with your values
 ```
 
+Docker mode expects a `.env` file to exist, even if you export variables in your shell.
+
 ## LLM Provider Keys
 
 At least one API key is required:
@@ -29,6 +31,14 @@ At least one API key is required:
 | `OPENROUTER_API_KEY` | OpenRouter | [openrouter.ai](https://openrouter.ai/) |
 | `OPENAI_API_KEY` | OpenAI | [platform.openai.com](https://platform.openai.com/) |
 | `ANTHROPIC_API_KEY` | Anthropic | [console.anthropic.com](https://console.anthropic.com/) |
+
+### Provisioning Key (Optional)
+
+If you use `--use-provisioning-key`, set:
+
+| Variable | Description |
+|----------|-------------|
+| `PROVISIONING_OPENROUTER_API_KEY` | OpenRouter provisioning key used to mint temporary keys |
 
 ### Example
 
@@ -81,19 +91,8 @@ See [Proxy Settings](../developer/proxy-settings.md) for Docker proxy configurat
 
 ## Ollama Configuration
 
-For local LLM with Ollama:
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `OLLAMA_BASE_URL` | Ollama API URL | `http://localhost:11434/v1` |
-| `OLLAMA_HOST` | Ollama host (Docker mode) | `172.17.0.1:11434` |
-
-### Example
-
-```bash
-# .env file (local mode)
-OLLAMA_BASE_URL=http://localhost:11434/v1
-```
+Ollama uses the base URL defined in `src/utils/providers/configured_providers.yaml`.
+Edit the `Ollama` provider entry to point to your Ollama server.
 
 ## GPU Configuration
 
@@ -130,7 +129,7 @@ WANDB_ENTITY=my-team
 # NO_PROXY=localhost,127.0.0.1
 
 # Ollama (optional)
-# OLLAMA_BASE_URL=http://localhost:11434/v1
+# Configure in src/utils/providers/configured_providers.yaml
 ```
 
 ## Security Notes

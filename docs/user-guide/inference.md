@@ -53,16 +53,9 @@ feature1,feature2,feature3
 
 ## Output Format
 
-Predictions are saved as a CSV with a single column:
-
-```csv
-predictions
-positive
-negative
-positive
-```
-
-The order matches your input data rows.
+The output format is defined by the generated `inference.py` script. For
+classification tasks, the output often includes a `numeric_label` column with
+scores in `[0, 1]`, but you should treat the exact schema as run-specific.
 
 ## Docker vs Local Mode
 
@@ -94,11 +87,10 @@ For more control, use the agent's inference script directly:
 # Navigate to agent's best run
 cd outputs/<agent_id>/best_run_files
 
-# Activate the environment
-conda activate .conda/envs/<agent_id>_env
-
-# Run inference
-python inference.py --input /path/to/data.csv --output /path/to/predictions.csv
+# Run inference using the saved environment
+conda run -p outputs/<agent_id>/best_run_files/.conda/envs/<agent_id>_env \
+  python outputs/<agent_id>/best_run_files/inference.py \
+  --input /path/to/data.csv --output /path/to/predictions.csv
 ```
 
 ## What's in best_run_files
@@ -107,7 +99,7 @@ python inference.py --input /path/to/data.csv --output /path/to/predictions.csv
 outputs/<agent_id>/best_run_files/
 ├── inference.py           # Inference script
 ├── train.py               # Training script
-├── model.joblib           # Trained model (or other format)
+├── training_artifacts/    # Model files (format varies)
 ├── .conda/                # Conda environment
 └── ...                    # Other artifacts (tokenizers, etc.)
 ```

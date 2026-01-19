@@ -16,13 +16,15 @@ git clone https://github.com/BioGeMT/Agentomics-ML.git
 cd Agentomics-ML
 ```
 
-### 2. Set Your API Key
+### 2. Create a .env File and Set a Key
+
+Docker mode requires a `.env` file in the repo root.
 
 ```bash
-export OPENROUTER_API_KEY="your-key-here"
+cp .env.example .env
+# Edit .env and set at least one API key:
+# OPENROUTER_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY
 ```
-
-Or create a `.env` file (see `.env.example` for template).
 
 ### 3. Run the Agent
 
@@ -39,7 +41,7 @@ The agent will prompt you to:
 1. **Select a model** - Choose from available LLMs
 2. **Select a dataset** - Use your own or download examples
 3. **Configure iterations** - How many optimization cycles to run
-4. **Choose validation metric** - ACC, AUROC, F1, etc.
+4. **Choose validation metric** - see `./run.sh --list-metrics`
 
 ## Using Your Own Dataset
 

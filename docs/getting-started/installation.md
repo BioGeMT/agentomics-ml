@@ -22,8 +22,9 @@ cd Agentomics-ML
 ### Setup
 
 ```bash
-# Set your API key
-export OPENROUTER_API_KEY="your-key-here"
+# Create a .env file (required for Docker mode)
+cp .env.example .env
+# Edit .env and set at least one API key
 
 # Run with pre-built images
 ./run.sh --pull-images
@@ -44,8 +45,9 @@ The images will be downloaded automatically on first run.
 ### Setup
 
 ```bash
-# Set your API key
-export OPENROUTER_API_KEY="your-key-here"
+# Create a .env file (required for Docker mode)
+cp .env.example .env
+# Edit .env and set at least one API key
 
 # Run (will prompt to build images on first run)
 ./run.sh
@@ -69,7 +71,7 @@ On first run, you'll be prompted to build the Docker images. This takes a few mi
 ### Setup
 
 ```bash
-# Set your API key
+# Set your API key (export or .env)
 export OPENROUTER_API_KEY="your-key-here"
 
 # Run in local mode
@@ -101,36 +103,22 @@ Run with local models using Ollama for privacy or offline use.
 
 ### Docker Mode Setup
 
-1. Configure Ollama to accept Docker connections:
-
-    ```bash
-    sudo systemctl edit ollama.service
-    ```
-
-    Add these lines:
-
-    ```ini
-    [Service]
-    Environment="OLLAMA_HOST=172.17.0.1:11434"
-    ```
-
-2. Restart Ollama:
-
-    ```bash
-    sudo systemctl daemon-reload
-    sudo systemctl restart ollama.service
-    ```
-
-3. Run with the `--ollama` flag:
+1. Ensure Ollama listens on the host (e.g., `0.0.0.0:11434`).
+2. Run with the `--ollama` flag:
 
     ```bash
     ./run.sh --ollama
     ```
 
+Docker mode connects to the URL configured in `src/utils/providers/configured_providers.yaml`
+(default: `http://host.docker.internal:11434/v1`).
+
 ### Local Mode Setup
 
+For local mode, set the Ollama base URL in `src/utils/providers/configured_providers.yaml`
+to `http://localhost:11434/v1`, then run:
+
 ```bash
-export OLLAMA_BASE_URL="http://localhost:11434/v1"
 ./run.sh --local
 ```
 

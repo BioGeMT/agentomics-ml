@@ -7,21 +7,32 @@ After a run completes, results are saved to `outputs/<agent_id>/`.
 ```
 outputs/<agent_id>/
 ├── best_run_files/           # Best iteration artifacts
-│   ├── inference.py          # Inference script
 │   ├── train.py              # Training script
-│   ├── model.joblib          # Trained model
-│   ├── .conda/               # Conda environment
-│   ├── iteration_number.txt  # Which iteration was best
-│   └── metadata.json         # Model metadata
-├── iteration_0/              # First iteration files
-├── iteration_1/              # Second iteration files
-├── ...
+│   ├── inference.py          # Inference script
+│   ├── training_artifacts/   # Model and artifacts
+│   ├── validation_metrics.txt
+│   ├── train_metrics.txt
+│   ├── eval_predictions_train.csv
+│   ├── eval_predictions_validation.csv
+│   ├── structured_outputs.txt
+│   ├── config.json
+│   ├── environment.yml
+│   └── iteration_number.txt  # Which iteration was best
+├── run_files/                # All iterations + data splits
+│   ├── train.csv
+│   ├── validation.csv
+│   ├── iteration_0/
+│   ├── iteration_1/
+│   └── ...
 ├── reports/                  # Run reports
-│   ├── run_report_iter_0.txt
-│   ├── run_report_iter_1.txt
-│   └── final_report.txt
+│   ├── run_report_iter_0.md
+│   ├── run_report_iter_1.md
+│   └── ...
+├── pdf_reports/              # PDF versions + plots
+│   ├── iteration_0.pdf
+│   ├── iteration_1.pdf
+│   └── plots/
 ├── extras/                   # Additional files
-├── logs/                     # Execution logs
 └── README.md                 # Run summary
 ```
 
@@ -33,9 +44,9 @@ The most important directory - contains the best-performing iteration's artifact
 |------|-------------|
 | `inference.py` | Script to run predictions |
 | `train.py` | Script that trained the model |
-| `model.joblib` | Trained model (format varies) |
-| `.conda/` | Complete conda environment |
-| `metadata.json` | Training configuration |
+| `training_artifacts/` | Trained model files (format varies) |
+| `config.json` | Run configuration snapshot |
+| `environment.yml` | Export of the conda env used |
 | `iteration_number.txt` | Which iteration this came from |
 
 ### Using the Best Model
@@ -44,65 +55,46 @@ The most important directory - contains the best-performing iteration's artifact
 # Run inference
 ./inference.sh --agent-dir outputs/<agent_id> --input data.csv --output predictions.csv
 
-# Or directly
-cd outputs/<agent_id>/best_run_files
-conda activate .conda/envs/<agent_id>_env
-python inference.py --input data.csv --output predictions.csv
+# Or directly (local mode)
+conda run -p outputs/<agent_id>/best_run_files/.conda/envs/<agent_id>_env \
+  python outputs/<agent_id>/best_run_files/inference.py \
+  --input data.csv --output predictions.csv
 ```
 
 ## Iteration Directories
 
-Each iteration's files are preserved:
+Each iteration's files are preserved under `run_files/iteration_N/`:
 
 ```
-iteration_N/
-├── data_exploration.json     # Data analysis results
-├── data_split.json           # Train/val split info
-├── data_representation.json  # Feature encoding
-├── model_architecture.json   # Model configuration
+run_files/iteration_N/
 ├── train.py                  # Training script
 ├── inference.py              # Inference script
 ├── training_artifacts/       # Model and artifacts
-└── metrics.json              # Validation metrics
+├── validation_metrics.txt
+└── ...                       # Other iteration artifacts
 ```
 
 ## Reports
 
 ### Iteration Reports
 
-`reports/run_report_iter_N.txt` - Summary of each iteration:
+`reports/run_report_iter_N.md` - Summary of each iteration:
 
 - Data exploration findings
 - Model architecture chosen
 - Training details
 - Validation metrics
 
-### Final Report
+### PDF Reports
 
-`reports/final_report.txt` - Complete run summary:
-
-- Best iteration and why
-- All iteration metrics comparison
-- Test set results (if test data provided)
-- Recommendations
+`pdf_reports/iteration_N.pdf` - PDF report per iteration, plus plots in `pdf_reports/plots/`.
 
 ## Metrics
 
 Metrics are tracked for each iteration:
 
-**Classification:**
-
-- ACC (Accuracy)
-- AUROC (Area Under ROC Curve)
-- AUPRC (Area Under Precision-Recall Curve)
-- F1, Precision, Recall
-
-**Regression:**
-
-- MSE, RMSE (Mean Squared Error)
-- MAE (Mean Absolute Error)
-- R2 (R-squared)
-- Pearson Correlation
+Metrics depend on the selected validation metric and task type. See
+`./run.sh --list-metrics` for the current list.
 
 ## Workspace Structure
 
@@ -112,6 +104,8 @@ During execution, the agent uses a workspace:
 workspace/
 ├── runs/<agent_id>/         # Active run directory
 ├── snapshots/<agent_id>/    # Best iteration snapshot
+├── reports/                 # Iteration reports
+├── extras/                  # Logs and metrics
 └── fallbacks/<agent_id>/    # Backup for recovery
 ```
 
@@ -150,7 +144,8 @@ rm -rf outputs/<agent_id>
 rm -rf outputs/*
 ```
 
-The workspace is cleaned automatically, but you can manually clean:
+In Docker mode, the temporary workspace volume is removed after a run. In local
+mode, you can manually clean:
 
 ```bash
 rm -rf workspace/runs/*

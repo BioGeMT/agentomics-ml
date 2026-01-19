@@ -66,6 +66,8 @@ The agent auto-detects the target column from common names:
 
 If auto-detection fails, you'll be prompted to select the target column during preparation.
 
+For non-interactive preparation, pass `--target-col` to avoid prompts.
+
 ## Manual Dataset Preparation
 
 For more control, run preparation separately:
@@ -76,7 +78,7 @@ conda env create -f environment_prepare.yaml
 conda activate agentomics-prepare-env
 
 # Prepare datasets
-python src/prepare_datasets.py
+python src/prepare_datasets.py --prepare-all
 ```
 
 ### Preparation Options
@@ -91,8 +93,9 @@ Key options:
 |--------|-------------|
 | `--dataset-dir` | Specific dataset to prepare |
 | `--task-type` | Force `classification` or `regression` |
-| `--target-column` | Specify target column name |
+| `--target-col` | Specify target column name |
 | `--positive-class` | Define positive class for binary classification |
+| `--negative-class` | Define negative class for binary classification |
 
 ## Prepared Dataset Structure
 
@@ -104,6 +107,7 @@ prepared_datasets/my_dataset/
 ├── validation.csv         # Validation data (created if not provided)
 ├── train.no_label.csv     # Training data without labels (for inference)
 ├── validation.no_label.csv
+├── dataset_description.md # Copied/created description
 └── metadata.json          # Task type, classes, etc.
 
 prepared_test_sets/my_dataset/
@@ -145,7 +149,7 @@ conda deactivate
 
 ### "Could not detect target column"
 
-Solution: Add `--target-column your_column_name` to preparation command, or rename your target column to `class`, `target`, `label`, or `y`.
+Solution: Add `--target-col your_column_name` to preparation command, or rename your target column to `class`, `target`, `label`, or `y`.
 
 ### "Task type unclear"
 

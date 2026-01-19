@@ -2,26 +2,23 @@
 
 Build and distribute custom Docker images for Agentomics-ML.
 
-## Quick Build
+## Quick Build (Multi-Arch + Push)
 
-Use the provided build script:
+Use the provided build script to build and push multi-architecture images:
 
 ```bash
-./build.sh
+./build.sh <dockerhub-username> [version]
 ```
 
-This builds images for your current platform.
+This script always pushes to the registry and requires `docker login` first.
 
 ## Build Script Usage
 
 ```bash
-# Build with default settings
-./build.sh
-
-# Build and push to Docker Hub
+# Build and push to Docker Hub (latest)
 ./build.sh myusername
 
-# Build specific version
+# Build and push a specific version
 ./build.sh myusername v1.0
 ```
 
@@ -34,18 +31,18 @@ Two Docker images are built:
 | `agentomics` | Main agent execution | `Dockerfile` |
 | `agentomics-prepare` | Dataset preparation | `Dockerfile.prepare` |
 
-## Manual Build
+## Manual Build (Local Only)
 
 ### Main Image
 
 ```bash
-docker build -t agentomics .
+docker build -t agentomics_img .
 ```
 
 ### Preparation Image
 
 ```bash
-docker build -f Dockerfile.prepare -t agentomics-prepare .
+docker build -f Dockerfile.prepare -t agentomics_prepare_img .
 ```
 
 ## Multi-Architecture Builds
@@ -133,15 +130,10 @@ docker build \
   --build-arg HTTPS_PROXY=$HTTPS_PROXY \
   --build-arg http_proxy=$http_proxy \
   --build-arg https_proxy=$https_proxy \
-  -t agentomics .
+  -t agentomics_img .
 ```
-
-Or with the build script (proxy vars are passed automatically):
-
-```bash
-export HTTP_PROXY=http://proxy.company.com:8080
-./build.sh
-```
+If you need proxy settings for multi-arch builds, configure the Docker daemon
+proxy or use manual `docker buildx` commands with `--build-arg`.
 
 ## Image Contents
 

@@ -124,17 +124,14 @@ After `--split-allowed-iterations`, splits are frozen to ensure fair comparison.
 
 ## Feedback Agent Model
 
-By default, the feedback agent uses the same LLM as the main agent. You can specify a different model:
-
-- Main agent: Complex reasoning for code generation
-- Feedback agent: Can be faster/cheaper for analysis
+The feedback agent uses the same LLM as the main agent.
 
 ## Viewing Feedback
 
 Feedback is included in iteration reports:
 
 ```
-reports/run_report_iter_N.txt
+reports/run_report_iter_N.md
 ```
 
 Each report shows:
@@ -146,8 +143,8 @@ Each report shows:
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `--exploration-iterations` | 3 | Iterations for broad exploration |
-| `--split-allowed-iterations` | 3 | Iterations that can modify splits |
+| `--exploration-iterations` | 4 | Iterations for broad exploration |
+| `--split-allowed-iterations` | 1 | Iterations that can modify splits |
 
 ## Next Steps
 

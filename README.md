@@ -11,8 +11,9 @@ Given a raw dataset, Agentomics-ML autonomously generates a trained model ready 
 ```bash
 git clone https://github.com/BioGeMT/Agentomics-ML.git
 cd Agentomics-ML
-export OPENROUTER_API_KEY="your-key-here"
-./run.sh
+cp .env.example .env
+# Edit .env and set at least one API key (OPENROUTER_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY)
+./run.sh --pull-images
 ```
 
 ## Documentation

@@ -6,7 +6,7 @@ Customize the agent's optimization goal with custom user prompts.
 
 Without customization, the agent uses:
 
-> Create the best possible machine learning model that will generalize to new unseen data.
+> Develop a machine learning model that generalizes well to new unseen data.
 
 ## Using Custom Prompts
 
@@ -90,7 +90,7 @@ Custom prompts work with all other options:
 ```bash
 ./run.sh \
   --user-prompt "Use only sklearn models, no neural networks" \
-  --model openai/gpt-5.2-codex \
+  --model openai/gpt-4 \
   --dataset my_data \
   --iterations 15 \
   --val-metric AUROC

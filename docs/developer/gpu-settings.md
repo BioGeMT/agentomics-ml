@@ -78,20 +78,23 @@ GPU is detected and used automatically.
 
 Disables GPU even if available.
 
-### Specific GPUs
+### Specific GPUs (Local Mode Only)
 
-Use `CUDA_VISIBLE_DEVICES`:
+In local mode, you can use `CUDA_VISIBLE_DEVICES`:
 
 ```bash
 # Use only GPU 0
-CUDA_VISIBLE_DEVICES=0 ./run.sh
+CUDA_VISIBLE_DEVICES=0 ./run.sh --local
 
 # Use GPUs 0 and 1
-CUDA_VISIBLE_DEVICES=0,1 ./run.sh
+CUDA_VISIBLE_DEVICES=0,1 ./run.sh --local
 
 # Use no GPU (equivalent to --cpu-only)
-CUDA_VISIBLE_DEVICES="" ./run.sh
+CUDA_VISIBLE_DEVICES="" ./run.sh --local
 ```
+
+In Docker mode, Agentomics uses all available GPUs and does not expose a flag
+to select a subset.
 
 ## GPU Memory
 
@@ -127,7 +130,7 @@ CUDA_VISIBLE_DEVICES=0,1 ./run.sh  # Use only first 2 GPUs
 
 ## Docker GPU Flags
 
-When running manually, use:
+When running containers manually, you can limit GPUs with Docker flags:
 
 ```bash
 docker run --gpus all ...           # All GPUs

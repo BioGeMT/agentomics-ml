@@ -30,7 +30,7 @@ Area Under the Receiver Operating Characteristic Curve.
 | Best | Higher |
 | Use case | Ranking quality, imbalanced data |
 
-**Multi-class:** Uses one-vs-rest with macro averaging.
+**Multi-class:** Uses one-vs-rest.
 
 ---
 
@@ -44,7 +44,7 @@ Area Under the Precision-Recall Curve.
 | Best | Higher |
 | Use case | Highly imbalanced data |
 
-Better than AUROC when positive class is rare.
+**Multi-class:** Macro average.
 
 ---
 
@@ -62,39 +62,19 @@ F1 = 2 * (Precision * Recall) / (Precision + Recall)
 | Best | Higher |
 | Use case | Balance precision and recall |
 
-**Multi-class:** Uses weighted averaging by default.
+**Multi-class:** Macro average.
 
 ---
 
-### Precision (PRECISION)
+### Log Loss (LOG_LOSS)
 
-Proportion of positive predictions that are correct.
-
-```
-Precision = TP / (TP + FP)
-```
+Negative log-likelihood of the true labels given predicted probabilities.
 
 | Property | Value |
 |----------|-------|
-| Range | 0 to 1 |
-| Best | Higher |
-| Use case | Minimize false positives |
-
----
-
-### Recall (RECALL)
-
-Proportion of actual positives that are correctly identified.
-
-```
-Recall = TP / (TP + FN)
-```
-
-| Property | Value |
-|----------|-------|
-| Range | 0 to 1 |
-| Best | Higher |
-| Use case | Minimize false negatives |
+| Range | 0 to ∞ |
+| Best | Lower |
+| Use case | Probability calibration |
 
 ---
 
@@ -108,20 +88,6 @@ Correlation between predicted and actual classifications.
 | Best | Higher (1 is perfect) |
 | Use case | Imbalanced data, overall quality |
 
-Considered one of the best single metrics for binary classification.
-
----
-
-### Balanced Accuracy (BALANCED_ACC)
-
-Average recall across all classes.
-
-| Property | Value |
-|----------|-------|
-| Range | 0 to 1 |
-| Best | Higher |
-| Use case | Multi-class with imbalance |
-
 ---
 
 ## Regression Metrics
@@ -131,7 +97,7 @@ Average recall across all classes.
 Average of squared prediction errors.
 
 ```
-MSE = (1/n) * Σ(y_true - y_pred)²
+MSE = (1/n) * Σ(y_true - y_pred)^2
 ```
 
 | Property | Value |
@@ -147,7 +113,7 @@ MSE = (1/n) * Σ(y_true - y_pred)²
 Square root of MSE.
 
 ```
-RMSE = √MSE
+RMSE = sqrt(MSE)
 ```
 
 | Property | Value |
@@ -174,12 +140,24 @@ MAE = (1/n) * Σ|y_true - y_pred|
 
 ---
 
+### Mean Absolute Percentage Error (MAPE)
+
+Average absolute percent error.
+
+| Property | Value |
+|----------|-------|
+| Range | 0 to ∞ |
+| Best | Lower |
+| Use case | Relative error on positive targets |
+
+---
+
 ### R-squared (R2)
 
 Proportion of variance explained by the model.
 
 ```
-R² = 1 - (SS_res / SS_tot)
+R2 = 1 - (SS_res / SS_tot)
 ```
 
 | Property | Value |
@@ -187,8 +165,6 @@ R² = 1 - (SS_res / SS_tot)
 | Range | -∞ to 1 |
 | Best | Higher (1 is perfect) |
 | Use case | Model explanatory power |
-
-Can be negative if model is worse than predicting the mean.
 
 ---
 
@@ -199,8 +175,20 @@ Linear correlation between predictions and true values.
 | Property | Value |
 |----------|-------|
 | Range | -1 to 1 |
-| Best | Higher absolute value |
+| Best | Higher |
 | Use case | Linear relationship strength |
+
+---
+
+### Spearman Correlation (SPEARMAN)
+
+Rank correlation between predictions and true values.
+
+| Property | Value |
+|----------|-------|
+| Range | -1 to 1 |
+| Best | Higher |
+| Use case | Monotonic relationship strength |
 
 ---
 
@@ -212,18 +200,15 @@ Linear correlation between predictions and true values.
 |----------|-------------------|
 | Balanced classes | ACC, F1 |
 | Imbalanced classes | AUROC, AUPRC, MCC |
-| Minimize false positives | PRECISION |
-| Minimize false negatives | RECALL |
+| Probability calibration | LOG_LOSS |
 | Overall quality | MCC |
-| Model ranking | AUROC |
 
 ### Regression
 
 | Scenario | Recommended Metric |
 |----------|-------------------|
-| General performance | RMSE, R2 |
-| Outlier-robust | MAE |
-| Relative performance | R2, PEARSON |
+| General performance | RMSE, MAE |
+| Relative performance | R2, PEARSON, SPEARMAN |
 | Same units as target | RMSE, MAE |
 
 ---
@@ -252,8 +237,12 @@ Linear correlation between predictions and true values.
 | AUROC | Area Under ROC Curve |
 | AUPRC | Area Under Precision-Recall Curve |
 | F1 | F1 Score |
+| LOG_LOSS | Log Loss |
 | MCC | Matthews Correlation Coefficient |
 | MSE | Mean Squared Error |
 | RMSE | Root Mean Squared Error |
 | MAE | Mean Absolute Error |
+| MAPE | Mean Absolute Percentage Error |
 | R2 | R-squared |
+| PEARSON | Pearson Correlation |
+| SPEARMAN | Spearman Correlation |

@@ -12,6 +12,8 @@ agentomics-ml/
 ├── workspace/                # Active execution workspace
 │   ├── runs/                 # Current run files
 │   ├── snapshots/            # Best iteration snapshots
+│   ├── reports/              # Iteration reports
+│   ├── extras/               # Logs and extra artifacts
 │   └── fallbacks/            # Backup for recovery
 └── outputs/                  # Final results
 ```
@@ -38,6 +40,7 @@ prepared_datasets/my_dataset/
 ├── validation.csv         # Processed validation data
 ├── train.no_label.csv     # Training data without labels
 ├── validation.no_label.csv
+├── dataset_description.md # Copied/created description
 └── metadata.json          # Task info (type, classes, etc.)
 ```
 
@@ -69,18 +72,8 @@ workspace/runs/<agent_id>/
 ├── train.py                     # Generated training script
 ├── inference.py                 # Generated inference script
 ├── training_artifacts/          # Model and artifacts
-│   ├── model.joblib
-│   └── ...
 ├── .conda/                      # Conda environment
-│   └── envs/<agent_id>_env/
-├── iteration_0/                 # Iteration-specific files
-│   ├── data_exploration.json
-│   ├── data_split.json
-│   ├── data_representation.json
-│   ├── model_architecture.json
-│   └── ...
-├── iteration_1/
-└── ...
+└── iteration_0/                 # Iteration-specific snapshot
 ```
 
 ### workspace/snapshots/
@@ -110,6 +103,16 @@ workspace/fallbacks/<agent_id>/
 
 Used to restore data if a split change causes issues.
 
+### workspace/reports/
+
+Iteration reports are written here during runs. These are copied to
+`outputs/<agent_id>/reports/` after completion.
+
+### workspace/extras/
+
+Logs and auxiliary artifacts (metrics, run logs) are stored here and copied to
+`outputs/<agent_id>/extras/`.
+
 ## outputs/
 
 Final results after run completion:
@@ -119,49 +122,35 @@ outputs/<agent_id>/
 ├── best_run_files/           # Best iteration artifacts
 │   ├── inference.py          # Inference script
 │   ├── train.py              # Training script
-│   ├── model.joblib          # Trained model
-│   ├── .conda/               # Complete conda environment
-│   ├── iteration_number.txt  # Which iteration was best
-│   └── metadata.json         # Model metadata
-├── iteration_0/              # All iteration files
-├── iteration_1/
-├── ...
+│   ├── training_artifacts/   # Model and artifacts
+│   ├── validation_metrics.txt
+│   ├── train_metrics.txt
+│   ├── structured_outputs.txt
+│   ├── config.json
+│   ├── environment.yml
+│   └── iteration_number.txt  # Which iteration was best
+├── run_files/                # All iterations + data splits
+│   ├── train.csv
+│   ├── validation.csv
+│   ├── iteration_0/
+│   ├── iteration_1/
+│   └── ...
 ├── reports/                  # Run reports
-│   ├── run_report_iter_0.txt
-│   ├── run_report_iter_1.txt
-│   └── final_report.txt
-├── extras/                   # Additional files
-├── logs/                     # Execution logs
+│   ├── run_report_iter_0.md
+│   ├── run_report_iter_1.md
+│   └── ...
+├── pdf_reports/              # PDF versions + plots
+│   ├── iteration_0.pdf
+│   ├── iteration_1.pdf
+│   └── plots/
+├── extras/                   # Additional files and logs
 └── README.md                 # Run summary
 ```
 
-## File Descriptions
+## File Notes
 
-### Core Files
-
-| File | Description |
-|------|-------------|
-| `train.py` | Script that trains the model |
-| `inference.py` | Script that makes predictions |
-| `model.joblib` | Trained model (format varies) |
-| `metadata.json` | Task type, classes, configuration |
-
-### Iteration Files
-
-| File | Description |
-|------|-------------|
-| `data_exploration.json` | Data analysis results |
-| `data_split.json` | Train/validation split info |
-| `data_representation.json` | Feature encoding scheme |
-| `model_architecture.json` | Model configuration |
-| `metrics.json` | Evaluation metrics |
-
-### Reports
-
-| File | Description |
-|------|-------------|
-| `run_report_iter_N.txt` | Summary of iteration N |
-| `final_report.txt` | Complete run summary |
+Iteration contents and artifact names can vary by run. Use
+`outputs/<agent_id>/README.md` for the most accurate per-run details.
 
 ## Cleanup
 

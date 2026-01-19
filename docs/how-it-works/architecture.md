@@ -37,7 +37,7 @@ The agent analyzes the dataset:
 - Class balance (for classification)
 - Domain-specific insights
 
-**Output:** `data_exploration.json` with findings
+**Output:** Captured in structured outputs and iteration reports
 
 ### 2. Data Split
 
@@ -47,7 +47,7 @@ Creates or modifies train/validation split:
 - Considers data distribution
 - May adjust split based on previous iterations
 
-**Output:** `data_split.json` with split info
+**Output:** Captured in structured outputs and iteration reports
 
 !!! note
     The agent can modify splits during early iterations (controlled by `--split-allowed-iterations`).
@@ -61,7 +61,7 @@ Defines how data is encoded:
 - Feature selection
 - Custom transformations for omics data
 
-**Output:** `data_representation.json` with encoding scheme
+**Output:** Captured in structured outputs and iteration reports
 
 ### 4. Model Architecture
 
@@ -72,7 +72,7 @@ Selects and configures the model:
 - Architecture details for neural networks
 - Regularization strategies
 
-**Output:** `model_architecture.json` with configuration
+**Output:** Captured in structured outputs and iteration reports
 
 ### 5. Training
 

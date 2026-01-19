@@ -25,6 +25,8 @@ Download foundation models before running:
 
 This downloads relevant models to the Docker image, avoiding download delays during agent execution.
 
+You can also use `--foundation-model-type all` to include every type.
+
 ## Multiple Types
 
 Download multiple types by running multiple times:
@@ -33,6 +35,9 @@ Download multiple types by running multiple times:
 ./run.sh --foundation-model-type dna
 ./run.sh --foundation-model-type protein
 ```
+
+In local mode (`--local`), models are downloaded into the workspace instead of
+being baked into a Docker image.
 
 ## DNA Models
 

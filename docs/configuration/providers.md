@@ -7,7 +7,7 @@ Agentomics-ML supports multiple LLM providers out of the box.
 | Provider | Environment Variable | Models |
 |----------|---------------------|--------|
 | [OpenRouter](https://openrouter.ai/) | `OPENROUTER_API_KEY` | 100+ models |
-| [OpenAI](https://openai.com/) | `OPENAI_API_KEY` | gpt-5.2-codex |
+| [OpenAI](https://openai.com/) | `OPENAI_API_KEY` | Use `--list-models` to see available models |
 | [Anthropic](https://anthropic.com/) | `ANTHROPIC_API_KEY` | Claude 3.5, Claude 3, etc. |
 | [Ollama](https://ollama.ai/) | Local setup | Local models |
 
@@ -28,9 +28,8 @@ export OPENROUTER_API_KEY="sk-or-v1-xxxxxxxxxxxx"
 ./run.sh --list-models
 ```
 
-Default model:
-
-- `openai/gpt-5.2-codex` - Recommended for best results
+Model availability depends on your provider and API plan. Use `./run.sh --list-models`
+to see what is available.
 
 ### Provisioning Key
 
@@ -39,6 +38,8 @@ For temporary access without your own key:
 ```bash
 ./run.sh --use-provisioning-key
 ```
+
+This requires `PROVISIONING_OPENROUTER_API_KEY` in your `.env`.
 
 ---
 
@@ -55,7 +56,7 @@ export OPENAI_API_KEY="sk-xxxxxxxxxxxx"
 
 ### Available Models
 
-- `gpt-5.2-codex` - Default, recommended
+Use `./run.sh --list-models` to see what your API key can access.
 
 ---
 
@@ -87,33 +88,23 @@ Run models locally for privacy or offline use.
 
 ### Docker Mode (Recommended)
 
-Configure Ollama to accept Docker connections:
+Run with:
 
-```bash
-sudo systemctl edit ollama.service
-```
-
-Add:
-```ini
-[Service]
-Environment="OLLAMA_HOST=172.17.0.1:11434"
-```
-
-Restart:
-```bash
-sudo systemctl daemon-reload
-sudo systemctl restart ollama.service
-```
-
-Run:
 ```bash
 ./run.sh --ollama
 ```
 
+Docker mode connects to the Ollama base URL defined in
+`src/utils/providers/configured_providers.yaml`
+(default: `http://host.docker.internal:11434/v1`).
+Ensure your Ollama server is reachable from the host at `:11434`.
+
 ### Local Mode
 
+For local mode, set the Ollama base URL in `src/utils/providers/configured_providers.yaml`
+to `http://localhost:11434/v1`, then run:
+
 ```bash
-export OLLAMA_BASE_URL="http://localhost:11434/v1"
 ./run.sh --local
 ```
 
@@ -162,7 +153,7 @@ The interactive mode groups models by provider for easy selection.
 
 | Use Case | Recommended Model |
 |----------|-------------------|
-| Default | `openai/gpt-5.2-codex` |
+| Default | Use `--list-models` to pick |
 | Privacy/Offline | Ollama local models |
 
 ---
@@ -196,4 +187,5 @@ Ensure Ollama is running:
 ollama list  # Should show pulled models
 ```
 
-For Docker mode, verify the OLLAMA_HOST setting.
+For Docker mode, verify that `host.docker.internal:11434` is reachable from
+containers (run with `./run.sh --ollama`).

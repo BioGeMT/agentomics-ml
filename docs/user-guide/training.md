@@ -69,9 +69,7 @@ After training completes, you'll find:
 
 ```
 artifacts_dir/
-├── model.joblib        # Or other model files
-├── metadata.json       # Training metadata
-└── ...                 # Other artifacts
+├── ...                 # Artifacts produced by train.py
 ```
 
 ## Docker vs Local Mode

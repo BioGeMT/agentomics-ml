@@ -41,11 +41,9 @@ At the end of the run:
 | Accuracy | `ACC` | Correct predictions / Total predictions |
 | AUROC | `AUROC` | Area Under ROC Curve |
 | AUPRC | `AUPRC` | Area Under Precision-Recall Curve |
-| F1 Score | `F1` | Harmonic mean of precision and recall |
-| Precision | `PRECISION` | True positives / Predicted positives |
-| Recall | `RECALL` | True positives / Actual positives |
+| F1 Score | `F1` | Harmonic mean of precision and recall (macro) |
+| Log Loss | `LOG_LOSS` | Negative log-likelihood |
 | MCC | `MCC` | Matthews Correlation Coefficient |
-| Balanced Accuracy | `BALANCED_ACC` | Average recall per class |
 
 ### When to Use Each
 
@@ -55,8 +53,7 @@ At the end of the run:
 | `AUROC` | Comparing models, imbalanced data |
 | `AUPRC` | Highly imbalanced data |
 | `F1` | Balance of precision and recall |
-| `PRECISION` | Minimizing false positives |
-| `RECALL` | Minimizing false negatives |
+| `LOG_LOSS` | Probability calibration |
 | `MCC` | Imbalanced data, overall quality |
 
 ## Regression Metrics
@@ -66,8 +63,10 @@ At the end of the run:
 | Mean Squared Error | `MSE` | Average squared difference |
 | Root MSE | `RMSE` | Square root of MSE |
 | Mean Absolute Error | `MAE` | Average absolute difference |
+| Mean Absolute Percentage Error | `MAPE` | Average percent error |
 | R-squared | `R2` | Proportion of variance explained |
 | Pearson Correlation | `PEARSON` | Linear correlation coefficient |
+| Spearman Correlation | `SPEARMAN` | Rank correlation coefficient |
 
 ### When to Use Each
 
@@ -75,8 +74,10 @@ At the end of the run:
 |--------|----------|
 | `MSE`/`RMSE` | Penalizing large errors |
 | `MAE` | Robust to outliers |
+| `MAPE` | Relative error (positive targets) |
 | `R2` | Understanding explained variance |
 | `PEARSON` | Linear relationship strength |
+| `SPEARMAN` | Monotonic relationship strength |
 
 ## Selecting Validation Metric
 
@@ -98,7 +99,7 @@ from sklearn.metrics import accuracy_score, roc_auc_score, f1_score
 # Classification
 accuracy = accuracy_score(y_true, y_pred)
 auroc = roc_auc_score(y_true, y_proba)
-f1 = f1_score(y_true, y_pred, average='weighted')
+f1 = f1_score(y_true, y_pred, average='macro')
 
 # Regression
 mse = mean_squared_error(y_true, y_pred)
@@ -109,9 +110,9 @@ r2 = r2_score(y_true, y_pred)
 
 For multi-class classification:
 
-- **AUROC**: One-vs-rest, macro average
-- **F1**: Weighted average by class support
-- **Precision/Recall**: Macro or weighted average
+- **AUROC**: One-vs-rest
+- **AUPRC**: Macro average
+- **F1**: Macro average
 
 ## Overfitting Detection
 
@@ -130,8 +131,8 @@ Example feedback when overfitting detected:
 The best iteration is selected by:
 
 1. Comparing validation metric across all iterations
-2. Higher is better for most metrics (ACC, AUROC, F1, R2)
-3. Lower is better for error metrics (MSE, RMSE, MAE)
+2. Higher is better for most metrics (ACC, AUROC, F1, R2, PEARSON, SPEARMAN)
+3. Lower is better for error metrics (MSE, RMSE, MAE, MAPE, LOG_LOSS)
 
 ## Viewing Results
 
@@ -146,7 +147,7 @@ Iteration 5: Validation ACC = 0.847 (Best: 0.852 at iter 3)
 ### In Reports
 
 ```
-reports/final_report.txt
+outputs/<agent_id>/reports/run_report_iter_N.md
 ```
 
 Contains:
@@ -165,13 +166,11 @@ If configured, metrics are logged to Weights & Biases:
 
 ## Custom Evaluation
 
-For advanced use, modify evaluation in:
+For advanced use, modify metric definitions in:
 
 ```
-src/eval/metrics_calculator.py
+src/utils/metrics.py
 ```
-
-Add custom metrics or modify calculation behavior.
 
 ## Next Steps
 
