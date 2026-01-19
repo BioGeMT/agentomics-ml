@@ -49,3 +49,15 @@ a.md-button:not(.md-button--primary):hover,
 .md-button svg {
   fill: currentColor !important;
 }
+
+/* Header logo - white */
+.md-header__button.md-logo,
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+}
+
+.md-header .md-logo svg {
+  fill: #ffffff !important;
+}
