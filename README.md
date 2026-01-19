@@ -22,20 +22,16 @@ For complete documentation, visit **https://biogemt.github.io/agentomics-ml/**
 
 ## Key Features
 
-| Feature | Description |
-|---------|-------------|
-| **Any LLM** | OpenAI, Anthropic, OpenRouter, or local models via Ollama |
-| **Any Dataset** | Classification or regression in CSV format |
-| **Secure** | Docker containers with isolated execution |
-| **Reproducible** | Outputs include models, scripts, and conda environments |
+- Any LLM: OpenAI, Anthropic, OpenRouter, or local models via Ollama
+- Any dataset: classification or regression in CSV format
+- Secure: Docker containers with isolated execution
+- Reproducible: outputs include models, scripts, and conda environments
 
 ## Main Scripts
 
-| Script | Purpose |
-|--------|---------|
-| `run.sh` | Run the full agent workflow |
-| `train.sh` | Re-train a model with new data |
-| `inference.sh` | Run predictions on new data |
+- `run.sh`: run the full agent workflow
+- `train.sh`: re-train a model with new data
+- `inference.sh`: run predictions on new data
 
 ## Links
 
