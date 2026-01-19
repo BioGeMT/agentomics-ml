@@ -28,8 +28,8 @@ theme:
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
+  logo: assets/logo.svg
   icon:
-    logo: material/dna
     repo: fontawesome/brands/github
 
 nav:

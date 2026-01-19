@@ -2,8 +2,6 @@
 
 **Autonomous AI agent for supervised machine learning model development on omics data**
 
-[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://biogemT.github.io/Agentomics-ML/)
-[![arXiv](https://img.shields.io/badge/arXiv-2506.05542-b31b1b.svg)](https://arxiv.org/abs/2506.05542)
 [![Try in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1rxsGsIwxrE49E4rjzNh920s66UdG34xF?usp=sharing)
 
 Given a raw dataset, Agentomics-ML autonomously generates a trained model ready for inference and a detailed report summarizing the development process.
@@ -14,18 +12,12 @@ Given a raw dataset, Agentomics-ML autonomously generates a trained model ready 
 git clone https://github.com/BioGeMT/Agentomics-ML.git
 cd Agentomics-ML
 export OPENROUTER_API_KEY="your-key-here"
-./run.sh --pull-images
+./run.sh
 ```
 
 ## Documentation
 
 For complete documentation, visit **[biogemT.github.io/Agentomics-ML](https://biogemT.github.io/Agentomics-ML/)**
-
-- [Quick Start Guide](https://biogemT.github.io/Agentomics-ML/getting-started/quick-start/)
-- [Installation Options](https://biogemT.github.io/Agentomics-ML/getting-started/installation/) (Docker, Local, Colab, Ollama)
-- [User Guide](https://biogemT.github.io/Agentomics-ML/user-guide/running-agent/)
-- [Configuration](https://biogemT.github.io/Agentomics-ML/configuration/cli-options/)
-- [How It Works](https://biogemT.github.io/Agentomics-ML/how-it-works/architecture/)
 
 ## Key Features
 
