@@ -3,6 +3,7 @@ name: Deploy Documentation
 on:
   push:
     branches:
+      - main
       - dimos-readme
     paths:
       - 'docs/**'
@@ -25,6 +26,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Select docs source
+        id: docs_ref
+        run: |
+          if git ls-tree -r origin/main --name-only | grep -q '^mkdocs.yml$'; then
+            echo "ref=main" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout docs source
+        if: steps.docs_ref.outputs.ref != github.ref_name
+        run: git checkout "origin/${{ steps.docs_ref.outputs.ref }}"
 
       - name: Setup Python
         uses: actions/setup-python@v5
