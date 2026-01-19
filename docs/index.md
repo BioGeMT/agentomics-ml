@@ -53,7 +53,6 @@ Choose the setup that works best for you:
 | `run.sh` | Run the full agent workflow |
 | `train.sh` | Re-train a model with new data |
 | `inference.sh` | Run predictions on new data |
-| `orchestrator.sh` | Batch experiments on multiple datasets |
 
 ## Quick Example
 
@@ -74,4 +73,3 @@ The agent will guide you through selecting a model, dataset, and run parameters 
 ## License
 
 Agentomics-ML is open source. See the [GitHub repository](https://github.com/BioGeMT/Agentomics-ML) for details.
-

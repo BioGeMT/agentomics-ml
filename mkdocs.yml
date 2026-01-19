@@ -56,7 +56,6 @@ nav:
     - Metrics: reference/metrics.md
     - Foundation Models: reference/foundation-models.md
     - Workspace Structure: reference/workspace-structure.md
-    - Batch Experiments: reference/batch-runs.md
   - Developer Guide:
     - Building Images: developer/building-images.md
     - Proxy Settings: developer/proxy-settings.md
