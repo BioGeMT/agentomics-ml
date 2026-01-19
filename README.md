@@ -17,7 +17,7 @@ export OPENROUTER_API_KEY="your-key-here"
 
 ## Documentation
 
-For complete documentation, visit **[biogemT.github.io/Agentomics-ML](https://biogemT.github.io/Agentomics-ML/)**
+For complete documentation, visit **[biogemt.github.io/Agentomics-ML](https://biogemt.github.io/Agentomics-ML/)**
 
 ## Key Features
 
@@ -38,7 +38,7 @@ For complete documentation, visit **[biogemT.github.io/Agentomics-ML](https://bi
 
 ## Links
 
-- [Documentation](https://biogemT.github.io/Agentomics-ML/)
+- [Documentation](https://biogemt.github.io/Agentomics-ML/)
 - [Preprint](https://arxiv.org/abs/2506.05542)
 - [Website](https://agentomicsml.com/)
 - [Google Colab Demo](https://colab.research.google.com/drive/1rxsGsIwxrE49E4rjzNh920s66UdG34xF?usp=sharing)
