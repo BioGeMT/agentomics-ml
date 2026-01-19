@@ -1,4 +1,4 @@
-/* Links */
+/* Links - dark green */
 a {
   color: #009688 !important;
 }
@@ -7,15 +7,35 @@ a:hover {
   color: #00796b !important;
 }
 
-/* Buttons */
-.md-button--primary {
+/* Primary buttons - white text on green */
+.md-button.md-button--primary {
   background-color: #009688 !important;
   border-color: #009688 !important;
   color: white !important;
 }
 
-.md-button--primary:hover {
+.md-button.md-button--primary:hover {
   background-color: #00796b !important;
   border-color: #00796b !important;
+  color: white !important;
+}
+
+/* Secondary buttons - green outline */
+.md-button:not(.md-button--primary) {
+  border-color: #009688 !important;
+  color: #009688 !important;
+}
+
+.md-button:not(.md-button--primary):hover {
+  background-color: #009688 !important;
+  color: white !important;
+}
+
+/* Fix button link colors */
+a.md-button--primary {
+  color: white !important;
+}
+
+a.md-button--primary:hover {
   color: white !important;
 }
