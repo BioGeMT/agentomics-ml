@@ -18,7 +18,7 @@ cp .env.example .env
 
 ## Documentation
 
-For complete documentation, visit **[https://biogemt.github.io/agentomics-ml/)**
+For complete documentation, visit **https://biogemt.github.io/agentomics-ml/**
 
 ## Key Features
 
