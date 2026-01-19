@@ -8,6 +8,7 @@ a:not(.md-button):hover {
 }
 
 /* Primary buttons - white text on green */
+.md-content a.md-button.md-button--primary,
 a.md-button.md-button--primary,
 .md-button.md-button--primary {
   background-color: #009688 !important;
@@ -15,6 +16,13 @@ a.md-button.md-button--primary,
   color: #ffffff !important;
 }
 
+.md-content a.md-button.md-button--primary *,
+a.md-button.md-button--primary *,
+.md-button.md-button--primary * {
+  color: #ffffff !important;
+}
+
+.md-content a.md-button.md-button--primary:hover,
 a.md-button.md-button--primary:hover,
 .md-button.md-button--primary:hover {
   background-color: #00796b !important;
@@ -23,14 +31,21 @@ a.md-button.md-button--primary:hover,
 }
 
 /* Secondary buttons - green outline */
+.md-content a.md-button:not(.md-button--primary),
 a.md-button:not(.md-button--primary),
 .md-button:not(.md-button--primary) {
   border-color: #009688 !important;
   color: #009688 !important;
 }
 
+.md-content a.md-button:not(.md-button--primary):hover,
 a.md-button:not(.md-button--primary):hover,
 .md-button:not(.md-button--primary):hover {
   background-color: #009688 !important;
   color: #ffffff !important;
+}
+
+/* SVG icons inside buttons */
+.md-button svg {
+  fill: currentColor !important;
 }
