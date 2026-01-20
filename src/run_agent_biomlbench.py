@@ -13,6 +13,7 @@ from utils.dataset_utils import prepare_dataset
 from run_agent import run_experiment
 from utils.create_user import create_agent_id
 from utils.biomlbench_target_utils import get_target_col_from_description
+from utils.conda_env_utils import conda_run_prefix
 
 def setup_agentomics_folder_structure_and_files(description_path, train_data_path, task_type, dataset_name, is_proteingym):
     os.mkdir('/home/workspace')
@@ -89,7 +90,7 @@ def run_inference_on_test_data(test_data_path):
     output_path = f'{snapshots_dir}/{run_name}/predictions.csv'
 
     command_dir_ensurance = f"cd {os.path.dirname(inference_path)} && "
-    command_prefix=f"conda run -p {env_path} --no-capture-output"
+    command_prefix = conda_run_prefix(env_path, capture_output=True)
     command = f"{command_dir_ensurance} {command_prefix} python \"{inference_path}\" --input \"{input_path}\" --output \"{output_path}\" --artifacts-dir \"{artifacts_dir_path}\""
     inference_out = subprocess.run(command, shell=True, executable="/bin/bash", capture_output=True, check=False)
     if inference_out.returncode != 0:
@@ -181,7 +182,7 @@ def generate_preds_for_biomlbench_proteingym(config):
 
                 temp_csv_files.extend([train_csv_path, valid_csv_path, test_csv_path, artifacts_dir, predictions_csv_path])
 
-                command_prefix=f"conda run -p {env_path} --no-capture-output"
+                command_prefix = conda_run_prefix(env_path, capture_output=True)
 
                 train_command_dir_ensurance = f"cd {os.path.dirname(train_script_path)} && "
                 training_command = f"{train_command_dir_ensurance} {command_prefix} python \"{train_script_path}\" --train-data \"{train_csv_path}\" --validation-data \"{valid_csv_path}\" --artifacts-dir \"{artifacts_dir}\""

@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from pydantic.json_schema import SkipJsonSchema
 from pydantic_ai import ModelRetry
 import pandas as pd
+from utils.conda_env_utils import conda_run_prefix
 
 class ModelTraining(BaseModel):
     path_to_train_file: str = Field(
@@ -49,7 +50,8 @@ def get_model_training_prompt(config):
 def retrain_and_check(config, train_data_path, valid_data_path, train_script_path, model_file_name):
     run_dir = config.runs_dir / config.agent_id
     conda_path = run_dir / ".conda" / "envs" / f"{config.agent_id}_env"
-    command_prefix = f"cd {run_dir} && conda run -p {conda_path}"
+    conda_prefix = conda_run_prefix(conda_path, capture_output=False)
+    command_prefix = f"cd {run_dir} && {conda_prefix}"
 
     # Create temporary artifacts folder
     temp_artifacts_dir = run_dir / "temp_retrain_artifacts"

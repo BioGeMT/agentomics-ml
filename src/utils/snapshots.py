@@ -6,6 +6,7 @@ import stat
 import subprocess
 import wandb
 from pathlib import Path
+from utils.conda_env_utils import conda_env_export_command, get_shared_env_name
 from utils.metrics import get_classification_metrics_functions, get_higher_is_better_map, get_regression_metrics_functions
 from run_logging.logging_helpers import is_wandb_active
 
@@ -160,14 +161,20 @@ def get_best_iteration(config):
     return None
 
 def export_conda_to_dir(config, run_dir, destination_dir, include_packages=False):
+    shared_env = get_shared_env_name()
+    if shared_env:
+        include_packages = False
+
     if include_packages:
         conda_env = run_dir / ".conda"
-        shutil.copytree(str(conda_env), str(destination_dir / ".conda"), symlinks=False, dirs_exist_ok=True)
+        if conda_env.exists():
+            shutil.copytree(str(conda_env), str(destination_dir / ".conda"), symlinks=False, dirs_exist_ok=True)
     
     env_name = f"{config.agent_id}_env"
     conda_env = run_dir / ".conda" / "envs" / env_name
-    if conda_env.exists():
-        subprocess.run(['conda', 'env', 'export', '-p', str(conda_env), '-f', str(destination_dir / "environment.yml")], check=True, capture_output=True)
+    if shared_env or conda_env.exists():
+        export_cmd = conda_env_export_command(conda_env, destination_dir / "environment.yml")
+        subprocess.run(export_cmd, check=True, capture_output=True)
 
 def save_outputs_to_dir(dest_dir, structured_outputs):
     with open(dest_dir / "structured_outputs.txt", "w") as f:

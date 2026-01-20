@@ -7,6 +7,8 @@ LOCAL_MODE=false
 TEST_MODE=false
 CPU_ONLY=false
 OLLAMA=false
+LITE_MODE=false
+NO_TORCH=false
 USE_PROVISIONING_KEY=false
 SPEND_LIMIT=10
 TIMEOUT_SECS=""
@@ -39,6 +41,8 @@ Required Arguments (for non-interactive runs):
 
 Operational Flags:
   --local             Run the project using local Conda environments instead of Docker.
+  --lite              Local mode only: reuse a shared conda env to save disk (skips per-run env packing).
+  --no-torch          Local mode only: use a smaller env without torch/transformers (implies --lite).
   --test              Run the project's integrated test suite.
                       (Note: Only supported in Docker mode, not in local Conda mode.)
   --cpu-only          Force Docker/Conda to run using CPU only (skip GPU configuration).
@@ -235,6 +239,15 @@ while [[ $# -gt 0 ]]; do
             LOCAL_MODE=true
             shift
             ;;
+        --lite)
+            LITE_MODE=true
+            shift
+            ;;
+        --no-torch)
+            NO_TORCH=true
+            LITE_MODE=true
+            shift
+            ;;
         --ollama)
             OLLAMA=true
             shift
@@ -277,6 +290,10 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+if [ "$NO_TORCH" = true ] && [ "$LOCAL_MODE" = false ]; then
+    die "--no-torch is only supported with --local"
+fi
+
 IS_INTERACTIVE_RUN=false
 if [[ -t 0 && ${#AGENTOMICS_ARGS[@]} -eq 0 && "$TEST_MODE" = false ]]; then
     IS_INTERACTIVE_RUN=true
@@ -287,7 +304,7 @@ if [ -n "$FOUNDATION_MODEL_TYPE" ] && [[ "$FOUNDATION_MODEL_TYPE" != "dna" && "$
     exit 1
 fi
 
-if [[ "$IS_INTERACTIVE_RUN" = true && -z "$FOUNDATION_MODEL_TYPE" ]]; then
+if [[ "$IS_INTERACTIVE_RUN" = true && -z "$FOUNDATION_MODEL_TYPE" && "$NO_TORCH" = false ]]; then
     echo ""
     echo "Foundation models (optional)"
     echo "Select which foundation model type should be pre-downloaded and made available to the agent:"
@@ -328,11 +345,26 @@ if [ "$LOCAL_MODE" = true ]; then
     export FOUNDATION_MODELS_YAML="$(pwd)/foundation_models/models.yaml"
     mkdir -p "$WORKSPACE_DIR"
 
+    RUN_ENV_NAME="agentomics-env"
+    RUN_ENV_FILE="environment.yaml"
+    if [ "$NO_TORCH" = true ]; then
+        RUN_ENV_NAME="agentomics-lite-env"
+        RUN_ENV_FILE="environment_lite.yaml"
+        export AGENTOMICS_NO_TORCH="1"
+    fi
+
+    if [ "$LITE_MODE" = true ]; then
+        export AGENTOMICS_TOOL_ENV="$RUN_ENV_NAME"
+    fi
+
     if [ "$CPU_ONLY" = true ]; then
         export CUDA_VISIBLE_DEVICES=""
     fi
 
     if [ -n "$FOUNDATION_MODEL_TYPE" ]; then
+        if [ "$NO_TORCH" = true ]; then
+            die "--no-torch cannot be combined with --foundation-model-type"
+        fi
         export FOUNDATION_MODEL_TYPE="$FOUNDATION_MODEL_TYPE"
         export HF_HOME="$WORKSPACE_DIR/foundation_models"
         mkdir -p "$HF_HOME"
@@ -341,31 +373,46 @@ if [ "$LOCAL_MODE" = true ]; then
     echo -e "${RED}Running in local mode - this is only recommended if you run in a non-vulnerable environment!${NOCOLOR}"
     echo "For Docker mode (secure run), re-run without the --local flag."
     
-    if ! conda env list | grep -q "agentomics-prepare-env"; then
-        conda env create -f environment_prepare.yaml -q
+    mkdir -p prepared_datasets prepared_test_sets
+    NEED_PREPARE=true
+    if [[ "$LITE_MODE" = true && -n "$DATASET_NAME" ]]; then
+        if [[ -f "prepared_datasets/$DATASET_NAME/metadata.json" ]]; then
+            NEED_PREPARE=false
+        fi
+    fi
+    if [[ "$NEED_PREPARE" = true ]]; then
+        if ! conda env list | grep -q "agentomics-prepare-env"; then
+            conda env create -f environment_prepare.yaml -q
+        fi
+        PREPARE_DATASETS_ARGS=(--prepare-all)
+        if [[ -n "$DATASET_NAME" ]]; then
+            PREPARE_DATASETS_ARGS=(--dataset-dir "datasets/$DATASET_NAME")
+        fi
+        conda run -n agentomics-prepare-env python src/prepare_datasets.py "${PREPARE_DATASETS_ARGS[@]}"
+    else
+        echo "Skipping dataset preparation (already prepared: $DATASET_NAME)"
     fi
 
-    mkdir -p prepared_datasets
-    conda run -n agentomics-prepare-env python src/prepare_datasets.py --prepare-all
-
-    if ! conda env list | grep -q "agentomics-env"; then
-        conda env create -f environment.yaml -q
+    if ! conda env list | grep -q "^${RUN_ENV_NAME}[[:space:]]"; then
+        conda env create -f "$RUN_ENV_FILE" -q
     fi
 
-    if ! conda env list | grep -q "^agent_start_env "; then
-        conda env create -f environment_agent.yaml -q
+    if [ "$LITE_MODE" = false ]; then
+        if ! conda env list | grep -q "^agent_start_env "; then
+            conda env create -f environment_agent.yaml -q
+        fi
+        START_ENV_PKG_PATH="$WORKSPACE_DIR/agent_start_env.tar"
+        if [[ ! -f "$START_ENV_PKG_PATH" ]]; then
+            echo "Packing agent start environment to ${START_ENV_PKG_PATH}"
+            conda run -n agent_start_env conda-pack --format tar -o "$START_ENV_PKG_PATH"
+        fi
+        export START_ENV_PKG="$START_ENV_PKG_PATH"
     fi
-    START_ENV_PKG_PATH="$WORKSPACE_DIR/agent_start_env.tar"
-    if [[ ! -f "$START_ENV_PKG_PATH" ]]; then
-        echo "Packing agent start environment to ${START_ENV_PKG_PATH}"
-        conda run -n agent_start_env conda-pack --format tar -o "$START_ENV_PKG_PATH"
-    fi
-    export START_ENV_PKG="$START_ENV_PKG_PATH"
 
     if [ -n "$FOUNDATION_MODEL_TYPE" ]; then
         FOUNDATION_MODELS_MARKER="$HF_HOME/.downloaded_${FOUNDATION_MODEL_TYPE}"
         if [[ ! -f "$FOUNDATION_MODELS_MARKER" ]]; then
-            conda run -n agentomics-env python src/utils/download_foundation_models.py
+            conda run -n "$RUN_ENV_NAME" python src/utils/download_foundation_models.py
             touch "$FOUNDATION_MODELS_MARKER"
         fi
     fi
@@ -373,14 +420,14 @@ if [ "$LOCAL_MODE" = true ]; then
     TEMP_API_KEY_HASH=""
     if [ "$USE_PROVISIONING_KEY" = true ]; then
         echo "Creating temporary API key with spend limit: $SPEND_LIMIT"
-        API_KEY_OUTPUT=$(PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys_utils.py create --name "agentomics_run_$(date +%s)" --limit "$SPEND_LIMIT")
+        API_KEY_OUTPUT=$(PYTHONPATH="$(pwd)/src" conda run -n "$RUN_ENV_NAME" python src/utils/api_keys_utils.py create --name "agentomics_run_$(date +%s)" --limit "$SPEND_LIMIT")
         TEMP_API_KEY=$(echo "$API_KEY_OUTPUT" | cut -d',' -f1)
         TEMP_API_KEY_HASH=$(echo "$API_KEY_OUTPUT" | cut -d',' -f2)
         export OPENROUTER_API_KEY="$TEMP_API_KEY"
     fi
 
     eval "$(conda shell.bash hook)"
-    conda activate agentomics-env
+    conda activate "$RUN_ENV_NAME"
 
     AGENT_ID=$(python src/utils/create_user.py)
     export AGENT_ID
@@ -424,7 +471,7 @@ if [ "$LOCAL_MODE" = true ]; then
     if [ "$USE_PROVISIONING_KEY" = true ]; then
         echo "Logging costs and cleaning up temporary API key"
         CONFIG_PATH="outputs/${AGENT_ID}/best_run_files/config.json"
-        PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys_utils.py cleanup-and-log --config-path "$CONFIG_PATH" --api-key-hash "$TEMP_API_KEY_HASH"
+        PYTHONPATH="$(pwd)/src" conda run -n "$RUN_ENV_NAME" python src/utils/api_keys_utils.py cleanup-and-log --config-path "$CONFIG_PATH" --api-key-hash "$TEMP_API_KEY_HASH"
     fi
 
     write_outputs_readme "${AGENT_ID}"

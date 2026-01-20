@@ -3,6 +3,7 @@ import time
 from pydantic_ai import Tool
 from pathlib import Path
 from .bash_tool import BashProcess
+from utils.conda_env_utils import conda_run_prefix
 
 def create_run_python_tool(agent_id, runs_dir, timeout, max_retries, proxy):
     bash = BashProcess(
@@ -32,11 +33,12 @@ def create_run_python_tool(agent_id, runs_dir, timeout, max_retries, proxy):
         
         #TODO allow to accept arguments + validate they don't break the bash (requiring input etc)
         env_path = runs_dir / agent_id / ".conda" / "envs" / f"{agent_id}_env"
+        conda_prefix = conda_run_prefix(env_path, capture_output=True)
         if kwargs:
             args = " ".join([f"{key} {value}" for key, value in kwargs.items()])
-            command = f"conda run -p {env_path} --no-capture-output python {python_file_path} {args}"
+            command = f"{conda_prefix} python {python_file_path} {args}"
         else:
-            command = f"conda run -p {env_path} --no-capture-output python {python_file_path}"
+            command = f"{conda_prefix} python {python_file_path}"
         out = bash.run(command)
         timer_msg = f"\n[Tool call took {time.time() - start_time:.1f} seconds]"
         return out + timer_msg

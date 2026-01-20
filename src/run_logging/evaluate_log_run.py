@@ -9,6 +9,7 @@ from eval.evaluate_result import get_metrics
 from utils.exceptions import AgentScriptFailed
 from run_logging.logging_helpers import log_inference_stage_and_metrics, log_serial_metrics
 from rich.console import Console
+from utils.conda_env_utils import conda_run_prefix
 
 console = Console()
 
@@ -69,10 +70,11 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
     if (not config.explicit_valid_set_provided and evaluation_stage in ['validation', 'train']):
         create_labelless_file(config, target_path=stage_to_inference_input[evaluation_stage], evaluation_stage=evaluation_stage) 
 
+    conda_prefix = conda_run_prefix(conda_path[source_folder], capture_output=False)
     if evaluation_stage == 'test':
-        command_prefix=f"cd {snapshot_dir} && conda run -p {conda_path[source_folder]}"
+        command_prefix=f"cd {snapshot_dir} && {conda_prefix}"
     else:
-        command_prefix=f"conda run -p {conda_path[source_folder]}"
+        command_prefix=f"{conda_prefix}"
     remove_file(stage_to_output[evaluation_stage])
     command = f"{command_prefix} python \"{inference_path[source_folder]}\" --input \"{stage_to_inference_input[evaluation_stage]}\" --output \"{stage_to_output[evaluation_stage]}\" --artifacts-dir \"{stage_to_training_artifacts_dir[evaluation_stage]}\""
     inference_out = subprocess.run(command, shell=True, executable="/bin/bash", capture_output=True)
@@ -220,6 +222,5 @@ def verify_file_and_row_count(input_path, predictions_path, inference_out):
         raise ModelRetry(
             f"Inference script must produce predicions with the 'id' column. {e}. Traceback: {tb}"
         ) from e
-
 
 

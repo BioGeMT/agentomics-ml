@@ -1,11 +1,12 @@
 import subprocess
 import re
 import threading
-import shlex    
+import shlex
 import os
 import time
 
 from pydantic_ai import Tool
+from utils.conda_env_utils import conda_run_prefix, get_shared_env_name
 
 class BashProcess:
     def __init__(self, agent_id, runs_dir, autoconda=True, timeout=60, proxy=False):
@@ -86,10 +87,12 @@ class BashProcess:
         return output.strip()
 
 def create_bash_tool(agent_id, runs_dir, timeout, max_retries, autoconda=True, proxy=False):
+        shared_env = get_shared_env_name()
+        use_autoconda = autoconda and not shared_env
         bash = BashProcess(
             agent_id=agent_id,
             runs_dir=runs_dir,
-            autoconda=autoconda,
+            autoconda=use_autoconda,
             timeout=timeout,
             proxy=proxy
         )
@@ -116,7 +119,8 @@ def create_bash_tool(agent_id, runs_dir, timeout, max_retries, autoconda=True, p
             start_time = time.time()
             env_path = runs_dir / agent_id / ".conda" / "envs" / f"{agent_id}_env"
             command_parsed = shlex.quote(command)
-            command = f"conda run -p {env_path} --no-capture-output bash -c {command_parsed}"
+            conda_prefix = conda_run_prefix(env_path, capture_output=True)
+            command = f"{conda_prefix} bash -c {command_parsed}"
             out = bash.run(command)
             timer_msg = f"\n[Tool call took {time.time() - start_time:.1f} seconds]"
             return out + timer_msg
