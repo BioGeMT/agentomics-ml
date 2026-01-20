@@ -13,6 +13,13 @@ git clone https://github.com/BioGeMT/Agentomics-ML.git
 cd Agentomics-ML
 cp .env.example .env
 # Edit .env and set at least one API key (OPENROUTER_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY)
+
+# Download example datasets
+conda env create -f competitors/environment_datasets.yaml
+conda activate agentomics-datasets
+python src/utils/create_datasets.py
+conda deactivate
+
 ./run.sh --pull-images
 ```
 
