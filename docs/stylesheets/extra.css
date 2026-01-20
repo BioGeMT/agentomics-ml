@@ -1,0 +1,77 @@
+/* Links - dark green (but NOT buttons) */
+a:not(.md-button) {
+  color: #009688 !important;
+}
+
+a:not(.md-button):hover {
+  color: #00796b !important;
+}
+
+/* Primary buttons - white text on green */
+.md-content a.md-button.md-button--primary,
+a.md-button.md-button--primary,
+.md-button.md-button--primary {
+  background-color: #009688 !important;
+  border-color: #009688 !important;
+  color: #ffffff !important;
+}
+
+.md-content a.md-button.md-button--primary *,
+a.md-button.md-button--primary *,
+.md-button.md-button--primary * {
+  color: #ffffff !important;
+}
+
+.md-content a.md-button.md-button--primary:hover,
+a.md-button.md-button--primary:hover,
+.md-button.md-button--primary:hover {
+  background-color: #00796b !important;
+  border-color: #00796b !important;
+  color: #ffffff !important;
+}
+
+/* Secondary buttons - green outline */
+.md-content a.md-button:not(.md-button--primary),
+a.md-button:not(.md-button--primary),
+.md-button:not(.md-button--primary) {
+  border-color: #009688 !important;
+  color: #009688 !important;
+}
+
+.md-content a.md-button:not(.md-button--primary):hover,
+a.md-button:not(.md-button--primary):hover,
+.md-button:not(.md-button--primary):hover {
+  background-color: #009688 !important;
+  color: #ffffff !important;
+}
+
+/* SVG icons inside buttons */
+.md-button svg {
+  fill: currentColor !important;
+}
+
+/* Header logo - white */
+.md-header .md-logo,
+.md-header .md-logo *,
+.md-header__button.md-logo,
+.md-header__button.md-logo * {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+}
+
+.md-header .md-logo svg,
+.md-header .md-logo svg *,
+.md-header__button.md-logo svg,
+.md-header__button.md-logo svg *,
+[data-md-component="logo"],
+[data-md-component="logo"] *,
+[data-md-component="logo"] svg,
+[data-md-component="logo"] svg * {
+  fill: #ffffff !important;
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+.md-header .md-logo img {
+  filter: brightness(0) invert(1) !important;
+}

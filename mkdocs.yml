@@ -1,0 +1,86 @@
+site_name: Agentomics-ML
+site_url: https://biogemT.github.io/Agentomics-ML/
+site_description: Autonomous AI agent for supervised machine learning model development on omics data
+repo_url: https://github.com/BioGeMT/Agentomics-ML
+repo_name: BioGeMT/Agentomics-ML
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.indexes
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+    - content.tabs.link
+  palette:
+    - scheme: default
+      primary: teal
+      accent: light green
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: teal
+      accent: light green
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  logo: assets/logo.svg
+  icon:
+    repo: fontawesome/brands/github
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Quick Start: getting-started/quick-start.md
+    - Installation: getting-started/installation.md
+  - User Guide:
+    - Running the Agent: user-guide/running-agent.md
+    - Preparing Datasets: user-guide/datasets.md
+    - Re-training Models: user-guide/training.md
+    - Running Inference: user-guide/inference.md
+    - Understanding Outputs: user-guide/outputs.md
+  - Configuration:
+    - CLI Options: configuration/cli-options.md
+    - Environment Variables: configuration/environment.md
+    - LLM Providers: configuration/providers.md
+    - Custom Prompts: configuration/custom-prompts.md
+  - How It Works:
+    - Agent Architecture: how-it-works/architecture.md
+    - Feedback Loop: how-it-works/feedback-loop.md
+    - Evaluation: how-it-works/evaluation.md
+  - Reference:
+    - Metrics: reference/metrics.md
+    - Foundation Models: reference/foundation-models.md
+    - Workspace Structure: reference/workspace-structure.md
+  - Developer Guide:
+    - Building Images: developer/building-images.md
+    - Proxy Settings: developer/proxy-settings.md
+    - GPU Settings: developer/gpu-settings.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+
+extra_css:
+  - stylesheets/extra.css
