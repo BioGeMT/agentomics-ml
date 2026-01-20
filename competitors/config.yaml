@@ -9,8 +9,8 @@ enable_cost_tracking: true  # Set to true when you have a provisioning key
 provisioning_key: sk-or-v1  # Add your provisioning key here when enabling cost tracking
 spending_limit_per_run: 50.0  # Max spend per agent run in USD
 
-time_limit_secs: 1000
-step_limit: 99999999  #  unlimited - agents controlled by time_limit_secs only
+time_limit_secs: 28800
+step_limit: 99999999  # unlimited - agents controlled by time_limit_secs only
 
 agents:
   aide:
