@@ -1,0 +1,9 @@
+{
+    "task_type": "classification",
+    "class_col": "target",
+    "numeric_label_col": "numeric_label",
+    "label_to_scalar": {
+        "negative": 0,
+        "positive": 1
+    }
+}

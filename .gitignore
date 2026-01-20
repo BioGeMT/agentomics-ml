@@ -193,6 +193,22 @@ cython_debug/
 prepared_datasets
 prepared_test_sets
 datasets
+
+# Colab-lite: keep only the drosophila dataset tracked
+!datasets/
+datasets/*
+!datasets/drosophila_enhancers_stark/
+!datasets/drosophila_enhancers_stark/**
+
+!prepared_datasets/
+prepared_datasets/*
+!prepared_datasets/drosophila_enhancers_stark/
+!prepared_datasets/drosophila_enhancers_stark/**
+
+!prepared_test_sets/
+prepared_test_sets/*
+!prepared_test_sets/drosophila_enhancers_stark/
+!prepared_test_sets/drosophila_enhancers_stark/**
 workspace/runs
 workspace
 outputs
