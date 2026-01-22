@@ -6,17 +6,7 @@
 
 Given a raw CSV dataset, Agentomics-ML autonomously generates a trained model ready for inference and a detailed report summarizing the development process.
 
-<table>
-  <tr>
-    <td width="53%">
-      <img src="docs/assets/agentomics-overview.png" alt="Agentomics-ML overview" width="100%">
-    </td>
-    <td width="47%">
-      <img src="docs/assets/agentomics-screenshot-1.png" alt="Agentomics-ML screenshot 1" width="100%"><br>
-      <img src="docs/assets/agentomics-screenshot-2.png" alt="Agentomics-ML screenshot 2" width="100%">
-    </td>
-  </tr>
-</table>
+<img src="docs/assets/agentomics-overview.png" alt="Agentomics-ML overview" width="50%">
 
 **Reviewers:** See the [ismb branch](https://github.com/BioGeMT/Agentomics-ML/tree/ismb) for the Bioinformatics submission materials.
 
