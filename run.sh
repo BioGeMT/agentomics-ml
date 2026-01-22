@@ -330,7 +330,17 @@ if [ "$LOCAL_MODE" = true ]; then
         fi
     fi
 
-    WORKSPACE_DIR="$(pwd)/workspace"
+    if ! conda env list | grep -q "agentomics-env"; then
+        conda env create -f environment.yaml -q
+    fi
+
+    eval "$(conda shell.bash hook)"
+    conda activate agentomics-env
+
+    AGENT_ID=$(python src/utils/create_user.py)
+    export AGENT_ID
+
+    WORKSPACE_DIR="$(pwd)/workspace/${AGENT_ID}"
     export AGENTOMICS_WORKSPACE_DIR="$WORKSPACE_DIR"
     export FOUNDATION_MODELS_YAML="$(pwd)/foundation_models/models.yaml"
     mkdir -p "$WORKSPACE_DIR"
@@ -354,10 +364,6 @@ if [ "$LOCAL_MODE" = true ]; then
 
     mkdir -p prepared_datasets
     conda run -n agentomics-prepare-env python src/prepare_datasets.py --prepare-all
-
-    if ! conda env list | grep -q "agentomics-env"; then
-        conda env create -f environment.yaml -q
-    fi
 
     if ! conda env list | grep -q "^agent_start_env "; then
         conda env create -f environment_agent.yaml -q
@@ -386,11 +392,6 @@ if [ "$LOCAL_MODE" = true ]; then
         export OPENROUTER_API_KEY="$TEMP_API_KEY"
     fi
 
-    eval "$(conda shell.bash hook)"
-    conda activate agentomics-env
-
-    AGENT_ID=$(python src/utils/create_user.py)
-    export AGENT_ID
     if [[ -n "$TIMEOUT_SECS" ]]; then
         need_cmd timeout
         [[ "$TIMEOUT_SECS" =~ ^[0-9]+$ ]] || die "--timeout must be an integer number of seconds (got: $TIMEOUT_SECS)"
@@ -415,8 +416,9 @@ if [ "$LOCAL_MODE" = true ]; then
     if [[ ! -d "$ARTIFACT_PATH" ]]; then
         die "Agent didn't produce any valid model, skipping testing evaluation."
     fi
-    if [[ ! -f "${ARTIFACT_PATH}/config.json" ]]; then
-        die "Snapshot config not found: ${ARTIFACT_PATH}/config.json."
+    CONFIG_PATH="${WORKSPACE_DIR}/extras/config.json"
+    if [[ ! -f "${CONFIG_PATH}" ]]; then
+        die "Config not found: ${CONFIG_PATH}"
     fi
 
     export PYTHONPATH=./src
