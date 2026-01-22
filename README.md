@@ -8,7 +8,7 @@ Given a raw CSV dataset, Agentomics-ML autonomously generates a trained model re
 
 <img src="docs/assets/agentomics-overview.png" alt="Agentomics-ML overview" width="50%">
 
-**Reviewers:** See the [ismb branch](https://github.com/BioGeMT/Agentomics-ML/tree/ismb) for the Bioinformatics submission materials.
+**Reviewers:** See the [ismb_submission branch](https://github.com/BioGeMT/Agentomics-ML/tree/ismb_submission) for the Bioinformatics submission materials.
 
 ## Quick Start
 
