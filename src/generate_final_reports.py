@@ -212,7 +212,7 @@ def parse_metrics_txt(path: Optional[Path]) -> Dict[str, float]:
     return metrics
 
 def load_config_json(agent_dir: Path) -> Dict:
-    cfg = agent_dir / "best_run_files" / "config.json"
+    cfg = agent_dir / "extras" / "config.json"
     if cfg.exists():
         try:
             return json.loads(cfg.read_text(encoding="utf-8"))
