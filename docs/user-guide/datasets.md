@@ -120,10 +120,7 @@ prepared_test_sets/my_dataset/
 Download example datasets:
 
 ```bash
-conda env create -f competitors/environment_datasets.yaml
-conda activate agentomics-datasets
-python src/utils/create_datasets.py
-conda deactivate
+./download_example_datasets.sh
 ```
 
 ## Data Format Tips
@@ -133,6 +130,7 @@ conda deactivate
 - Target column should contain class labels (strings or integers)
 - Binary: `positive`/`negative`, `1`/`0`, `yes`/`no`
 - Multi-class: `class_a`, `class_b`, `class_c`
+- Multi-label classification is not supported (use a single label per row)
 
 ### Regression
 

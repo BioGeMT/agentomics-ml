@@ -72,4 +72,4 @@ The agent will guide you through selecting a model, dataset, and run parameters 
 
 ## License
 
-Agentomics-ML is open source. See the [GitHub repository](https://github.com/BioGeMT/Agentomics-ML) for details.
+MIT. See the [LICENSE](https://github.com/BioGeMT/Agentomics-ML/blob/main/LICENSE).

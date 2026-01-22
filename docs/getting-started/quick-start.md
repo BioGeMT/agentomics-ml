@@ -62,10 +62,7 @@ See [Preparing Datasets](../user-guide/datasets.md) for details.
 Download example datasets to try:
 
 ```bash
-conda env create -f competitors/environment_datasets.yaml
-conda activate agentomics-datasets
-python src/utils/create_datasets.py
-conda deactivate
+./download_example_datasets.sh
 ```
 
 ## What Happens Next
@@ -76,7 +73,7 @@ The agent will:
 2. Run iterative ML development cycles
 3. Save the best model to `outputs/<agent_id>/`
 
-Results include trained models, inference scripts, and detailed reports.
+Results include trained models, inference scripts, and detailed reports in `outputs/<agent_id>/reports/`, plus PDF reports in `outputs/<agent_id>/pdf_reports/`.
 
 ## Next Steps
 
