@@ -30,7 +30,6 @@ At least one API key is required:
 |----------|----------|---------|
 | `OPENROUTER_API_KEY` | OpenRouter | [openrouter.ai](https://openrouter.ai/) |
 | `OPENAI_API_KEY` | OpenAI | [platform.openai.com](https://platform.openai.com/) |
-| `ANTHROPIC_API_KEY` | Anthropic | [console.anthropic.com](https://console.anthropic.com/) |
 
 ### Provisioning Key (Optional)
 
@@ -116,7 +115,6 @@ export CUDA_VISIBLE_DEVICES=0,1
 # LLM Provider (choose one or more)
 OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxx
 # OPENAI_API_KEY=sk-xxxxxxxxxxxx
-# ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxx
 
 # Weights & Biases (optional)
 WANDB_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxx

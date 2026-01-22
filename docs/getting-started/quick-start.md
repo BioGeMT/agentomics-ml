@@ -5,7 +5,7 @@ Get Agentomics-ML running in under 5 minutes using pre-built Docker images.
 ## Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) installed and running
-- An API key from [OpenRouter](https://openrouter.ai/), [OpenAI](https://platform.openai.com/), or [Anthropic](https://console.anthropic.com/)
+- An API key from [OpenRouter](https://openrouter.ai/) or [OpenAI](https://platform.openai.com/)
 
 ## Steps
 
@@ -23,7 +23,7 @@ Docker mode requires a `.env` file in the repo root.
 ```bash
 cp .env.example .env
 # Edit .env and set at least one API key:
-# OPENROUTER_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY
+# OPENROUTER_API_KEY or OPENAI_API_KEY
 ```
 
 ### 3. Run the Agent
