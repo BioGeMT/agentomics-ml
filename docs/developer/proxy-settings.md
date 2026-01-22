@@ -126,7 +126,7 @@ HTTP_PROXY=socks5://proxy.company.com:1080
 Different APIs may need different proxy settings:
 
 ```bash
-# For OpenAI/Anthropic APIs
+# For LLM APIs
 HTTPS_PROXY=http://proxy.company.com:8080
 
 # Bypass for internal services

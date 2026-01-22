@@ -8,7 +8,6 @@ Agentomics-ML supports multiple LLM providers out of the box.
 |----------|---------------------|--------|
 | [OpenRouter](https://openrouter.ai/) | `OPENROUTER_API_KEY` | 100+ models |
 | [OpenAI](https://openai.com/) | `OPENAI_API_KEY` | Use `--list-models` to see available models |
-| [Anthropic](https://anthropic.com/) | `ANTHROPIC_API_KEY` | Claude 3.5, Claude 3, etc. |
 | [Ollama](https://ollama.ai/) | Local setup | Local models |
 
 ## OpenRouter
@@ -57,23 +56,6 @@ export OPENAI_API_KEY="sk-xxxxxxxxxxxx"
 ### Available Models
 
 Use `./run.sh --list-models` to see what your API key can access.
-
----
-
-## Anthropic
-
-Direct access to Claude models.
-
-### Setup
-
-```bash
-export ANTHROPIC_API_KEY="sk-ant-xxxxxxxxxxxx"
-./run.sh
-```
-
-### Available Models
-
-Available via OpenRouter with `anthropic/` prefix.
 
 ---
 
