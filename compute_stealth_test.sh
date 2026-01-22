@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-set -e
+
+source "./bash_helpers.sh"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -20,7 +21,10 @@ done
 CONFIG_FILE="$EXPERIMENT_FOLDER/extras/config.json"
 AGENT_ID=$(jq -r '.agent_id' "$CONFIG_FILE")
 DATASET=$(jq -r '.dataset' "$CONFIG_FILE")
-WANDB_RUN_ID=$(jq -r '.wandb_run_id' "$CONFIG_FILE")
+WANDB_RUN_ID=$(jq -r '.wandb_run_id // ""' "$CONFIG_FILE")
+if [[ -z "$WANDB_RUN_ID" ]]; then
+    die "Stealth test requires wandb logging. Remove --stealth-test flag or enable wandb logging."
+fi
 
 POLARIS_DATASETS_WITH_POLARIS_PREFIX=(
     "pkis2-egfr-wt-c-1"
