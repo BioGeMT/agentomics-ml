@@ -1,6 +1,6 @@
 # Agentomics-ML
 
-**Autonomous AI agent for supervised machine learning model development on tabular datasets**
+**Autonomous AI agent for supervised machine learning model development on biomedical datasets**
 
 [![Try in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1rxsGsIwxrE49E4rjzNh920s66UdG34xF?usp=sharing)
 
@@ -47,7 +47,7 @@ For complete documentation, visit **https://biogemt.github.io/agentomics-ml/**
 
 ## Roadmap
 
-- More data types (beyond CSV tabular datasets)
+- More data types (beyond CSV datasets)
 - Remote GPU support for GCP
 - Better local model support and configuration
 
