@@ -197,14 +197,6 @@ def prepare_all_datasets(datasets_dir: str, prepared_datasets_dir: str, prepared
     if prepared_now > 0:
         console.print(f"[green]Successfully prepared {prepared_now} dataset(s)![/green]")
     
-    if len(already_prepared) + prepared_now > 0:
-        console.print("")
-        console.print("[green]Next steps:[/green]")
-        console.print("   1. Run the agent:")
-        console.print("   2. Select your prepared dataset")
-        console.print("   3. Choose your AI model")
-        console.print("   4. Let the agent work its magic!")
-    
     if failed_now > 0:
         console.print("")
         console.print(f"[yellow]{failed_now} dataset(s) failed to prepare. Check your data files.[/yellow]")
