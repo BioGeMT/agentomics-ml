@@ -18,6 +18,7 @@ DATASET_NAME=""
 VAL_METRIC=""
 LIST_MODE=false
 FOUNDATION_MODEL_TYPE=""
+STEALTH_TEST=false
 PULL_IMAGES=false
 DOCKERHUB_USERNAME="biogemt"
 
@@ -43,6 +44,9 @@ Required Arguments (for non-interactive runs):
 Operational Flags:
   --local             Run the project using local Conda environments instead of Docker.
   --test              Run the project's integrated test suite.
+                      (Note: Only supported in Docker mode, not in local Conda mode.)
+  --stealth-test      Run predictions and evaluations on test set for all the iterations
+                      Requires W&B logging to be enabled.
                       (Note: Only supported in Docker mode, not in local Conda mode.)
   --cpu-only          Force Docker/Conda to run using CPU only (skip GPU configuration).
   --ollama            Enable support for an Ollama server running on the host machine.
@@ -263,6 +267,10 @@ while [[ $# -gt 0 ]]; do
             require_opt_value "$1" "${2:-}"
             FOUNDATION_MODEL_TYPE="$2"
             shift 2
+            ;;
+        --stealth-test)
+            STEALTH_TEST=true
+            shift
             ;;
         --test)
             TEST_MODE=true
@@ -614,12 +622,6 @@ else
             docker volume rm temp_agentomics_volume_${AGENT_ID} || true
             exit 1
         fi
-        if ! docker run --rm -v temp_agentomics_volume_${AGENT_ID}:/workspace busybox test -f ${ARTIFACT_PATH}/config.json; then
-            echo -e "${RED}Snapshot config not found: ${ARTIFACT_PATH}/config.json${NOCOLOR}" >&2
-
-            docker volume rm temp_agentomics_volume_${AGENT_ID} || true
-            exit 1
-        fi
 
         echo "Running final evaluation on test set"
         docker run \
@@ -673,7 +675,10 @@ else
         fi
         write_outputs_readme "${AGENT_ID}"
 
-        ./compute_stealth_test.sh --exp-folder "outputs/${AGENT_ID}" --agentomics-dir "$AGENTOMICS_DIR"
+        if [ "$STEALTH_TEST" = true ]; then
+            echo "Running stealth test evaluation"
+            ./compute_stealth_test.sh --exp-folder "outputs/${AGENT_ID}" --agentomics-dir "$AGENTOMICS_DIR"
+        fi
 
         echo -e "${GREEN}Run finished. Report and files can be found in outputs/${AGENT_ID}${NOCOLOR}"
         echo -e "${GREEN}To run inference on new data, use ./inference.sh --agent-dir outputs/${AGENT_ID} --input <path_to_input_csv> --output <path_to_output_csv>${NOCOLOR}"
