@@ -57,6 +57,7 @@ ABLATION_CONFIGS=(
     "no_data_representation:data_representation"
     "no_model_architecture:model_architecture"
     "no_model_training:model_training"
+    "no_all_steps:data_exploration data_split data_representation model_architecture model_training final_outcome"
 )
 
 # ============================================
@@ -148,7 +149,7 @@ for model in "${MODELS[@]}"; do
                         conda env create -f environment.yaml -q
                     fi
                     echo "Creating temporary API key with spend limit: $SPEND_LIMIT"
-                    API_KEY_OUTPUT=$(PYTHONPATH="$(pwd)/src" conda run -n cloudspace python src/utils/api_keys_utils.py create --name "ablation_${ABLATION_NAME}_${model}_${dataset}_rep${repetition}_$(date +%s)" --limit "$SPEND_LIMIT")
+                    API_KEY_OUTPUT=$(PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys_utils.py create --name "ablation_${ABLATION_NAME}_${model}_${dataset}_rep${repetition}_$(date +%s)" --limit "$SPEND_LIMIT")
                     TEMP_API_KEY=$(echo "$API_KEY_OUTPUT" | cut -d',' -f1)
                     TEMP_API_KEY_HASH=$(echo "$API_KEY_OUTPUT" | cut -d',' -f2)
                     export OPENROUTER_API_KEY="$TEMP_API_KEY"
@@ -172,7 +173,7 @@ for model in "${MODELS[@]}"; do
 
                 # Add steps to skip if not baseline
                 if [ -n "$STEPS_TO_SKIP" ]; then
-                    AGENTOMICS_ARGS+=(--steps-to-skip "$STEPS_TO_SKIP")
+                    AGENTOMICS_ARGS+=(--steps-to-skip $STEPS_TO_SKIP)
                 fi
 
                 # Prepare API key environment variables for this run

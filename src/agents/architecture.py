@@ -88,7 +88,25 @@ def create_agents(config: Config, model, tools):
 
 
 async def run_ablation_architecture(text_output_agent: Agent, inference_agent: Agent, split_dataset_agent: Agent, training_agent: Agent, config: Config, base_prompt: str, iteration: int, steps_to_skip: list):
+    all_steps = ['data_exploration', 'data_split', 'data_representation', 'model_architecture', 'model_training', 'final_outcome']
     messages = None
+    
+    if all(step in steps_to_skip for step in all_steps):
+        complete_output = None
+        try: 
+            complete_output, messages, full_agent_output = await run_agent(
+                agent=text_output_agent,
+                user_prompt=base_prompt,
+                max_steps=config.max_steps,
+                message_history=messages,
+            )
+            # save_step_output(config, 'full_agent', full_agent_output, iteration)
+            log_agent_step_result_to_file('full_agent', complete_output, iteration, config)
+        except IterationRunFailed as e:
+            # Log partial messages from failed run
+            log_failed_step_to_file('full_agent', e.context_messages, iteration, config, e.message)
+            raise
+    
     if 'data_exploration' not in steps_to_skip:
         complete_output = None
         try:
