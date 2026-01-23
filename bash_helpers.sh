@@ -58,3 +58,88 @@ docker_has_gpu() {
     fi
     return 1
 }
+
+write_outputs_readme() {
+    local agent_id="$1"
+    local best_iter="No best iteration found"
+
+    if [[ -f "outputs/${agent_id}/best_run_files/iteration_number.txt" ]]; then
+        best_iter="$(cat "outputs/${agent_id}/best_run_files/iteration_number.txt" | tr -d '[:space:]')"
+        [[ -z "$best_iter" ]] && best_iter="No best iteration found"
+    fi
+    
+    cat > "outputs/${agent_id}/README.md" << EOF
+
+This directory contains the full results of one run (**AGENT_ID: ${agent_id}**).
+It includes: (1) the **best model/run chosen across iterations**, (2) per-iteration run artifacts,
+(3) reports, and (4) logs/extras.
+
+---
+
+**Best iteration selected:** **${best_iter}**
+
+**Note:** Iterations are **0-indexed** (first iteration is \`0\`).
+
+What to use:
+- **Best model + code:** \`best_run_files/\`
+- **Best report:** \`reports/run_report_iter_${best_iter}.txt\`
+
+---
+\`\`\`
+outputs/${agent_id}/
+├── best_run_files/                 # Best iteration only (selected automatically)
+│   ├── train.py                    # Training script used to produce the best model
+│   ├── inference.py                # Inference script for predictions on new data
+│   ├── training_artifacts/         # Serialized artifacts (e.g. \`model.joblib\`)
+│   │   └── model.joblib
+│   │   └── ...
+│   ├── validation_metrics.txt
+│   ├── train_metrics.txt
+│   ├── eval_predictions_train.csv  # Predictions on training set
+│   ├── eval_predictions_validation.csv
+│   ├── structured_outputs.txt
+│   ├── config.json
+│   ├── conda_environment.yml
+│   └── iteration_number.txt        # Chosen best iteration index
+│
+├── run_files/                      # All iterations
+│   ├── train.csv                   # Full training split
+│   ├── validation.csv              # Full validation split
+│   ├── iteration_0/                # Snapshot of iteration 0
+│   ├── iteration_1/                # Snapshot of iteration 1
+│   └── ...                         # Additional iterations if present
+│
+├── reports/                        # Human-readable reports per iteration
+│   ├── run_report_iter_0.md
+│   ├── run_report_iter_1.md
+│   └── ...
+│
+├── pdf_reports/                    # PDF reports + plots per iteration (auto-generated)
+│   ├── iteration_0.pdf
+│   ├── iteration_1.pdf
+│   └── ...
+│   └── plots/
+│       └── iter_<i>_<split>_*.png
+│
+├── extras/                         # Logs and debugging information
+│   ├── run_logs/
+│   └── test_logs/
+│
+└── README.md                       # This file
+\`\`\`
+---
+
+## Running inference on new data
+
+An inference helper command at the end, e.g.:
+
+\`\`\`bash
+./inference.sh --agent-dir outputs/${agent_id} --input <path_to_input_csv> --output <path_to_output_csv>
+\`\`\`
+
+Inference relies on:
+- \`best_run_files/inference.py\`
+- \`best_run_files/training_artifacts/\`
+
+EOF
+}
