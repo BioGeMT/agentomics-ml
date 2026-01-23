@@ -1,7 +1,7 @@
-# Agentomics-ML
+# Agentomics
 *Agentomics is currently under peer review.*
 
-**Reproducing publication results:** See the [ismb_submission branch](https://github.com/BioGeMT/Agentomics-ML/tree/ismb_submission) README for instructions.
+**Reproducing publication results:** See the [ismb_submission branch](https://github.com/BioGeMT/agentomics-ml/tree/ismb_submission) README for instructions.
 
 ## Autonomous agentic system for supervised machine learning model development.
 
@@ -14,7 +14,7 @@ How it works
 3) Output is a trained model ready for inference and a detailed PDF report summarizing the development process and achieved metrics
 
 <p align="center">
-  <img src="docs/assets/agentomics-overview.png" alt="Agentomics-ML overview" width="50%">
+  <img src="docs/assets/agentomics-overview.png" alt="agentomics overview" width="50%">
 </p>
 
 ## Try the DEMO
@@ -22,8 +22,8 @@ How it works
 ## Quick Start
 
 ```bash
-git clone https://github.com/BioGeMT/Agentomics-ML.git
-cd Agentomics-ML
+git clone https://github.com/BioGeMT/agentomics-ml.git
+cd agentomics-ml
 cp .env.example .env
 # Edit .env and set at least one API key (OPENROUTER_API_KEY or OPENAI_API_KEY)
 
