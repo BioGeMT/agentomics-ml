@@ -1,0 +1,2 @@
+,best_iter_test_mainmetric_mean,leaderboard_mean,leaderboard_std,leaderboard_var,run_name_count,is_new_sota_sum,usd_cost_mean,cost_per_iter_mean,iterations_completed_mean,number_of_trainval_splits_mean,best_iteration_logged_mean,successful_run_sum,mean_splits
+0,0.7532692875376982,54.166538461538465,37.283401652541016,1390.0520387846984,60,19,9.391958780701755,0.44971447385090874,21.766666666666666,1.0666666666666667,15.133333333333333,60,1.0666666666666667
