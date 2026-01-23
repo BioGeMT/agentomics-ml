@@ -264,16 +264,15 @@ def main() -> int:
                     tags=["ismb2026_zeroshot_v1"]
                 )
                 failure_metrics = {
-                    "ACC": -1,
-                    "AUPRC": -1,
-                    "AUROC": -1,
-                    "F1": -1,
-                    "LOG_LOSS": -1,
-                    "MCC": -1,
+                    "ACC": None,
+                    "AUPRC": None,
+                    "AUROC": None,
+                    "F1": None,
+                    "LOG_LOSS": None,
+                    "MCC": None,
                 }
 
-                payload = {name: float(value) for name, value in failure_metrics.items()}
-                wandb.log(payload)
+                wandb.log(failure_metrics)
                 wandb.finish()
         except Exception as e:
             console.print(f"[red]FAILED: {e}[/red]")
