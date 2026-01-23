@@ -17,8 +17,8 @@ How it works
   <img src="docs/assets/agentomics-overview.png" alt="agentomics overview" width="50%">
 </p>
 
-## Try the DEMO
-[![Try in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1rxsGsIwxrE49E4rjzNh920s66UdG34xF?usp=sharing)
+<!-- ## Try the DEMO -->
+<!-- [![Try in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1rxsGsIwxrE49E4rjzNh920s66UdG34xF?usp=sharing) -->
 ## Quick Start
 
 ```bash
