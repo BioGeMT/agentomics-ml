@@ -64,11 +64,14 @@ def pretty_print_node(node):
         # print(node.user_prompt) 
     elif(isinstance(node, End)):
         output = node.data.output
+        if isinstance(output, str):
+            pretty_print(output)
+        else:
         #for each attribute in output object, print it
-        for attr, value in output.__dict__.items():
-            if(attr not in ['tool_name', 'tool_call_id']):
-                pretty_print(attr, color=bcolors.BOLD+bcolors.ORANGE)
-                pretty_print(value)
+            for attr, value in output.__dict__.items():
+                if(attr not in ['tool_name', 'tool_call_id']):
+                    pretty_print(attr, color=bcolors.BOLD+bcolors.ORANGE)
+                    pretty_print(value)
     else:
         pretty_print(f"DEVINFO: Unexpected node type: {type(node)}")
         pretty_print(node)
