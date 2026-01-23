@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-REPOS_DIR="/SCRATCH" #this needs to be configured to the agentomics repository parent directory (biomlbench will be pulled as a sibling to the agentomics repo)
+./download_example_datasets.sh
+
+REPOS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" 
 
 SPEND_LIMIT=100
 MODELS=("openai/gpt-5.1-codex-max")
@@ -9,8 +11,8 @@ TIME_BUDGET_S=$(( 8 * 60 * 60 )) # 8 hours
 SPLIT_TIME_BUDGET_S=$(( 4 * 60 * 60 )) # allowing to re-split for 4 hours
 # BASELINE_ITERS currently not parametrizable, hardcoded to 4
 SPLIT_ALLOWED_ITERS=0 #SPLIT_TIME_BUDGET gets precedence over this
-PULL_BRANCH="run_experiments" #Branch to pull for biomlbench runs
-TAGS=("experiment_orchestrator" "test_run")
+PULL_BRANCH="ismb_submission" #Branch to pull for biomlbench runs
+TAGS=("agentomics_reproduce_v1")
 REPETITIONS=3
 USER_PROMPT="Create a machine learning model that will generalize to new unseen data."
 
@@ -69,7 +71,8 @@ for repetition in $(seq 1 $REPETITIONS); do
                 --val-metric "${metric_map[$dataset]}" \
                 --tags "${TAGS[@]}" \
                 --timeout "$TIME_BUDGET_S" \
-                --split-timeout "$SPLIT_TIME_BUDGET_S"
+                --split-timeout "$SPLIT_TIME_BUDGET_S" \
+                --foundation-model-type all
         done
     done
 done
@@ -83,6 +86,7 @@ for repetition in $(seq 1 $REPETITIONS); do
                 --dset "$dataset" \
                 --iterations "$ITERATIONS" \
                 --split-allowed-iterations "$SPLIT_ALLOWED_ITERS" \
+                --foundation-model-type all \
                 --model "$model" \
                 --user-prompt "$USER_PROMPT" \
                 --pull-branch "$PULL_BRANCH" \
