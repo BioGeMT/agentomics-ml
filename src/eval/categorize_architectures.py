@@ -8,6 +8,7 @@ architecture into predefined categories using an LLM.
 
 import os
 import pandas as pd
+import argparse
 from ollama import Client
 from dotenv import load_dotenv
 
@@ -88,9 +89,24 @@ def categorize_architecture(client, architecture_text: str, model: str = 'gpt-os
 def main():
     """Main function to categorize architectures from CSV"""
 
+    parser = argparse.ArgumentParser(description="Categorize architectures from extracted CSV")
+    parser.add_argument(
+        '--input-file',
+        type=str,
+        default='outputs/ablation_architectures.csv',
+        help='Path to the input CSV file with architectures (default: outputs/ablation_architectures.csv)'
+    )
+    parser.add_argument(
+        '--output-file',
+        type=str,
+        default='outputs/ablation_architectures_categorized.csv',
+        help='Path to the output CSV file with categories (default: outputs/ablation_architectures_categorized.csv)'
+    )
+    args = parser.parse_args()
+
     # Input and output file paths
-    input_file = "outputs/ablation_architectures.csv"
-    output_file = "outputs/ablation_architectures_categorized.csv"
+    input_file = args.input_file
+    output_file = args.output_file
 
     # Check if input file exists
     if not os.path.exists(input_file):
