@@ -82,7 +82,7 @@ echo ""
 
 # Build Docker images once
 echo "Building the run image"
-docker build --progress=quiet -t agentomics_img -f Dockerfile .
+docker build -t agentomics_img -f Dockerfile .
 echo "Build done"
 
 echo "Building the data preparation image"
