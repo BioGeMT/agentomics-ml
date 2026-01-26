@@ -44,12 +44,14 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
         'dry_run': config.prepared_dataset_dir / "train.no_label.csv",
         'validation': config.prepared_dataset_dir / "validation.no_label.csv" if config.explicit_valid_set_provided else run_dir / "validation.no_label.csv",
         'test': test_files_dir / "test.no_label.csv",
+        'leftout': test_files_dir / "leftout.no_label.csv",
         'train': config.prepared_dataset_dir / "train.no_label.csv" if config.explicit_valid_set_provided else run_dir / "train.no_label.csv", #contains pre-split data otherwise
     }
     stage_to_training_artifacts_dir = {
         'dry_run': run_dir / "training_artifacts",
         'validation': run_dir / "training_artifacts",
         'test': snapshot_dir / "training_artifacts",
+        'leftout': snapshot_dir / "training_artifacts",
         'train': run_dir / "training_artifacts",
     }
     stage_to_labeled_input = {
@@ -60,18 +62,20 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
         'dry_run': run_dir / "eval_predictions_dry_run.csv",
         'validation': run_dir / "eval_predictions_validation.csv",
         'test': run_dir / "eval_predictions_test.csv",
+        'leftout': run_dir / "eval_predictions_leftout.csv",
         'train': run_dir / "eval_predictions_train.csv"
     }
     stage_to_metrics_file = {
         'dry_run': run_dir / "dry_run_metrics.txt",
         'validation': run_dir / "validation_metrics.txt",
         'test': run_dir / "test_metrics.txt",
+        'leftout': run_dir / "leftout_metrics.txt",
         'train': run_dir / "train_metrics.txt"
     }
     if (not config.explicit_valid_set_provided and evaluation_stage in ['validation', 'train']):
         create_labelless_file(config, target_path=stage_to_inference_input[evaluation_stage], evaluation_stage=evaluation_stage) 
 
-    if evaluation_stage == 'test':
+    if evaluation_stage in ['test', 'leftout']:
         command_prefix=f"cd {snapshot_dir} && conda run -p {conda_path[source_folder]}"
     else:
         command_prefix=f"conda run -p {conda_path[source_folder]}"
@@ -81,16 +85,17 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
     if (not config.explicit_valid_set_provided and evaluation_stage in ['validation', 'train']):
         remove_file(target_path=stage_to_inference_input[evaluation_stage])
 
-    if evaluation_stage == 'test':
-        test_file_path = test_files_dir / "test.csv"
+    if evaluation_stage in ['test', 'leftout']:
+        stage_label = evaluation_stage.upper()
+        test_file_path = test_files_dir / f"{evaluation_stage}.csv"
         if not test_file_path.exists():
-            console.print("[bold blue]TEST EVAL SKIPPED - NO TEST SET[/bold blue]")
+            console.print(f"[bold blue]{stage_label} EVAL SKIPPED - NO {stage_label} SET[/bold blue]")
             return
-        console.print("[bold blue]RUNNING TEST EVAL[/bold blue]")
+        console.print(f"[bold blue]RUNNING {stage_label} EVAL[/bold blue]")
         if inference_out.returncode != 0:
-            print('TEST EVAL FAIL', str(inference_out))
+            print(f'{stage_label} EVAL FAIL', str(inference_out))
             log_inference_stage_and_metrics(1, task_type=config.task_type)
-            raise AgentScriptFailed(f'Inference on TEST script failed: {str(inference_out)}')
+            raise AgentScriptFailed(f'Inference on {stage_label} script failed: {str(inference_out)}')
         try:
             test_metrics = get_metrics(
                 results_file=stage_to_output[evaluation_stage],
@@ -100,12 +105,15 @@ def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot
                 delete_preds=False,
                 task_type=dataset_metadata['task_type']
             )
-            log_inference_stage_and_metrics(2, metrics=test_metrics, task_type=config.task_type)
+            if evaluation_stage == 'test':
+                log_inference_stage_and_metrics(2, metrics=test_metrics, task_type=config.task_type)
+            else:
+                log_serial_metrics(prefix=evaluation_stage, metrics=test_metrics, iteration=None, task_type=config.task_type)
         except Exception as e:
-            print('TEST EVAL FAIL', {traceback.format_exc()})
+            print(f'{stage_label} EVAL FAIL', {traceback.format_exc()})
             log_inference_stage_and_metrics(1, task_type=config.task_type)
             return
-        console.print(f"[bold blue]TEST EVAL SUCCESS[/bold blue]")
+        console.print(f"[bold blue]{stage_label} EVAL SUCCESS[/bold blue]")
     if evaluation_stage == 'dry_run':
         console.print(f'[bold blue]RUNNING DRY RUN EVAL[/bold blue]')
         if inference_out.returncode != 0:

@@ -17,6 +17,7 @@ def run_test_evaluation(workspace_dir, agent_id=None):
         config = load_run_config(extras_dir = Path(workspace_dir) / 'extras')
         resume_wandb_run(config)
         run_inference_and_log(config, iteration=None, evaluation_stage='test', use_best_snapshot=True)
+        run_inference_and_log(config, iteration=None, evaluation_stage='leftout', use_best_snapshot=True)
     except Exception as e:
         print('FINAL TEST EVAL FAIL', str(e))
         if config is not None:

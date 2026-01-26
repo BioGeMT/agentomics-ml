@@ -249,7 +249,7 @@ def smart_sort_labels(labels):
     
     return sorted(labels, key=sort_key)
 
-def get_label_to_number_map(train_df, test_df, target_col, positive_class=None, negative_class=None):
+def get_label_to_number_map(train_df, test_df, target_col, positive_class=None, negative_class=None, leftout_df=None):
     unique_labels = train_df[target_col].dropna().unique()
 
     # Check test set for additional labels
@@ -259,6 +259,10 @@ def get_label_to_number_map(train_df, test_df, target_col, positive_class=None, 
             print("WARNING: Mismatch in unique labels between train and test sets.", 
                 f"Train labels: {unique_labels}, Test labels: {test_unique_labels}")
             unique_labels = set(unique_labels).union(set(test_unique_labels))
+    if leftout_df is not None:
+        leftout_unique_labels = leftout_df[target_col].dropna().unique()
+        if set(unique_labels) != set(leftout_unique_labels):
+            unique_labels = set(unique_labels).union(set(leftout_unique_labels))
 
     # Generate label to number mapping
     if len(unique_labels) == 2 and positive_class and negative_class:
@@ -334,12 +338,14 @@ def prepare_dataset(dataset_dir, target_col,
 
     train = dataset_dir / 'train.csv'
     test = dataset_dir / 'test.csv' if (dataset_dir / 'test.csv').exists() else None
+    leftout = dataset_dir / 'leftout.csv' if (dataset_dir / 'leftout.csv').exists() else None
     validation = dataset_dir / 'validation.csv' if (dataset_dir / 'validation.csv').exists() else None
     description = dataset_dir / 'dataset_description.md' if (dataset_dir / 'dataset_description.md').exists() else None
     dataset_name = dataset_dir.name
 
     train_df = pd.read_csv(train)
     test_df = pd.read_csv(test) if test else None
+    leftout_df = pd.read_csv(leftout) if leftout else None
     validation_df = pd.read_csv(validation) if validation else None
 
     if target_col is None:
@@ -351,15 +357,22 @@ def prepare_dataset(dataset_dir, target_col,
         label_map = get_label_to_number_map(
             train_df=train_df,
             test_df=test_df,
+            leftout_df=leftout_df,
             target_col=target_col,
             positive_class=positive_class,
             negative_class=negative_class
         )
     train_df, validation_df, test_df = add_id_column(train_df, validation_df, test_df)
+    if leftout_df is not None:
+        if 'id' in leftout_df.columns:
+            leftout_df.rename(columns={'id': 'id_original'}, inplace=True)
+        leftout_df['id'] = range(len(leftout_df))
 
     dataframes = [('train', train_df)]
     if test_df is not None:
         dataframes.append(('test', test_df))
+    if leftout_df is not None:
+        dataframes.append(('leftout', leftout_df))
     if validation_df is not None:
         dataframes.append(('validation', validation_df))
     
@@ -378,7 +391,7 @@ def prepare_dataset(dataset_dir, target_col,
         except KeyError as e:
             raise KeyError(f"Target column '{target_col}' not found in {split_name} dataset. Available columns: {df.columns}") from e
 
-        target_dir = test_out_dir if split_name == 'test' else out_dir
+        target_dir = test_out_dir if split_name in ['test', 'leftout'] else out_dir
         df.drop(columns=[target_col]).to_csv(target_dir / f'{split_name}.csv', index=False)
         df.drop([target_col, 'numeric_label'], axis=1).to_csv(
             target_dir / f'{split_name}.no_label.csv', index=False

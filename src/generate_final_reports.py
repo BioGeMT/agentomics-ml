@@ -308,13 +308,20 @@ def gather_iteration_inputs(agent_dir: Path, prepared_datasets: Path, prepared_t
       test_csv = prepared_tests / dataset_name / "test.csv"
     test_csv = test_csv if test_csv.exists() else None
 
+    leftout_csv = run_files / "leftout.csv"
+    if not leftout_csv.exists():
+      leftout_csv = prepared_tests / dataset_name / "leftout.csv"
+    leftout_csv = leftout_csv if leftout_csv.exists() else None
+
     train_preds = iter_dir / "eval_predictions_train.csv"
     val_preds = iter_dir / "eval_predictions_validation.csv"
     test_preds = run_files / "eval_predictions_test.csv"
+    leftout_preds = run_files / "eval_predictions_leftout.csv"
 
     train_metrics_path = extras_dir / f"train_metrics_iter_{iteration}.txt"
     val_metrics_path = extras_dir / f"validation_metrics_iter_{iteration}.txt"
     test_metrics_path = run_files / "test_metrics.txt"
+    leftout_metrics_path = run_files / "leftout_metrics.txt"
 
     splits: List[SplitArtifacts] = [
         SplitArtifacts("train", train_csv, train_preds, parse_metrics_txt(train_metrics_path)),
@@ -325,6 +332,9 @@ def gather_iteration_inputs(agent_dir: Path, prepared_datasets: Path, prepared_t
         test_metrics = parse_metrics_txt(test_metrics_path)
         if (test_csv and test_csv.exists()) or (test_preds and test_preds.exists()) or bool(test_metrics):
             splits.append(SplitArtifacts("test", test_csv, test_preds, test_metrics))
+        leftout_metrics = parse_metrics_txt(leftout_metrics_path)
+        if (leftout_csv and leftout_csv.exists()) or (leftout_preds and leftout_preds.exists()) or bool(leftout_metrics):
+            splits.append(SplitArtifacts("leftout", leftout_csv, leftout_preds, leftout_metrics))
 
     return IterationInputs(iteration=iteration, report_md=report_md, splits=splits)
 
