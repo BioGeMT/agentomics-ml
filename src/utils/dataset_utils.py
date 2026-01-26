@@ -29,11 +29,13 @@ def get_single_dataset_info(dataset_dir: str, prepared_datasets_dir: str) -> Dic
     dataset_name = dataset_dir.name
     train_file = dataset_dir / "train.csv"
     test_file = dataset_dir / "test.csv"
+    leftout_file = dataset_dir / "leftout.csv"
     validation_file = dataset_dir / "validation.csv"
     
     # Count rows in raw files
     train_rows = count_csv_rows(str(train_file)) if train_file.exists() else 0
     test_rows = count_csv_rows(str(test_file)) if test_file.exists() else 0
+    leftout_rows = count_csv_rows(str(leftout_file)) if leftout_file.exists() else 0
     validation_rows = count_csv_rows(str(validation_file)) if validation_file.exists() else 0
     
     # Check if already prepared
@@ -58,6 +60,7 @@ def get_single_dataset_info(dataset_dir: str, prepared_datasets_dir: str) -> Dic
         "path": dataset_dir,
         "train_rows": train_rows,
         "test_rows": test_rows,
+        "leftout_rows": leftout_rows,
         "validation_rows": validation_rows,
         "status": status,
         "can_prepare": can_prepare,
@@ -75,11 +78,14 @@ def get_single_prepared_dataset_info(prepared_dataset_dir: str, prepared_test_se
 
     if prepared_test_sets_dir:
         test_file = Path(prepared_test_sets_dir) / dataset_name / "test.csv"
+        leftout_file = Path(prepared_test_sets_dir) / dataset_name / "leftout.csv"
     else:
         test_file = None
+        leftout_file = None
 
     train_rows = count_csv_rows(str(train_file)) if train_file.exists() else 0
     test_rows = count_csv_rows(str(test_file)) if (test_file and test_file.exists()) else 0
+    leftout_rows = count_csv_rows(str(leftout_file)) if (leftout_file and leftout_file.exists()) else 0
     validation_rows = count_csv_rows(str(validation_file)) if validation_file.exists() else 0
 
     if not train_file.exists():
@@ -94,6 +100,7 @@ def get_single_prepared_dataset_info(prepared_dataset_dir: str, prepared_test_se
         "path": prepared_dataset_dir,
         "train_rows": train_rows,
         "test_rows": test_rows,
+        "leftout_rows": leftout_rows,
         "validation_rows": validation_rows,
         "status": status
     }

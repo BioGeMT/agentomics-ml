@@ -430,6 +430,7 @@ else
         --rm \
         -it \
         -e PYTHONWARNINGS=ignore \
+        ${PROXY_ENV_VARS[@]+"${PROXY_ENV_VARS[@]}"} \
         --name agentomics_prepare_cont_${AGENT_ID} \
         -v "$(pwd)":/repository \
         "$PREPARE_IMAGE"
@@ -479,6 +480,12 @@ else
     ENV_FILE_PATH="$(pwd)/.env"
     [[ -f "$ENV_FILE_PATH" ]] || die "Env file not found: $ENV_FILE_PATH (create it from .env.example)"
     ENV_FILE_ARGS=(--env-file "$ENV_FILE_PATH")
+    PROXY_ENV_VARS=()
+    for PROXY_VAR in HTTP_PROXY HTTPS_PROXY NO_PROXY http_proxy https_proxy no_proxy; do
+        if [ -n "${!PROXY_VAR:-}" ]; then
+            PROXY_ENV_VARS+=(-e "${PROXY_VAR}=${!PROXY_VAR}")
+        fi
+    done
 
     PROVIDERS_CONFIG_FILE="src/utils/providers/configured_providers.yaml"
     [[ -f "$PROVIDERS_CONFIG_FILE" ]] || die "Missing providers config: $PROVIDERS_CONFIG_FILE"
@@ -501,6 +508,7 @@ else
             --rm \
             --name agentomics_test_cont_${AGENT_ID} \
             ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
+            ${PROXY_ENV_VARS[@]+"${PROXY_ENV_VARS[@]}"} \
             -e AGENT_ID=${AGENT_ID} \
             -e PYTHONWARNINGS=ignore \
             ${FOUNDATION_MODEL_FLAGS[@]+"${FOUNDATION_MODEL_FLAGS[@]}"} \
@@ -519,6 +527,7 @@ else
             -it \
             --name agentomics_cont_${AGENT_ID} \
             ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
+            ${PROXY_ENV_VARS[@]+"${PROXY_ENV_VARS[@]}"} \
             -e AGENT_ID=${AGENT_ID} \
             -e PYTHONWARNINGS=ignore \
             ${FOUNDATION_MODEL_FLAGS[@]+"${FOUNDATION_MODEL_FLAGS[@]}"} \
@@ -547,6 +556,7 @@ else
             --rm \
             --name agentomics_test_eval_cont_${AGENT_ID} \
             ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
+            ${PROXY_ENV_VARS[@]+"${PROXY_ENV_VARS[@]}"} \
             -e AGENT_ID=${AGENT_ID} \
             -e PYTHONPATH=/repository/src \
             -e PYTHONWARNINGS=ignore \
@@ -577,6 +587,7 @@ else
 
         docker run --rm \
           -u "$(id -u):$(id -g)" \
+          ${PROXY_ENV_VARS[@]+"${PROXY_ENV_VARS[@]}"} \
           -e MPLCONFIGDIR="$MPLCONFIGDIR_IN_CONTAINER" \
           -v "$(pwd)":/repository \
           -v "$(pwd)/outputs/${AGENT_ID}":/agent_out \

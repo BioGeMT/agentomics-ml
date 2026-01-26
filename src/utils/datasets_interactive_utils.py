@@ -29,6 +29,7 @@ def print_datasets_table(datasets: List[Dict], title: str = "Dataset Preparation
     train_lines = []
     val_lines = []
     test_lines = []
+    leftout_lines = []
     status_lines = []
 
     max_num_width = len(str(len(datasets)))
@@ -51,6 +52,10 @@ def print_datasets_table(datasets: List[Dict], title: str = "Dataset Preparation
             test_lines.append(f"[blue]{dataset['test_rows']:,}[/blue]")
         else:
             test_lines.append("[dim]N/A[/dim]")
+        if dataset.get('leftout_rows', 0) > 0:
+            leftout_lines.append(f"[cyan]{dataset['leftout_rows']:,}[/cyan]")
+        else:
+            leftout_lines.append("[dim]N/A[/dim]")
 
         status = dataset["status"]
         if status == "Already prepared":
@@ -71,6 +76,7 @@ def print_datasets_table(datasets: List[Dict], title: str = "Dataset Preparation
         Panel("\n".join(train_lines), title="[bold]Train Rows[/bold]", border_style="green"),
         Panel("\n".join(val_lines), title="[bold]Validation Rows[/bold]", border_style="yellow"),
         Panel("\n".join(test_lines), title="[bold]Test Rows[/bold]", border_style="blue"),
+        Panel("\n".join(leftout_lines), title="[bold]Leftout Rows[/bold]", border_style="cyan"),
         Panel("\n".join(status_lines), title="[bold]Status[/bold]", border_style="magenta")
     ]
 
