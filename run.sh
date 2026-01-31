@@ -20,7 +20,10 @@ LIST_MODE=false
 FOUNDATION_MODEL_TYPE=""
 STEALTH_TEST=false
 PULL_IMAGES=false
+BUILD_NETWORK=""
+RUN_NETWORK=""
 DOCKERHUB_USERNAME="biogemt"
+PROXY_URL=""
 
 show_help() {
     cat << EOF
@@ -51,6 +54,11 @@ Operational Flags:
   --cpu-only          Force Docker/Conda to run using CPU only (skip GPU configuration).
   --ollama            Enable support for an Ollama server running on the host machine.
   --pull-images       Pull prebuilt Docker images from Docker Hub instead of building locally (uses biogemt images).
+  --build-network <name>
+                      Docker build network mode (e.g., 'host'). Useful when a proxy hostname only resolves on the host.
+  --run-network <name>
+                      Docker run network mode (e.g., 'host'). Useful when a proxy hostname only resolves on the host.
+  --proxy <url>       Proxy URL to use for Docker builds and runs (sets HTTP_PROXY/HTTPS_PROXY).
   --foundation-model-type <dna|rna|molecule|protein|all>
                       Enable foundation models of a specific type. Use 'all' to download all types. When omitted, no foundation models are used or pre-downloaded.
   --use-provisioning-key  Use OpenRouter provisioning key to create temporary API key and log costs.
@@ -173,6 +181,21 @@ while [[ $# -gt 0 ]]; do
         --pull-images)
             PULL_IMAGES=true
             shift
+            ;;
+        --build-network)
+            require_opt_value "$1" "${2:-}"
+            BUILD_NETWORK="$2"
+            shift 2
+            ;;
+        --run-network)
+            require_opt_value "$1" "${2:-}"
+            RUN_NETWORK="$2"
+            shift 2
+            ;;
+        --proxy)
+            require_opt_value "$1" "${2:-}"
+            PROXY_URL="$2"
+            shift 2
             ;;
         --foundation-model-type)
             require_opt_value "$1" "${2:-}"
@@ -392,8 +415,30 @@ else
         esac
     fi
 
+    if [ -n "$PROXY_URL" ]; then
+        export HTTP_PROXY="$PROXY_URL"
+        export HTTPS_PROXY="$PROXY_URL"
+        export http_proxy="$PROXY_URL"
+        export https_proxy="$PROXY_URL"
+    fi
+
     FOUNDATION_MODEL_FLAGS=()
     DOCKER_BUILD_ARGS=()
+    DOCKER_RUN_ARGS=()
+    PROXY_BUILD_ARGS=()
+    PROXY_ENV_VARS=()
+    for PROXY_VAR in HTTP_PROXY HTTPS_PROXY NO_PROXY http_proxy https_proxy no_proxy; do
+        if [ -n "${!PROXY_VAR:-}" ]; then
+            PROXY_BUILD_ARGS+=(--build-arg "${PROXY_VAR}=${!PROXY_VAR}")
+            PROXY_ENV_VARS+=(-e "${PROXY_VAR}=${!PROXY_VAR}")
+        fi
+    done
+    if [ -n "$BUILD_NETWORK" ]; then
+        DOCKER_BUILD_ARGS+=(--network "$BUILD_NETWORK")
+    fi
+    if [ -n "$RUN_NETWORK" ]; then
+        DOCKER_RUN_ARGS+=(--network "$RUN_NETWORK")
+    fi
     if [ -n "$FOUNDATION_MODEL_TYPE" ]; then
         DOCKER_BUILD_ARGS+=(--build-arg "FOUNDATION_MODEL_TYPE=$FOUNDATION_MODEL_TYPE")
         FOUNDATION_MODEL_FLAGS+=(-e "FOUNDATION_MODEL_TYPE=$FOUNDATION_MODEL_TYPE")
@@ -416,11 +461,11 @@ else
         docker pull "$PREPARE_IMAGE"
     else
         echo "Building the run image"
-        docker build -t "$AGENTOMICS_IMAGE" -f Dockerfile ${DOCKER_BUILD_ARGS[@]+"${DOCKER_BUILD_ARGS[@]}"} .
+        docker build -t "$AGENTOMICS_IMAGE" -f Dockerfile ${DOCKER_BUILD_ARGS[@]+"${DOCKER_BUILD_ARGS[@]}"} ${PROXY_BUILD_ARGS[@]+"${PROXY_BUILD_ARGS[@]}"} .
         echo "Build done"
 
         echo "Building the data preparation image"
-        docker build -t "$PREPARE_IMAGE" -f Dockerfile.prepare .
+        docker build -t "$PREPARE_IMAGE" -f Dockerfile.prepare ${DOCKER_BUILD_ARGS[@]+"${DOCKER_BUILD_ARGS[@]}"} ${PROXY_BUILD_ARGS[@]+"${PROXY_BUILD_ARGS[@]}"} .
         echo "Build done"
     fi
     AGENT_ID=$(docker run --rm -u $(id -u):$(id -g) -v "$(pwd)":/repository:ro --entrypoint \
@@ -430,6 +475,8 @@ else
         --rm \
         -it \
         -e PYTHONWARNINGS=ignore \
+        ${DOCKER_RUN_ARGS[@]+"${DOCKER_RUN_ARGS[@]}"} \
+        ${PROXY_ENV_VARS[@]+"${PROXY_ENV_VARS[@]}"} \
         --name agentomics_prepare_cont_${AGENT_ID} \
         -v "$(pwd)":/repository \
         "$PREPARE_IMAGE"
@@ -500,7 +547,9 @@ else
             -it \
             --rm \
             --name agentomics_test_cont_${AGENT_ID} \
+            ${DOCKER_RUN_ARGS[@]+"${DOCKER_RUN_ARGS[@]}"} \
             ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
+            ${PROXY_ENV_VARS[@]+"${PROXY_ENV_VARS[@]}"} \
             -e AGENT_ID=${AGENT_ID} \
             -e PYTHONWARNINGS=ignore \
             ${FOUNDATION_MODEL_FLAGS[@]+"${FOUNDATION_MODEL_FLAGS[@]}"} \
@@ -518,8 +567,10 @@ else
         --rm \
         -it \
         --name agentomics_cont_${AGENT_ID} \
+        ${DOCKER_RUN_ARGS[@]+"${DOCKER_RUN_ARGS[@]}"} \
         -e HOME=/workspace \
         ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
+        ${PROXY_ENV_VARS[@]+"${PROXY_ENV_VARS[@]}"} \
         -e AGENT_ID=${AGENT_ID} \
         -e PYTHONWARNINGS=ignore \
         ${FOUNDATION_MODEL_FLAGS[@]+"${FOUNDATION_MODEL_FLAGS[@]}"} \
@@ -548,7 +599,9 @@ else
         docker run \
             --rm \
             --name agentomics_test_eval_cont_${AGENT_ID} \
+            ${DOCKER_RUN_ARGS[@]+"${DOCKER_RUN_ARGS[@]}"} \
             ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
+            ${PROXY_ENV_VARS[@]+"${PROXY_ENV_VARS[@]}"} \
             -e AGENT_ID=${AGENT_ID} \
             -e PYTHONPATH=/repository/src \
             -e PYTHONWARNINGS=ignore \
@@ -579,6 +632,8 @@ else
 
         docker run --rm \
           -u "$(id -u):$(id -g)" \
+          ${DOCKER_RUN_ARGS[@]+"${DOCKER_RUN_ARGS[@]}"} \
+          ${PROXY_ENV_VARS[@]+"${PROXY_ENV_VARS[@]}"} \
           -e MPLCONFIGDIR="$MPLCONFIGDIR_IN_CONTAINER" \
           -v "$(pwd)":/repository \
           -v "$(pwd)/outputs/${AGENT_ID}":/agent_out \

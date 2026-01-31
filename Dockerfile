@@ -1,5 +1,13 @@
 FROM condaforge/mambaforge:23.3.1-0
 
+# Optional proxy support (pass --build-arg HTTP_PROXY=... / HTTPS_PROXY=... when needed)
+ARG HTTP_PROXY=
+ARG HTTPS_PROXY=
+ENV HTTP_PROXY=${HTTP_PROXY}
+ENV HTTPS_PROXY=${HTTPS_PROXY}
+ENV http_proxy=${HTTP_PROXY}
+ENV https_proxy=${HTTPS_PROXY}
+
 # Always set -y to conda install commands
 ENV CONDA_ALWAYS_YES=true 
 # Cache conda packages in a temp directory (removed after build - reduces image size)
