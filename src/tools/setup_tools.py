@@ -2,6 +2,7 @@ from .bash_tool import create_bash_tool
 from .write_python_tool import create_write_python_tool
 from .run_python_tool import create_run_python_tool
 from .foundation_models_info_tool import create_foundation_models_info_tool
+from .claude_code_tool import create_claude_code_tool
 from .replace_tool import create_replace_tool
 import weave
 
@@ -32,6 +33,11 @@ def create_tools(config):
                 agent_id=config.agent_id,
                 runs_dir=config.runs_dir,
                 max_retries=config.max_tool_retries
+            ),
+            create_claude_code_tool(
+                agent_id=config.agent_id,
+                runs_dir=config.runs_dir,
+                max_retries=config.max_tool_retries,
             )
         ]
     # wrap each tool.function with @weave.op

@@ -106,11 +106,31 @@ def _tool_call_summary(part: ToolCallPart) -> str:
             return f"{bcolors.OKCYAN}agent edits file{bcolors.ENDC} {os.path.basename(str(file_path))}"
         return f"{bcolors.OKCYAN}agent edits file{bcolors.ENDC}"
 
+    if tool == "claude_session":
+        session_name = args.get("session_name")
+        claude_label = f"{bcolors.ORANGE}claude-code{bcolors.ENDC}"
+        if session_name:
+            return (
+                f"{bcolors.OKCYAN}agent prompts {claude_label}{bcolors.ENDC} {session_name}\n"
+                f"{bcolors.OKCYAN}{claude_label} running{bcolors.ENDC}"
+            )
+        return f"{bcolors.OKCYAN}agent prompts {claude_label}{bcolors.ENDC}\n{bcolors.OKCYAN}{claude_label} running{bcolors.ENDC}"
+
     return f"{bcolors.OKCYAN}agent calls tool {tool}{bcolors.ENDC}"
 
 def _tool_return_summary(part: ToolReturnPart) -> tuple[str, bool]:
     tool = part.tool_name
     content_str = str(part.content or "")
+    if tool == "claude_session":
+        first_line = content_str.splitlines()[0] if content_str else ""
+        if first_line.startswith("claude_session_status:"):
+            status_line = first_line.replace("claude_session_status:", "").strip()
+            claude_label = f"{bcolors.ORANGE}claude-code{bcolors.ENDC}"
+            msg = (
+                f"{bcolors.OKCYAN}agent {claude_label}{bcolors.ENDC} session {status_line}\n"
+                f"{bcolors.OKCYAN}{claude_label} finished{bcolors.ENDC}"
+            )
+            return msg, False
     lower = content_str.lower()
     is_error = (
         "traceback" in lower
@@ -148,8 +168,8 @@ def pretty_print_node(node):
                     if part.tool_name == "final_result":
                         continue
                     msg, is_error = _tool_return_summary(part)
-                    if is_error:
-                        pretty_print(msg, color=bcolors.FAIL)
+                    if msg:
+                        pretty_print(msg, color=bcolors.FAIL if is_error else None)
                 elif isinstance(part, RetryPromptPart):
                     pretty_print("agent output validation failed; retrying", color=bcolors.WARNING)
         elif isinstance(node, UserPromptNode):

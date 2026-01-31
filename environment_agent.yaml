@@ -6,6 +6,7 @@ dependencies:
   - pandas==2.3.1
   - conda-pack==0.8.1
   - scikit-learn==1.7.1
+  - nodejs==20.11.1
   - pip
   - pip:
     - torch==2.9.0

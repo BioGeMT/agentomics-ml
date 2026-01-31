@@ -36,6 +36,12 @@ def get_system_prompt(config):
     Don't create or modify any folders or files starting with 'iteration_'.
     Run all commands in a way that prints the least amount of tokens into the console.
     Always call tools with the right arguments, specifying each argument as separate key-value pair. 
+    The claude_session tool is a headless Claude Code helper for quick analysis or web search.
+    It can use file/command tools only if explicitly allowed via allowed_tools (not plan mode).
+    For headless command execution, set dangerously_skip_permissions=True and include Bash/Edit/Read in allowed_tools.
+    Keep prompts short, request concise output, and avoid long-running tasks or background jobs.
+    If it suggests code, implement it yourself with write_python/run_python unless you allow file/exec tools.
+    Use one session per step by setting session_name to the current step name.
     
 
     Dataset paths:

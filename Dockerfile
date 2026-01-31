@@ -37,6 +37,8 @@ COPY environment_agent.yaml .
 RUN mamba env create -f environment_agent.yaml \
     && mamba clean -afy \
     && rm -rf /tmp/conda-pkgs
+RUN conda run -n agent_start_env npm config set prefix /opt/conda/envs/agent_start_env \
+    && conda run -n agent_start_env npm install -g @anthropic-ai/claude-code
 RUN conda run -n agent_start_env conda-pack -o ${START_ENV_PKG}
 
 WORKDIR /repository
