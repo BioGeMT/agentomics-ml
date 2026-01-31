@@ -37,12 +37,13 @@ def create_claude_code_tool(agent_id, runs_dir, max_retries):
         session_name: str,
         mode: str = "default",
         max_turns: int = 1,
-        max_budget_usd: float = 0.05,
+        max_budget_usd: float = 0.10,
         output_format: str = "text",
         allowed_tools: str = "web_search",
         disallowed_tools: str = "",
         dangerously_skip_permissions: bool = False,
         timeout_seconds: int = 120,
+        max_calls_per_step: int = 2,
     ):
         """
         Use Claude Code CLI for quick analysis or web search in a headless call.
@@ -55,6 +56,7 @@ def create_claude_code_tool(agent_id, runs_dir, max_retries):
         Set session_name to the current step (data_exploration, data_split, data_representation,
         model_architecture, model_training, model_inference, prediction_exploration) to keep one
         session per step. Web search is allowed by default.
+        Maximum calls per step session are limited to max_calls_per_step (default 2).
 
         Args:
             prompt: The instruction for Claude Code. Keep it short and specific.
@@ -67,6 +69,7 @@ def create_claude_code_tool(agent_id, runs_dir, max_retries):
             disallowed_tools: Comma-separated tool denylist (web_search will be removed).
             dangerously_skip_permissions: If True, bypasses Claude Code permission prompts (use with care).
             timeout_seconds: Hard timeout for the CLI call.
+            max_calls_per_step: Maximum claude_session calls allowed per session_name.
         """
         start_time = time.time()
         run_dir = runs_dir / agent_id
@@ -78,6 +81,17 @@ def create_claude_code_tool(agent_id, runs_dir, max_retries):
         debug_dir.mkdir(parents=True, exist_ok=True)
 
         safe_session_name = _sanitize_session_name(session_name)
+        count_path = outputs_dir / f"session_{safe_session_name}_count.txt"
+        try:
+            current_count = int(count_path.read_text().strip()) if count_path.exists() else 0
+        except Exception:
+            current_count = 0
+        if max_calls_per_step is not None and current_count >= int(max_calls_per_step):
+            return (
+                "Error: claude_session call limit reached for this step "
+                f"(max {int(max_calls_per_step)})."
+            )
+        count_path.write_text(str(current_count + 1) + "\n")
         session_file = outputs_dir / f"session_{safe_session_name}.txt"
         if session_file.exists():
             session_id = session_file.read_text().strip()
@@ -160,12 +174,9 @@ def create_claude_code_tool(agent_id, runs_dir, max_retries):
         max_chars = 4000
         if len(output) > max_chars:
             output = output[:max_chars] + "\n... (truncated)"
-        status_line = (
-            f"claude_session_status: {session_status} "
-            f"session_name={safe_session_name} session_id={session_id}"
-        )
+        output_line = "claude_session_output_file: created"
         timer_msg = f"\n[Tool call took {time.time() - start_time:.1f} seconds]"
-        return status_line + "\n" + output + timer_msg
+        return output_line + "\n" + output + timer_msg
 
     claude_tool = Tool(
         function=_claude_session,

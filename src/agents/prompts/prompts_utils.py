@@ -41,6 +41,7 @@ def get_system_prompt(config):
     For headless command execution, set dangerously_skip_permissions=True and include Bash/Edit/Read in allowed_tools.
     Keep prompts short, request concise output, and avoid long-running tasks or background jobs.
     If it suggests code, implement it yourself with write_python/run_python unless you allow file/exec tools.
+    If you use claude_session in any step, do not call it as your first tool for that step.
     Use one session per step by setting session_name to the current step name.
     
 

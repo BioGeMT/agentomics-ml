@@ -37,5 +37,7 @@ def get_data_exploration_prompt(iteration):
         extra_info = ""
     return f"""
     Your first task: explore the dataset. Be thorough, understanding the data deeply will inform subsequent steps for model development.
+    Use claude_session for quick analysis or web search if it helps. Do not call it as your first tool; use it after at least one other action or tool call.
+    Note: claude_session is limited to 2 calls per step.
     {extra_info}
     """
