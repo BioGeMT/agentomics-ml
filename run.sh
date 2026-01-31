@@ -514,21 +514,23 @@ else
             --entrypoint /opt/conda/envs/agentomics-env/bin/python \
             "$AGENTOMICS_IMAGE" -m test.run_all_tests
     else
-        docker run \
-            --rm \
-            -it \
-            --name agentomics_cont_${AGENT_ID} \
-            ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
-            -e AGENT_ID=${AGENT_ID} \
-            -e PYTHONWARNINGS=ignore \
-            ${FOUNDATION_MODEL_FLAGS[@]+"${FOUNDATION_MODEL_FLAGS[@]}"} \
-            ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
-            ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
-            ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
-            -v "$(pwd)/src":/repository/src:ro \
-            -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
-            -v temp_agentomics_volume_${AGENT_ID}:/workspace \
-            "$AGENTOMICS_IMAGE" ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
+    docker run \
+        --rm \
+        -it \
+        --name agentomics_cont_${AGENT_ID} \
+        -e HOME=/workspace \
+        ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
+        -e AGENT_ID=${AGENT_ID} \
+        -e PYTHONWARNINGS=ignore \
+        ${FOUNDATION_MODEL_FLAGS[@]+"${FOUNDATION_MODEL_FLAGS[@]}"} \
+        ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
+        ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
+        ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
+        -v "$(pwd)/src":/repository/src:ro \
+        -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
+        -v "${HOME}/.claude:/workspace/.claude" \
+        -v temp_agentomics_volume_${AGENT_ID}:/workspace \
+        "$AGENTOMICS_IMAGE" ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
 
         if [ "$LIST_MODE" = true ]; then
             exit 0
