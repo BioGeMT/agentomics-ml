@@ -174,9 +174,12 @@ def pretty_print_node(node):
                     continue
                     #dont print args since it will be printed
                 if(part.tool_name=='write_python'):
-                    args_dict = json.loads(str(part.args))
-                    pretty_print_code(args_dict.get('code'))
-                    pretty_print("file_path: "+ args_dict.get('file_path', 'Empty'), color=bcolors.OKCYAN)
+                    try:
+                        args_dict = part.args_as_dict()
+                        pretty_print_code(args_dict.get('code'))
+                        pretty_print("file_path: "+ args_dict.get('file_path', 'Empty'), color=bcolors.OKCYAN)
+                    except Exception:
+                        pretty_print(part.args, color=bcolors.OKCYAN)
                     continue
 
                 pretty_print(part.args, color=bcolors.OKCYAN)
