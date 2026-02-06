@@ -2,6 +2,8 @@ import os
 import datetime
 import subprocess
 import re
+import string
+import random
 
 from pydantic_ai import Agent, ModelRetry, RunContext
 import weave
@@ -257,7 +259,7 @@ def get_final_result_messages(all_messages):
 def fabricate_final_result_messages(structured_output, model_name):
     output_dict = vars(structured_output)
     # output_dict['note'] = 'same as last iteration'
-    tool_call_id = "pyd_ai_a6dd842e1f254405a457acaeae7afa4c" 
+    tool_call_id = ''.join(random.choices(string.ascii_letters + string.digits, k=9))
     response_msg = ModelResponse(
         parts=[
             TextPart(content='', part_kind='text'),
