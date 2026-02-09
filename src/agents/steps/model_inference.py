@@ -1,10 +1,11 @@
 import os
-import stat
-from pathlib import Path
 from pydantic import BaseModel, Field
 from pydantic.json_schema import SkipJsonSchema
+from pydantic_ai import Agent, RunContext, ModelRetry
 
 from utils.dataset_utils import get_classes_integers
+from agents.agent_utils import does_file_contain_iteration_pattern, does_file_contain_string, get_new_rundir_files
+from run_logging.evaluate_log_run import run_inference_and_log
 
 class ModelInference(BaseModel):
     path_to_inference_file: str = Field(
@@ -56,3 +57,30 @@ def get_model_inference_prompt(config, training_artifacts_dir):
     --artifacts-dir (the folder that contains training artifacts from the training step that are needed to run inference (for example model weights, tokenizers, etc..). The following dir should be used as a default: '{training_artifacts_dir}'. If a different path is provided, your script must adapt to the new source. You can assume the artifact files will always have the same name. 
     The script must not accept any other parameters.
     """
+
+def create_model_inference_agent(config, model, tools):
+    inference_agent = Agent(
+        model=model,
+        tools=tools,
+        model_settings={'temperature':config.temperature},
+        output_type= ModelInference,
+        retries=config.max_validation_retries,
+        deps_type=dict,
+    )
+
+    @inference_agent.output_validator
+    async def validate_inference(ctx: RunContext[dict], result: ModelInference) -> ModelInference:
+        if not os.path.exists(result.path_to_inference_file):
+            raise ModelRetry(f"Inference file does not exist at {result.path_to_inference_file}")
+        if os.path.islink(result.path_to_inference_file):
+            raise ModelRetry(f"Inference file ({result.path_to_inference_file}) cannot be a symbolic link, create a non-symlinked copy of it.")
+        if does_file_contain_iteration_pattern(result.path_to_inference_file):
+            raise ModelRetry("Inference file contains path containing a forbidden string 'iteration_' or references an iteration folder, which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
+        if does_file_contain_string(result.path_to_inference_file, "train.csv") or does_file_contain_string(result.path_to_inference_file, "validation.csv"):
+            raise ModelRetry("Inference file contains references to dataset split files ('train.csv' or 'validation.csv' detected), which will not be accessible during final testing.")
+        #TODO improve validation with info about the artifacts-dir
+        run_inference_and_log(config, iteration=-1, evaluation_stage='dry_run')
+        result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
+        return result
+
+    return inference_agent    
