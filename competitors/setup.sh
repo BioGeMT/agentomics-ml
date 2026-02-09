@@ -4,6 +4,35 @@ set -euo pipefail
 COMPETITORS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
 CONFIG="$COMPETITORS_DIR/config.yaml"
 ENV_NAME="biomlbench-agents"
+TARGET_AGENT=""
+ALL_AGENTS=(aide biomni stella zeroshot)
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --name)
+            TARGET_AGENT="$2"
+            shift 2
+            ;;
+        *)
+            echo "[setup] Unknown argument: $1 (only --name <agent> is supported)"
+            exit 1
+            ;;
+    esac
+done
+
+if [[ -n "$TARGET_AGENT" ]]; then
+    case "$TARGET_AGENT" in
+        aide|biomni|stella|zeroshot)
+            BUILD_AGENTS=("$TARGET_AGENT")
+            ;;
+        *)
+            echo "[setup] Invalid --name '$TARGET_AGENT'. Allowed: aide, biomni, stella, zeroshot"
+            exit 1
+            ;;
+    esac
+else
+    BUILD_AGENTS=("${ALL_AGENTS[@]}")
+fi
 
 if conda env list | grep -q "^$ENV_NAME "; then
     echo "[setup] Conda environment '$ENV_NAME' already exists"
@@ -29,23 +58,20 @@ echo "[setup] Building Docker images (fresh builds)..."
 cd "$COMPETITORS_DIR/biomlbench"
 
 echo "[setup] Removing old images to ensure fresh builds..."
-# Remove old local tags if they exist (ignore errors if they don't)
+# Remove old local tags if they exist (ignore errors if they don't).
+# Base env is always required.
 docker rmi biomlbench-env:latest 2>/dev/null || true
-docker rmi aide:latest 2>/dev/null || true
-docker rmi biomni:latest 2>/dev/null || true
-docker rmi stella:latest 2>/dev/null || true
-docker rmi zeroshot:latest 2>/dev/null || true
+for agent in "${BUILD_AGENTS[@]}"; do
+    docker rmi "${agent}:latest" 2>/dev/null || true
+done
 
 # Remove millerh1 tags to prevent Docker from reusing pulled images
 # These tags share the same image ID as local tags, so removing local tags
 # doesn't delete the images - we need to remove millerh1 tags too
 docker rmi millerh1/biomlbench-env:v0.1a 2>/dev/null || true
-docker rmi millerh1/aide:v0.1a 2>/dev/null || true
-docker rmi millerh1/biomni:v0.1a 2>/dev/null || true
-docker rmi millerh1/stella:v0.1a 2>/dev/null || true
-docker rmi millerh1/zeroshot:v0.1a 2>/dev/null || true
-docker rmi millerh1/dummy:v0.1a 2>/dev/null || true
-docker rmi millerh1/mlagentbench:v0.1a 2>/dev/null || true
+for agent in "${BUILD_AGENTS[@]}"; do
+    docker rmi "millerh1/${agent}:v0.1a" 2>/dev/null || true
+done
 
 echo "[setup] Ensuring base image (ubuntu:22.04) exists..."
 # Ubuntu is a standard base image - pull it once if it doesn't exist
@@ -58,16 +84,10 @@ fi
 echo "[setup] Building base environment (fresh build)..."
 bash scripts/build_base_env.sh --force
 
-echo "[setup] Building AIDE agent image (fresh build)..."
-bash scripts/build_agent.sh --force aide
+for agent in "${BUILD_AGENTS[@]}"; do
+    echo "[setup] Building ${agent} agent image (fresh build)..."
+    bash scripts/build_agent.sh --force "$agent"
+done
 
-echo "[setup] Building BioMNI agent image (fresh build)..."
-bash scripts/build_agent.sh --force biomni
-
-echo "[setup] Building STELLA agent image (fresh build)..."
-bash scripts/build_agent.sh --force stella
-
-echo "[setup] Building zero-shot agent image (fresh build)..."
-bash scripts/build_agent.sh --force zeroshot
-
-echo "[setup] Done! Activate the environment with: conda activate $ENV_NAME"
+echo "[setup] Done! Built agents: ${BUILD_AGENTS[*]}"
+echo "[setup] Activate the environment with: conda activate $ENV_NAME"

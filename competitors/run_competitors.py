@@ -28,13 +28,96 @@ with open(CONFIG_PATH, "r") as fh:
     if _config.get("enable_cost_tracking") and _config.get("provisioning_key"):
         os.environ["PROVISIONING_OPENROUTER_API_KEY"] = _config["provisioning_key"]
 
-from evaluation import INFERENCE_STAGE, evaluate_classification_submission, rerun_inference
+from evaluation import (
+    INFERENCE_STAGE,
+    evaluate_classification_submission,
+    evaluate_proteingym_submission,
+    get_submission_dir_from_artifacts,
+    rerun_inference,
+)
 from utils.api_keys import create_new_api_key, delete_api_key, get_api_key_usage
 from utils.metrics import get_task_to_metrics_names
 
 CLONE_DIR = HERE / "biomlbench"
 RESULTS_DIR = HERE / "results"
 DATA_DIR = HERE / "data"
+
+
+def resolve_task_id(dataset: str) -> str:
+    return dataset if "/" in dataset else f"agentomics/{dataset}"
+
+
+def is_agentomics_task(task_id: str) -> bool:
+    return task_id.startswith("agentomics/")
+
+
+def is_proteingym_task(task_id: str) -> bool:
+    return task_id.startswith("proteingym-dms/")
+
+
+def sanitize_dataset_for_path(dataset: str) -> str:
+    return dataset.replace("/", "__")
+
+
+def run_proteingym_postprocess(artifact_dir: Path, task_id: str, data_dir: Path) -> None:
+    script_path = HERE / "scripts" / "proteingym_postprocess.py"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(script_path),
+            "--artifact-root",
+            str(artifact_dir),
+            "--task-id",
+            task_id,
+            "--data-dir",
+            str(data_dir),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"ProteinGym postprocess failed for task {task_id}\n"
+            f"STDOUT:\n{result.stdout}\n"
+            f"STDERR:\n{result.stderr}"
+        )
+
+
+def grade_biomlbench_submission(
+    task_id: str,
+    artifact_dir: Path,
+    output_subdir: Path,
+    data_dir: Path,
+) -> dict:
+    submission_dir = get_submission_dir_from_artifacts(artifact_dir)
+    submission_path = submission_dir / "submission.csv"
+    assert submission_path.is_file(), f"Submission file not found for grading: {submission_path}"
+
+    result = subprocess.run(
+        ["biomlbench", "grade-sample", str(submission_path), task_id, "--data-dir", str(data_dir)],
+        cwd=CLONE_DIR,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"biomlbench grade-sample failed for {task_id}\n"
+            f"STDOUT:\n{result.stdout}\n"
+            f"STDERR:\n{result.stderr}"
+        )
+
+    grade_output = result.stdout if result.stdout.strip() else result.stderr
+    start = grade_output.find("{")
+    end = grade_output.rfind("}")
+    assert start != -1 and end != -1 and end > start, (
+        "Could not parse JSON payload from biomlbench grade-sample output.\n"
+        f"Output:\n{grade_output}"
+    )
+    grade_dict = json.loads(grade_output[start:end + 1])
+    (output_subdir / "grade.json").write_text(json.dumps(grade_dict, indent=2))
+    return grade_dict
 
 
 def load_config() -> dict:
@@ -63,13 +146,15 @@ def build_env(base: dict, config: dict, agent: str) -> dict:
     return env
 
 
-def run_agent(config: dict, agent: str, dataset: str, cpu_only: bool = False) -> Path:
+def run_agent(config: dict, agent: str, dataset: str, cpu_only: bool = False):
     timestamp = time.strftime("%Y-%m-%dT%H-%M-%S-%Z", time.gmtime())
+    task_id = resolve_task_id(dataset)
+    dataset_slug = sanitize_dataset_for_path(dataset)
 
     key_hash = None
     if config.get("enable_cost_tracking", False):
         config = config.copy()
-        key_name = f"{agent}_{dataset}_{timestamp}"
+        key_name = f"{agent}_{dataset_slug}_{timestamp}"
         key_result = create_new_api_key(key_name, config["spending_limit_per_run"])
         key_hash = key_result['hash']
         config["openrouter_key"] = key_result['key']
@@ -80,7 +165,7 @@ def run_agent(config: dict, agent: str, dataset: str, cpu_only: bool = False) ->
     try:
         start_time = time.time()
         env = build_env(os.environ, config, agent)
-        output_subdir = RESULTS_DIR / f"{dataset}_{agent}_{timestamp}"
+        output_subdir = RESULTS_DIR / f"{dataset_slug}_{agent}_{timestamp}"
         output_subdir.mkdir(parents=True, exist_ok=True)
         log_file = output_subdir / "run.log"
 
@@ -90,7 +175,7 @@ def run_agent(config: dict, agent: str, dataset: str, cpu_only: bool = False) ->
             "--agent",
             agent,
             "--task-id",
-            f"agentomics/{dataset}",
+            task_id,
             "--output-dir",
             str(output_subdir),
             "--data-dir",
@@ -114,7 +199,7 @@ def run_agent(config: dict, agent: str, dataset: str, cpu_only: bool = False) ->
 
         if result.returncode != 0:
             print("Zero-shot agent failed")
-            return None, False
+            return None, False, task_id
 
         (output_subdir / "duration.json").write_text(json.dumps({"duration_seconds": duration_seconds}, indent=2))
 
@@ -122,7 +207,7 @@ def run_agent(config: dict, agent: str, dataset: str, cpu_only: bool = False) ->
             usage_data = get_api_key_usage(key_hash)
             (output_subdir / "cost.json").write_text(json.dumps({"cost_usd": usage_data['usage']}, indent=2))
 
-        return copy_run_artifacts(agent, dataset, output_subdir), True
+        return copy_run_artifacts(agent, task_id, output_subdir), True, task_id
 
     finally:
         # ALWAYS cleanup the provisioned key, even on failure
@@ -130,9 +215,8 @@ def run_agent(config: dict, agent: str, dataset: str, cpu_only: bool = False) ->
             delete_api_key(key_hash)
 
 
-def copy_run_artifacts(agent: str, dataset: str, output_subdir: Path) -> Path:
+def copy_run_artifacts(agent: str, task_id: str, output_subdir: Path) -> Path:
     runs_root = CLONE_DIR / "runs"
-    dataset_full_id = f"agentomics/{dataset}"
     pattern = f"*run-group_{agent}"
     candidates = sorted(
         runs_root.glob(pattern),
@@ -142,17 +226,24 @@ def copy_run_artifacts(agent: str, dataset: str, output_subdir: Path) -> Path:
 
     for candidate in candidates:
         metadata = json.loads((candidate / "metadata.json").read_text())
-        if dataset_full_id in metadata["task_ids"]:
+        if task_id in metadata["task_ids"]:
             artifact_dir = output_subdir / "run_artifacts"
             if artifact_dir.exists():
                 shutil.rmtree(artifact_dir)
             shutil.copytree(candidate, artifact_dir)
             return artifact_dir
 
-    raise FileNotFoundError(f"No run artifacts found for {agent} on {dataset}")
+    raise FileNotFoundError(f"No run artifacts found for {agent} on task {task_id}")
 
 
 def highlight_metric(metrics: dict[str, float], task_type: str) -> str:
+    if "biomlbench_score" in metrics and metrics["biomlbench_score"] is not None:
+        return f"biomlbench_score: {metrics['biomlbench_score']:.4f}"
+
+    if task_type not in get_task_to_metrics_names():
+        first_key = next(iter(metrics.keys()))
+        return f"{first_key}: {metrics[first_key]:.4f}"
+
     ordered = get_task_to_metrics_names()[task_type]
     primary = ordered[0]
     return f"{primary}: {metrics[primary]:.4f}"
@@ -185,25 +276,54 @@ def main() -> int:
     for dataset, agent in iterate_targets(config, args):
         console.rule(f"{agent} on {dataset}")
         try:
-            artifact_dir, success = run_agent(config, agent, dataset, cpu_only=args.cpu_only)
+            artifact_dir, success, task_id = run_agent(config, agent, dataset, cpu_only=args.cpu_only)
 
             if success: 
                 output_subdir = artifact_dir.parent  # Use timestamped directory
+                grade_dict = None
 
-                metrics, task_type = evaluate_classification_submission(
-                    dataset=dataset,
-                    artifact_root=artifact_dir,
-                    data_dir=DATA_DIR,
-                    output_dir=output_subdir,
-                )
+                if is_agentomics_task(task_id):
+                    metrics, task_type = evaluate_classification_submission(
+                        dataset=dataset,
+                        artifact_root=artifact_dir,
+                        data_dir=DATA_DIR,
+                        output_dir=output_subdir,
+                    )
+                    inference_stage = rerun_inference(
+                        dataset=dataset,
+                        artifact_root=artifact_dir,
+                        data_dir=DATA_DIR,
+                        output_dir=output_subdir,
+                        agent=agent,
+                    )
+                else:
+                    if is_proteingym_task(task_id):
+                        if agent == "zeroshot":
+                            run_proteingym_postprocess(
+                                artifact_dir=artifact_dir,
+                                task_id=task_id,
+                                data_dir=DATA_DIR,
+                            )
+                        metrics, task_type = evaluate_proteingym_submission(
+                            task_id=task_id,
+                            artifact_root=artifact_dir,
+                            output_dir=output_subdir,
+                            data_dir=DATA_DIR,
+                        )
+                    else:
+                        metrics = {}
+                        task_type = "biomlbench"
 
-                inference_stage = rerun_inference(
-                    dataset=dataset,
-                    artifact_root=artifact_dir,
-                    data_dir=DATA_DIR,
-                    output_dir=output_subdir,
-                    agent=agent,
-                )
+                    grade_dict = grade_biomlbench_submission(
+                        task_id=task_id,
+                        artifact_dir=artifact_dir,
+                        output_subdir=output_subdir,
+                        data_dir=DATA_DIR,
+                    )
+                    assert "score" in grade_dict, f"Missing score in biomlbench grade output: {grade_dict}"
+                    metrics["biomlbench_score"] = float(grade_dict["score"])
+                    inference_stage = "matches" if agent == "zeroshot" else "exists"
+
                 (output_subdir / "inference_stage.json").write_text(
                     json.dumps(
                         {
@@ -241,6 +361,10 @@ def main() -> int:
                 )
                 payload = {name: float(value) for name, value in metrics.items()}
                 payload["inference_stage_id"] = INFERENCE_STAGE[inference_stage]
+                if grade_dict is not None:
+                    for key, value in grade_dict.items():
+                        if isinstance(value, (int, float)):
+                            payload[f"biomlbench/{key}"] = float(value)
                 if cost_usd is not None:
                     payload["cost_usd"] = cost_usd
                 if duration_seconds is not None:
@@ -250,6 +374,8 @@ def main() -> int:
 
                 console.print(f"Metrics: {json.dumps(metrics, indent=2)}")
                 console.print(f"Inference stage: {inference_stage}")
+                if grade_dict is not None:
+                    console.print(f"BioMLBench grade: {json.dumps(grade_dict, indent=2)}")
                 summary.append((dataset, agent, highlight_metric(metrics, task_type)))
             else:
                 wandb.init(
@@ -264,14 +390,17 @@ def main() -> int:
                     },
                     tags=args.tags or []
                 )
-                failure_metrics = {
-                    "ACC": None,
-                    "AUPRC": None,
-                    "AUROC": None,
-                    "F1": None,
-                    "LOG_LOSS": None,
-                    "MCC": None,
-                }
+                if is_agentomics_task(task_id):
+                    failure_metrics = {
+                        "ACC": None,
+                        "AUPRC": None,
+                        "AUROC": None,
+                        "F1": None,
+                        "LOG_LOSS": None,
+                        "MCC": None,
+                    }
+                else:
+                    failure_metrics = {"biomlbench_score": None}
 
                 wandb.log(failure_metrics)
                 wandb.finish()

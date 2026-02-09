@@ -90,15 +90,33 @@ def delete_conda_env(run_name):
     env_name = run_name + '_env'
     subprocess.run(f"conda env remove -n {env_name} -y", shell=True, check=True)
 
-def generate_and_run_scripts(client, model, data_dir, work_dir, run_name, temperature, test_features_path, submission_path, submission_dir):
+def resolve_dataset_paths(data_dir):
+    data_path = Path(data_dir)
+    train_csv = data_path / "train.csv"
+    test_features_csv = data_path / "test_features.csv"
+    data_csv = data_path / "data.csv"
+
+    if train_csv.exists() and test_features_csv.exists():
+        return str(train_csv), str(test_features_csv)
+
+    if data_csv.exists():
+        return str(data_csv), str(data_csv)
+
+    raise FileNotFoundError(
+        "Could not resolve dataset files in /home/data. "
+        f"Expected either train.csv+test_features.csv or data.csv, found: {[p.name for p in data_path.iterdir()]}"
+    )
+
+
+def generate_and_run_scripts(client, model, data_dir, work_dir, run_name, temperature, submission_path, submission_dir):
     """Main function - adapted from original"""
 
     # Load dataset description
     desc_path = Path(data_dir) / "description.md"
     dataset_knowledge = desc_path.read_text() if desc_path.exists() else "No description available"
 
-    # Get train CSV path
-    train_csv_path = str(Path(data_dir) / "train.csv")
+    # Resolve task data layout (agentomics/polaris style vs proteingym style)
+    train_csv_path, test_features_path = resolve_dataset_paths(data_dir)
 
     # Infer dataset hints from data structure
     import pandas as pd
@@ -134,11 +152,17 @@ def generate_and_run_scripts(client, model, data_dir, work_dir, run_name, temper
         - Train a robust model suitable for the given dataset
         - Save the trained model to: {submission_dir}/model.pkl using joblib or pickle
         - Save all model artifacts to {submission_dir}/
-        - Split the train file to train and validation to optimize during training.
+        - Support optional CLI args:
+          --train-data (default: {train_csv_path})
+          --validation-data (optional; if provided, use it as validation instead of splitting train)
+          --artifacts-dir (default: {submission_dir})
+        - If --validation-data is not provided, split the train file to train and validation.
+        - Do not hardcode /home/data paths inside logic.
 
         3. For inference.py:
         - Accept arguments: --input and --output
-        - Load the model from: {submission_dir}/model.pkl
+        - Support optional --artifacts-dir (default: {submission_dir})
+        - Load the model from: <artifacts-dir>/model.pkl
         - Output a CSV with all original input columns and 'numeric_label' column containing a score from 0 to 1
 
         4. For environment.yaml:
@@ -230,8 +254,6 @@ def main():
     submission_dir = args.submission_dir
     submission_path = os.path.join(submission_dir, "submission.csv")
     work_dir = submission_dir  # Use submission dir as workspace so all files end up there
-    test_features_path = os.path.join(data_dir, "test_features.csv")
-
     run_name = "zeroshot"
 
     # Generate and run scripts
@@ -242,7 +264,6 @@ def main():
         work_dir=work_dir,
         run_name=run_name,
         temperature=args.temperature,
-        test_features_path=test_features_path,
         submission_path=submission_path,
         submission_dir=submission_dir
     )
