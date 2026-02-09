@@ -1,13 +1,16 @@
 import subprocess
 import traceback
 import shutil
+import os
+from pathlib import Path
 
 from pydantic import BaseModel, Field
 from pydantic.json_schema import SkipJsonSchema
-from pydantic_ai import ModelRetry
+from pydantic_ai import ModelRetry, Agent, RunContext
 import pandas as pd
 
 from utils.text_processing_utils import concise_output, collapse_repeated_lines
+from agents.agent_utils import get_new_rundir_files, does_file_contain_iteration_pattern
 
 class ModelTraining(BaseModel):
     path_to_train_file: str = Field(
@@ -47,6 +50,65 @@ def get_model_training_prompt(config):
     --artifacts-dir (path to a directory that will be populated by the training script with artifacts needed to use the trained model for predictions (e.g. produced model weights, produced tokenizers, ...). This directory should not contain any other external sources like imported scripts, conda packages, foundation models, etc..)
     The script must not accept any other parameters.
     """
+
+def create_model_training_agent(config, model, tools):
+    training_agent = Agent(
+        model=model,
+        tools=tools,
+        model_settings={'temperature': config.temperature},
+        output_type=ModelTraining,
+        retries=config.max_validation_retries,
+        deps_type=dict,
+    )
+        
+    @training_agent.output_validator
+    async def validate_training(ctx: RunContext[dict], result: ModelTraining) -> ModelTraining:
+        if not os.path.exists(result.path_to_train_file):
+            raise ModelRetry(f"Train file does not exist. {result.path_to_train_file}")
+        if not Path(result.path_to_train_file).name.strip() == 'train.py':
+            raise ModelRetry(f"Train file must be called 'train.py' , currently is named {Path(result.path_to_train_file).name.strip()}")
+        if os.path.islink(result.path_to_train_file):
+            raise ModelRetry(f"Train file ({result.path_to_train_file}) cannot be a symbolic link, create a non-symlinked copy of it.")
+        if not os.path.exists(result.path_to_model_file):
+            raise ModelRetry(f"Model file does not exist at {result.path_to_model_file}")
+        if ctx.deps['run_dir'] not in Path(result.path_to_artifacts_dir).parents:
+            raise ModelRetry(f"path_to_artifacts_dir ({result.path_to_artifacts_dir}) must be a child of your run dir ({ctx.deps['run_dir']})")
+        if Path(result.path_to_artifacts_dir).name.strip() != 'training_artifacts':
+            raise ModelRetry(f"The artifacts folder produced by training must be called 'training_artifacts', currently is named {Path(result.path_to_artifacts_dir).name.strip()}")
+        if (Path(result.path_to_train_file).resolve().parent / 'training_artifacts').resolve() != Path(result.path_to_artifacts_dir).resolve():
+            raise ModelRetry(f"The artifacts folder produced by training must be a sibling to train.py.")
+        if Path(result.path_to_artifacts_dir).resolve() not in Path(result.path_to_model_file).parents:
+            raise ModelRetry(f"Model file ({result.path_to_model_file}) must be inside the artifacts folder ({result.path_to_artifacts_dir})")
+        if does_file_contain_iteration_pattern(result.path_to_train_file):
+            raise ModelRetry(f"Train file ({result.path_to_train_file}) contains path containing a forbidden string 'iteration_' or references an iteration folder, which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
+        created_files_names = retrain_and_check(
+            config=config,
+            train_data_path=ctx.deps['train_csv_path'],
+            valid_data_path=ctx.deps['validation_csv_path'],
+            train_script_path = result.path_to_train_file,
+            model_file_name = Path(result.path_to_model_file).name,
+        )
+        existing_files = list(Path(result.path_to_artifacts_dir).iterdir())
+        existing_files_names = [f.name for f in existing_files]
+
+        # Check if created files match existing files in artifacts directory
+        if set(created_files_names) != set(existing_files_names):
+            extras_in_submitted_folder = set(existing_files_names) - set(created_files_names)
+            extras_in_retrain_folder = set(created_files_names) - set(existing_files_names)
+            if(len(extras_in_submitted_folder) > 0):
+                error_msg = f"Artifacts directory contains extra files, probably from a previous failed training attempt.\n"
+                error_msg += f"Files created using the current training script: {created_files_names}\n"
+                error_msg += f"Files existing in artifacts directory: {existing_files_names}\n"
+                error_msg += f"Extra files that should be cleaned up: {list(extras_in_submitted_folder)}\n"
+                error_msg += f"Please clean up the artifacts directory at {result.path_to_artifacts_dir} and try again."
+                raise ModelRetry(error_msg)
+            else:
+                print(f"Warning: Training script creates some extra files compared to the submitted training artifacts: {extras_in_retrain_folder}")
+
+        result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
+        return result
+
+    return training_agent
 
 def retrain_and_check(config, train_data_path, valid_data_path, train_script_path, model_file_name):
     run_dir = config.runs_dir / config.agent_id

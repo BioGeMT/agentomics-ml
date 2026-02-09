@@ -1,254 +1,37 @@
-import os
 import datetime
-import subprocess
-import re
 import string
 import random
 
-from pydantic_ai import Agent, ModelRetry, RunContext
+from pydantic_ai import Agent
 import weave
-import pandas as pd
-from pathlib import Path
 from pydantic_ai.messages import ModelResponse, ToolCallPart, ToolReturnPart, ModelRequest, TextPart, ModelMessage
+from rich.console import Console
 
 from agents.agent_utils import run_agent
-from agents.prompts.prompts_utils import get_iteration_prompt, get_system_prompt, get_iteration_0_prompt
-from agents.steps.model_inference import ModelInference, get_model_inference_prompt
-from agents.steps.data_split import DataSplit, get_data_split_prompt
-from agents.steps.model_architecture import ModelArchitecture, get_model_architecture_prompt
-from agents.steps.data_representation import DataRepresentation, get_data_representation_prompt
-from agents.steps.data_exploration import DataExploration, get_data_exploration_prompt
-from agents.steps.model_training import ModelTraining, get_model_training_prompt, retrain_and_check
-from agents.steps.prediction_exploration import PredictionExploration, get_prediction_exploration_prompt
+from agents.prompts.prompts_utils import get_iteration_prompt, get_iteration_0_prompt
+from agents.steps.model_inference import get_model_inference_prompt, create_model_inference_agent
+from agents.steps.data_split import DataSplit, get_data_split_prompt, create_data_split_agent
+from agents.steps.model_architecture import get_model_architecture_prompt, create_model_architecture_agent
+from agents.steps.data_representation import get_data_representation_prompt, create_data_representation_agent
+from agents.steps.data_exploration import get_data_exploration_prompt, create_data_exploration_agent
+from agents.steps.model_training import get_model_training_prompt, create_model_training_agent
+from agents.steps.prediction_exploration import get_prediction_exploration_prompt, create_prediction_exploration_agent
+from agents.agent_utils import get_new_rundir_files
 from utils.config import Config
 from utils.report_logger import save_step_output
-from run_logging.evaluate_log_run import run_inference_and_log
-from rich.console import Console
 
 console = Console()
 
 def create_agents(config: Config, model, tools):
-    data_exploration_agent = Agent(
-        model=model,
-        system_prompt=get_system_prompt(config), # Passed only to first step when message history empty
-        tools=tools,
-        model_settings={'temperature': config.temperature},
-        output_type=DataExploration,
-        retries=config.max_validation_retries,
-        deps_type=dict,
-    )
-    split_dataset_agent = Agent(
-        model=model,
-        tools=tools,
-        model_settings={'temperature': config.temperature},
-        output_type=DataSplit,
-        retries=config.max_validation_retries,
-        deps_type=dict,
-    )
-    data_representation_agent = Agent(
-        model=model,
-        tools=tools,
-        model_settings={'temperature': config.temperature},
-        output_type=DataRepresentation,
-        retries=config.max_validation_retries,
-        deps_type=dict,
-    )
-    model_architecture_agent = Agent(
-        model=model,
-        tools=tools,
-        model_settings={'temperature': config.temperature},
-        output_type=ModelArchitecture,
-        retries=config.max_validation_retries,
-        deps_type=dict,
-    )
-    training_agent = Agent(
-        model=model,
-        tools=tools,
-        model_settings={'temperature': config.temperature},
-        output_type=ModelTraining,
-        retries=config.max_validation_retries,
-        deps_type=dict,
-    )
-    inference_agent = Agent(
-        model=model,
-        tools=tools,
-        model_settings={'temperature':config.temperature},
-        output_type= ModelInference,
-        retries=config.max_validation_retries,
-        deps_type=dict,
-    )
-    prediction_exploration_agent = Agent(
-        model=model,
-        tools=tools,
-        model_settings={'temperature':config.temperature},
-        output_type= PredictionExploration,
-        retries=config.max_validation_retries,
-        deps_type=dict,
-    )
-
-    @data_exploration_agent.output_validator
-    async def validate_data_exploration(ctx: RunContext[dict], result):
-        result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
-        return result
-    @data_representation_agent.output_validator
-    async def validate_data_representation(ctx: RunContext[dict], result):
-        result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
-        return result
-    @model_architecture_agent.output_validator
-    async def validate_model_architecture(ctx: RunContext[dict], result):
-        result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
-        return result
-
-    @split_dataset_agent.output_validator
-    async def validate_split_dataset(ctx: RunContext[dict], result: DataSplit) -> DataSplit:
-        if not os.path.exists(result.train_path) or not os.path.exists(result.val_path):
-            raise ModelRetry("Split dataset files do not exist.")
-        
-        train_path = Path(result.train_path)
-        val_path = Path(result.val_path)
-        if(train_path.name != 'train.csv' or val_path.name != 'validation.csv'):
-            # Care to not delete original training or validation data
-            original_train_csv_path = config.agent_dataset_dir / "train.csv"
-            original_valid_csv_path = config.agent_dataset_dir / "validation.csv"
-            if (train_path.resolve() != original_train_csv_path.resolve() and train_path.resolve() != original_valid_csv_path.resolve()):
-                train_path.unlink()
-            if (val_path.resolve() != original_train_csv_path.resolve() and val_path.resolve() != original_valid_csv_path.resolve()):
-                val_path.unlink()
-
-            raise ModelRetry(f"The files must be called exactly 'train.csv' and 'validation.csv'. Files ({train_path.name} and {val_path.name}) have been deleted.")
-        
-        target_col = 'numeric_label' #TODO generalize and take from metadata.json or config
-        train_df = pd.read_csv(result.train_path)
-        val_df = pd.read_csv(result.val_path)
-
-        if target_col not in train_df.columns:
-            raise ModelRetry(f"Target column {target_col} not found in train dataset {result.train_path}. Columns found: {train_df.columns.tolist()}")
-        if target_col not in val_df.columns:
-            raise ModelRetry(f"Target column {target_col} not found in validation dataset {result.val_path}. Columns found: {val_df.columns.tolist()}")
-
-        # Validate that both datasets have id column
-        if 'id' not in train_df.columns:
-            raise ModelRetry(f"ID column 'id' is missing in train dataset {result.train_path}. Columns found: {train_df.columns.tolist()}")
-        if 'id' not in val_df.columns:
-            raise ModelRetry(f"ID column 'id' is missing in validation dataset {result.val_path}. Columns found: {val_df.columns.tolist()}")
-
-        # Validate that train and validation have no overlapping IDs
-        train_ids = set(train_df['id'].dropna().tolist())
-        val_ids = set(val_df['id'].dropna().tolist())
-        overlapping_ids = train_ids.intersection(val_ids)
-        if overlapping_ids:
-            raise ModelRetry(f"Train and validation datasets have overlapping IDs. IDs must be unique across train and validation splits.")
-
-        result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
-        return result
-    
-    @training_agent.output_validator
-    async def validate_training(ctx: RunContext[dict], result: ModelTraining) -> ModelTraining:
-        if not os.path.exists(result.path_to_train_file):
-            raise ModelRetry(f"Train file does not exist. {result.path_to_train_file}")
-        if not Path(result.path_to_train_file).name.strip() == 'train.py':
-            raise ModelRetry(f"Train file must be called 'train.py' , currently is named {Path(result.path_to_train_file).name.strip()}")
-        if os.path.islink(result.path_to_train_file):
-            raise ModelRetry(f"Train file ({result.path_to_train_file}) cannot be a symbolic link, create a non-symlinked copy of it.")
-        if not os.path.exists(result.path_to_model_file):
-            raise ModelRetry(f"Model file does not exist at {result.path_to_model_file}")
-        if ctx.deps['run_dir'] not in Path(result.path_to_artifacts_dir).parents:
-            raise ModelRetry(f"path_to_artifacts_dir ({result.path_to_artifacts_dir}) must be a child of your run dir ({ctx.deps['run_dir']})")
-        if Path(result.path_to_artifacts_dir).name.strip() != 'training_artifacts':
-            raise ModelRetry(f"The artifacts folder produced by training must be called 'training_artifacts', currently is named {Path(result.path_to_artifacts_dir).name.strip()}")
-        if (Path(result.path_to_train_file).resolve().parent / 'training_artifacts').resolve() != Path(result.path_to_artifacts_dir).resolve():
-            raise ModelRetry(f"The artifacts folder produced by training must be a sibling to train.py.")
-        if Path(result.path_to_artifacts_dir).resolve() not in Path(result.path_to_model_file).parents:
-            raise ModelRetry(f"Model file ({result.path_to_model_file}) must be inside the artifacts folder ({result.path_to_artifacts_dir})")
-        if does_file_contain_iteration_pattern(result.path_to_train_file):
-            raise ModelRetry(f"Train file ({result.path_to_train_file}) contains path containing a forbidden string 'iteration_' or references an iteration folder, which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
-        created_files_names = retrain_and_check(
-            config=config,
-            train_data_path=ctx.deps['train_csv_path'],
-            valid_data_path=ctx.deps['validation_csv_path'],
-            train_script_path = result.path_to_train_file,
-            model_file_name = Path(result.path_to_model_file).name,
-        )
-        existing_files = list(Path(result.path_to_artifacts_dir).iterdir())
-        existing_files_names = [f.name for f in existing_files]
-
-        # Check if created files match existing files in artifacts directory
-        if set(created_files_names) != set(existing_files_names):
-            extras_in_submitted_folder = set(existing_files_names) - set(created_files_names)
-            extras_in_retrain_folder = set(created_files_names) - set(existing_files_names)
-            if(len(extras_in_submitted_folder) > 0):
-                error_msg = f"Artifacts directory contains extra files, probably from a previous failed training attempt.\n"
-                error_msg += f"Files created using the current training script: {created_files_names}\n"
-                error_msg += f"Files existing in artifacts directory: {existing_files_names}\n"
-                error_msg += f"Extra files that should be cleaned up: {list(extras_in_submitted_folder)}\n"
-                error_msg += f"Please clean up the artifacts directory at {result.path_to_artifacts_dir} and try again."
-                raise ModelRetry(error_msg)
-            else:
-                print(f"Warning: Training script creates some extra files compared to the submitted training artifacts: {extras_in_retrain_folder}")
-
-        result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
-        return result
-
-    @inference_agent.output_validator
-    async def validate_inference(ctx: RunContext[dict], result: ModelInference) -> ModelInference:
-        if not os.path.exists(result.path_to_inference_file):
-            raise ModelRetry(f"Inference file does not exist at {result.path_to_inference_file}")
-        if os.path.islink(result.path_to_inference_file):
-            raise ModelRetry(f"Inference file ({result.path_to_inference_file}) cannot be a symbolic link, create a non-symlinked copy of it.")
-        if does_file_contain_iteration_pattern(result.path_to_inference_file):
-            raise ModelRetry("Inference file contains path containing a forbidden string 'iteration_' or references an iteration folder, which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
-        if does_file_contain_string(result.path_to_inference_file, "train.csv") or does_file_contain_string(result.path_to_inference_file, "validation.csv"):
-            raise ModelRetry("Inference file contains references to dataset split files ('train.csv' or 'validation.csv' detected), which will not be accessible during final testing.")
-        #TODO improve validation with info about the artifacts-dir
-        run_inference_and_log(config, iteration=-1, evaluation_stage='dry_run')
-        result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
-        return result      
-    
-    @prediction_exploration_agent.output_validator
-    async def validate_prediction_exploration(ctx: RunContext[dict], result: PredictionExploration) -> PredictionExploration:
-        if not os.path.exists(config.runs_dir / config.agent_id / "inference.py"):
-            raise ModelRetry(f"Inference file does not exist at {config.runs_dir / config.agent_id / 'inference.py'}")
-        if does_file_contain_iteration_pattern(config.runs_dir / config.agent_id / "inference.py"):
-            raise ModelRetry("Inference file contains references to an iteration folder ('iteration_' detected), which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
-        invalid_iter_folders = get_invalid_iteration_folders(config, ctx.deps['iteration'])
-        if len(invalid_iter_folders) > 0:
-            raise ModelRetry("An iteration folder or file with 'iteration' in its name was created during this iteration. For the invalid files, rename them. For the invalid folders, move all files out of them to the current working directory, update their dependencies if necessary, and delete the folder. This applies to the following files/folders: " + ", ".join(invalid_iter_folders))
-        run_inference_and_log(config, iteration=-1, evaluation_stage='dry_run')
-        result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
-        return result
-
     return {
-        "data_exploration_agent": data_exploration_agent,
-        "split_dataset_agent": split_dataset_agent,
-        "data_representation_agent": data_representation_agent,
-        "model_architecture_agent": model_architecture_agent,
-        "training_agent": training_agent,
-        "inference_agent": inference_agent,
-        "prediction_exploration_agent": prediction_exploration_agent,
+        "data_exploration_agent": create_data_exploration_agent(config, model, tools),
+        "split_dataset_agent": create_data_split_agent(config, model, tools),
+        "data_representation_agent": create_data_representation_agent(config, model, tools),
+        "model_architecture_agent": create_model_architecture_agent(config, model, tools),
+        "training_agent": create_model_training_agent(config, model, tools),
+        "inference_agent": create_model_inference_agent(config, model, tools),
+        "prediction_exploration_agent": create_prediction_exploration_agent(config, model, tools),
     }
-
-def get_invalid_iteration_folders(config, iteration):
-    run_dir = config.runs_dir / config.agent_id
-    valid_folders = [f"iteration_{i}" for i in range(iteration)]
-    invalid_folders = []
-    for element in run_dir.iterdir():
-        if "iteration_" in element.name and element.name not in valid_folders:
-            invalid_folders.append(element.name)
-    return invalid_folders
-
-def does_file_contain_string(file_path, search_string) -> bool:
-    with open(file_path, 'r') as file:
-        content = file.read()
-
-    # the search_string must be withing a string in the python file (between ' or ") and start after the first quote symbol, doesnt match comments, variables, etc.
-    pattern = rf"(['\"]){re.escape(search_string)}.*?\1"
-    return re.search(pattern, content, re.DOTALL) is not None
-
-def does_file_contain_iteration_pattern(file_path) -> bool:
-    with open(file_path, 'r') as file:
-        content = file.read()
-    pattern = r"(['\"])iteration_\d+.*?\1"
-    return re.search(pattern, content, re.DOTALL) is not None
 
 def get_final_result_messages(all_messages, structured_output=None, model_name=None):
     if any(isinstance(part, ToolCallPart) and part.tool_name=="final_result" for part in all_messages[-2].parts):
@@ -293,17 +76,6 @@ def get_sytem_and_user_prompt_messages(all_messages, to_remove):
     user_prompt_part = [part for part in first_message.parts if part.part_kind=='user-prompt'][0]
     user_prompt_part.content = user_prompt_part.content.replace(to_remove, "") #Remove a non-global part of the prompt
     return [first_message]
-
-def get_new_rundir_files(config, since_timestamp, ignore_iter_folders=True):
-    run_dir = config.runs_dir / config.agent_id
-    new_files = []
-    for element in run_dir.iterdir():
-        if ignore_iter_folders and "iteration_" in element.name and element.is_dir():
-            continue
-        #Check modified time
-        if datetime.datetime.fromtimestamp(element.stat().st_mtime) > since_timestamp:
-            new_files.append(element.name)
-    return new_files
 
 async def run_architecture_compressed(data_exploration_agent: Agent, data_representation_agent: Agent, model_architecture_agent: Agent, inference_agent: Agent, split_dataset_agent: Agent, training_agent: Agent, prediction_exploration_agent: Agent, config: Config, base_prompt: str, iteration: int, last_split_strategy: str):
     persistent_messages = []

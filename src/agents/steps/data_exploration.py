@@ -1,5 +1,9 @@
 from pydantic import BaseModel, Field
 from pydantic.json_schema import SkipJsonSchema
+from pydantic_ai import Agent, RunContext
+
+from agents.prompts.prompts_utils import get_system_prompt
+from agents.agent_utils import get_new_rundir_files
 
 class DataExploration(BaseModel):
     data_description: str = Field(
@@ -39,3 +43,21 @@ def get_data_exploration_prompt(iteration):
     Your first task: explore the dataset. Be thorough, understanding the data deeply will inform subsequent steps for model development.
     {extra_info}
     """
+
+def create_data_exploration_agent(config, model, tools):
+    data_exploration_agent = Agent(
+        model=model,
+        system_prompt=get_system_prompt(config), # Passed only to first step when message history empty
+        tools=tools,
+        model_settings={'temperature': config.temperature},
+        output_type=DataExploration,
+        retries=config.max_validation_retries,
+        deps_type=dict,
+    )
+
+    @data_exploration_agent.output_validator
+    async def validate_data_exploration(ctx: RunContext[dict], result):
+        result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
+        return result
+    
+    return data_exploration_agent

@@ -1,5 +1,12 @@
+import os
+from pathlib import Path
+
 from pydantic import BaseModel, Field
 from pydantic.json_schema import SkipJsonSchema
+from pydantic_ai import Agent, RunContext, ModelRetry
+import pandas as pd
+
+from agents.agent_utils import get_new_rundir_files
 
 class DataSplit(BaseModel):
     train_path: str = Field(description="Path to generated train.csv file")
@@ -38,3 +45,58 @@ def get_data_split_prompt(config, iteration, last_split_strategy="Split does not
 
         {extra_info}
         """
+
+def create_data_split_agent(config, model, tools):
+    data_split_agent = Agent(
+        model=model,
+        tools=tools,
+        model_settings={'temperature': config.temperature},
+        output_type=DataSplit,
+        retries=config.max_validation_retries,
+        deps_type=dict,
+    )
+
+    @data_split_agent.output_validator
+    async def validate_split_dataset(ctx: RunContext[dict], result: DataSplit) -> DataSplit:
+        if not os.path.exists(result.train_path) or not os.path.exists(result.val_path):
+            raise ModelRetry("Split dataset files do not exist.")
+        
+        train_path = Path(result.train_path)
+        val_path = Path(result.val_path)
+        if(train_path.name != 'train.csv' or val_path.name != 'validation.csv'):
+            # Care to not delete original training or validation data
+            original_train_csv_path = config.agent_dataset_dir / "train.csv"
+            original_valid_csv_path = config.agent_dataset_dir / "validation.csv"
+            if (train_path.resolve() != original_train_csv_path.resolve() and train_path.resolve() != original_valid_csv_path.resolve()):
+                train_path.unlink()
+            if (val_path.resolve() != original_train_csv_path.resolve() and val_path.resolve() != original_valid_csv_path.resolve()):
+                val_path.unlink()
+
+            raise ModelRetry(f"The files must be called exactly 'train.csv' and 'validation.csv'. Files ({train_path.name} and {val_path.name}) have been deleted.")
+        
+        target_col = 'numeric_label' #TODO generalize and take from metadata.json or config
+        train_df = pd.read_csv(result.train_path)
+        val_df = pd.read_csv(result.val_path)
+
+        if target_col not in train_df.columns:
+            raise ModelRetry(f"Target column {target_col} not found in train dataset {result.train_path}. Columns found: {train_df.columns.tolist()}")
+        if target_col not in val_df.columns:
+            raise ModelRetry(f"Target column {target_col} not found in validation dataset {result.val_path}. Columns found: {val_df.columns.tolist()}")
+
+        # Validate that both datasets have id column
+        if 'id' not in train_df.columns:
+            raise ModelRetry(f"ID column 'id' is missing in train dataset {result.train_path}. Columns found: {train_df.columns.tolist()}")
+        if 'id' not in val_df.columns:
+            raise ModelRetry(f"ID column 'id' is missing in validation dataset {result.val_path}. Columns found: {val_df.columns.tolist()}")
+
+        # Validate that train and validation have no overlapping IDs
+        train_ids = set(train_df['id'].dropna().tolist())
+        val_ids = set(val_df['id'].dropna().tolist())
+        overlapping_ids = train_ids.intersection(val_ids)
+        if overlapping_ids:
+            raise ModelRetry(f"Train and validation datasets have overlapping IDs. IDs must be unique across train and validation splits.")
+
+        result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
+        return result
+    
+    return data_split_agent
