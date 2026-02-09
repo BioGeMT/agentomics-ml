@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 from typing import Iterator
 
+import pandas as pd
 import wandb
 import yaml
 from dotenv import load_dotenv
@@ -30,6 +31,7 @@ with open(CONFIG_PATH, "r") as fh:
 
 from evaluation import (
     INFERENCE_STAGE,
+    evaluate_biomlbench_submission,
     evaluate_classification_submission,
     evaluate_proteingym_submission,
     get_submission_dir_from_artifacts,
@@ -94,8 +96,23 @@ def grade_biomlbench_submission(
     submission_path = submission_dir / "submission.csv"
     assert submission_path.is_file(), f"Submission file not found for grading: {submission_path}"
 
+    submission_df = pd.read_csv(submission_path)
+    assert "id" in submission_df.columns, f"Submission must contain 'id' column: {submission_path}"
+    if "numeric_label" in submission_df.columns:
+        pred_col = "numeric_label"
+    elif "prediction" in submission_df.columns:
+        pred_col = "prediction"
+    else:
+        assert len(submission_df.columns) >= 2, (
+            f"Submission must contain at least one prediction column: {submission_path}"
+        )
+        pred_col = submission_df.columns[1]
+
+    grading_submission_path = output_subdir / "submission_for_grading.csv"
+    submission_df[["id", pred_col]].to_csv(grading_submission_path, index=False)
+
     result = subprocess.run(
-        ["biomlbench", "grade-sample", str(submission_path), task_id, "--data-dir", str(data_dir)],
+        ["biomlbench", "grade-sample", str(grading_submission_path), task_id, "--data-dir", str(data_dir)],
         cwd=CLONE_DIR,
         capture_output=True,
         text=True,
@@ -311,8 +328,12 @@ def main() -> int:
                             data_dir=DATA_DIR,
                         )
                     else:
-                        metrics = {}
-                        task_type = "biomlbench"
+                        metrics, task_type = evaluate_biomlbench_submission(
+                            task_id=task_id,
+                            artifact_root=artifact_dir,
+                            output_dir=output_subdir,
+                            data_dir=DATA_DIR,
+                        )
 
                     grade_dict = grade_biomlbench_submission(
                         task_id=task_id,

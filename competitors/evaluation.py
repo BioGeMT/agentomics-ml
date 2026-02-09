@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -151,6 +152,110 @@ def evaluate_proteingym_submission(
     output_payload.update(averaged_metrics)
     _write_json(output_dir / "metrics.json", output_payload)
     return averaged_metrics, "regression"
+
+
+def _get_biomlbench_task_type(description_path: Path) -> str:
+    description_text = description_path.read_text().lower()
+    if (
+        "task description: binary classification" in description_text
+        or "task description: classification" in description_text
+    ):
+        return "classification"
+    if "task description: regression" in description_text:
+        return "regression"
+
+    metric_match = re.search(r"main metric:\s*\**\s*([a-zA-Z0-9_]+)", description_text)
+    assert metric_match is not None, f"Could not infer task type from description: {description_path}"
+    main_metric = metric_match.group(1).lower()
+
+    classification_metrics = {"roc_auc", "auroc", "pr_auc", "auprc", "f1", "accuracy", "acc"}
+    regression_metrics = {"pearsonr", "spearmanr", "rmse", "mse", "mae", "mean_absolute_error", "r2"}
+
+    if main_metric in classification_metrics:
+        return "classification"
+    if main_metric in regression_metrics:
+        return "regression"
+
+    raise ValueError(f"Could not infer task type from description: {description_path}")
+
+
+def evaluate_biomlbench_submission(
+    task_id: str,
+    artifact_root: Path,
+    output_dir: Path,
+    data_dir: Path,
+) -> tuple[dict[str, float], str]:
+    submission_dir = get_submission_dir_from_artifacts(artifact_root)
+    submission_path = submission_dir / "submission.csv"
+    assert submission_path.is_file(), f"Missing submission file: {submission_path}"
+
+    description_path = data_dir / task_id / "prepared" / "public" / "description.md"
+    answers_path = data_dir / task_id / "prepared" / "private" / "answers.csv"
+    assert description_path.is_file(), f"Missing BioMLBench description file: {description_path}"
+    assert answers_path.is_file(), f"Missing BioMLBench answers file: {answers_path}"
+
+    task_type = _get_biomlbench_task_type(description_path)
+    label_col = get_target_col_from_description(description_path)
+    answers_df = pd.read_csv(answers_path)
+    assert label_col in answers_df.columns, (
+        f"Target column '{label_col}' from {description_path} "
+        f"not found in answers columns: {answers_df.columns.tolist()}"
+    )
+
+    submission_df = pd.read_csv(submission_path)
+    assert "id" in submission_df.columns, f"Submission must contain 'id': {submission_path}"
+    if "numeric_label" in submission_df.columns:
+        pred_col = "numeric_label"
+    elif "prediction" in submission_df.columns:
+        pred_col = "prediction"
+    else:
+        assert len(submission_df.columns) >= 2, (
+            f"Submission must include a prediction column: {submission_path}"
+        )
+        pred_col = submission_df.columns[1]
+
+    if task_type == "classification":
+        prob_1 = submission_df[pred_col].astype(float).clip(0.0, 1.0)
+        eval_results = pd.DataFrame(
+            {
+                "id": submission_df["id"],
+                "prediction": (prob_1 >= 0.5).astype(int),
+                "probability_0": 1.0 - prob_1,
+                "probability_1": prob_1,
+            }
+        )
+        eval_results_path = output_dir / "metrics_results.csv"
+        eval_results.to_csv(eval_results_path, index=False)
+        ordered = get_task_to_metrics_names()["classification"]
+        raw_metrics = get_metrics(
+            results_file=eval_results_path,
+            test_file=answers_path,
+            task_type="classification",
+            numeric_label_col=label_col,
+            pred_col="prediction",
+            prob_col_prefix="probability_",
+        )
+    else:
+        eval_results = pd.DataFrame(
+            {
+                "id": submission_df["id"],
+                "prediction": submission_df[pred_col].astype(float),
+            }
+        )
+        eval_results_path = output_dir / "metrics_results.csv"
+        eval_results.to_csv(eval_results_path, index=False)
+        ordered = get_task_to_metrics_names()["regression"]
+        raw_metrics = get_metrics(
+            results_file=eval_results_path,
+            test_file=answers_path,
+            task_type="regression",
+            pred_col="prediction",
+            numeric_label_col=label_col,
+        )
+
+    metrics = {name: float(value) for name, value in raw_metrics.items() if name in ordered}
+    _write_json(output_dir / "metrics.json", metrics)
+    return metrics, task_type
 
 
 def _allclose(frame_a: pd.DataFrame, frame_b: pd.DataFrame) -> bool:
