@@ -15,6 +15,7 @@ sys.path.insert(0, str(SRC_DIR))
 
 from eval.evaluate_result import get_metrics
 from utils.metrics import get_task_to_metrics_names
+from utils.biomlbench_target_utils import get_target_col_from_description
 
 
 @dataclass(frozen=True)
@@ -40,6 +41,15 @@ class EvaluationArtifacts:
 
 def _write_json(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, indent=2))
+
+
+def get_submission_dir_from_artifacts(artifact_root: Path) -> Path:
+    submission_csv_paths = sorted(artifact_root.glob("**/submission/submission.csv"))
+    assert len(submission_csv_paths) == 1, (
+        "Expected exactly one submission.csv under run artifacts. "
+        f"Found {len(submission_csv_paths)} at: {[str(p) for p in submission_csv_paths]}"
+    )
+    return submission_csv_paths[0].parent
 
 
 def evaluate_classification_submission(
@@ -88,6 +98,59 @@ def evaluate_classification_submission(
     _write_json(output_dir / "label_mapping.json", mapping)
     _write_json(output_dir / "metrics.json", metrics)
     return metrics, "classification"
+
+
+def evaluate_proteingym_submission(
+    task_id: str,
+    artifact_root: Path,
+    output_dir: Path,
+    data_dir: Path,
+) -> tuple[dict[str, float], str]:
+    submission_dir = get_submission_dir_from_artifacts(artifact_root)
+    predictions_path = submission_dir / "submission_extended.csv"
+    assert predictions_path.is_file(), (
+        f"Missing ProteinGym fold predictions file: {predictions_path}. "
+        "Run ProteinGym post-processing first."
+    )
+
+    description_path = data_dir / task_id / "prepared" / "public" / "description.md"
+    answers_path = data_dir / task_id / "prepared" / "private" / "answers.csv"
+    assert description_path.is_file(), f"Missing BioMLBench description file: {description_path}"
+    assert answers_path.is_file(), f"Missing BioMLBench answers file: {answers_path}"
+
+    label_col = get_target_col_from_description(description_path)
+    preds_df = pd.read_csv(predictions_path)
+    fold_pred_cols = [col for col in preds_df.columns if col.startswith("fitness_score_fold_")]
+    assert len(fold_pred_cols) > 0, (
+        f"Expected fold prediction columns in {predictions_path}, found: {preds_df.columns.tolist()}"
+    )
+
+    per_fold_metrics = {}
+    metric_names = set()
+    for fold_pred_col in fold_pred_cols:
+        fold_metrics = get_metrics(
+            pred_col=fold_pred_col,
+            results_file=predictions_path,
+            test_file=answers_path,
+            output_file=output_dir / f"metrics_{fold_pred_col}.txt",
+            numeric_label_col=label_col,
+            delete_preds=False,
+            task_type="regression",
+        )
+        for metric_name, value in fold_metrics.items():
+            metric_names.add(metric_name)
+            per_fold_metrics[f"{metric_name}_{fold_pred_col}"] = float(value)
+
+    averaged_metrics = {}
+    for metric_name in metric_names:
+        values = [per_fold_metrics[f"{metric_name}_{fold_pred_col}"] for fold_pred_col in fold_pred_cols]
+        averaged_metrics[metric_name] = float(np.mean(values))
+
+    output_payload = {}
+    output_payload.update(per_fold_metrics)
+    output_payload.update(averaged_metrics)
+    _write_json(output_dir / "metrics.json", output_payload)
+    return averaged_metrics, "regression"
 
 
 def _allclose(frame_a: pd.DataFrame, frame_b: pd.DataFrame) -> bool:

@@ -197,3 +197,4 @@ workspace/runs
 workspace
 outputs
 cleanup_wandb_logs
+competitors/data

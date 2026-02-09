@@ -5,11 +5,10 @@ import shutil
 import pandas as pd
 import subprocess
 from pathlib import Path
-import yaml
-import time
 import wandb
 
 from utils.dataset_utils import prepare_dataset
+from utils.biomlbench_proteingym_cv import generate_proteingym_submission_with_cv
 from run_agent import run_experiment
 from utils.create_user import create_agent_id
 from utils.biomlbench_target_utils import get_target_col_from_description
@@ -106,162 +105,41 @@ def generate_preds_for_biomlbench_proteingym(config):
     print('-GENERATING PREDS FOR BIOMLBENCH-')
     print('---------------------------------')
 
-    # test_no_label = '/home/data/test_features.csv'
     SUBMISSION_DIR = os.getenv('SUBMISSION_DIR')
-    CODE_DIR= os.getenv('CODE_DIR')
-    best_run_files_dir = Path(str(CODE_DIR))/'best_run_files'
-    submission_path = os.path.join(SUBMISSION_DIR, 'submission.csv')
-    temp_csv_files = []  # Track temp files for cleanup (initialize before try block)
+    CODE_DIR = os.getenv('CODE_DIR')
+    assert SUBMISSION_DIR, "Missing required env var: SUBMISSION_DIR"
+    assert CODE_DIR, "Missing required env var: CODE_DIR"
+
+    best_run_files_dir = Path(CODE_DIR) / 'best_run_files'
+    submission_path = Path(SUBMISSION_DIR) / 'submission.csv'
+    submission_extended_path = Path(SUBMISSION_DIR) / 'submission_extended.csv'
     snapshots_dir = '/home/workspace/snapshots'
     run_names = os.listdir(snapshots_dir)
+    assert len(run_names) == 1, "Expected exactly one run"
     run_name = run_names[0]
+
     with open(Path(f"{snapshots_dir}/{run_name}") / "iteration_number.txt", 'r') as f:
         iteration = int(f.read().strip())
 
-    start_time = time.time()
-    try:
-        # id,sequence,fitness_score,fold_random_5,fold_modulo_5,fold_contiguous_5
-        assert len(run_names) == 1, "Expected exactly one run"
+    env_path = Path(f"{snapshots_dir}/{run_name}") / ".conda" / "envs" / f"{run_name}_env"
+    train_script_path = Path(f"{snapshots_dir}/{run_name}") / "train.py"
+    inference_script_path = Path(f"{snapshots_dir}/{run_name}") / "inference.py"
+    data_csv_path = Path("/home/data/data.csv")
 
-        env_path = Path(f"{snapshots_dir}/{run_name}") / ".conda"/ "envs" / f"{run_name}_env"
-        inference_script_path = Path(f"{snapshots_dir}/{run_name}") / "inference.py"
-        og_train_data = pd.read_csv('/home/data/data.csv')
-        og_train_data = og_train_data[og_train_data['fold_random_5'] != -1]
-        final_predictions_path = f'{snapshots_dir}/{run_name}/predictions.csv'
-        train_script_path = Path(f"{snapshots_dir}/{run_name}") / 'train.py'
-        cols_to_keep = ['id','sequence','fitness_score']
-        assert all([col in og_train_data.columns for col in cols_to_keep])
+    result = generate_proteingym_submission_with_cv(
+        env_path=env_path,
+        train_script_path=train_script_path,
+        inference_script_path=inference_script_path,
+        data_csv_path=data_csv_path,
+        submission_path=submission_path,
+        submission_extended_path=submission_extended_path,
+        source_label_col="fitness_score",
+        script_label_col="numeric_label",
+    )
+    if wandb.run is not None:
+        wandb.log({"proteingym_preds_generation_time_seconds": result["seconds"]}, step=iteration)
 
-        # Split the og_train_data based on fold_random_5, fold_modulo_5, fold_contiguous_5 columns (3 different ways to do cross-validation)
-        # Train on the 4-other folds, make predictions for the fifth fold -> generate 3 different prediction files (for each of the split styles)
-        # Return them as extra columns in the dataset (prefixed with the split style name)
-        print('------CROSS VALIDATION LEAKAGE PREVENTION START-------')
-        fold_col_to_preds = []
-
-        fold_col_types = [col for col in og_train_data.columns if col.startswith('fold_')]
-        for fold_col in fold_col_types:
-            fold_predictions_dfs = []
-            for current_test_fold_value in og_train_data[fold_col].unique():
-                # Pick an arbitrary validation that will be additionally separated from the train folds for validation purposes
-                num_folds = len(og_train_data[fold_col].unique())
-                validation_fold_value = (current_test_fold_value + 1) % num_folds
-                assert validation_fold_value != current_test_fold_value
-
-                cols_to_keep = ['id','sequence','fitness_score']
-
-                test_df = og_train_data[og_train_data[fold_col] == current_test_fold_value][cols_to_keep]
-                valid_df = og_train_data[og_train_data[fold_col] == validation_fold_value][cols_to_keep]
-                train_df = og_train_data[(og_train_data[fold_col] != current_test_fold_value) & (og_train_data[fold_col] != validation_fold_value)][cols_to_keep]
-
-                assert len(train_df) > 0, f"Empty training set for fold {current_test_fold_value}"
-                assert len(valid_df) > 0, f"Empty validation set for fold {current_test_fold_value}"
-                assert len(test_df) > 0, f"Empty test set for fold {current_test_fold_value}"
-
-                test_df = test_df.rename(columns={'fitness_score':'numeric_label'}, errors='raise')
-                valid_df = valid_df.rename(columns={'fitness_score':'numeric_label'}, errors='raise')
-                train_df = train_df.rename(columns={'fitness_score':'numeric_label'}, errors='raise')
-
-                # Assert there's no intersection between these
-                train_ids = set(train_df['id'])
-                valid_ids = set(valid_df['id'])
-                test_ids = set(test_df['id'])
-                assert len(train_ids & valid_ids) == 0, "Intersection found between train and validation"
-                assert len(train_ids & test_ids) == 0, "Intersection found between train and test"
-                assert len(valid_ids & test_ids) == 0, "Intersection found between validation and test"
-
-                # Export to csv files
-                train_csv_path = f'{snapshots_dir}/{run_name}/{fold_col}_{current_test_fold_value}_train.csv'
-                valid_csv_path = f'{snapshots_dir}/{run_name}/{fold_col}_{current_test_fold_value}_valid.csv'
-                test_csv_path = f'{snapshots_dir}/{run_name}/{fold_col}_{current_test_fold_value}_test.csv'
-                artifacts_dir = f'{snapshots_dir}/{run_name}/{fold_col}_{current_test_fold_value}_artifacts'
-                predictions_csv_path = f'{snapshots_dir}/{run_name}/{fold_col}_{current_test_fold_value}_predictions.csv'
-
-                train_df.to_csv(train_csv_path, index=False)
-                valid_df.to_csv(valid_csv_path, index=False)
-                test_df.to_csv(test_csv_path, index=False)
-                os.makedirs(artifacts_dir, exist_ok=True)
-
-                temp_csv_files.extend([train_csv_path, valid_csv_path, test_csv_path, artifacts_dir, predictions_csv_path])
-
-                command_prefix=f"conda run -p {env_path} --no-capture-output"
-
-                train_command_dir_ensurance = f"cd {os.path.dirname(train_script_path)} && "
-                training_command = f"{train_command_dir_ensurance} {command_prefix} python \"{train_script_path}\" --train-data \"{train_csv_path}\" --validation-data \"{valid_csv_path}\" --artifacts-dir \"{artifacts_dir}\""
-                training_out = subprocess.run(training_command, shell=True, executable="/bin/bash", capture_output=True, check=False)
-                if training_out.returncode != 0:
-                    print("Error during training:")
-                    print(training_out.stderr.decode())
-                print('------TRAINING OUTPUTS-------')
-                print(training_out.stdout.decode() if isinstance(training_out.stdout, bytes) else training_out.stdout)
-                print(training_out.stderr.decode() if isinstance(training_out.stderr, bytes) else training_out.stderr)
-                print('---END OF TRAINING OUTPUTS---')
-
-                inference_command_dir_ensurance = f"cd {os.path.dirname(inference_script_path)} && "
-                inference_command = f"{inference_command_dir_ensurance} {command_prefix} python \"{inference_script_path}\" --input \"{test_csv_path}\" --output \"{predictions_csv_path}\" --artifacts-dir \"{artifacts_dir}\""
-                inference_out = subprocess.run(inference_command, shell=True, executable="/bin/bash", capture_output=True, check=False)
-                if inference_out.returncode != 0:
-                    print("Error during inference:")
-                    print(inference_out.stderr.decode())
-                    wandb.log({"error_flags/proteingym_cv_inference_error": f"{fold_col}_{current_test_fold_value}"}, step=iteration)
-                print('------INFERENCE OUTPUTS-------')
-                print(inference_out.stdout.decode() if isinstance(inference_out.stdout, bytes) else inference_out.stdout)
-                print(inference_out.stderr.decode() if isinstance(inference_out.stderr, bytes) else inference_out.stderr)
-                print('---END OF INFERENCE OUTPUTS---')
-
-                # Check all the ids are there for easy merge/concat
-                preds_df = pd.read_csv(predictions_csv_path)
-                assert len(preds_df) == len(test_df), f"Mismatch: {len(preds_df)} predictions vs {len(test_df)} test samples"
-                fold_predictions_dfs.append(preds_df)
-
-            # Concatenate all fold predictions for this fold column
-            fold_preds = pd.concat(fold_predictions_dfs, ignore_index=True)
-            if 'prediction' in fold_preds.columns:
-                if(len(fold_col_types) == 1):
-                    fold_preds = fold_preds.rename(columns={'prediction': f'fitness_score'})
-                else:
-                    fold_preds = fold_preds.rename(columns={'prediction': f'fitness_score_{fold_col}'}) #Col name required by biomlbench proteingym grade function
-            fold_col_to_preds.append(fold_preds)
-
-        # Combine all predictions based on ID
-        final_predictions_df = fold_col_to_preds[0]
-        for fold_preds_df in fold_col_to_preds[1:]:
-            final_predictions_df = final_predictions_df.merge(fold_preds_df, on='id', how='inner')
-
-        assert len(final_predictions_df) == len(og_train_data), 'predictions dont match the original data'
-        final_predictions_df.to_csv(final_predictions_path, index=False)
-
-        target_col = get_target_col_from_description()
-
-        # For now, use the first fold's predictions for the submission (average could be used instead)
-        copy_and_format_predictions_for_biomlbench(
-            preds_source_path=final_predictions_path,
-            preds_dest_path=submission_path,
-            target_col=target_col, #passed from outside the fn, refactor into reading prepared yaml metadata
-            is_proteingym=True,
-        )
-        
-        # TODO how are we using the original predictions? We compute metrics based on one col only, biomlbench averages three metrics -> what to do?
-        copy_original_predictions(final_predictions_path, os.path.join(SUBMISSION_DIR, 'submission_extended.csv'))
-        copy_dir(source_dir='/home/workspace/snapshots', dest_dir=best_run_files_dir)
-    except Exception as e:
-        import traceback
-        print('-------TRACEBACK------TRACEBACK------')
-        print(traceback.format_exc())
-        print('-------TRACEBACK------TRACEBACK------')
-    finally:
-        # Clean up temporary CSV files and artifacts directories
-        try:
-            for temp_path in temp_csv_files:
-                if os.path.isfile(temp_path):
-                    os.remove(temp_path)
-                elif os.path.isdir(temp_path):
-                    shutil.rmtree(temp_path)
-        except Exception as cleanup_error:
-            print(f"Warning: Error during cleanup: {cleanup_error}")
-
-        # Log execution time to wandb
-        elapsed_time = time.time() - start_time
-        wandb.log({"proteingym_preds_generation_time_seconds": elapsed_time}, step=iteration)
+    copy_dir(source_dir='/home/workspace/snapshots', dest_dir=best_run_files_dir)
 
     print('------CROSS VALIDATION LEAKAGE PREVENTION END-------')
     print('---------------------------------')
