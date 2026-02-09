@@ -250,11 +250,11 @@ def does_file_contain_iteration_pattern(file_path) -> bool:
     pattern = r"(['\"])iteration_\d+.*?\1"
     return re.search(pattern, content, re.DOTALL) is not None
 
-def get_final_result_messages(all_messages):
-    final_result_response = all_messages[-2]
-    final_result_tool_output_msg = all_messages[-1]
-    assert any([isinstance(part, ToolCallPart) and part.tool_name=='final_result' for part in final_result_response.parts]) #TODO delete or move to tests
-    return [final_result_response,final_result_tool_output_msg]
+def get_final_result_messages(all_messages, structured_output=None, model_name=None):
+    if any(isinstance(part, ToolCallPart) and part.tool_name=="final_result" for part in all_messages[-2].parts):
+        return [all_messages[-2], all_messages[-1]]
+    
+    return fabricate_final_result_messages(structured_output, model_name) # step agent finishes with JSON output
 
 def fabricate_final_result_messages(structured_output, model_name):
     output_dict = vars(structured_output)
@@ -321,7 +321,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
     )
     replace_message_result_with_validated_files(messages_data_exploration, config, since_timestamp=data_exploration_deps['start_time'])
     persistent_messages+=get_sytem_and_user_prompt_messages(messages_data_exploration, to_remove=get_data_exploration_prompt(iteration))
-    persistent_messages+=get_final_result_messages(messages_data_exploration)
+    persistent_messages+=get_final_result_messages(messages_data_exploration, data_exploration_output, config.model_name)
     structured_outputs.append(data_exploration_output)
     
     data_split_step = None
@@ -336,7 +336,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
             deps=data_split_deps,
         )
         replace_message_result_with_validated_files(messages_split, config, since_timestamp=data_split_deps['start_time'])
-        persistent_messages+=get_final_result_messages(messages_split)
+        persistent_messages+=get_final_result_messages(messages_split, data_split, config.model_name)
         data_split_step=data_split
         structured_outputs.append(data_split)
     else:
@@ -374,7 +374,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
         deps=representation_deps,
     )
     replace_message_result_with_validated_files(messages_representation, config, since_timestamp=representation_deps['start_time'])
-    persistent_messages+=get_final_result_messages(messages_representation)
+    persistent_messages+=get_final_result_messages(messages_representation, data_representation, config.model_name)
     structured_outputs.append(data_representation)
 
     arch_deps = {'start_time': datetime.datetime.now()}
@@ -387,7 +387,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
         deps=arch_deps,
     )
     replace_message_result_with_validated_files(messages_architecture, config, since_timestamp=arch_deps['start_time'])
-    persistent_messages+=get_final_result_messages(messages_architecture)
+    persistent_messages+=get_final_result_messages(messages_architecture, model_architecture, config.model_name)
     structured_outputs.append(model_architecture)
 
     training_deps = {'start_time': datetime.datetime.now(), 'train_csv_path':data_split_step.train_path, 'validation_csv_path':data_split_step.val_path, 'run_dir': config.runs_dir / config.agent_id}
@@ -400,7 +400,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
         deps=training_deps,
     )
     replace_message_result_with_validated_files(messages_training, config, since_timestamp=training_deps['start_time'])
-    persistent_messages+=get_final_result_messages(messages_training)
+    persistent_messages+=get_final_result_messages(messages_training, model_training, config.model_name)
     structured_outputs.append(model_training)
 
     inference_deps = {'start_time': datetime.datetime.now()}
@@ -413,7 +413,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
         deps=inference_deps,
     )
     replace_message_result_with_validated_files(messages_inference, config, since_timestamp=inference_deps['start_time'])
-    persistent_messages+=get_final_result_messages(messages_inference)
+    persistent_messages+=get_final_result_messages(messages_inference, model_inference, config.model_name)
     structured_outputs.append(model_inference)
 
     if not config.explicit_valid_set_provided:
@@ -431,7 +431,7 @@ async def run_architecture_compressed(data_exploration_agent: Agent, data_repres
         deps=prediction_deps,
     )
     replace_message_result_with_validated_files(prediction_messages, config, since_timestamp=prediction_deps['start_time'])
-    persistent_messages+=get_final_result_messages(prediction_messages) #not used
+    persistent_messages+=get_final_result_messages(prediction_messages, prediction_exploration, config.model_name)  # not used
     structured_outputs.append(prediction_exploration)
 
     for structured_output in structured_outputs:
