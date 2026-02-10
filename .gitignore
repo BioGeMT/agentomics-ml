@@ -97,6 +97,8 @@ profile_default/
 ipython_config.py
 
 /artifacts/
+
+/remote_outputs/*
 # pyenv
 #   For a library or package, you might want to ignore these files since the code is
 #   intended to run in multiple environments; otherwise, check them in:
