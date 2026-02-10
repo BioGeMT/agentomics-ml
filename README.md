@@ -3,12 +3,6 @@
 
 **Reproducing publication results:** See the [ismb_submission branch](https://github.com/BioGeMT/agentomics-ml/tree/ismb_submission) README for instructions.
 
-### 📚 Citation
-
-If you use **Agentomics** in your work, please cite:
-
-Martinek *et al.* (2026). *Agentomics: An Agentic System that Autonomously Develops Novel State-of-the-Art Solutions for Biomedical Machine Learning Tasks*. bioRxiv. https://doi.org/10.64898/2026.01.27.702049v1 (preprint) :contentReference[oaicite:1]{index=1}
-
 ## Autonomous agentic system for supervised machine learning model development.
 
 Made for biomedical data, Agentomics outperformed human experts and created new state-of-the-art models for problems in Protein Engineering, Drug Discovery, and Regulatory Genomics.
@@ -47,9 +41,8 @@ Outputs are saved to `outputs/<agent_id>/`, including PDF reports in `outputs/<a
 
 Agentomics can be run either:
 - **(Recommended)** with [Docker](https://www.docker.com/)
-- **Locally ** with [Conda](https://docs.conda.io/)
+- **Locally** with [Conda](https://docs.conda.io/)
 
-If you are on an HPC/cluster without root access, you may need help from your system administrator to install Docker.
 
 ## Documentation
 
@@ -73,7 +66,16 @@ Features coming soon:
 - Better local model support and configuration
 - Remote GPU support for GCP
 
+## Citation
+
+If you use **Agentomics** in your work, please cite:
+
+Martinek *et al.* (2026). 
+*Agentomics: An Agentic System that Autonomously Develops Novel State-of-the-Art Solutions for Biomedical Machine Learning Tasks*.
+bioRxiv (preprint) https://www.biorxiv.org/content/10.64898/2026.01.27.702049v1
 
 ## License
 
 MIT. See `LICENSE`.
+
+
