@@ -1,13 +1,9 @@
 import datetime
-import string
-import random
 
 from pydantic_ai import Agent
 import weave
-from pydantic_ai.messages import ModelResponse, ToolCallPart, ToolReturnPart, ModelRequest, TextPart, ModelMessage
 from rich.console import Console
 
-from agents.agent_utils import run_agent
 from agents.prompts.prompts_utils import get_iteration_prompt, get_iteration_0_prompt
 from agents.steps.model_inference import get_model_inference_prompt, create_model_inference_agent
 from agents.steps.data_split import DataSplit, get_data_split_prompt, create_data_split_agent
@@ -16,7 +12,7 @@ from agents.steps.data_representation import get_data_representation_prompt, cre
 from agents.steps.data_exploration import get_data_exploration_prompt, create_data_exploration_agent
 from agents.steps.model_training import get_model_training_prompt, create_model_training_agent
 from agents.steps.prediction_exploration import get_prediction_exploration_prompt, create_prediction_exploration_agent
-from agents.agent_utils import get_new_rundir_files
+from agents.agent_utils import run_agent, get_final_result_messages, fabricate_final_result_messages, replace_message_result_with_validated_files, get_sytem_and_user_prompt_messages
 from utils.config import Config
 from utils.report_logger import save_step_output
 
@@ -32,50 +28,6 @@ def create_agents(config: Config, model, tools):
         "inference_agent": create_model_inference_agent(config, model, tools),
         "prediction_exploration_agent": create_prediction_exploration_agent(config, model, tools),
     }
-
-def get_final_result_messages(all_messages, structured_output=None, model_name=None):
-    if any(isinstance(part, ToolCallPart) and part.tool_name=="final_result" for part in all_messages[-2].parts):
-        return [all_messages[-2], all_messages[-1]]
-    
-    return fabricate_final_result_messages(structured_output, model_name) # step agent finishes with JSON output
-
-def fabricate_final_result_messages(structured_output, model_name):
-    output_dict = vars(structured_output)
-    # output_dict['note'] = 'same as last iteration'
-    tool_call_id = ''.join(random.choices(string.ascii_letters + string.digits, k=9))
-    response_msg = ModelResponse(
-        parts=[
-            TextPart(content='', part_kind='text'),
-            ToolCallPart(tool_name="final_result", args = output_dict, tool_call_id=tool_call_id, part_kind='tool-call'),
-        ],
-        timestamp=datetime.datetime.now(),
-        kind='response', 
-        model_name=model_name,
-    )
-    request_msg = ModelRequest(
-        parts=[
-            ToolReturnPart(tool_name="final_result", content="Final result processed.", tool_call_id=tool_call_id, 
-                           part_kind='tool-return', timestamp=datetime.datetime.now())
-        ],
-        kind='request',
-    )
-    return [response_msg, request_msg]
-
-def replace_message_result_with_validated_files(messages: list[ModelMessage], config, since_timestamp):
-    for message in messages[-2:]: #only replace files_created in the last output messages
-        for part in message.parts:
-            if isinstance(part, ToolCallPart) and part.tool_name=="final_result":
-                dict_args = part.args_as_dict()
-                dict_args['files_created'] = get_new_rundir_files(config=config, since_timestamp=since_timestamp)
-                part.args = dict_args
-
-def get_sytem_and_user_prompt_messages(all_messages, to_remove):
-    first_message = all_messages[0]
-    assert any([part.part_kind=='system-prompt' for part in first_message.parts]) #TODO delete or move to tests
-    assert any([part.part_kind=='user-prompt' for part in first_message.parts]) #TODO delete or move to tests
-    user_prompt_part = [part for part in first_message.parts if part.part_kind=='user-prompt'][0]
-    user_prompt_part.content = user_prompt_part.content.replace(to_remove, "") #Remove a non-global part of the prompt
-    return [first_message]
 
 async def run_architecture_compressed(data_exploration_agent: Agent, data_representation_agent: Agent, model_architecture_agent: Agent, inference_agent: Agent, split_dataset_agent: Agent, training_agent: Agent, prediction_exploration_agent: Agent, config: Config, base_prompt: str, iteration: int, last_split_strategy: str):
     persistent_messages = []
