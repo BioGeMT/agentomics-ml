@@ -2,6 +2,7 @@
 """Extract failed runs (metrics = -1) and save to CSV."""
 
 import os
+import json
 import wandb
 import pandas as pd
 from . import config
@@ -41,6 +42,19 @@ def extract_failed_runs(output_file="failed_runs.csv"):
             if not ablation_config:
                 continue
 
+            # Get model name from run config
+            model_name = None
+            try:
+                cfg = json.loads(run.config) if isinstance(run.config, str) else dict(run.config)
+                if "model_name" in cfg:
+                    val = cfg["model_name"]
+                    model_name = val.get("value") if isinstance(val, dict) else val
+                elif "model" in cfg:
+                    val = cfg["model"]
+                    model_name = val.get("value") if isinstance(val, dict) else val
+            except Exception:
+                pass
+
             # Get summary metrics
             try:
                 summary = dict(run.summary)
@@ -62,6 +76,7 @@ def extract_failed_runs(output_file="failed_runs.csv"):
                 failed_runs.append({
                     'run_name': run.name,
                     'ablation_setup': ablation_config,
+                    'model': model_name or 'unknown',
                     'failure_mode': None
                 })
 
