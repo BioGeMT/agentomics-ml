@@ -82,6 +82,18 @@ def get_single_prepared_dataset_info(prepared_dataset_dir: str, prepared_test_se
     test_rows = count_csv_rows(str(test_file)) if (test_file and test_file.exists()) else 0
     validation_rows = count_csv_rows(str(validation_file)) if validation_file.exists() else 0
 
+    # Test row count from metadata
+    test_rows = 0
+    if metadata_file.exists():
+        try:
+            meta = json.loads(metadata_file.read_text())
+            splits = meta.get("splits", {}) if isinstance(meta, dict) else {}
+            test_rows = int(splits.get("test_rows", 0) or 0)
+        except Exception:
+            test_rows = 0
+    else:
+        test_rows = 0
+
     if not train_file.exists():
         status = "Missing train.csv"
     elif train_rows == 0:
