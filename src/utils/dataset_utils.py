@@ -392,11 +392,17 @@ def prepare_dataset(dataset_dir, target_col,
         print("INFO: No dataset description provided.")
         (out_dir / 'dataset_description.md').write_text("No dataset description available.")
     
-    # Generate metadata file
+     # Generate metadata file
     meta = {
         'task_type': task_type,
         'class_col': target_col,
         'numeric_label_col': 'numeric_label',
+        # Store split row counts
+        'splits': {
+            'train_rows': int(len(train_df)),
+            'validation_rows': int(len(validation_df)) if validation_df is not None else 0,
+            'test_rows': int(len(test_df)) if test_df is not None else 0,
+        }
     }
     if task_type == 'classification':
         json_safe_label_map = {str(k): int(v) for k, v in label_map.items()}
