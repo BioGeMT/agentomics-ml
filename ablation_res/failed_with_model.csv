@@ -1,34 +1,34 @@
-run_name,ablation_setup,model,failure_mode
-deceived_scooter_laugh,no_data_exploration,gpt-oss:20b,miscalled tool causing API error
-victimized_frog_clap,no_model_training,gpt-oss:20b,failed result validation (5 retries)
-unpleasant_dingo_paddle,no_model_training,gpt-oss:20b,failed result validation (5 retries)
-terrifying_encampment_brake,no_model_training,gpt-oss:20b,failed result validation (5 retries)
-molecular_coconut_telephone,no_model_architecture,gpt-oss:20b,miscalled tool return empty model response
-employed_thyme_concern,baseline,google/gemini-3-flash-preview,(not sure) the agent modified validation csv before the final validation 
-frightened_lodging_charge,no_data_split,google/gemini-3-flash-preview,failed during validation metrics computation (no more info in traceback)
-funded_twenties_look,no_final_outcome,x-ai/grok-4.1-fast,validation failed caused by missing inference
-grumpy_shrew_hugged,no_final_outcome,gpt-oss:20b,miscalled tool causing API error
-elven_infamy_treated,no_final_outcome,gpt-oss:20b,the agent modified validation csv before the final validation 
-forgiven_bonus_shop,baseline,gpt-oss:20b,failed result validation (5 retries)
-jolly_nationality_formed,baseline,x-ai/grok-4.1-fast,failed on test set metrics calculation (not sure)
-petrochemical_coyote_repeat,no_data_exploration,x-ai/grok-4.1-fast,failed during validation metrics computation (no more info in traceback)
-respectful_sharpness_bleached,no_model_architecture,x-ai/grok-4.1-fast,miscalled tool return empty model response
-idiosyncratic_dominion_succeed,no_data_split,gpt-oss:20b,failed during validation metrics computation (no more info in traceback)
-fancier_reinstatement_rhyme,no_model_architecture,x-ai/grok-4.1-fast,failed on test set metrics calculation (not sure)
-piped_bowling_announced,no_final_outcome,google/gemini-3-flash-preview,validation failed cause inference is not adhering to requested interface (--input and --output)
-expectant_anemone_settle,no_final_outcome,google/gemini-3-flash-preview,failed during validation metrics computation (no more info in traceback)
-welcoming_intercourse_lock,no_all_steps,x-ai/grok-4.1-fast,evaluation failed because of non-existing model
-lazy_savior_cough,no_all_steps,x-ai/grok-4.1-fast,failed on inference coding
-undersea_begun_launch,baseline,x-ai/grok-4.1-fast,failed on test set metrics calculation (not sure)
-lacklustre_scrum_polish,no_model_training,google/gemini-3-flash-preview,the agent modified validation csv before the final validation
-cheerful_flashing_shopped,no_all_steps,google/gemini-3-flash-preview,failed on evaluation (no model produced)
-revolving_suspension_decorated,no_data_representation,x-ai/grok-4.1-fast,failed on test set metrics calculation (not sure)
-conservative_hammock_rinsed,no_model_architecture,x-ai/grok-4.1-fast,failed on test set metrics calculation (not sure)
-defenseless_dioxide_pretend,no_data_exploration,x-ai/grok-4.1-fast,failed on test set metrics calculation (not sure)
-worsted_disarmament_remove,no_data_representation,gpt-oss:20b,the agent modified validation csv before the final validation
-nauseated_drumming_pack,no_model_architecture,gpt-oss:20b,the agent modified validation csv before the final validation
-onward_phrasing_instructed,no_all_steps,gpt-oss:20b,the agent modified validation csv before the final validation
-fellow_vomiting_flowered,no_final_outcome,gpt-oss:20b,failed on evaluation (no inference produced)
-excluded_arrears_interrupt,no_final_outcome,gpt-oss:20b,failed on evaluation (no inference produced)
-swooning_cumin_separate,no_data_split,gpt-oss:20b,failed result validation (5 retries)
-testy_commemoration_knelt,no_all_steps,gpt-oss:20b,miscalled tool causing API error
+run_name,ablation_setup,model,failure_mode,failure_category
+deceived_scooter_laugh,no_data_exploration,gpt-oss:20b,miscalled tool causing API error,LLM API error
+victimized_frog_clap,no_model_training,gpt-oss:20b,failed result validation (5 retries),LLM output validation failure
+unpleasant_dingo_paddle,no_model_training,gpt-oss:20b,failed result validation (5 retries),LLM output validation failure
+terrifying_encampment_brake,no_model_training,gpt-oss:20b,failed result validation (5 retries),LLM output validation failure
+molecular_coconut_telephone,no_model_architecture,gpt-oss:20b,miscalled tool return empty model response,LLM API error
+employed_thyme_concern,baseline,google/gemini-3-flash-preview,the agent modified validation csv before the final validation,Agent corrupted data
+frightened_lodging_charge,no_data_split,google/gemini-3-flash-preview,failed during validation metrics computation (no more info in traceback),No working output
+funded_twenties_look,no_final_outcome,x-ai/grok-4.1-fast,validation failed caused by missing inference,No working output
+grumpy_shrew_hugged,no_final_outcome,gpt-oss:20b,miscalled tool causing API error,LLM API error
+elven_infamy_treated,no_final_outcome,gpt-oss:20b,the agent modified validation csv before the final validation,Agent corrupted data
+forgiven_bonus_shop,baseline,gpt-oss:20b,failed result validation (5 retries),LLM output validation failure
+jolly_nationality_formed,baseline,x-ai/grok-4.1-fast,failed on test set metrics calculation (missing model artifact),Faulty inference
+petrochemical_coyote_repeat,no_data_exploration,x-ai/grok-4.1-fast,failed during validation metrics computation (no more info in traceback),No working output
+respectful_sharpness_bleached,no_model_architecture,x-ai/grok-4.1-fast,miscalled tool return empty model response,LLM API error
+idiosyncratic_dominion_succeed,no_data_split,gpt-oss:20b,failed during validation metrics computation (no more info in traceback),No working output
+fancier_reinstatement_rhyme,no_model_architecture,x-ai/grok-4.1-fast,failed on test set metrics calculation (missing model artifact),Faulty inference
+piped_bowling_announced,no_final_outcome,google/gemini-3-flash-preview,validation failed cause inference is not adhering to requested interface (--input and --output),Faulty inference
+expectant_anemone_settle,no_final_outcome,google/gemini-3-flash-preview,failed during validation metrics computation (no more info in traceback),No working output
+welcoming_intercourse_lock,no_all_steps,x-ai/grok-4.1-fast,evaluation failed because of non-existing model,Faulty inference
+lazy_savior_cough,no_all_steps,x-ai/grok-4.1-fast,failed on inference coding,No working output
+undersea_begun_launch,baseline,x-ai/grok-4.1-fast,failed on test set metrics calculation (missing model artifact),Faulty inference
+lacklustre_scrum_polish,no_model_training,google/gemini-3-flash-preview,the agent modified validation csv before the final validation,Agent corrupted data
+cheerful_flashing_shopped,no_all_steps,google/gemini-3-flash-preview,failed on evaluation (no model produced),No working output
+revolving_suspension_decorated,no_data_representation,x-ai/grok-4.1-fast,failed on test set metrics calculation (missing model artifact),Faulty inference
+conservative_hammock_rinsed,no_model_architecture,x-ai/grok-4.1-fast,failed on test set metrics calculation (missing model artifact),Faulty inference
+defenseless_dioxide_pretend,no_data_exploration,x-ai/grok-4.1-fast,failed on test set metrics calculation (missing model artifact),Faulty inference
+worsted_disarmament_remove,no_data_representation,gpt-oss:20b,the agent modified validation csv before the final validation,Agent corrupted data
+nauseated_drumming_pack,no_model_architecture,gpt-oss:20b,the agent modified validation csv before the final validation,Agent corrupted data
+onward_phrasing_instructed,no_all_steps,gpt-oss:20b,the agent modified validation csv before the final validation,Agent corrupted data
+fellow_vomiting_flowered,no_final_outcome,gpt-oss:20b,failed on evaluation (no inference produced),No working output
+excluded_arrears_interrupt,no_final_outcome,gpt-oss:20b,failed on evaluation (no inference produced),No working output
+swooning_cumin_separate,no_data_split,gpt-oss:20b,failed result validation (5 retries),LLM output validation failure
+testy_commemoration_knelt,no_all_steps,gpt-oss:20b,miscalled tool causing API error,LLM API error

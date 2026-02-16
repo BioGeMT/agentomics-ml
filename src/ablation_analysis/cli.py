@@ -14,6 +14,7 @@ from .plot_cost_vs_performance import plot_cost_vs_performance
 from .plot_cost_vs_performance_bars import plot_bar_charts
 from .plot_cost_only import plot_cost_only
 from .extract_failed_runs import extract_failed_runs
+from .plot_failures import plot_failures
 from . import config
 
 
@@ -21,7 +22,7 @@ def main():
     parser = argparse.ArgumentParser(description="Ablation study analysis tools")
     COMMANDS = [
         "count", "check", "list-runs", "extract-arch", "categorize",
-        "plot-arch", "plot", "plot-bars", "plot-cost", "log-cost", "failed",
+        "plot-arch", "plot-failures", "plot", "plot-bars", "plot-cost", "log-cost", "failed",
     ]
     parser.add_argument("command", choices=COMMANDS, help="Command to run")
 
@@ -58,6 +59,13 @@ def main():
         parser.add_argument("--output-dir", type=str,
                             default=config.OUTPUT_DIR,
                             help="Output directory for plots")
+    if cmd == "plot-failures":
+        parser.add_argument("--input", type=str,
+                            default=os.path.join(config.OUTPUT_DIR, "failed_with_model.csv"),
+                            help="Input CSV with failure_category column")
+        parser.add_argument("--output-dir", type=str,
+                            default=config.OUTPUT_DIR,
+                            help="Output directory for plots")
     if cmd == "failed":
         parser.add_argument("--output", default=os.path.join(config.OUTPUT_DIR, "failed_runs.csv"),
                             help="Output CSV file path")
@@ -84,6 +92,11 @@ def main():
         )
     elif args.command == "plot-arch":
         plot_architectures(
+            input_file=args.input,
+            output_dir=args.output_dir,
+        )
+    elif args.command == "plot-failures":
+        plot_failures(
             input_file=args.input,
             output_dir=args.output_dir,
         )
