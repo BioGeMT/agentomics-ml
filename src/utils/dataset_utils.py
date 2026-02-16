@@ -72,6 +72,7 @@ def get_single_prepared_dataset_info(prepared_dataset_dir: str, prepared_test_se
     dataset_name = prepared_dataset_dir.name
     train_file = prepared_dataset_dir / "train.csv"
     validation_file = prepared_dataset_dir / "validation.csv"
+    metadata_file = prepared_dataset_dir / "metadata.json"
 
     if prepared_test_sets_dir:
         test_file = Path(prepared_test_sets_dir) / dataset_name / "test.csv"
