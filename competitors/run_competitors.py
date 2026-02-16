@@ -98,18 +98,35 @@ def grade_biomlbench_submission(
 
     submission_df = pd.read_csv(submission_path)
     assert "id" in submission_df.columns, f"Submission must contain 'id' column: {submission_path}"
-    if "numeric_label" in submission_df.columns:
-        pred_col = "numeric_label"
-    elif "prediction" in submission_df.columns:
-        pred_col = "prediction"
-    else:
+    fold_cols = [col for col in submission_df.columns if col.startswith("fitness_score_fold_")]
+    if task_id.startswith("proteingym-dms/"):
+        if len(fold_cols) == 0:
+            assert "fitness_score" in submission_df.columns, (
+                f"Expected ProteinGym submission columns in {submission_path}. "
+                "Need either fitness_score_fold_* or fitness_score."
+            )
+        else:
+            assert len(fold_cols) >= 2, (
+                "Invalid ProteinGym fold submission format. "
+                f"Expected either a single fitness_score column or >=2 fold columns, found {fold_cols}."
+            )
+        grading_submission_path = submission_path
         assert len(submission_df.columns) >= 2, (
             f"Submission must contain at least one prediction column: {submission_path}"
         )
-        pred_col = submission_df.columns[1]
+    else:
+        if "numeric_label" in submission_df.columns:
+            pred_col = "numeric_label"
+        elif "prediction" in submission_df.columns:
+            pred_col = "prediction"
+        else:
+            assert len(submission_df.columns) >= 2, (
+                f"Submission must contain at least one prediction column: {submission_path}"
+            )
+            pred_col = submission_df.columns[1]
 
-    grading_submission_path = output_subdir / "submission_for_grading.csv"
-    submission_df[["id", pred_col]].to_csv(grading_submission_path, index=False)
+        grading_submission_path = output_subdir / "submission_for_grading.csv"
+        submission_df[["id", pred_col]].to_csv(grading_submission_path, index=False)
 
     result = subprocess.run(
         ["biomlbench", "grade-sample", str(grading_submission_path), task_id, "--data-dir", str(data_dir)],
@@ -253,17 +270,27 @@ def copy_run_artifacts(agent: str, task_id: str, output_subdir: Path) -> Path:
     raise FileNotFoundError(f"No run artifacts found for {agent} on task {task_id}")
 
 
-def highlight_metric(metrics: dict[str, float], task_type: str) -> str:
+def highlight_metric(metrics: dict[str, float], task_type: str, task_id: str | None = None) -> str:
+    if task_id and task_id.startswith("proteingym-dms/"):
+        for key in ("SPEARMAN", "PEARSON", "R2", "MAE", "RMSE", "MSE"):
+            if key in metrics and metrics[key] is not None:
+                return f"{key}: {metrics[key]:.4f}"
+
+    if task_type in get_task_to_metrics_names():
+        for key in get_task_to_metrics_names()[task_type]:
+            if key in metrics and metrics[key] is not None:
+                return f"{key}: {metrics[key]:.4f}"
+
     if "biomlbench_score" in metrics and metrics["biomlbench_score"] is not None:
         return f"biomlbench_score: {metrics['biomlbench_score']:.4f}"
 
-    if task_type not in get_task_to_metrics_names():
-        first_key = next(iter(metrics.keys()))
-        return f"{first_key}: {metrics[first_key]:.4f}"
-
-    ordered = get_task_to_metrics_names()[task_type]
-    primary = ordered[0]
-    return f"{primary}: {metrics[primary]:.4f}"
+    if len(metrics) == 0:
+        return "no-metrics"
+    first_key = next(iter(metrics.keys()))
+    first_value = metrics[first_key]
+    if isinstance(first_value, (int, float)) and first_value is not None:
+        return f"{first_key}: {first_value:.4f}"
+    return f"{first_key}: {first_value}"
 
 
 def iterate_targets(config: dict, args: argparse.Namespace) -> Iterator[tuple[str, str]]:
@@ -315,12 +342,16 @@ def main() -> int:
                     )
                 else:
                     if is_proteingym_task(task_id):
-                        if agent == "zeroshot":
-                            run_proteingym_postprocess(
-                                artifact_dir=artifact_dir,
-                                task_id=task_id,
-                                data_dir=DATA_DIR,
+                        if agent != "zeroshot":
+                            raise NotImplementedError(
+                                "ProteinGym evaluation currently requires fold-wise postprocessing, "
+                                "which is only wired for agent 'zeroshot'."
                             )
+                        run_proteingym_postprocess(
+                            artifact_dir=artifact_dir,
+                            task_id=task_id,
+                            data_dir=DATA_DIR,
+                        )
                         metrics, task_type = evaluate_proteingym_submission(
                             task_id=task_id,
                             artifact_root=artifact_dir,
@@ -397,7 +428,7 @@ def main() -> int:
                 console.print(f"Inference stage: {inference_stage}")
                 if grade_dict is not None:
                     console.print(f"BioMLBench grade: {json.dumps(grade_dict, indent=2)}")
-                summary.append((dataset, agent, highlight_metric(metrics, task_type)))
+                summary.append((dataset, agent, highlight_metric(metrics, task_type, task_id)))
             else:
                 wandb.init(
                     project=os.environ["WANDB_PROJECT_NAME"],

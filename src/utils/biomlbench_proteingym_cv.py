@@ -69,6 +69,7 @@ def generate_proteingym_submission_with_cv(
     assert len(og_data) > 0, "No rows available for ProteinGym CV generation"
 
     required_cols = ["id", "sequence", source_label_col]
+    inference_input_cols = [col for col in required_cols if col != source_label_col]
     for col in required_cols:
         assert col in og_data.columns, f"Missing required column in ProteinGym data: {col}"
 
@@ -91,7 +92,9 @@ def generate_proteingym_submission_with_cv(
                     (og_data[fold_col] != test_fold) & (og_data[fold_col] != validation_fold)
                 ][required_cols].copy()
                 valid_df = og_data[og_data[fold_col] == validation_fold][required_cols].copy()
-                test_df = og_data[og_data[fold_col] == test_fold][required_cols].copy()
+                # Never expose labels at inference time; otherwise single-fold tasks can leak
+                # ground truth through pass-through inference scripts.
+                test_df = og_data[og_data[fold_col] == test_fold][inference_input_cols].copy()
 
                 assert len(train_df) > 0, f"Empty train split for {fold_col}={test_fold}"
                 assert len(valid_df) > 0, f"Empty validation split for {fold_col}={test_fold}"
@@ -100,7 +103,6 @@ def generate_proteingym_submission_with_cv(
                 if script_label_col != source_label_col:
                     train_df = train_df.rename(columns={source_label_col: script_label_col}, errors="raise")
                     valid_df = valid_df.rename(columns={source_label_col: script_label_col}, errors="raise")
-                    test_df = test_df.rename(columns={source_label_col: script_label_col}, errors="raise")
 
                 split_name = f"{fold_col}_{test_fold}"
                 train_csv = tmp_dir / f"{split_name}_train.csv"

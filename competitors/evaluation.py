@@ -121,10 +121,13 @@ def evaluate_proteingym_submission(
 
     label_col = get_target_col_from_description(description_path)
     preds_df = pd.read_csv(predictions_path)
-    fold_pred_cols = [col for col in preds_df.columns if col.startswith("fitness_score_fold_")]
-    assert len(fold_pred_cols) > 0, (
-        f"Expected fold prediction columns in {predictions_path}, found: {preds_df.columns.tolist()}"
-    )
+    fold_pred_cols = sorted(col for col in preds_df.columns if col.startswith("fitness_score_fold_"))
+    if len(fold_pred_cols) == 0:
+        assert "fitness_score" in preds_df.columns, (
+            f"Expected ProteinGym prediction columns in {predictions_path}. "
+            "Need either fitness_score_fold_* or fitness_score."
+        )
+        fold_pred_cols = ["fitness_score"]
 
     per_fold_metrics = {}
     metric_names = set()
