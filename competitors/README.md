@@ -49,6 +49,7 @@ conda activate biomlbench-agents
 ```
 
 Prepared BioMLBench data is stored in `competitors/data/`.
+Task IDs are read from `competitors/config.yaml` (single source of truth).
 For `polarishub/...`, the script first regenerates `leaderboard.csv` from Polaris Hub web tables,
 then runs `biomlbench prepare` through a proxy-aware wrapper (`trust_env=True`, extended timeout).
 
@@ -82,6 +83,7 @@ Important behavior:
 - If `--datasets` is not passed, the runner executes all datasets from `competitors/config.yaml`.
 - `ago2_clash_hejret`-style names map to `agentomics/<name>`.
 - `polarishub/...` and `proteingym-dms/...` are used directly as BioMLBench task IDs.
+- ProteinGym support here is currently `zeroshot` only.
 - For `proteingym-dms/...` with `zeroshot`, post-processing retrains/evaluates per fold and reports averaged metrics.
 
 ## Results
