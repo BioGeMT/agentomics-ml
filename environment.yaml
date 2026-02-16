@@ -9,7 +9,8 @@ dependencies:
   - pip:
     - weave==0.52.5 #Often breaks with new versions, update as necessary
     - scikit-learn==1.7.1
-    - wandb==0.21.1
+    - wandb==0.22.3
+    - markitdown==0.1.4
     - hrid==0.3.0
     - timeout-function-decorator==2.0.0
     - rich==14.1.0
