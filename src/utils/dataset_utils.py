@@ -412,7 +412,7 @@ def prepare_dataset(dataset_dir, target_col,
         'numeric_label_col': 'numeric_label',
         # Store split row counts
         'splits': {
-            'train_rows': int(len(train_df)),
+            'train_rows': len(train_df),
             'validation_rows': int(len(validation_df)) if validation_df is not None else 0,
             'test_rows': int(len(test_df)) if test_df is not None else 0,
         }
