@@ -85,13 +85,12 @@ def get_single_prepared_dataset_info(prepared_dataset_dir: str, prepared_test_se
 
     # Test row count from metadata
     test_rows = 0
-    if metadata_file.exists():
-        try:
-            meta = json.loads(metadata_file.read_text())
-            splits = meta.get("splits", {}) if isinstance(meta, dict) else {}
-            test_rows = int(splits.get("test_rows", 0) or 0)
-        except Exception:
-            test_rows = 0
+    try:
+        meta = json.loads(metadata_file.read_text())
+        splits = meta.get("splits", {}) if isinstance(meta, dict) else {}
+        test_rows = int(splits.get("test_rows", 0) or 0)
+    except Exception:
+        test_rows = 0
 
     if not train_file.exists():
         status = "Missing train.csv"
@@ -411,8 +410,8 @@ def prepare_dataset(dataset_dir, target_col,
         # Store split row counts
         'splits': {
             'train_rows': len(train_df),
-            'validation_rows': int(len(validation_df)) if validation_df is not None else 0,
-            'test_rows': int(len(test_df)) if test_df is not None else 0,
+            'validation_rows': len(validation_df) if validation_df is not None else 0,
+            'test_rows': len(test_df) if test_df is not None else 0,
         }
     }
     if task_type == 'classification':
