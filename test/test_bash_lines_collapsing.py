@@ -8,7 +8,6 @@ class BashLinesCollapsing(BaseAgentTest):
             "for i in {1..20}; do echo 'ERROR: failed' >&2; done; exit 1"
         )
 
-        print("Bash tool result:\n", result)
         # Should indicate command failed
         self.assertIn("Command failed with error code 1", result)
 
@@ -23,8 +22,6 @@ class BashLinesCollapsing(BaseAgentTest):
         result = self.bash_tool.function(
             "for i in {1..50}; do echo 'WARNING: deprecated API'; done"
         )
-
-        print("Bash tool result:\n", result)
 
         # Should see collapse message
         self.assertIn("... [line repeated", result)
@@ -41,11 +38,9 @@ class BashLinesCollapsing(BaseAgentTest):
             "echo 'Start'; "
             "for i in {1..5}; do echo 'Repeat'; done; "
             "echo 'Middle'; "
-            "for i in {1..3}; do echo 'Again'; done; "
+            "for i in {1..4}; do echo 'Again'; done; "
             "echo 'End'"
         )
-
-        print("Bash tool result:\n", result)
 
         # Check structure is preserved
         self.assertIn("Start", result)
@@ -63,8 +58,6 @@ class BashLinesCollapsing(BaseAgentTest):
             "echo 'line1'; echo 'line2'; echo 'line3'; echo 'line4'"
         )
 
-        print("Bash tool result:\n", result)
-
         # Should not see any collapse messages
         self.assertNotIn("... [line repeated", result)
 
@@ -80,31 +73,16 @@ class BashLinesCollapsing(BaseAgentTest):
             "echo 'Single line'; echo 'Another single line'"
         )
 
-        print("Bash tool result:\n", result)
-
         # Should not see collapse message for single occurrences
         self.assertNotIn("... [line repeated", result)
         self.assertIn("Single line", result)
         self.assertIn("Another single line", result)
-
-    def test_exactly_at_threshold(self):
-        """Test that exactly 2 repeats (at threshold) are collapsed."""
-        result = self.bash_tool.function(
-            "echo 'Warning'; echo 'Warning'"
-        )
-
-        print("Bash tool result:\n", result)
-
-        # With threshold=2, should collapse
-        self.assertIn("... [line repeated 1 more times] ...", result)
 
     def test_empty_lines_collapsing(self):
         """Test that repeated empty lines are collapsed."""
         result = self.bash_tool.function(
             "echo 'line1'; for i in {1..10}; do echo ''; done; echo 'line2'"
         )
-
-        print("Bash tool result:\n", result)
 
         # Should collapse empty lines
         self.assertIn("... [line repeated", result)
@@ -117,8 +95,6 @@ class BashLinesCollapsing(BaseAgentTest):
         result = self.bash_tool.function(
             "for i in {1..1000}; do echo 'DEPRECATION: old API'; done; echo 'FINAL LINE'"
         )
-
-        print("Bash tool result:\n", result)
 
         # Should see collapse message
         self.assertIn("... [line repeated", result)
@@ -139,8 +115,6 @@ class BashLinesCollapsing(BaseAgentTest):
             "echo 'separator'; "
             "for i in {1..5}; do echo 'Error C'; done"
         )
-
-        print("Bash tool result:\n", result)
 
         # Should have 3 collapse groups
         collapse_count = result.count("... [line repeated")

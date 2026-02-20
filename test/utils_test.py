@@ -28,11 +28,11 @@ def get_shared_test_resources():
     agent_id = os.getenv('AGENT_ID')
 
     if _shared_test_resources is None:
-        config = Config(
+        config = Config( #assumes dataset exists and is prepared
               agent_id=agent_id,
               model_name="openai/gpt-3.5-turbo",
               feedback_model_name="openai/gpt-3.5-turbo",
-              dataset="AGO2_CLASH_Hejret",
+              dataset="AGO2_CLASH_Hejret2023",
               tags=[],
               val_metric="ACC",
               workspace_dir=Path("/workspace").resolve(),

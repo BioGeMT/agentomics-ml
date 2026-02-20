@@ -1,7 +1,15 @@
+import unittest
+
 from test.utils_test import BaseAgentTest, check_foundation_model_gpu_usage
 
 class TestFoundationModels(BaseAgentTest):
     """Test suite for foundation model usage in agents"""
+    
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        if not cls.config.foundation_model_to_desc:
+            raise unittest.SkipTest("Foundation model catalog is not available in config for testing.")
 
     def test_agent_access_docs(self):
         """Test that agent can access foundation models documentation."""
@@ -313,7 +321,7 @@ print(f"Success! Output shape: {outputs.pooler_output.shape}")
 
     def test_foundation_models_info_tool(self):
         """The foundation-model info tool should return the catalog string."""
-        output = self.foundation_models_info_tool.function()
+        output = self.foundation_models_info_tool.function("all")
 
         self.assertIn("Family: ESM-2", output)
         self.assertIn("LongSafari/hyenadna-tiny-1k-seqlen-hf", output)
