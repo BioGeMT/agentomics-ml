@@ -63,4 +63,5 @@ def load_fallbacks_to_rundir(config, iteration):
         if(not config.can_iteration_split_now_cached(iteration+1)): #check if next iter can split
             print("Increasing split iteration and time budget due to a nonexisting split fallback")
             config.split_allowed_iterations = config.split_allowed_iterations + 1
-            config.split_time_deadline = config.split_time_deadline + 600 # add 10 more minutes to splitting time budget
+            if config.split_time_deadline is not None:
+                config.split_time_deadline = config.split_time_deadline + 600  # add 10 more minutes to splitting time budget
