@@ -47,6 +47,7 @@ def main():
     parser.add_argument("--tags", nargs="*", default=[], help="(Optional) Comma-separated tags to associate with the run")
     parser.add_argument('--user-prompt', type=str, default="Develop a machine learning model that generalizes well to new unseen data.", help='(Optional) Text to overwrite the default user prompt')
     parser.add_argument("--model", help="Model name. Should be compatible with the selected provider")
+    parser.add_argument("--provider", help="Provider name. If omitted, it is auto-selected from --model when possible")
 
     available_metrics = get_classification_metrics_names() + get_regression_metrics_names()
     parser.add_argument("--val-metric", help="Validation metric", choices=available_metrics)
@@ -70,7 +71,7 @@ def main():
         "agent_datasets_dir": str(workspace_dir / "datasets")
     }
 
-    api_key, provider_name = get_provider_and_api_key()
+    api_key, provider_name = get_provider_and_api_key(model_name=args.model, preferred_provider=args.provider)
     provider = Provider.create_provider(provider_name, api_key)
 
     # Handle list-only modes (these don't require interactivity)
