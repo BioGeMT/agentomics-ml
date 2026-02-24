@@ -8,6 +8,16 @@ CPU_ONLY=false
 REMOVE_CONDA_ENV=false
 ARGS=()
 
+ensure_agentomics_docker_image() {
+    if docker image inspect agentomics_img >/dev/null 2>&1; then
+        return
+    fi
+
+    warn "Docker image 'agentomics_img' not found. Building it now..."
+    [[ -f "Dockerfile" ]] || die "Dockerfile not found in repository root; cannot build 'agentomics_img'."
+    docker build -t agentomics_img -f Dockerfile .
+}
+
 show_help() {
     echo "Usage: $0 --agent-dir <agent_folder_path> --input <input_path> --output <output_path> [--cpu-only] [--local]"
     echo "Options:"
@@ -141,9 +151,7 @@ if [[ "$DOCKER_MODE" == true ]]; then
     if ! docker info >/dev/null 2>&1; then
         die "Docker is not running or not accessible (start Docker and retry)"
     fi
-    if ! docker image inspect agentomics_img >/dev/null 2>&1; then
-        die "Docker image 'agentomics_img' not found. Run ./run.sh once to build it (or build it manually) and retry."
-    fi
+    ensure_agentomics_docker_image
     echo "Running inference in Docker..."
     AGENT_DIR_ABS="$(cd "$(dirname "$AGENT_DIR")" && pwd)/$(basename "$AGENT_DIR")"
     INPUT_PATH_ABS="$(cd "$(dirname "$INPUT_PATH")" && pwd)/$(basename "$INPUT_PATH")"
