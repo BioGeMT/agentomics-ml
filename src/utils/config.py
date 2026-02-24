@@ -64,6 +64,7 @@ class Config:
         exploration_iterations: int = 4,
         time_deadline: Optional[int] = None,
         split_time_deadline: Optional[int] = None,
+        run_python_tool_timeout: Optional[int] = None,
     ):
         self.agent_id = agent_id
         self.model_name = model_name
@@ -89,6 +90,8 @@ class Config:
         self.time_deadline = time_deadline
         self.split_time_deadline = split_time_deadline
         self.foundation_model_to_desc = build_foundation_model_catalog()
+        if run_python_tool_timeout is not None:
+            self.run_python_tool_timeout = run_python_tool_timeout
         
         if max_steps is not None:
             self.max_steps = max_steps

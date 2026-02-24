@@ -41,6 +41,7 @@ def main():
     parser.add_argument("--dataset", help="Dataset name")
     parser.add_argument("--iterations", type=int, help="Number of iterations to run")
     parser.add_argument("--timeout", type=int, help="Timeout before the run is shut down in seconds")
+    parser.add_argument("--run-python-timeout", type=int, default=60 * 60 * 6, help="Timeout in seconds for each run_python tool execution (default: 21600)")
     parser.add_argument("--exploration-iterations",type=int,help="Number of initial iterations that should focus on baseline/exploration models",default=4)
     parser.add_argument("--split-timeout", type=int, help="Timeout before the data splitting is no longer allowed in seconds. If not provided, split iterations are used as the limit.")
     parser.add_argument("--split-allowed-iterations", type=int, help="Number of initial iterations that are allowed to (re)split the data into train/validation", default=1)
@@ -143,6 +144,7 @@ def main():
         exploration_iterations=args.exploration_iterations,
         timeout=args.timeout,
         split_timeout=args.split_timeout,
+        run_python_timeout=args.run_python_timeout,
     ))
     return 0
         
