@@ -168,7 +168,7 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
     For example "Modify the train.py script from iteration 4 by changing the learning rate to 0.01" is a valid instruction.
     Don't provide instructions that go against the requirements in the common user prompt.
     Don't instruct the agent to update the 'best iteration model', as this is done automatically.
-    Never refer to existing scripts or previous iteration agent's actions only as 'previous', 'existing', 'current, 'last', etc... Always mention the iteration number of what you're refering to.
+    Never refer to existing scripts or previous iteration agent's actions only as 'previous', 'existing', 'current, 'last', etc... Always mention the iteration number of what you're referring to.
     If you're requesting the agent to create specific files or folders, never request anything with the name 'iteration', 'iter', or similar. For example, prefer 'exploration_script.py' over 'exploration_scipt_iter3.py'. Simply refer to the agent's workspace path as 'your workspace'.
 
     The agent will have access to the train.csv and validation.csv files, all previous iteration files and step outputs, and the dataset_description.md file.
