@@ -1,6 +1,7 @@
 from sklearn.metrics import average_precision_score, roc_auc_score, accuracy_score, mean_squared_error, mean_absolute_error, r2_score, f1_score, log_loss, matthews_corrcoef, mean_absolute_percentage_error
 from scipy.stats import pearsonr, spearmanr
 import numpy as np
+from typing import Optional
 
 class Metric:
     """
@@ -149,3 +150,28 @@ def get_higher_is_better_map():
         **get_regression_metrics_functions(),
     }
     return {name: metric.higher_is_better for name, metric in all_metrics.items()}
+
+def get_default_val_metric(task_type: str) -> str:
+    task = (task_type or "").strip().lower()
+    if task == "classification":
+        return "AUROC"
+    if task == "regression":
+        return "MAE"
+    raise ValueError(f"Unknown task_type: {task_type!r}. Expected 'classification' or 'regression'.")
+
+def resolve_val_metric(task_type: str, val_metric: Optional[str] = None) -> str:
+    """Resolve a validation metric for a task, applying defaults when omitted."""
+    task = (task_type or "").strip().lower()
+    if not val_metric:
+        return get_default_val_metric(task)
+
+    metric = val_metric.strip().upper()
+    allowed = get_task_to_metrics_names().get(task)
+    if not allowed:
+        raise ValueError(f"Unknown task_type: {task_type!r}. Expected 'classification' or 'regression'.")
+    if metric not in allowed:
+        raise ValueError(
+            f"Validation metric '{metric}' is invalid for task type '{task}'. "
+            f"Allowed metrics: {', '.join(allowed)}"
+        )
+    return metric

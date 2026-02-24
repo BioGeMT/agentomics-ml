@@ -17,7 +17,7 @@ You'll be prompted to select:
 1. **LLM Model** - Choose from available models
 2. **Dataset** - Select a prepared dataset
 3. **Iterations** - Number of optimization cycles (default prompt: 5)
-4. **Validation Metric** - Metric to optimize (see `./run.sh --list-metrics`)
+4. **Validation Metric** - Optional metric to optimize (defaults: `AUROC` for classification, `MAE` for regression)
 
 ## Non-Interactive Mode
 
@@ -27,12 +27,10 @@ Supply parameters directly to skip prompts:
 ./run.sh \
   --model openai/gpt-4 \
   --dataset breast_cancer \
-  --iterations 10 \
-  --val-metric ACC
+  --iterations 10
 ```
 
-For non-interactive runs, provide at least `--model`, `--dataset`, `--val-metric`,
-and `--iterations`.
+For non-interactive runs, provide at least `--model`, `--dataset`, and `--iterations`.
 
 ## Common Options
 
@@ -41,7 +39,7 @@ and `--iterations`.
 | `--model` | LLM model to use | `--model openai/gpt-4` |
 | `--dataset` | Dataset name | `--dataset my_data` |
 | `--iterations` | Number of iterations | `--iterations 15` |
-| `--val-metric` | Validation metric | `--val-metric AUROC` |
+| `--val-metric` | Validation metric (optional, task-based default if omitted) | `--val-metric AUROC` |
 | `--timeout` | Time limit in seconds | `--timeout 3600` |
 | `--run-python-timeout` | Timeout in seconds for each run_python tool execution (see [CLI options](../configuration/cli-options.md)) | `--run-python-timeout 43200` |
 | `--use-provisioning-key` | Use a provisioning key for OpenRouter | `--use-provisioning-key` |

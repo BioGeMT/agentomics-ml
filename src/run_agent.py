@@ -22,13 +22,14 @@ from utils.exceptions import IterationRunFailed, FeedbackAgentFailed, AgentScrip
 from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics, populate_iteration_dir, lock_split_files
 from utils.workspace_setup import ensure_workspace_folders
 from agents.architecture import run_iteration
-from utils.metrics import get_classification_metrics_names, get_regression_metrics_names
+from utils.metrics import get_classification_metrics_names, get_regression_metrics_names, resolve_val_metric
 from utils.report_logger import add_metrics_to_report, add_summary_to_report
 from utils.providers.provider import Provider, get_provider_from_string
 from feedback.feedback_agent import get_feedback
 from tools.setup_tools import create_tools, get_tool_names
 from utils.snapshots import reset_snapshot_if_val_split_changed, create_split_fingerprint, wipe_current_iter_files, move_metrics_files_to_extras
 from agents.steps.data_split import DataSplit
+from utils.dataset_utils import get_task_type_from_prepared_dataset
 
 async def main(model_name, feedback_model_name, dataset, tags, val_metric,
                workspace_dir, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir, iterations,
@@ -223,13 +224,17 @@ def parse_args():
     parser.add_argument('--user-prompt', type=str, default="Develop a machine learning model that generalizes well to new unseen data.", help='(Optional) Text to overwrite the default user prompt')
 
     val_metric_choices = get_classification_metrics_names() + get_regression_metrics_names()
-    parser.add_argument('--val-metric', help='Validation metric to use for the best model selection', required=True, choices=val_metric_choices)
+    parser.add_argument('--val-metric', help='Validation metric to use for the best model selection (optional: defaults to AUROC for classification, MAE for regression)', required=False, choices=val_metric_choices)
 
     return parser.parse_args()
 
 async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir,
                           workspace_dir, tags, iterations, user_prompt, provider, timeout, split_timeout, run_python_timeout=None,
                           split_allowed_iterations=1, exploration_iterations=4, on_new_best_callbacks=[], on_iteration_start_callbacks=[]):      
+    task_type = get_task_type_from_prepared_dataset(Path(prepared_datasets_dir) / dataset_name)
+    val_metric = resolve_val_metric(task_type, val_metric)
+    print(f"Using validation metric: {val_metric} (task type: {task_type})")
+
     setup_nonsensitive_dataset_files_for_agent(
         prepared_datasets_dir=Path(prepared_datasets_dir),
         agent_datasets_dir=Path(agent_datasets_dir),
