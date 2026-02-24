@@ -2,6 +2,7 @@ import yaml
 from typing import Dict, List, Optional
 from pathlib import Path
 import os
+import sys
 import httpx
 import requests
 
@@ -195,7 +196,16 @@ def choose_provider(available_keys) -> int:
     prompt = "Multiple provider API keys found. Select the provider to use:"
     return get_user_input_for_int(prompt, default=1, valid_options=list(range(1, len(available_keys)+1)))
 
-def get_provider_and_api_key() -> tuple[str, str]:
+def infer_provider_from_model(model_name: Optional[str], available_keys: Dict[str, str]) -> Optional[str]:
+    """Infer provider from model prefix: 'provider/model-id'."""
+    if not model_name or "/" not in model_name:
+        return None
+
+    prefix = model_name.split("/", 1)[0].strip().lower()
+    available_by_lower = {name.lower(): name for name in available_keys.keys()}
+    return available_by_lower.get(prefix)
+
+def get_provider_and_api_key(model_name: Optional[str] = None, preferred_provider: Optional[str] = None) -> tuple[str, str]:
     """Get provider name and API key from environment variables. If multiple keys are found, prompt user to select one."""
     console = Console()
 
@@ -205,8 +215,32 @@ def get_provider_and_api_key() -> tuple[str, str]:
         console.print(list_required_api_keys(), style="cyan")
         raise ValueError("No API keys found in environment variables")
     elif len(api_keys_provided) > 1:
-        selection = choose_provider(api_keys_provided)
-        selected_provider_name = list(api_keys_provided.keys())[selection-1]
+        available_by_lower = {name.lower(): name for name in api_keys_provided.keys()}
+        selected_provider_name = None
+
+        if preferred_provider:
+            provider_key = available_by_lower.get(preferred_provider.lower())
+            if provider_key is None:
+                raise ValueError(
+                    f"--provider '{preferred_provider}' requested but its API key is not set. "
+                    f"Available providers with keys: {list(api_keys_provided.keys())}"
+                )
+            selected_provider_name = provider_key
+        else:
+            selected_provider_name = infer_provider_from_model(model_name, api_keys_provided)
+            if selected_provider_name:
+                console.print(
+                    f"Auto-selected provider '{selected_provider_name}' from model '{model_name}'.",
+                    style="cyan"
+                )
+            elif not (sys.stdin.isatty() and sys.stdout.isatty()):
+                raise ValueError(
+                    "Multiple provider API keys found and provider cannot be inferred from --model. "
+                    "In non-interactive mode, pass --provider explicitly."
+                )
+            else:
+                selection = choose_provider(api_keys_provided)
+                selected_provider_name = list(api_keys_provided.keys())[selection-1]
 
         api_key = api_keys_provided[selected_provider_name]
         provider = selected_provider_name

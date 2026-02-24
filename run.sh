@@ -14,6 +14,7 @@ USE_PROVISIONING_KEY=false
 SPEND_LIMIT=10
 TIMEOUT_SECS=""
 MODEL_NAME=""
+PROVIDER_NAME=""
 DATASET_NAME=""
 VAL_METRIC=""
 LIST_MODE=false
@@ -31,6 +32,7 @@ Use --local to run with a local Conda environment.
 
 Required Arguments (for non-interactive runs):
   --model <name>      The LLM model name (e.g., 'openai/gpt-4').
+  --provider <name>   Optional provider override (e.g., 'openai', 'openrouter').
   --dataset <name>    The short identifier for the prepared dataset (e.g., 'breast_cancer').
   --iterations <N>    Number of iterations to run the agent (recommended more than 5).
   --timeout <int>   Amount of seconds the agent is allowed to run for. This or --iterations will dictate the duration, whichever will expire first. (recommended
@@ -102,6 +104,12 @@ while [[ $# -gt 0 ]]; do
             require_opt_value "$1" "${2:-}"
             AGENTOMICS_ARGS+=(--model "$2")
             MODEL_NAME="$2"
+            shift 2
+            ;;
+        --provider)
+            require_opt_value "$1" "${2:-}"
+            AGENTOMICS_ARGS+=(--provider "$2")
+            PROVIDER_NAME="$2"
             shift 2
             ;;
         --dataset)
