@@ -10,9 +10,9 @@ import dotenv
 
 from utils.dataset_utils import get_all_prepared_datasets_info
 from utils.datasets_interactive_utils import interactive_dataset_selection, print_datasets_table
-from utils.metrics_interactive_utils import display_metrics_table, interactive_metric_selection
+from utils.metrics_interactive_utils import display_metrics_table
 from utils.providers.provider import Provider, get_provider_and_api_key
-from utils.metrics import get_classification_metrics_names, get_regression_metrics_names
+from utils.metrics import get_classification_metrics_names, get_regression_metrics_names, resolve_val_metric
 from utils.env_utils import are_wandb_vars_available
 from utils.user_input import get_user_input_for_int
 from run_agent import run_experiment
@@ -92,11 +92,11 @@ def main():
         display_metrics_table()  # Show all metrics when listing
         return 0
     
-    # For interactive mode (when dataset/model/val_metric missing), require interactive terminal
-    if (not dataset or not model or not args.val_metric) and not check_tty_available():
-        console.print("Interactive terminal required for dataset/model/val_metric selection but not available", style="red")
-        console.print("For non-interactive use, specify --dataset, --model, and --val-metric arguments", style="cyan")
-        console.print("Example: python agentomics-entrypoint.py --dataset breast_cancer --model 'openai/gpt-4' --val-metric 'ACC'", style="cyan")
+    # For interactive mode (when dataset/model missing), require interactive terminal
+    if (not dataset or not model) and not check_tty_available():
+        console.print("Interactive terminal required for dataset/model selection but not available", style="red")
+        console.print("For non-interactive use, specify --dataset and --model arguments", style="cyan")
+        console.print("Example: python agentomics-entrypoint.py --dataset breast_cancer --model 'openai/gpt-4'", style="cyan")
         return 1
     
     if not are_wandb_vars_available():
@@ -118,8 +118,9 @@ def main():
     metadata = json.loads(metadata_path.read_text())
     task_type = metadata.get("task_type")
 
-    if not val_metric:
-        val_metric = interactive_metric_selection(task_type)
+    val_metric = resolve_val_metric(task_type, val_metric)
+    if not args.val_metric:
+        console.print(f"No --val-metric provided. Using default for {task_type}: {val_metric}", style="cyan")
     
     if not model:
         model = provider.interactive_model_selection(limit=50)

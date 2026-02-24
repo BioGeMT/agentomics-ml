@@ -9,7 +9,7 @@ Complete reference for `run.sh` command-line options.
 | `--model <name>` | LLM model to use | Interactive selection |
 | `--dataset <name>` | Dataset name | Interactive selection |
 | `--iterations <n>` | Number of iterations | Prompted in interactive mode (default 5) |
-| `--val-metric <metric>` | Validation metric to optimize | Interactive selection |
+| `--val-metric <metric>` | Validation metric to optimize | Task-based default (`AUROC` for classification, `MAE` for regression) |
 | `--timeout <seconds>` | Time limit for entire run | None |
 | `--run-python-timeout <seconds>` | Timeout in seconds for each run_python tool execution - this will determine the maximum training time | `21600` (6 hours) |
 

@@ -41,7 +41,7 @@ Required Arguments (for non-interactive runs):
   --run-python-timeout <int>  Timeout in seconds for each run_python tool execution - this will determine the maximum training time (default: 21600, i.e. 6 hours).
   --split-allowed-iterations <N>    Number of initial iterations that are allowed to (re)split the data into train/validation (e.g., 1).
   --exploration-iterations <N>     Number of initial iterations that should focus on baseline/exploration models (e.g., 4).
-  --val-metric <name> The metric to optimize (e.g., 'ACC').
+  --val-metric <name> Optional metric to optimize. Defaults: AUROC (classification), MAE (regression).
   --user-prompt <str> The main prompt/goal for the agent.
                       (Default: "Create the best possible machine learning model that will generalize to new unseen data.")
 
@@ -258,8 +258,8 @@ if [ "$LOCAL_MODE" = true ]; then
         die "--test is only supported in Docker mode (remove --test or remove --local)"
     fi
     if [[ "$LIST_MODE" = false ]] && ! has_tty; then
-        if [[ -z "$MODEL_NAME" || -z "$DATASET_NAME" || -z "$VAL_METRIC" ]]; then
-            die "Non-interactive runs require --model, --dataset, and --val-metric (or run in an interactive terminal)"
+        if [[ -z "$MODEL_NAME" || -z "$DATASET_NAME" ]]; then
+            die "Non-interactive runs require --model and --dataset (or run in an interactive terminal)"
         fi
     fi
 
@@ -385,8 +385,8 @@ else
         die "Docker is not running or not accessible (start Docker and retry). Alternatively, run with --local argument(./run.sh --local), if you are running in a non-vulnerable environment."
     fi
     if [[ "$LIST_MODE" = false ]] && ! has_tty; then
-        if [[ -z "$MODEL_NAME" || -z "$DATASET_NAME" || -z "$VAL_METRIC" ]]; then
-            die "Non-interactive runs require --model, --dataset, and --val-metric (or run in an interactive terminal)"
+        if [[ -z "$MODEL_NAME" || -z "$DATASET_NAME" ]]; then
+            die "Non-interactive runs require --model and --dataset (or run in an interactive terminal)"
         fi
     fi
 
