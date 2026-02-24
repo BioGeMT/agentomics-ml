@@ -8,7 +8,15 @@ dotenv.load_dotenv(Path(__file__).parents[2] / ".env") # load env in the root of
 PROVISIONING_API_KEY = os.getenv("PROVISIONING_OPENROUTER_API_KEY")
 BASE_URL = "https://openrouter.ai/api/v1/keys"
 
+def require_provisioning_key():
+    if not PROVISIONING_API_KEY:
+        raise ValueError(
+            "PROVISIONING_OPENROUTER_API_KEY is not set. "
+            "Set it in your environment/.env before using --use-provisioning-key."
+        )
+
 def create_new_api_key(name, limit):
+    require_provisioning_key()
     response = requests.post(
         f"{BASE_URL}",
         headers={
@@ -30,11 +38,13 @@ def create_new_api_key(name, limit):
 
 
 def get_api_key(key_hash):
+    require_provisioning_key()
     headers = {"Authorization": f"Bearer {PROVISIONING_API_KEY}"}
     response = requests.get(f"{BASE_URL}/{key_hash}", headers=headers)
     return response.json()
 
 def get_all_api_keys():
+    require_provisioning_key()
     response = requests.get(
     BASE_URL,
         headers={
@@ -53,6 +63,7 @@ def get_api_key_usage(key_hash):
     return data
 
 def delete_api_key(key_hash):
+    require_provisioning_key()
     response = requests.delete(
         f"{BASE_URL}/{key_hash}",
         headers={

@@ -73,6 +73,92 @@ Output:
 EOF
 }
 
+read_env_var_from_file() {
+    local env_file="$1"
+    local key_name="$2"
+    [[ -f "$env_file" ]] || return 0
+    while IFS= read -r line; do
+        [[ -z "$line" || "$line" == \#* ]] && continue
+        line="${line#export }"
+        if [[ "$line" == "$key_name="* ]]; then
+            local value="${line#*=}"
+            value="${value%\"}"
+            value="${value#\"}"
+            value="${value%\'}"
+            value="${value#\'}"
+            echo "$value"
+            return 0
+        fi
+    done < "$env_file"
+}
+
+resolve_openrouter_api_key() {
+    local env_file="$1"
+    if [[ -n "${OPENROUTER_API_KEY:-}" ]]; then
+        echo "$OPENROUTER_API_KEY"
+        return 0
+    fi
+    read_env_var_from_file "$env_file" "OPENROUTER_API_KEY"
+}
+
+resolve_provisioning_openrouter_api_key() {
+    local env_file="$1"
+    if [[ -n "${PROVISIONING_OPENROUTER_API_KEY:-}" ]]; then
+        echo "$PROVISIONING_OPENROUTER_API_KEY"
+        return 0
+    fi
+    read_env_var_from_file "$env_file" "PROVISIONING_OPENROUTER_API_KEY"
+}
+
+print_openrouter_account_credit() {
+    local api_key="$1"
+    [[ -n "$api_key" ]] || return 0
+    local credits_out
+    if command -v python3 >/dev/null 2>&1; then
+        credits_out="$(python3 src/utils/api_keys_utils.py credits --api-key "$api_key" 2>/dev/null || true)"
+    elif command -v python >/dev/null 2>&1; then
+        credits_out="$(python src/utils/api_keys_utils.py credits --api-key "$api_key" 2>/dev/null || true)"
+    else
+        warn "Python not found, cannot display OpenRouter account credit."
+        return 0
+    fi
+    if [[ -z "$credits_out" ]]; then
+        warn "Could not fetch OpenRouter account credit."
+        return 0
+    fi
+
+    local account_limit account_usage account_remaining
+    account_limit="$(echo "$credits_out" | cut -d',' -f1)"
+    account_usage="$(echo "$credits_out" | cut -d',' -f2)"
+    account_remaining="$(echo "$credits_out" | cut -d',' -f3)"
+    if [[ -z "$account_limit" || -z "$account_usage" || -z "$account_remaining" ]]; then
+        warn "OpenRouter credit API response missing expected fields."
+        return 0
+    fi
+    print_credit_summary "OpenRouter account" "$account_limit" "$account_usage" "$account_remaining"
+}
+
+print_credit_summary() {
+    local label="$1"
+    local total="$2"
+    local usage="$3"
+    local remaining="$4"
+
+    local remaining_pct
+    remaining_pct="$(awk -v t="$total" -v r="$remaining" 'BEGIN { if (t+0 <= 0) { print "0.00" } else { printf "%.2f", (r/t)*100 } }')"
+
+    echo -e "${GREEN}================ Credit Summary ================${NOCOLOR}"
+    echo -e "${GREEN}${label}${NOCOLOR}"
+    echo "  total:     ${total}"
+    echo "  used:      ${usage}"
+    echo "  remaining: ${remaining} (${remaining_pct}%)"
+    echo -e "${GREEN}===============================================${NOCOLOR}"
+
+    if awk -v p="$remaining_pct" 'BEGIN { exit !(p < 10) }'; then
+        warn "Low OpenRouter credits remaining (${remaining_pct}%)."
+    fi
+}
+
 while [[ $# -gt 0 ]]; do
     case $1 in
         -h|--help)
@@ -306,11 +392,19 @@ if [ "$LOCAL_MODE" = true ]; then
 
     TEMP_API_KEY_HASH=""
     if [ "$USE_PROVISIONING_KEY" = true ]; then
+        RESOLVED_PROVISIONING_KEY="$(resolve_provisioning_openrouter_api_key "$(pwd)/.env")"
+        [[ -n "$RESOLVED_PROVISIONING_KEY" ]] || die "PROVISIONING_OPENROUTER_API_KEY is required when using --use-provisioning-key"
+        export PROVISIONING_OPENROUTER_API_KEY="$RESOLVED_PROVISIONING_KEY"
         echo "Creating temporary API key with spend limit: $SPEND_LIMIT"
         API_KEY_OUTPUT=$(PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys_utils.py create --name "agentomics_run_$(date +%s)" --limit "$SPEND_LIMIT")
-        TEMP_API_KEY=$(echo "$API_KEY_OUTPUT" | cut -d',' -f1)
-        TEMP_API_KEY_HASH=$(echo "$API_KEY_OUTPUT" | cut -d',' -f2)
+        IFS=',' read -r TEMP_API_KEY TEMP_API_KEY_HASH TEMP_API_KEY_LIMIT TEMP_API_KEY_USAGE TEMP_API_KEY_REMAINING <<< "$API_KEY_OUTPUT"
+        [[ -n "$TEMP_API_KEY" && -n "$TEMP_API_KEY_HASH" ]] || die "Failed to create temporary OpenRouter API key"
         export OPENROUTER_API_KEY="$TEMP_API_KEY"
+        [[ -n "$TEMP_API_KEY_LIMIT" && -n "$TEMP_API_KEY_USAGE" && -n "$TEMP_API_KEY_REMAINING" ]] || die "Failed to fetch temporary key credit from API"
+        print_credit_summary "Temporary key credit" "$TEMP_API_KEY_LIMIT" "$TEMP_API_KEY_USAGE" "$TEMP_API_KEY_REMAINING"
+    else
+        DEFAULT_OPENROUTER_KEY="$(resolve_openrouter_api_key "$(pwd)/.env")"
+        print_openrouter_account_credit "$DEFAULT_OPENROUTER_KEY"
     fi
 
     if [[ -n "$TIMEOUT_SECS" ]]; then
@@ -442,6 +536,9 @@ else
 
     TEMP_API_KEY_HASH=""
     if [ "$USE_PROVISIONING_KEY" = true ]; then
+        RESOLVED_PROVISIONING_KEY="$(resolve_provisioning_openrouter_api_key "$(pwd)/.env")"
+        [[ -n "$RESOLVED_PROVISIONING_KEY" ]] || die "PROVISIONING_OPENROUTER_API_KEY is required when using --use-provisioning-key"
+        export PROVISIONING_OPENROUTER_API_KEY="$RESOLVED_PROVISIONING_KEY"
         need_cmd conda
         if ! conda env list | grep -q "^agentomics-env "; then
             echo "Creating agentomics-env conda environment"
@@ -449,9 +546,11 @@ else
         fi
         echo "Creating temporary API key with spend limit: $SPEND_LIMIT"
         API_KEY_OUTPUT=$(PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys_utils.py create --name "agentomics_run_$(date +%s)" --limit "$SPEND_LIMIT")
-        TEMP_API_KEY=$(echo "$API_KEY_OUTPUT" | cut -d',' -f1)
-        TEMP_API_KEY_HASH=$(echo "$API_KEY_OUTPUT" | cut -d',' -f2)
+        IFS=',' read -r TEMP_API_KEY TEMP_API_KEY_HASH TEMP_API_KEY_LIMIT TEMP_API_KEY_USAGE TEMP_API_KEY_REMAINING <<< "$API_KEY_OUTPUT"
+        [[ -n "$TEMP_API_KEY" && -n "$TEMP_API_KEY_HASH" ]] || die "Failed to create temporary OpenRouter API key"
         export OPENROUTER_API_KEY="$TEMP_API_KEY"
+        [[ -n "$TEMP_API_KEY_LIMIT" && -n "$TEMP_API_KEY_USAGE" && -n "$TEMP_API_KEY_REMAINING" ]] || die "Failed to fetch temporary key credit from API"
+        print_credit_summary "Temporary key credit" "$TEMP_API_KEY_LIMIT" "$TEMP_API_KEY_USAGE" "$TEMP_API_KEY_REMAINING"
     fi
 
     if [ "$CPU_ONLY" = false ]; then
@@ -479,6 +578,10 @@ else
     ENV_FILE_PATH="$(pwd)/.env"
     [[ -f "$ENV_FILE_PATH" ]] || die "Env file not found: $ENV_FILE_PATH (create it from .env.example)"
     ENV_FILE_ARGS=(--env-file "$ENV_FILE_PATH")
+    if [ "$USE_PROVISIONING_KEY" = false ]; then
+        DEFAULT_OPENROUTER_KEY="$(resolve_openrouter_api_key "$ENV_FILE_PATH")"
+        print_openrouter_account_credit "$DEFAULT_OPENROUTER_KEY"
+    fi
 
     PROVIDERS_CONFIG_FILE="src/utils/providers/configured_providers.yaml"
     [[ -f "$PROVIDERS_CONFIG_FILE" ]] || die "Missing providers config: $PROVIDERS_CONFIG_FILE"
