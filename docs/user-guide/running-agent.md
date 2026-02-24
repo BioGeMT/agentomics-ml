@@ -43,6 +43,7 @@ and `--iterations`.
 | `--iterations` | Number of iterations | `--iterations 15` |
 | `--val-metric` | Validation metric | `--val-metric AUROC` |
 | `--timeout` | Time limit in seconds | `--timeout 3600` |
+| `--run-python-timeout` | Per-training timeout in seconds | `--run-python-timeout 43200` |
 | `--use-provisioning-key` | Use a provisioning key for OpenRouter | `--use-provisioning-key` |
 | `--spend-limit` | Spend limit for provisioning key | `--spend-limit 25` |
 
@@ -97,6 +98,12 @@ Set a deadline for the entire run:
 
 ```bash
 ./run.sh --timeout 7200  # 2 hour limit
+```
+
+Set timeout for each training execution (default is 6 hours):
+
+```bash
+./run.sh --run-python-timeout 43200  # 12 hours per training run
 ```
 
 ### Custom User Prompt

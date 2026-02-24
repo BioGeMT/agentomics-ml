@@ -11,6 +11,7 @@ Complete reference for `run.sh` command-line options.
 | `--iterations <n>` | Number of iterations | Prompted in interactive mode (default 5) |
 | `--val-metric <metric>` | Validation metric to optimize | Interactive selection |
 | `--timeout <seconds>` | Time limit for entire run | None |
+| `--run-python-timeout <seconds>` | Timeout for each model training execution | `21600` (6 hours) |
 
 The run stops when either the iteration count is reached or the timeout expires.
 
@@ -42,6 +43,7 @@ The run stops when either the iteration count is reached or the timeout expires.
 | `--spend-limit <n>` | Spend limit for provisioning key (requires `--use-provisioning-key`) |
 | `--split-allowed-iterations <n>` | Iterations that can modify train/val split (default 1) |
 | `--exploration-iterations <n>` | Baseline exploration iterations (default 4) |
+| `--run-python-timeout <seconds>` | Per-training timeout for `run_python` tool (default 21600) |
 
 ## Examples
 

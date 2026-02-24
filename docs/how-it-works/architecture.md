@@ -171,7 +171,7 @@ Key architecture parameters in `src/utils/config.py`:
 | `max_validation_retries` | 10 | Output validation retries |
 | `llm_response_timeout` | 900s | LLM response timeout |
 | `bash_tool_timeout` | 300s | Bash command timeout |
-| `run_python_tool_timeout` | 21600s | Training timeout (6 hours) |
+| `run_python_tool_timeout` | 21600s | Training timeout (6 hours, configurable via `--run-python-timeout`) |
 
 ## Next Steps
 
