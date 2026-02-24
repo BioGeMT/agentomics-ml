@@ -7,6 +7,82 @@ DOCKER_MODE=true
 CPU_ONLY=false
 REMOVE_CONDA_ENV=false
 ARGS=()
+TEMP_INPUT_PATH=""
+
+cleanup_temp_input() {
+    if [[ -n "$TEMP_INPUT_PATH" && -f "$TEMP_INPUT_PATH" ]]; then
+        rm -f "$TEMP_INPUT_PATH"
+    fi
+}
+
+trap cleanup_temp_input EXIT
+
+pick_python_cmd() {
+    if command -v python3 >/dev/null 2>&1; then
+        echo "python3"
+        return
+    fi
+    if command -v python >/dev/null 2>&1; then
+        echo "python"
+        return
+    fi
+    die "Python is required to validate/normalize inference input CSV. Install python3 or python and retry."
+}
+
+ensure_input_has_id_column() {
+    local input_path="$1"
+    local python_cmd
+    python_cmd="$(pick_python_cmd)"
+
+    set +e
+    "$python_cmd" - "$input_path" <<'PY'
+import csv
+import sys
+
+input_path = sys.argv[1]
+with open(input_path, newline='') as f:
+    header = next(csv.reader(f), None)
+if header is None:
+    raise SystemExit(2)
+raise SystemExit(0 if "id" in header else 1)
+PY
+    local has_id_rc=$?
+    set -e
+
+    if [[ "$has_id_rc" -eq 0 ]]; then
+        return
+    fi
+
+    if [[ "$has_id_rc" -eq 2 ]]; then
+        die "--input CSV is empty: $input_path"
+    fi
+
+    if [[ "$has_id_rc" -ne 1 ]]; then
+        die "Failed to validate CSV header for --input: $input_path"
+    fi
+
+    TEMP_INPUT_PATH="$(mktemp "${TMPDIR:-/tmp}/agentomics_inference_input_with_id.XXXXXX.csv")"
+    "$python_cmd" - "$input_path" "$TEMP_INPUT_PATH" <<'PY'
+import csv
+import sys
+
+input_path = sys.argv[1]
+output_path = sys.argv[2]
+
+with open(input_path, newline='') as fin, open(output_path, "w", newline='') as fout:
+    reader = csv.reader(fin)
+    writer = csv.writer(fout)
+    header = next(reader, None)
+    if header is None:
+        raise SystemExit(2)
+    writer.writerow(["id", *header])
+    for idx, row in enumerate(reader):
+        writer.writerow([idx, *row])
+PY
+
+    INPUT_PATH="$TEMP_INPUT_PATH"
+    warn "Input CSV has no 'id' column. Inference is not blocked: added sequential IDs (0..N-1) in a temporary file. If you need specific IDs, include an 'id' column in the input CSV."
+}
 
 show_help() {
     echo "Usage: $0 --agent-dir <agent_folder_path> --input <input_path> --output <output_path> [--cpu-only] [--local]"
@@ -90,6 +166,11 @@ fi
 [[ -d "$AGENT_DIR" ]] || die "--agent-dir does not exist: $AGENT_DIR"
 [[ -f "$INPUT_PATH" ]] || die "--input does not exist: $INPUT_PATH"
 [[ -d "$(dirname "$OUTPUT_PATH")" ]] || die "--output directory does not exist: $(dirname "$OUTPUT_PATH")"
+ensure_input_has_id_column "$INPUT_PATH"
+
+AGENT_DIR="$(cd "$(dirname "$AGENT_DIR")" && pwd)/$(basename "$AGENT_DIR")"
+INPUT_PATH="$(cd "$(dirname "$INPUT_PATH")" && pwd)/$(basename "$INPUT_PATH")"
+OUTPUT_PATH="$(cd "$(dirname "$OUTPUT_PATH")" && pwd)/$(basename "$OUTPUT_PATH")"
 
 AGENT_NAME=$(basename "$AGENT_DIR")
 CODE_PATH=${CODE_PATH:-"best_run_files"}
@@ -184,7 +265,7 @@ else
     conda run -p "$ENV_PATH" \
         python "$INFERENCE_PATH" \
         --input "$INPUT_PATH" \
-        --output "$OUTPUT_PATH" "${ARGS[@]}"
+        --output "$OUTPUT_PATH" ${ARGS[@]+"${ARGS[@]}"}
     echo "Inference done"
 fi
 
