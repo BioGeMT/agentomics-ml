@@ -1,7 +1,9 @@
 import os
 from foundation_models_utils import load_models_config
-from transformers import AutoTokenizer, AutoModel, AutoModelForMaskedLM
-import multimolecule
+
+from transformers import AutoTokenizer
+from transformers import AutoModel, AutoModelForMaskedLM
+import multimolecule  # noqa: F401  # Required for loading specific HF models with remote code.
 
 def download_model(model_name, model_class):
     try:

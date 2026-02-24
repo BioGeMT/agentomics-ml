@@ -4,7 +4,7 @@ channels:
 dependencies:
   - python==3.12
   - pandas==2.3.1
-  - conda-pack==0.8.1
+  - conda-pack==0.9.1
   - scikit-learn==1.7.1
   - pip
   - pip:

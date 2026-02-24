@@ -29,7 +29,11 @@ ENV FOUNDATION_MODEL_TYPE=${FOUNDATION_MODEL_TYPE}
 COPY foundation_models/ /foundation_models/
 COPY src/utils/foundation_models_utils.py /repository/src/utils/foundation_models_utils.py
 COPY src/utils/download_foundation_models.py /repository/src/utils/download_foundation_models.py
-RUN /opt/conda/envs/agentomics-env/bin/python /repository/src/utils/download_foundation_models.py
+RUN if [ -n "$FOUNDATION_MODEL_TYPE" ]; then \
+      /opt/conda/envs/agentomics-env/bin/python /repository/src/utils/download_foundation_models.py; \
+    else \
+      echo "Skipping foundation model download (FOUNDATION_MODEL_TYPE not set)"; \
+    fi
 
 # Setup agent start environment
 ENV START_ENV_PKG=/opt/agent_start_env.tar.gz
