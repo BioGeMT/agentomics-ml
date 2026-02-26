@@ -187,6 +187,14 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+# Claude Code
+.claude/
+CLAUDE.md
+
+# AI agent instructions (Codex, Devin, etc.)
+AGENTS.md
+.agents/
+
 # Folders
 .genomic_benchmarks
 .miRBench
