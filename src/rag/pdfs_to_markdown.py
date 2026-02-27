@@ -1,69 +1,50 @@
-from markitdown import MarkItDown
+"""
+Convert PDFs to Markdown using Docling.
+
+Docling provides advanced PDF understanding including page layout, reading order,
+table structure, and image classification — producing much cleaner output than
+basic PDF-to-text converters.
+"""
+
+from docling.document_converter import DocumentConverter
 from pathlib import Path
-import json
 
-def convert_pdf_to_markdown(pdf_path, output_dir):
-    """
-    Convert a single PDF to Markdown using MarkItDown.
-    
-    Args:
-        pdf_path: Path to input PDF
-        output_dir: Directory to save markdown file
-    
-    Returns:
-        Path to generated markdown file
-    """
-    md = MarkItDown()
-    
-    # Convert PDF
-    result = md.convert(pdf_path)
-    
-    # Save markdown
-    pdf_name = Path(pdf_path).stem
-    md_path = Path(output_dir) / f"{pdf_name}.md"
-    
-    with open(md_path, 'w', encoding='utf-8') as f:
-        f.write(result.text_content)
-    
-    print(f"✓ Converted: {pdf_path} → {md_path}")
-    
-    return md_path
+PDF_DIR = Path("/SCRATCH/ablation/agentomics-ml/src/rag/raw_knowledge/")
+OUTPUT_DIR = Path("/SCRATCH/ablation/agentomics-ml/src/rag/processed_knowledge/")
 
-def convert_all_pdfs(pdf_dir, output_dir):
-    """
-    Convert all PDFs in a directory to Markdown.
-    
-    Args:
-        pdf_dir: Directory containing PDF files
-        output_dir: Directory to save markdown files
-    """
-    pdf_dir = Path(pdf_dir)
-    output_dir = Path(output_dir)
+
+def convert_pdf_to_markdown(pdf_path: Path, output_dir: Path) -> Path:
+    converter = DocumentConverter()
+    result = converter.convert(str(pdf_path))
+    markdown = result.document.export_to_markdown()
+
+    out_path = output_dir / f"{pdf_path.stem}.md"
+    out_path.write_text(markdown, encoding="utf-8")
+
+    print(f"  ✓ {pdf_path.name} → {out_path.name}  ({len(markdown.splitlines())} lines)")
+    return out_path
+
+
+def convert_all_pdfs(pdf_dir: Path = PDF_DIR, output_dir: Path = OUTPUT_DIR) -> list[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
-    
-    pdf_files = list(pdf_dir.glob("*.pdf"))
-    
+
+    pdf_files = sorted(pdf_dir.glob("*.pdf"))
     if not pdf_files:
-        print(f"⚠ No PDF files found in {pdf_dir}")
+        print(f"No PDF files found in {pdf_dir}")
         return []
-    
-    print(f"Found {len(pdf_files)} PDF files")
-    
-    converted_files = []
+
+    print(f"Converting {len(pdf_files)} PDF(s) with Docling → {output_dir}\n")
+    converted = []
     for pdf_path in pdf_files:
         try:
-            md_path = convert_pdf_to_markdown(pdf_path, output_dir)
-            converted_files.append(md_path)
+            out = convert_pdf_to_markdown(pdf_path, output_dir)
+            converted.append(out)
         except Exception as e:
-            print(f"✗ Error converting {pdf_path}: {e}")
-    
-    print(f"\n✓ Successfully converted {len(converted_files)}/{len(pdf_files)} files")
-    
-    return converted_files
+            print(f"  ✗ {pdf_path.name}: {e}")
+
+    print(f"\nDone. {len(converted)}/{len(pdf_files)} converted.")
+    return converted
+
 
 if __name__ == "__main__":
-    # Example usage
-    PDF_DIR = "/SCRATCH/ablation/agentomics-ml/src/rag/raw_knowledge/"
-    MARKDOWN_DIR = "/SCRATCH/ablation/agentomics-ml/src/rag/processed_knowledge/"
-    
-    convert_all_pdfs(PDF_DIR, MARKDOWN_DIR)
+    convert_all_pdfs()
