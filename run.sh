@@ -8,6 +8,7 @@ fi
 set -euo pipefail
 
 AGENTOMICS_ARGS=()
+DATASET=""
 LOCAL_MODE=false
 TEST_MODE=false
 CPU_ONLY=false
@@ -23,6 +24,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         --dataset)
             AGENTOMICS_ARGS+=(--dataset "$2")
+            DATASET="$2"
             shift 2
             ;;
         --iterations)
@@ -124,7 +126,7 @@ else
         #     conda env create -f environment.yaml -q
         # fi
         echo "Creating temporary API key with spend limit: $SPEND_LIMIT"
-        API_KEY_OUTPUT=$(PYTHONPATH="$(pwd)/src" conda run -n cloudspace python src/utils/api_keys_utils.py create --name "agentomics_run_$(date +%s)" --limit "$SPEND_LIMIT")
+        API_KEY_OUTPUT=$(PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys_utils.py create --name "agentomics_run_$(date +%s)" --limit "$SPEND_LIMIT")
         TEMP_API_KEY=$(echo "$API_KEY_OUTPUT" | cut -d',' -f1)
         TEMP_API_KEY_HASH=$(echo "$API_KEY_OUTPUT" | cut -d',' -f2)
         export OPENROUTER_API_KEY="$TEMP_API_KEY"
@@ -154,10 +156,16 @@ else
         DOCKER_API_KEY_ENV_VARS+=(-e "OPENROUTER_API_KEY=${OPENROUTER_API_KEY}")
     fi
 
+    if ! conda env list | grep -q "agentomics-env"; then
+        conda env create -f environment.yaml -q
+    else
+        conda env update -f environment.yaml -q
+    fi
+
     # Rag preparation
     echo "Preparing RAG knowledge sources"
     bash src/rag/pgvector.sh start
-    conda run -n agentomics-env python src/rag/knowledge_to_db.py --dataset src/rag/raw_knowledge
+    conda run -n agentomics-env python src/rag/knowledge_to_db.py --dataset "$DATASET"
     echo "RAG preparation done"
 
     if [ "$TEST_MODE" = true ]; then

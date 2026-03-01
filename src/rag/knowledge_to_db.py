@@ -1,48 +1,31 @@
-"""
-End-to-end RAG knowledge pipeline.
-
-Steps:
-  1. Convert PDFs to markdown (Docling)
-  2. Clean markdown (remove boilerplate sections and non-text placeholders)
-  3. [TODO] Chunk cleaned markdown
-  4. [TODO] Embed chunks and store in vector DB
-
-Usage:
-    python knowledge_to_db.py --dataset src/rag/raw_knowledge
-"""
-
 import argparse
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
-# Prevent proxy from intercepting local Ollama/pgvector requests
-os.environ["no_proxy"] = "localhost,127.0.0.1"
-os.environ["NO_PROXY"] = "localhost,127.0.0.1"
+load_dotenv()
 
 from pdfs_to_markdown import convert_all_pdfs
 from clean_markdown import clean_all
 
-RAG_DIR = Path(__file__).parent
-
-
-def needs_update(source_dir: Path, output_dir: Path, suffix: str = ".md") -> bool:
+def needs_update(source_dir: Path, output_dir: Path, source_suffix: str, output_suffix: str = ".md") -> bool:
     """Return True if any output file is missing or older than its source."""
-    sources = list(source_dir.iterdir())
+    sources = list(source_dir.glob(f"*{source_suffix}"))
     if not sources:
         return False
     for src in sources:
-        out = output_dir / f"{src.stem}{suffix}"
+        out = output_dir / f"{src.stem}{output_suffix}"
         if not out.exists() or out.stat().st_mtime < src.stat().st_mtime:
             return True
     return False
 
 
-def step_convert_pdfs(pdf_dir: Path, processed_dir: Path) -> None:
+def step_convert_pdfs(knowledge_dir: Path, processed_knowledge_dir: Path) -> None:
     print("=" * 50)
-    print("Step 1: PDF → Markdown (Docling)")
+    print("Step 1: Knowledge → Markdown (using Docling)")
     print("=" * 50)
-    if needs_update(pdf_dir, processed_dir):
-        convert_all_pdfs(dataset_knowledge_dir=pdf_dir, output_dir=processed_dir)
+    if needs_update(source_dir=knowledge_dir, output_dir=processed_knowledge_dir, source_suffix=".pdf"):
+        convert_all_pdfs(dataset_knowledge_dir=knowledge_dir, output_dir=processed_knowledge_dir)
     else:
         print("  All markdown files up to date, skipping.\n")
 
@@ -51,7 +34,7 @@ def step_clean_markdown(processed_dir: Path, cleaned_dir: Path) -> None:
     print("=" * 50)
     print("Step 2: Clean Markdown")
     print("=" * 50)
-    if needs_update(processed_dir, cleaned_dir):
+    if needs_update(processed_dir, cleaned_dir, source_suffix=".md"):
         clean_all(input_dir=processed_dir, output_dir=cleaned_dir)
     else:
         print("  All cleaned files up to date, skipping.\n")
@@ -66,7 +49,7 @@ def step_chunk(cleaned_dir: Path) -> None:
     print("  Not implemented yet.\n")
 
 
-def step_embed_and_store(cleaned_dir: Path, db_dir: Path) -> None:
+def step_embed_and_store(cleaned_dir: Path) -> None:
     print("=" * 50)
     print("Step 4: Embed + Store in Vector DB [TODO]")
     print("=" * 50)
@@ -79,27 +62,19 @@ def main():
     parser.add_argument(
         "--dataset",
         type=Path,
-        default=RAG_DIR / "raw_knowledge",
-        help="Path to directory containing source PDFs (default: src/rag/raw_knowledge)",
+        help="Path to dataset directory"
     )
     args = parser.parse_args()
 
-    pdf_dir = args.dataset.resolve()
-    dataset_name = pdf_dir.name
+    dataset_dir = Path("datasets" / args.dataset).resolve()
+    knowledge_dir = dataset_dir / "knowledge"
+    processed_dir = knowledge_dir / "processed_knowledge"
+    cleaned_dir = knowledge_dir / "cleaned_knowledge"
 
-    processed_dir = RAG_DIR / "processed_knowledge" / dataset_name
-    cleaned_dir   = RAG_DIR / "cleaned_knowledge"   / dataset_name
-    db_dir        = RAG_DIR / "db"                  / dataset_name
-
-    print(f"Dataset : {pdf_dir}")
-    print(f"Processed: {processed_dir}")
-    print(f"Cleaned  : {cleaned_dir}")
-    print(f"DB       : {db_dir}\n")
-
-    step_convert_pdfs(pdf_dir, processed_dir)
+    step_convert_pdfs(knowledge_dir, processed_dir)
     step_clean_markdown(processed_dir, cleaned_dir)
     step_chunk(cleaned_dir)
-    step_embed_and_store(cleaned_dir, db_dir)
+    step_embed_and_store(cleaned_dir)
 
     print("Pipeline complete.")
 

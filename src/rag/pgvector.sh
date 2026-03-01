@@ -21,6 +21,10 @@ case "$cmd" in
   start)
     if docker ps --filter "name=^${CONTAINER_NAME}$" --format "{{.Names}}" | grep -q "$CONTAINER_NAME"; then
       echo "Container '$CONTAINER_NAME' is already running."
+    elif docker ps -a --filter "name=^${CONTAINER_NAME}$" --format "{{.Names}}" | grep -q "$CONTAINER_NAME"; then
+      echo "Container '$CONTAINER_NAME' exists but is stopped. Restarting..."
+      docker start "$CONTAINER_NAME"
+      echo "pgvector is ready on port ${POSTGRES_PORT}."
     else
       echo "Starting pgvector container..."
       docker run -d \

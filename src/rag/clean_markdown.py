@@ -8,10 +8,6 @@ non-text placeholders (images, undecodable formulas).
 import re
 from pathlib import Path
 
-RAG_DIR = Path(__file__).parent
-INPUT_DIR = RAG_DIR / "processed_knowledge"
-OUTPUT_DIR = RAG_DIR / "cleaned_knowledge"
-
 # Section headings to drop (along with all their content until the next heading).
 # Matched case-insensitively against the heading text.
 REMOVE_SECTIONS = re.compile(
@@ -75,7 +71,7 @@ def clean(text: str) -> str:
     return text.strip()
 
 
-def clean_all(input_dir: Path = INPUT_DIR, output_dir: Path = OUTPUT_DIR) -> None:
+def clean_all(input_dir: Path, output_dir: Path) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     md_files = sorted(input_dir.glob("*.md"))

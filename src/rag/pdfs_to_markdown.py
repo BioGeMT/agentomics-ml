@@ -1,18 +1,5 @@
-"""
-Convert PDFs to Markdown using Docling.
-
-Docling provides advanced PDF understanding including page layout, reading order,
-table structure, and image classification — producing much cleaner output than
-basic PDF-to-text converters.
-"""
-
 from docling.document_converter import DocumentConverter
 from pathlib import Path
-
-RAG_DIR = Path(__file__).parent
-PDF_DIR = RAG_DIR / "raw_knowledge"
-OUTPUT_DIR = RAG_DIR / "processed_knowledge"
-
 
 def convert_pdf_to_markdown(pdf_path: Path, output_dir: Path) -> Path:
     converter = DocumentConverter()
@@ -25,7 +12,7 @@ def convert_pdf_to_markdown(pdf_path: Path, output_dir: Path) -> Path:
     print(f"  ✓ {pdf_path.name} → {out_path.name}  ({len(markdown.splitlines())} lines)")
     return out_path
 
-def convert_all_pdfs(dataset_knowledge_dir: Path = PDF_DIR, output_dir: Path = OUTPUT_DIR) -> list[Path]:
+def convert_all_pdfs(dataset_knowledge_dir: Path, output_dir: Path) -> list[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     pdf_files = sorted(dataset_knowledge_dir.glob("*.pdf"))
