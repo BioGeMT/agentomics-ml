@@ -154,6 +154,12 @@ else
         DOCKER_API_KEY_ENV_VARS+=(-e "OPENROUTER_API_KEY=${OPENROUTER_API_KEY}")
     fi
 
+    # Rag preparation
+    echo "Preparing RAG knowledge sources"
+    bash src/rag/pgvector.sh start
+    conda run -n agentomics-env python src/rag/knowledge_to_db.py --dataset src/rag/raw_knowledge
+    echo "RAG preparation done"
+
     if [ "$TEST_MODE" = true ]; then
         docker run \
             -it \
@@ -198,6 +204,8 @@ else
             agentomics_img src/run_logging/evaluate_log_test.py
 
         mkdir -p outputs/${AGENT_ID}/best_run_files outputs/${AGENT_ID}/reports outputs/${AGENT_ID}/extras
+
+        bash src/rag/pgvector.sh stop
 
         # Copy best-run files and report
         docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox cp -r /source/snapshots/${AGENT_ID}/. /dest/best_run_files/

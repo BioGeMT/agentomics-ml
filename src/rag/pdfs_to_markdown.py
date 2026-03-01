@@ -9,8 +9,9 @@ basic PDF-to-text converters.
 from docling.document_converter import DocumentConverter
 from pathlib import Path
 
-PDF_DIR = Path("/SCRATCH/ablation/agentomics-ml/src/rag/raw_knowledge/")
-OUTPUT_DIR = Path("/SCRATCH/ablation/agentomics-ml/src/rag/processed_knowledge/")
+RAG_DIR = Path(__file__).parent
+PDF_DIR = RAG_DIR / "raw_knowledge"
+OUTPUT_DIR = RAG_DIR / "processed_knowledge"
 
 
 def convert_pdf_to_markdown(pdf_path: Path, output_dir: Path) -> Path:
@@ -24,13 +25,12 @@ def convert_pdf_to_markdown(pdf_path: Path, output_dir: Path) -> Path:
     print(f"  ✓ {pdf_path.name} → {out_path.name}  ({len(markdown.splitlines())} lines)")
     return out_path
 
-
-def convert_all_pdfs(pdf_dir: Path = PDF_DIR, output_dir: Path = OUTPUT_DIR) -> list[Path]:
+def convert_all_pdfs(dataset_knowledge_dir: Path = PDF_DIR, output_dir: Path = OUTPUT_DIR) -> list[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    pdf_files = sorted(pdf_dir.glob("*.pdf"))
+    pdf_files = sorted(dataset_knowledge_dir.glob("*.pdf"))
     if not pdf_files:
-        print(f"No PDF files found in {pdf_dir}")
+        print(f"No PDF files found in {dataset_knowledge_dir}")
         return []
 
     print(f"Converting {len(pdf_files)} PDF(s) with Docling → {output_dir}\n")

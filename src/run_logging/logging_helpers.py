@@ -4,7 +4,7 @@ from utils.metrics import get_task_to_metrics_names
 
 def login_to_wandb(api_key):
     try:
-        wandb.login(key=api_key, anonymous="allow", timeout=5)
+        wandb.login(key=api_key, anonymous="allow", timeout=30)
         return True
     except (AuthenticationError, UsageError):
         return False
