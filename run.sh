@@ -100,13 +100,13 @@ if [ "$LOCAL_MODE" = true ]; then
     cp -r ../workspace/reports/${AGENT_ID}/. outputs/${AGENT_ID}/reports/
 else
     echo "Building the run image"
-    docker build -t agentomics_img -f Dockerfile .
+    docker build -t agentomics_ablation_img -f Dockerfile .
     echo "Build done"
     AGENT_ID=$(docker run --rm -u $(id -u):$(id -g) -v "$(pwd)":/repository:ro --entrypoint \
-               /opt/conda/envs/agentomics-env/bin/python agentomics_img /repository/src/utils/create_user.py)
+               /opt/conda/envs/agentomics-env/bin/python agentomics_ablation_img /repository/src/utils/create_user.py)
 
     echo "Building the data preparation image"
-    docker build -t agentomics_prepare_img -f Dockerfile.prepare .
+    docker build -t agentomics_ablation_prepare_img -f Dockerfile.prepare .
     echo "Build done"
     docker run \
         -u $(id -u):$(id -g) \
@@ -114,7 +114,7 @@ else
         -it \
         --name agentomics_prepare_cont_${AGENT_ID} \
         -v "$(pwd)":/repository \
-        agentomics_prepare_img
+        agentomics_ablation_prepare_img
 
     docker volume create temp_agentomics_volume_${AGENT_ID}
     trap "docker volume rm temp_agentomics_volume_${AGENT_ID}" EXIT
@@ -183,7 +183,7 @@ else
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
             --entrypoint /opt/conda/envs/agentomics-env/bin/python \
-            agentomics_img -m test.run_all_tests
+            agentomics_ablation_img -m test.run_all_tests
     else
         docker run \
             -it \
@@ -196,7 +196,7 @@ else
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
-            agentomics_img ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
+            agentomics_ablation_img ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
 
         echo "Running final evaluation on test set"
         docker run \
@@ -209,7 +209,7 @@ else
             -v "$(pwd)/prepared_test_sets":/repository/prepared_test_sets:ro \
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
             --entrypoint /opt/conda/envs/agentomics-env/bin/python \
-            agentomics_img src/run_logging/evaluate_log_test.py
+            agentomics_ablation_img src/run_logging/evaluate_log_test.py
 
         mkdir -p outputs/${AGENT_ID}/best_run_files outputs/${AGENT_ID}/reports outputs/${AGENT_ID}/extras
 
@@ -234,7 +234,7 @@ else
                 -v "$(pwd)/src":/repository/src:ro \
                 -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
                 --entrypoint /opt/conda/envs/agentomics-env/bin/python \
-                agentomics_img /repository/src/utils/api_keys_utils.py cleanup-and-log --config-path /config/config.json --api-key-hash "$TEMP_API_KEY_HASH"
+                agentomics_ablation_img /repository/src/utils/api_keys_utils.py cleanup-and-log --config-path /config/config.json --api-key-hash "$TEMP_API_KEY_HASH"
         fi
 
     fi
