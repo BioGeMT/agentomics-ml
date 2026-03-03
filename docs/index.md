@@ -3,7 +3,7 @@
 **Autonomous AI agent for supervised machine learning model development on omics data**
 
 [:material-rocket-launch: Quick Start](getting-started/quick-start.md){ .md-button .md-button--primary }
-[:material-file-document: Preprint](https://arxiv.org/abs/2506.05542){ .md-button }
+[:material-file-document: Preprint](https://www.biorxiv.org/content/10.64898/2026.01.27.702049v1){ .md-button }
 [:material-web: Website](https://agentomicsml.com/){ .md-button }
 
 ---
