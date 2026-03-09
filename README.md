@@ -13,6 +13,8 @@ How it works
 2) Agentomics autonomously experments with various ML models and strategies
 3) Output is a trained model ready for inference and a detailed PDF report summarizing the development process and achieved metrics
 
+For more details see: [preprint](https://www.biorxiv.org/content/10.64898/2026.01.27.702049v1)
+
 <p align="center">
   <img src="docs/assets/agentomics-overview.png" alt="agentomics overview" width="50%">
 </p>
