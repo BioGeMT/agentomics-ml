@@ -143,3 +143,13 @@ Inference relies on:
 
 EOF
 }
+
+ensure_agentomics_docker_image() {
+    if docker image inspect agentomics_img >/dev/null 2>&1; then
+        return
+    fi
+
+    warn "Docker image 'agentomics_img' not found. Building it now..."
+    [[ -f "Dockerfile" ]] || die "Dockerfile not found in repository root; cannot build 'agentomics_img'."
+    docker build -t agentomics_img -f Dockerfile .
+}
