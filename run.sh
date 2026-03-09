@@ -2,9 +2,10 @@
 
 # Get the absolute directory of this script
 AGENTOMICS_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$AGENTOMICS_DIR" || { echo "Failed to enter repository directory: $AGENTOMICS_DIR" >&2; exit 1; }
 
 source "$AGENTOMICS_DIR/bash_helpers.sh"
+
+cd "$AGENTOMICS_DIR" || die "Cannot cd into repository directory: $AGENTOMICS_DIR"
 
 AGENTOMICS_ARGS=()
 LOCAL_MODE=false
