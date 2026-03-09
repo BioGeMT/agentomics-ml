@@ -79,7 +79,10 @@ def _print_mode() -> str:
     return mode if mode in {"summary", "full"} else "summary"
 
 def _args_dict(tool_call_part: ToolCallPart) -> dict:
-    return tool_call_part.args_as_dict()
+    try:
+        return tool_call_part.args_as_dict()
+    except ValueError:
+        return {}
 
 def _tool_call_summary(part: ToolCallPart) -> str:
     tool = part.tool_name
