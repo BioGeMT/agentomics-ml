@@ -8,16 +8,6 @@ CPU_ONLY=false
 REMOVE_CONDA_ENV=false
 ARGS=()
 
-ensure_agentomics_docker_image() {
-    if docker image inspect agentomics_img >/dev/null 2>&1; then
-        return
-    fi
-
-    warn "Docker image 'agentomics_img' not found. Building it now..."
-    [[ -f "Dockerfile" ]] || die "Dockerfile not found in repository root; cannot build 'agentomics_img'."
-    docker build -t agentomics_img -f Dockerfile .
-}
-
 show_help() {
     echo "Usage: $0 --agent-dir <agent_folder_path> --input <input_path> --output <output_path> [--cpu-only] [--local]"
     echo "Options:"
