@@ -15,14 +15,13 @@ def generate_rg_leaderboard():
         "OmniDNA": [73.8, 91.9, 79.1, None, None],
         "MxDNA": [74.67, 93.13, 81.05, None, None],
         "HyenaDNA": [74.2, 89.2, 80.9, None, None],
-        "MSAMamba (model using MSA)": [72.7, 88.8, 82.5, 77.2, None],
+        "MSAMamba (model using MSA)": [72.7, 90.1, 82.5, None, None],
         "Janus": [73.4, 86.8, 79.9, None, None],
         "DNABERT-2 (as reported in FinDNA)": [73.1, 92.8, 79.5, None, None],
-        "OmniGenome": [73.5, 82.2, 69.0, 28.9, None],
         "CARMANIA": [72.5, 89.5, 77.8, None, None],
-        "KAN": [68.2, 69.9, 74.4, None, None],
-        "SwanDNA": [73.97, 90.32, 77.52, 58.9, None],
-        "Optimized CNN, Zurgham (best reported)": [72.4, 82.1, None, None, None],
+        "KAN": [74.0, 80.2, 78.4, 58.4, None],
+        "SwanDNA": [73.97, 90.32, 77.52, None, None],
+        "Zurgham (best reported)": [71.8, 82.1, None, 68.6, None],
         "mirbench": [None, None, None, None, 86.0],
     }
 
@@ -238,8 +237,8 @@ def create_group_summaries(fin_df):
         .agg(
             best_iter_test_mainmetric_mean=('best_iter_test_mainmetric', 'mean'),
             leaderboard_mean=('leaderboard%', 'mean'),
-            leaderboard_std=('leaderboard%', 'std'), #TODO check this is STD and not VARIANCE!!!
-            leaderboard_var=('leaderboard%', 'var'), #TODO check this is STD and not VARIANCE!!!
+            leaderboard_std=('leaderboard%', 'std'),
+            leaderboard_var=('leaderboard%', 'var'),
             run_name_count=('run_name', 'count'),
             is_new_sota_sum=('is_new_sota', 'sum'),
             usd_cost_mean=('usd_cost', 'mean'),
@@ -262,7 +261,7 @@ def create_group_summaries(fin_df):
             human_sota_max=('human_sota', 'max'),
             leaderboard_mean=('leaderboard%', 'mean'),
             leaderboard_std=('leaderboard%', 'std'),
-            leaderboard_var=('leaderboard%', 'var'), #TODO check this is STD and not VARIANCE!!!
+            leaderboard_var=('leaderboard%', 'var'),
             run_name_count=('run_name', 'count'),
             is_new_sota_sum=('is_new_sota', 'sum'),
             usd_cost_mean=('usd_cost', 'mean'),
@@ -282,7 +281,7 @@ def create_group_summaries(fin_df):
             best_iter_test_mainmetric_mean=('best_iter_test_mainmetric', 'mean'),
             leaderboard_mean=('leaderboard%', 'mean'),
             leaderboardboard_std=('leaderboard%', 'std'),
-            leaderboard_var=('leaderboard%', 'var'), #TODO check this is STD and not VARIANCE!!!
+            leaderboard_var=('leaderboard%', 'var'),
             run_name_count=('run_name', 'count'),
             is_new_sota_sum=('is_new_sota', 'sum'),
             usd_cost_mean=('usd_cost', 'mean'),
@@ -308,8 +307,6 @@ def generate_corr_tables(fin_df):
         if(len(sub_df) == 0):
             return None
         assert len(sub_df) == 1
-        # print(sub_df[0:1]['would_be_test'].values[0])
-        #TODO i need iteration to normalized wouldbetest 
         iter_to_nonnan_wouldbetest = {}
         assert len(sub_df[0:1]['would_be_test'].values[0]) == sub_df['iterations_completed'].values[0]
         for i, would_be_test_value in enumerate(sub_df[0:1]['would_be_test'].values[0]):
