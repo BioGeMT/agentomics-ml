@@ -340,7 +340,7 @@ def get_run_tokens_info(entity, project, run_id, weave_client):
 
 def generate_zeroshot_runs(tags, path, entity='ceitec-ai', project='Agentomics-ML'):
     load_dotenv()
-    metrics_of_interest = ['ACC', 'AUPRC']
+    metrics_of_interest = ['ACC', 'AUPRC', 'SPEARMAN', 'PEARSON', 'MAE', 'AUROC']
     api = wandb.Api(timeout=120)
     runs = api.runs(
         f"{entity}/{project}",
@@ -374,6 +374,10 @@ def generate_zeroshot_runs(tags, path, entity='ceitec-ai', project='Agentomics-M
                     run_data['successful_run'] = False
                 else:
                     run_data['successful_run'] = True
+        if 'successful_run' not in run_data.keys():
+            run_data['successful_run'] = False
+        if 'biomlbench_score' in history_data.keys() and 'biomlbench/leaderboard_percentile' in history_data.keys():
+            run_data['biomlbench/leaderboard_percentile'] = get_singular_value(history_data['biomlbench/leaderboard_percentile'])
 
         # run_data['best_mainmetric'] = get_singular_value(history_data[main_metric_name])
         runs_data.append(run_data)

@@ -66,49 +66,108 @@ def generate_dataset_sizes():
     test_datasize_dict = {dataset_dict['dataset']:dataset_dict['test_size'] for dataset_dict in datasize_data}
     return train_datasize_dict, test_datasize_dict
 
-def get_gb_dset_to_mainmetric():
+def get_dset_to_mainmetric():
     return {
         'AGO2_CLASH_Hejret2023':'AUPRC',
         'drosophila_enhancers_stark': 'ACC',
         'human_enhancers_cohn': 'ACC',
         'human_enhancers_ensembl': 'ACC',
         'human_ocr_ensembl': 'ACC',
+
+        'polarishub/polaris-pkis2-egfr-wt-c-1': 'AUPRC',
+        'polarishub/polaris-adme-fang-hclint-1': 'PEARSON',
+        'polarishub/polaris-adme-fang-solu-1': 'PEARSON',
+        'polarishub/tdcommons-lipophilicity-astrazeneca': 'MAE',
+        'polarishub/tdcommons-cyp2d6-substrate-carbonmangels': 'AUPRC',
+        'polarishub/polaris-adme-fang-hppb-1': 'PEARSON',
+        'polarishub/tdcommons-herg': 'AUROC',
+        'polarishub/tdcommons-bbb-martins': 'AUROC',
+        'polarishub/tdcommons-caco2-wang': 'MAE',
+
+        'proteingym-dms/SPIKE_SARS2_Starr_2020_binding': 'SPEARMAN',
+        'proteingym-dms/SPA_STAAU_Tsuboyama_2023_1LP1': 'SPEARMAN',
+        'proteingym-dms/PSAE_PICP2_Tsuboyama_2023_1PSE_indels': 'SPEARMAN',
+        'proteingym-dms/CBX4_HUMAN_Tsuboyama_2023_2K28': 'SPEARMAN',
+        'proteingym-dms/Q8EG35_SHEON_Campbell_2022_indels': 'SPEARMAN',
+        'proteingym-dms/CSN4_MOUSE_Tsuboyama_2023_1UFM_indels': 'SPEARMAN',
+
     }
 
+def get_dset_domain(dset):
+    if 'proteingym' in dset:
+        return 'Protein Engineering'
+    if 'polarishub' in dset:
+        return 'Drug Discovery'
+    return 'Regulatory Genomics'
 
-def generate_zeroshot_summaries(zeroshot_df, gb_dset_to_metric, gb_leaderboard):
+
+def generate_zeroshot_summaries(zeroshot_df: pd.DataFrame, dset_to_metric, gb_leaderboard):
     import numpy as np
     import pandas as pd
 
-    zeroshot_df['leaderboard%'] = zeroshot_df.apply(lambda x: 100*sum(x[gb_dset_to_metric[x['dataset']]] > np.array(gb_leaderboard[x['dataset']]))/len(gb_leaderboard[x['dataset']]) if not pd.isna(x[gb_dset_to_metric[x['dataset']]]) else None, axis=1)
+    gb_mask = zeroshot_df['dataset'].isin(gb_leaderboard.keys())
+    zeroshot_df.loc[gb_mask, 'leaderboard%'] = zeroshot_df[gb_mask].apply(
+        lambda x: 100*sum(x[dset_to_metric[x['dataset']]] > np.array(gb_leaderboard[x['dataset']]))/len(gb_leaderboard[x['dataset']]) if not pd.isna(x[dset_to_metric[x['dataset']]]) else None, axis=1)
+    zeroshot_df.loc[~gb_mask, 'leaderboard%'] = zeroshot_df.loc[~gb_mask, 'biomlbench/leaderboard_percentile']
+    zeroshot_df['domain'] = zeroshot_df.apply(lambda x: get_dset_domain(x['dataset']), axis=1)
 
     zeroshot_summary = (
         zeroshot_df
         .groupby('dataset')
         .agg(
             successful_run_mean=('successful_run', 'mean'),
+
             acc_max=('ACC','max'),
             auprc_max=('AUPRC','max'),
+            auroc_max=('AUROC', 'max'),
+            mae_min=('MAE','min'),
+            pearson_max=('PEARSON', 'max'),
+            spearman_max=('SPEARMAN', 'max'),
+
             leaderboard_perc_mean=('leaderboard%', 'mean'),
             leaderboard_perc_std=('leaderboard%', 'std'),
 
         )
         .reset_index()
     )
-    zeroshot_summary_all = (
+    zeroshot_summary_domains = (
         zeroshot_df
-        .groupby(lambda _: 0)
+        .groupby('domain')
         .agg(
             successful_run_mean=('successful_run', 'mean'),
+
             acc_max=('ACC','max'),
             auprc_max=('AUPRC','max'),
+            auroc_max=('AUROC', 'max'),
+            mae_min=('MAE','min'),
+            pearson_max=('PEARSON', 'max'),
+            spearman_max=('SPEARMAN', 'max'),
+
             leaderboard_perc_mean=('leaderboard%', 'mean'),
             leaderboard_perc_std=('leaderboard%', 'std'),
 
         )
-    )
-    zeroshot_summary_all['dataset'] = ['All Regulatory Genomics Dsets']
-    zeroshot_info_df = pd.concat([zeroshot_summary,zeroshot_summary_all])
+    ).reset_index()
+    zeroshot_summary_domains['dataset'] = zeroshot_summary_domains['domain']
+    zeroshot_summary_domains = zeroshot_summary_domains.drop(columns=['domain'])
+
+    zeroshot_summary_all = zeroshot_df.groupby(lambda _: 0).agg(
+            successful_run_mean=('successful_run', 'mean'),
+
+            acc_max=('ACC','max'),
+            auprc_max=('AUPRC','max'),
+            auroc_max=('AUROC', 'max'),
+            mae_min=('MAE','min'),
+            pearson_max=('PEARSON', 'max'),
+            spearman_max=('SPEARMAN', 'max'),
+
+            leaderboard_perc_mean=('leaderboard%', 'mean'),
+            leaderboard_perc_std=('leaderboard%', 'std'),
+
+        )
+    
+    zeroshot_summary_all['dataset'] = ['All Domains']
+    zeroshot_info_df = pd.concat([zeroshot_summary,zeroshot_summary_all,zeroshot_summary_domains])
     zeroshot_info_df.to_csv('./paper_tables/zeroshot_stats.csv')
 
 
@@ -367,9 +426,9 @@ def generate_corr_tables(fin_df):
 
 def main():
     generate_rg_leaderboard()
-    zeroshot_df = generate_zeroshot_runs(tags=["ismb2026_zeroshot_v1"], path='./paper_tables/zeroshots.csv')
-    gb_to_metric = get_gb_dset_to_mainmetric()
-    generate_zeroshot_summaries(zeroshot_df, gb_to_metric, get_gb_leaderboard())
+    zeroshot_df = generate_zeroshot_runs(tags=["ismb2026_zeroshot_v1", "imsb_2026_zeroshot_v1"], path='./paper_tables/zeroshots.csv')
+    dataset_to_metric = get_dset_to_mainmetric()
+    generate_zeroshot_summaries(zeroshot_df, dataset_to_metric, get_gb_leaderboard())
     train_datasize_dict, test_datasize_dict = generate_dataset_sizes()
     
     agentomics_all_df = generate_iterative_runs(tags=[
