@@ -1,16 +1,16 @@
 ,0
-log_train_size × leaderboard% pearson,-0.2893253201878009
-log_test_size × leaderboard% pearson,-0.12549588064678174
-iterations_completed × leaderboard% pearson,0.06922183136576417
+log_train_size × leaderboard% pearson,-0.34889608230671215
+log_test_size × leaderboard% pearson,-0.19643775832077418
+iterations_completed × leaderboard% pearson,0.11935272756664586
 log_train_size × val_stealth_mainmetric_corr pearson,0.44088887320688774
 log_test_size × val_stealth_mainmetric_corr pearson,0.5308606634221559
-val_stealth_mainmetric_corr × leaderboard% pearson,0.31261939757994234
+val_stealth_mainmetric_corr × leaderboard% pearson,0.24635190334483917
 norm_testmetric_achieved × val_stealth_mainmetric_corr pearson,-0.04988429899881859
 norm_testmetric_achieved × log_train_size pearson,0.3333712406228167
-norm_testmetric_achieved × leaderboard% pearson,-0.2503795259589435
+norm_testmetric_achieved × leaderboard% pearson,-0.258377210895351
 best_iteration_at_%_of_total,0.809 ± 0.154
 best_iteration_at_h,6.471 ± 1.232
-leaderboard%,63.846 ± 39.552
+leaderboard%,60.152 ± 42.385
 val_stealth_mainmetric_corr,0.986 ± 0.026
 cost_per_iter,0.440 ± 0.065
 duration_per_iter,0.650 ± 0.270
