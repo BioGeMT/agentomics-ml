@@ -171,6 +171,7 @@ def main() -> int:
     parser.add_argument("--agents", nargs="+", help="Agents to run (filters config)")
     parser.add_argument("--datasets", nargs="+", help="Datasets to run (filters config)")
     parser.add_argument("--cpu-only", action="store_true", help="Use CPU-only mode (no GPU)")
+    parser.add_argument("--tags", nargs="+", help="Tags to attach to wandb runs")
     args = parser.parse_args()
 
     config = load_config()
@@ -236,7 +237,7 @@ def main() -> int:
                         "task_type": task_type,
                         "model": config["agents"][agent]["model"],
                     },
-                    tags=["ismb2026_zeroshot_v1"]
+                    tags=args.tags or []
                 )
                 payload = {name: float(value) for name, value in metrics.items()}
                 payload["inference_stage_id"] = INFERENCE_STAGE[inference_stage]
@@ -261,7 +262,7 @@ def main() -> int:
                         "task_type": "classification",
                         "model": config["agents"][agent]["model"],
                     },
-                    tags=["ismb2026_zeroshot_v1"]
+                    tags=args.tags or []
                 )
                 failure_metrics = {
                     "ACC": None,
