@@ -142,7 +142,7 @@ if [[ "$DOCKER_MODE" == true ]]; then
         die "Docker is not running or not accessible (start Docker and retry)"
     fi
     ensure_agentomics_docker_image
-    echo "Running inference in Docker..."
+
     AGENT_DIR_ABS="$(cd "$(dirname "$AGENT_DIR")" && pwd)/$(basename "$AGENT_DIR")"
     INPUT_PATH_ABS="$(cd "$(dirname "$INPUT_PATH")" && pwd)/$(basename "$INPUT_PATH")"
     OUTPUT_PATH_ABS="$(cd "$(dirname "$OUTPUT_PATH")" && pwd)/$(basename "$OUTPUT_PATH")"
