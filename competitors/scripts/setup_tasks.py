@@ -73,9 +73,13 @@ def main() -> None:
     prepared_test_sets_dir = competitors_dir.parent / "prepared_test_sets"
     templates_dir = competitors_dir / "templates"
 
-    # Prepare ALL datasets found in prepared_datasets directory
-    dataset_names = [d.name for d in prepared_datasets_dir.iterdir() if d.is_dir()]
-
+    # Prepare genomic benchmarks + AGO datasets found in prepared_datasets directory
+    dataset_names = ["AGO2_CLASH_Hejret2023",
+        "drosophila_enhancers_stark",
+        "human_enhancers_cohn",
+        "human_enhancers_ensembl",
+        "human_ocr_ensembl",
+    ]
     for name in dataset_names:
         print(f"[setup_tasks] Preparing dataset: {name}")
         generate_task(clone_dir, prepared_datasets_dir, prepared_test_sets_dir, templates_dir, competitors_dir, name)
