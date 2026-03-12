@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from utils.printing_utils import truncate_float
 from utils.snapshots import get_best_iteration
 from utils.foundation_models_utils import format_foundation_model_catalog
-from agents.prompts.prompts_utils import get_dataset_knowledge
+from agents.prompts.prompts_utils import get_dataset_knowledge, get_domain_knowledge
 
 class IterationInstructions(BaseModel):
     data_exploration_instructions: str = Field(
@@ -138,6 +138,10 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
     <dataset_knowledge_from_dataset_description_md>
     {get_dataset_knowledge(config)}
     </dataset_knowledge_from_dataset_description_md>
+
+    <domain_knowledge>
+    {get_domain_knowledge()}
+    </domain_knowledge>
 
     <iteration_history>
     {len(iter_to_outputs)} iterations completed in the current run so far

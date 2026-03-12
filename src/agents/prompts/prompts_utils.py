@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 def get_system_prompt(config):
     train_csv_path = config.agent_dataset_dir / "train.csv"
@@ -54,6 +55,12 @@ def get_dataset_knowledge(config):
         metadata = json.loads((config.prepared_dataset_dir / "metadata.json").read_text())
         dataset_knowledge += f"\n\nLabel mapping: {metadata.get('label_to_scalar', {})}"
     return dataset_knowledge
+
+def get_domain_knowledge():
+    domain_knowledge_path = Path(__file__).parent.parent.parent / "feedback" / "ml_drugdiscovery_clean.md"
+    with open(domain_knowledge_path) as f:
+        domain_knowledge = f.read()
+    return domain_knowledge
 
 def get_iteration_0_prompt(config):
     return f"""
