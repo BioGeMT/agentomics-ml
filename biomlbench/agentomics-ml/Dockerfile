@@ -1,7 +1,13 @@
 FROM biomlbench-env
 
+# Proxy settings for network access during build
+ENV http_proxy=http://proxy.um.edu.mt:80
+ENV https_proxy=http://proxy.um.edu.mt:80
+ENV HTTP_PROXY=http://proxy.um.edu.mt:80
+ENV HTTPS_PROXY=http://proxy.um.edu.mt:80
+
 # Always set -y to conda install commands
-ENV CONDA_ALWAYS_YES=true 
+ENV CONDA_ALWAYS_YES=true
 # Cache conda packages in a temp directory (removed after build - reduces image size)
 ENV CONDA_PKGS_DIRS=/tmp/conda-pkgs
 # Similar as above but for pip

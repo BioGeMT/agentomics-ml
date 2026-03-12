@@ -420,6 +420,7 @@ def parse_args():
     parser.add_argument('--provider', type=str, default='openrouter', help='Provider name (e.g., openai, openrouter)')
     parser.add_argument('--user-prompt', type=str, default=None, help='Custom user prompt to guide the agent')
     parser.add_argument('--split-allowed-iterations', type=int, help='Number of initial iterations that allow the agent to split the data into training and validation sets')
+    parser.add_argument('--exploration-iterations', type=int, default=4, help='Number of initial iterations that should focus on baseline/exploration models')
 
     args = parser.parse_args()
     return args
@@ -481,6 +482,7 @@ if __name__ == '__main__':
         tags=args.tags,
         provider=args.provider,
         split_allowed_iterations=args.split_allowed_iterations,
+        exploration_iterations=args.exploration_iterations,
         on_new_best_callbacks=[generate_preds_for_biomlbench_proteingym if is_proteingym else generate_preds_for_biomlbench],
         on_iteration_start_callbacks=[save_run_dir_for_biomlbench],
         timeout=args.timeout,

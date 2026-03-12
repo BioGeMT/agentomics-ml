@@ -18,6 +18,7 @@ timeout $TIME_LIMIT_SECS /opt/conda/envs/agentomics-env/bin/python /home/agent/s
     --model $MODEL \
     --iterations $ITERATIONS \
     --user-prompt "$USER_PROMPT" \
+    --exploration-iterations $EXPLORATION_ITERATIONS \
     --split-allowed-iterations $SPLIT_ALLOWED_ITERATIONS \
     --split-timeout $SPLIT_TIME_LIMIT_SECS \
     --timeout $TIME_LIMIT_SECS \
