@@ -170,9 +170,11 @@ def create_time_plots(fin_df):
         non_nan_time_to_wbtest = [(time, wbtest) for time,wbtest in time_to_wbtest if not pd.isna(wbtest)]
         non_nan_wbtest = np.array([wbtest for time,wbtest in non_nan_time_to_wbtest])
 
-        worst_test_metric = min(non_nan_wbtest)
-        best_test_metric = max(non_nan_wbtest)
-        normalized_would_be_test = (non_nan_wbtest - worst_test_metric) / (best_test_metric - worst_test_metric)
+        lower_is_better = row['main_metric'] == 'MAE'
+        worst_test_metric = max(non_nan_wbtest) if lower_is_better else min(non_nan_wbtest)
+        best_test_metric  = min(non_nan_wbtest) if lower_is_better else max(non_nan_wbtest)
+        normalized_would_be_test = (worst_test_metric - non_nan_wbtest) / (worst_test_metric - best_test_metric) if lower_is_better \
+            else (non_nan_wbtest - worst_test_metric) / (best_test_metric - worst_test_metric)
         if(best_test_metric == worst_test_metric):
             assert all(pd.isna(normalized_would_be_test)) or len(set(normalized_would_be_test)) == 1, normalized_would_be_test
             normalized_would_be_test = [1 for _ in normalized_would_be_test]
@@ -185,7 +187,7 @@ def create_time_plots(fin_df):
         times_to_fill = all_timestamps #across all experiments
         new_time_to_norm_wouldbetest = {}
         old_time_to_norm_wouldbetest = row[col]
-        last_norm_wouldbetest = 0 #TODO treat non-existing models as non-existing, or as 0?
+        last_norm_wouldbetest = None
         for time in times_to_fill:
             if time in old_time_to_norm_wouldbetest.keys():
                 new_time_to_norm_wouldbetest[time] = old_time_to_norm_wouldbetest[time]
@@ -229,6 +231,30 @@ def create_time_plots(fin_df):
     st_fin_df['time_to_norm_wouldbetest'] = st_fin_df.apply(lambda x: add_time_to_norm_wouldbetest(x, to_normalize_col='would_be_test'), axis=1)
     st_fin_df['time_to_norm_val_mainmetric'] = st_fin_df.apply(lambda x: add_time_to_norm_wouldbetest(x, to_normalize_col='best_val_metric_so_far'), axis=1)
 
+    def check_monotone(row):
+        import re as _re
+        col = 'best_val_metric_so_far'
+        s = row[col]
+        if pd.isna(s):
+            return
+        s = _re.sub(r'np\.float64\(([^)]+)\)', r'\1', s)
+        s = _re.sub(r'\bnan\b', 'None', s)
+        vals = [v for v in ast.literal_eval(s) if v is not None]
+        if len(vals) < 2:
+            return
+        lower_is_better = row.get('main_metric') == 'MAE'
+        for i in range(1, len(vals)):
+            if lower_is_better:
+                assert vals[i] <= vals[i-1] + 1e-9, \
+                    f"{col} not non-increasing at index {i} for run {row.get('run_name')}: {vals[i-1]} -> {vals[i]}"
+            else:
+                assert vals[i] >= vals[i-1] - 1e-9, \
+                    f"{col} not non-decreasing at index {i} for run {row.get('run_name')}: {vals[i-1]} -> {vals[i]}"
+        print('monotonicity OK')
+
+    st_fin_df.apply(check_monotone, axis=1)
+
+
     all_timestamps_lists_test = st_fin_df.apply(lambda x: list(x['time_to_norm_wouldbetest'].keys()), axis=1).values
     all_timestamps_lists_val = st_fin_df.apply(lambda x: list(x['time_to_norm_val_mainmetric'].keys()), axis=1).values
 
@@ -243,7 +269,8 @@ def create_time_plots(fin_df):
 
     plot_test_progression(col='unfolded_time_to_norm_wouldbetest', groupby='domain', ylabel='Normalized test score')
     plot_test_progression(col='unfolded_time_to_norm_val_mainmetric', groupby='domain', ylabel='Normalized validation score')
-    plot_test_progression(col='unfolded_time_to_norm_val_mainmetric', groupby='dataset', legend=False, ylabel='Normalized best validation score')
+    plot_test_progression(col='unfolded_time_to_norm_val_mainmetric', groupby='dataset', legend=False, ylabel='Normalized per dset validation score')
+    plot_test_progression(col='unfolded_time_to_norm_val_mainmetric', groupby='run_name', legend=False, ylabel='Normalized per run validation score')
 
 
 def create_corr_dist_plot(fin_df):
