@@ -183,7 +183,7 @@ async def get_feedback(config, is_new_best, model, iteration, iter_to_outputs, i
     The agent will have access to the following resources: {config.get_resources_summary()}
 
     The iteration history consists of experiments that used some train/validation split strategy (S), data representation (R), and model architecture (A) combinations (S x R x A).
-    Strongly consider what is contained in the provided domain knowledge for choosing your next (S X R X A) combination.
+    When choosing the next (S x R x A) combination to explore, always prioritize representations and architectures mentioned in the <domain_knowledge> block that have not been tried yet. Ensembles should be the absolute last resort, only if all suitable representations and architectures from the <domain_knowledge> block have already been tried.
     Based on the iteration history and remaining time choose to either:
     A) explore combinations (S x R x A) not present in the iteration history 
     B) further develop an existing promising (S x R x A) combination. If the iteration history already contains a further developed version of a (S x R x A) combination that did not result in a validation {config.val_metric} improvement, you must not develop it further again.
