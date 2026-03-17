@@ -62,7 +62,7 @@ def compute_best_val_metric_so_far(ordered_val_metrics_array, metric_name):
         raise Exception('unknown metric', metric_name)
     best_so_far = []
     current_best = None
-    for val in ordered_val_metrics_array:
+    for val in ordered_val_metrics_array.values():
         if val is not None:
             val = float(val)
         if current_best is None:
@@ -133,13 +133,14 @@ def generate_iterative_runs(tags, path, gb_leaderboard, train_datasize_dict, tes
         iterations_completed = history_data['validation/snapshot_reset'].last_valid_index() + 1
         run_data['number_of_trainval_splits'] = (history_data['validation/snapshot_reset'].values == 1).sum()
         run_data['iterations_completed'] = iterations_completed
+        main_metric_name = run_data['val_metric']
+        run_data['iterations_that_produced_metrics'] = len(history_data[f"validation/{main_metric_name}"].replace('NaN', np.nan).dropna().values[:iterations_completed])
         get_clean_data = get_clean_data_factory(history_data, iterations_completed)
 
         #TODO can be used to analyse split frequency
         # val_split_changed_arr = get_clean_data('validation/snapshot_reset')
         # val_split_changed_dict = get_clean_data('validation/snapshot_reset', dict_mode=True)
 
-        main_metric_name = run_data['val_metric']
         main_metric_validation_dict = get_clean_data(f"validation/{main_metric_name}", dict_mode=True)
         assert all([not pd.isna(v) for v in main_metric_validation_dict.values()]), main_metric_validation_dict
         if f"stealth_test/{main_metric_name}" in history_data.keys():
@@ -266,6 +267,7 @@ def generate_iterative_runs(tags, path, gb_leaderboard, train_datasize_dict, tes
     df['best_iteration_at_h'] = df['best_iteration_at_%_of_total'] * 8 #8 hour runs
     df['log_train_size'] = np.log(df['train_size'])
     df['log_test_size'] = np.log(df['test_size'])
+    df['iteration%_produced_metrics'] = df['iterations_that_produced_metrics']/df['iterations_completed']
     df['domain'] = df.apply(dataset_type_to_domain,axis=1) #8 hour runs
 
     # Filter old small molecule runs without proper FMs
@@ -277,11 +279,23 @@ def generate_iterative_runs(tags, path, gb_leaderboard, train_datasize_dict, tes
     )
     filtered[['run_name', 'is_max%_on_its_dataset']].to_csv('./paper_tables/best_run_names.csv')
 
+    for col in [
+        'common_val_test_iters_count', 
+        'val_stealth_mainmetric_corr', 
+        'would_be_test', 
+        'stealth_test_per_iter_array', 
+        'stealth_test_per_iter_array_common', 
+        'valid_per_iter_array_common'
+    ]:
+        if col not in filtered:
+            filtered[col] = None
 
     cols_to_keep = [
         'run_name', 'tags', 'dataset', 'task_type', 'model_name', 'main_metric', 
         'feedback_model_name',
         'iterations_completed',
+        'iterations_that_produced_metrics',
+        'iteration%_produced_metrics',
         'best_iteration_logged', 'best_iter_validation_mainmetric',
         'successful_run',  'dataset_type',
         'best_iter_test_mainmetric', 'number_of_trainval_splits',

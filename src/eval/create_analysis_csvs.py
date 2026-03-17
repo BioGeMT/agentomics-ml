@@ -101,13 +101,19 @@ def get_dset_domain(dset):
     return 'Regulatory Genomics'
 
 
-def generate_zeroshot_summaries(zeroshot_df: pd.DataFrame, dset_to_metric, gb_leaderboard):
+def generate_zeroshot_summaries(zeroshot_df: pd.DataFrame, dset_to_metric, gb_leaderboard, file_name='zeroshot_stats.csv'):
     import numpy as np
     import pandas as pd
 
     gb_mask = zeroshot_df['dataset'].isin(gb_leaderboard.keys())
     zeroshot_df.loc[gb_mask, 'leaderboard%'] = zeroshot_df[gb_mask].apply(
         lambda x: 100*sum(x[dset_to_metric[x['dataset']]] > np.array(gb_leaderboard[x['dataset']]))/len(gb_leaderboard[x['dataset']]) if not pd.isna(x[dset_to_metric[x['dataset']]]) else None, axis=1)
+
+    for column in ['biomlbench/leaderboard_percentile', 'MAE', 'PEARSON', 'SPEARMAN', 'ACC', 'AUROC', 'AUPRC']:
+        # if col doesnt exist, add an empty one
+        if column not in zeroshot_df.columns:
+            zeroshot_df[column] = None
+
     zeroshot_df.loc[~gb_mask, 'leaderboard%'] = zeroshot_df.loc[~gb_mask, 'biomlbench/leaderboard_percentile']
     zeroshot_df['domain'] = zeroshot_df.apply(lambda x: get_dset_domain(x['dataset']), axis=1)
 
@@ -126,6 +132,7 @@ def generate_zeroshot_summaries(zeroshot_df: pd.DataFrame, dset_to_metric, gb_le
 
             leaderboard_perc_mean=('leaderboard%', 'mean'),
             leaderboard_perc_std=('leaderboard%', 'std'),
+            leaderboard_perc_sem=('leaderboard%', 'sem'),
 
         )
         .reset_index()
@@ -145,6 +152,8 @@ def generate_zeroshot_summaries(zeroshot_df: pd.DataFrame, dset_to_metric, gb_le
 
             leaderboard_perc_mean=('leaderboard%', 'mean'),
             leaderboard_perc_std=('leaderboard%', 'std'),
+            leaderboard_perc_sem=('leaderboard%', 'sem'),
+
 
         )
     ).reset_index()
@@ -163,12 +172,14 @@ def generate_zeroshot_summaries(zeroshot_df: pd.DataFrame, dset_to_metric, gb_le
 
             leaderboard_perc_mean=('leaderboard%', 'mean'),
             leaderboard_perc_std=('leaderboard%', 'std'),
+            leaderboard_perc_sem=('leaderboard%', 'sem'),
+
 
         )
     
     zeroshot_summary_all['dataset'] = ['All Domains']
     zeroshot_info_df = pd.concat([zeroshot_summary,zeroshot_summary_all,zeroshot_summary_domains])
-    zeroshot_info_df.to_csv('./paper_tables/zeroshot_stats.csv')
+    zeroshot_info_df.to_csv(f'./paper_tables/{file_name}')
 
 
 def generate_arch_csv(fin_df):
@@ -289,7 +300,7 @@ def generate_arch_csv(fin_df):
     return arch_df_extra
 
 
-def create_group_summaries(fin_df):
+def create_group_summaries(fin_df, suffix=''):
     all_summary = (
         fin_df
         .groupby(lambda _: 0)
@@ -298,11 +309,17 @@ def create_group_summaries(fin_df):
             leaderboard_mean=('leaderboard%', 'mean'),
             leaderboard_std=('leaderboard%', 'std'),
             leaderboard_var=('leaderboard%', 'var'),
+            leaderboard_sem=('leaderboard%', 'sem'),
+
             run_name_count=('run_name', 'count'),
             is_new_sota_sum=('is_new_sota', 'sum'),
             usd_cost_mean=('usd_cost', 'mean'),
             cost_per_iter_mean=('cost_per_iter', 'mean'),
             iterations_completed_mean=('iterations_completed', 'mean'),
+            iterations_that_produced_metrics_mean=('iterations_that_produced_metrics', 'mean'),
+            iterations_that_produced_metrics_std=('iterations_that_produced_metrics', 'std'),
+            iterations_perc_that_produced_metrics_mean=('iteration%_produced_metrics', 'mean'),
+            iterations_perc_that_produced_metrics_std=('iteration%_produced_metrics', 'std'),
             number_of_trainval_splits_mean=('number_of_trainval_splits', 'mean'),
             best_iteration_logged_mean=('best_iteration_logged', 'mean'),
             successful_run_sum=('successful_run', 'sum'),
@@ -317,15 +334,22 @@ def create_group_summaries(fin_df):
             best_iter_test_mainmetric_mean=('best_iter_test_mainmetric', 'mean'),
             best_iter_test_mainmetric_max=('best_iter_test_mainmetric', 'max'),
             best_iter_test_mainmetric_min=('best_iter_test_mainmetric', 'min'),
+            best_iter_test_mainmetric_std=('best_iter_test_mainmetric', 'std'),
+            best_iter_test_mainmetric_var=('best_iter_test_mainmetric', 'var'),
             human_sota_max=('human_sota', 'max'),
             leaderboard_mean=('leaderboard%', 'mean'),
             leaderboard_std=('leaderboard%', 'std'),
             leaderboard_var=('leaderboard%', 'var'),
+            leaderboard_sem=('leaderboard%', 'sem'),
             run_name_count=('run_name', 'count'),
             is_new_sota_sum=('is_new_sota', 'sum'),
             usd_cost_mean=('usd_cost', 'mean'),
             cost_per_iter_mean=('cost_per_iter', 'mean'),
             iterations_completed_mean=('iterations_completed', 'mean'),
+            iterations_that_produced_metrics_mean=('iterations_that_produced_metrics', 'mean'),
+            iterations_that_produced_metrics_std=('iterations_that_produced_metrics', 'std'),
+            iterations_perc_that_produced_metrics_mean=('iteration%_produced_metrics', 'mean'),
+            iterations_perc_that_produced_metrics_std=('iteration%_produced_metrics', 'std'),            
             number_of_trainval_splits_mean=('number_of_trainval_splits', 'mean'),
             best_iteration_logged_mean=('best_iteration_logged', 'mean'),
             successful_run_sum=('successful_run', 'sum'),
@@ -339,13 +363,18 @@ def create_group_summaries(fin_df):
         .agg(
             best_iter_test_mainmetric_mean=('best_iter_test_mainmetric', 'mean'),
             leaderboard_mean=('leaderboard%', 'mean'),
-            leaderboardboard_std=('leaderboard%', 'std'),
+            leaderboard_std=('leaderboard%', 'std'),
             leaderboard_var=('leaderboard%', 'var'),
+            leaderboard_sem=('leaderboard%', 'sem'),
             run_name_count=('run_name', 'count'),
             is_new_sota_sum=('is_new_sota', 'sum'),
             usd_cost_mean=('usd_cost', 'mean'),
             cost_per_iter_mean=('cost_per_iter', 'mean'),
             iterations_completed_mean=('iterations_completed', 'mean'),
+            iterations_that_produced_metrics_mean=('iterations_that_produced_metrics', 'mean'),
+            iterations_that_produced_metrics_std=('iterations_that_produced_metrics', 'std'),
+            iterations_perc_that_produced_metrics_mean=('iteration%_produced_metrics', 'mean'),
+            iterations_perc_that_produced_metrics_std=('iteration%_produced_metrics', 'std'),            
             number_of_trainval_splits_mean=('number_of_trainval_splits', 'mean'),
             best_iteration_logged_mean=('best_iteration_logged', 'mean'),
             successful_run_sum=('successful_run', 'sum'),
@@ -353,9 +382,9 @@ def create_group_summaries(fin_df):
         )
         .reset_index()
     )
-    per_dataset_summary.to_csv('./paper_tables/agg_per_dataset_agentomics.csv')
-    per_dataset_type_summary.to_csv('./paper_tables/agg_per_domain_agentomics.csv')
-    all_summary.to_csv('./paper_tables/agg_all_agentomics.csv')
+    per_dataset_summary.to_csv(f'./paper_tables/agg_per_dataset_agentomics{suffix}.csv')
+    per_dataset_type_summary.to_csv(f'./paper_tables/agg_per_domain_agentomics{suffix}.csv')
+    all_summary.to_csv(f'./paper_tables/agg_all_agentomics{suffix}.csv')
 
 
 def generate_corr_tables(fin_df):
@@ -367,21 +396,25 @@ def generate_corr_tables(fin_df):
             return None
         assert len(sub_df) == 1
         iter_to_nonnan_wouldbetest = {}
-        assert len(sub_df[0:1]['would_be_test'].values[0]) == sub_df['iterations_completed'].values[0]
+        assert len(sub_df[0:1]['would_be_test'].values[0]) == sub_df['iterations_completed'].values[0], f"{len(sub_df[0:1]['would_be_test'].values[0])} != {sub_df['iterations_completed'].values[0], sub_df['run_name']}"
         for i, would_be_test_value in enumerate(sub_df[0:1]['would_be_test'].values[0]):
             if not pd.isna(would_be_test_value):
                 iter_to_nonnan_wouldbetest[i] = would_be_test_value
 
-        worst_test_metric = min(iter_to_nonnan_wouldbetest.values())
-        best_test_metric = max(iter_to_nonnan_wouldbetest.values())
+        lower_is_better = row['main_metric'] in ['MAE', 'RMSE', 'LOG_LOSS']
+        worst_test_metric = max(iter_to_nonnan_wouldbetest.values()) if lower_is_better else min(iter_to_nonnan_wouldbetest.values())
+        best_test_metric  = min(iter_to_nonnan_wouldbetest.values()) if lower_is_better else max(iter_to_nonnan_wouldbetest.values())
         best_iter = int(sub_df[0:1]['best_iteration_logged'].values[0])
         if best_iter not in iter_to_nonnan_wouldbetest.keys():
             print('warning', sub_df[0:1]['run_name'].values[0], 'missing best iter test value')
-            return None 
+            return None
         best_iter_wouldbetest = iter_to_nonnan_wouldbetest[best_iter]
         if(best_test_metric - worst_test_metric) == 0:
             return 1
-        normalized_best_iter_wouldbetest = (best_iter_wouldbetest - worst_test_metric) / (best_test_metric - worst_test_metric)
+        if lower_is_better:
+            normalized_best_iter_wouldbetest = (worst_test_metric - best_iter_wouldbetest) / (worst_test_metric - best_test_metric)
+        else:
+            normalized_best_iter_wouldbetest = (best_iter_wouldbetest - worst_test_metric) / (best_test_metric - worst_test_metric)
         return normalized_best_iter_wouldbetest
     def compute_correlation_table(df):
         import pandas as pd
@@ -395,6 +428,8 @@ def generate_corr_tables(fin_df):
             ('log_train_size', 'leaderboard%'),
             ('log_test_size', 'leaderboard%'),
             ('iterations_completed', 'leaderboard%'),
+            ('iterations_that_produced_metrics', 'leaderboard%'),
+            ('iteration%_produced_metrics', 'leaderboard%'),
         ]
         corr_pairs_st = [
             ('log_train_size', 'val_stealth_mainmetric_corr'),
@@ -407,12 +442,15 @@ def generate_corr_tables(fin_df):
         
         # Compute overall correlations
         results = {f"{x} × {y} pearson": df[[x, y]].corr(method='pearson').iloc[0, 1] for x, y in corr_pairs}
+        results = {**results, **{f"{x} × {y} spearman": df[[x, y]].corr(method='spearman').iloc[0, 1] for x, y in corr_pairs}}
         results_st = {f"{x} × {y} pearson": sub_df_with_testval_corr[[x, y]].corr(method='pearson').iloc[0, 1] for x, y in corr_pairs_st}
+        results_st = {**results_st, **{f"{x} × {y} spearman": sub_df_with_testval_corr[[x, y]].corr(method='spearman').iloc[0, 1] for x, y in corr_pairs_st}}
         for k,v in results_st.items():
             results[k] = v
 
         for col in ['best_iteration_at_%_of_total','best_iteration_at_h', 'leaderboard%', 'val_stealth_mainmetric_corr', 'cost_per_iter', 'duration_per_iter', 'iterations_completed', 'usd_cost']:
             results[col] = f"{df[col].mean():.3f} ± {df[col].std():.3f}"
+        results['val_stealth_mainmetric_corr_median'] = f"{sub_df_with_testval_corr['val_stealth_mainmetric_corr'].median():.3f}"
         
         return pd.Series(results)
     
@@ -428,7 +466,7 @@ def main():
     generate_rg_leaderboard()
     zeroshot_df = generate_zeroshot_runs(tags=["ismb2026_zeroshot_v1", "imsb_2026_zeroshot_v1"], path='./paper_tables/zeroshots.csv')
     dataset_to_metric = get_dset_to_mainmetric()
-    generate_zeroshot_summaries(zeroshot_df, dataset_to_metric, get_gb_leaderboard())
+    generate_zeroshot_summaries(zeroshot_df, dataset_to_metric, get_gb_leaderboard(), file_name='zeroshot_stats.csv')
     train_datasize_dict, test_datasize_dict = generate_dataset_sizes()
     
     agentomics_all_df = generate_iterative_runs(tags=[
@@ -444,7 +482,6 @@ def main():
         path='./paper_tables/agentomics_all.csv', 
         gb_leaderboard=get_gb_leaderboard()
     )
-    # agen
 
     generate_arch_csv(agentomics_all_df)
     create_group_summaries(agentomics_all_df)
