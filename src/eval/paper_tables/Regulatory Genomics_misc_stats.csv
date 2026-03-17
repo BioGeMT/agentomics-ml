@@ -2,12 +2,25 @@
 log_train_size × leaderboard% pearson,-0.34889608230671215
 log_test_size × leaderboard% pearson,-0.19643775832077418
 iterations_completed × leaderboard% pearson,0.11935272756664586
+iterations_that_produced_metrics × leaderboard% pearson,0.10195748036969446
+iteration%_produced_metrics × leaderboard% pearson,-0.07111138170072882
+log_train_size × leaderboard% spearman,-0.36950417228136045
+log_test_size × leaderboard% spearman,-0.13856406460551018
+iterations_completed × leaderboard% spearman,0.45477715654866824
+iterations_that_produced_metrics × leaderboard% spearman,0.4469102284132663
+iteration%_produced_metrics × leaderboard% spearman,-0.04386859104550876
 log_train_size × val_stealth_mainmetric_corr pearson,0.44088887320688774
 log_test_size × val_stealth_mainmetric_corr pearson,0.5308606634221559
 val_stealth_mainmetric_corr × leaderboard% pearson,0.24635190334483917
 norm_testmetric_achieved × val_stealth_mainmetric_corr pearson,-0.04988429899881859
 norm_testmetric_achieved × log_train_size pearson,0.3333712406228167
 norm_testmetric_achieved × leaderboard% pearson,-0.258377210895351
+log_train_size × val_stealth_mainmetric_corr spearman,0.7528517213141737
+log_test_size × val_stealth_mainmetric_corr spearman,0.7855844048495726
+val_stealth_mainmetric_corr × leaderboard% spearman,-0.23433797326572087
+norm_testmetric_achieved × val_stealth_mainmetric_corr spearman,0.3497448049241455
+norm_testmetric_achieved × log_train_size spearman,0.4835493266857059
+norm_testmetric_achieved × leaderboard% spearman,-0.08105148404374489
 best_iteration_at_%_of_total,0.809 ± 0.154
 best_iteration_at_h,6.471 ± 1.232
 leaderboard%,60.152 ± 42.385
@@ -16,3 +29,4 @@ cost_per_iter,0.440 ± 0.065
 duration_per_iter,0.650 ± 0.270
 iterations_completed,15.533 ± 9.486
 usd_cost,6.558 ± 4.867
+val_stealth_mainmetric_corr_median,0.993
