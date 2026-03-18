@@ -152,26 +152,23 @@ def get_higher_is_better_map():
     return {name: metric.higher_is_better for name, metric in all_metrics.items()}
 
 def get_default_val_metric(task_type: str) -> str:
-    task = (task_type or "").strip().lower()
-    if task == "classification":
+    if task_type == "classification":
         return "AUROC"
-    if task == "regression":
+    if task_type == "regression":
         return "MAE"
-    raise ValueError(f"Unknown task_type: {task_type!r}. Expected 'classification' or 'regression'.")
+    raise ValueError(f"Unknown task_type: {task_type}. Expected 'classification' or 'regression'.")
 
 def resolve_val_metric(task_type: str, val_metric: Optional[str] = None) -> str:
     """Resolve a validation metric for a task, applying defaults when omitted."""
-    task = (task_type or "").strip().lower()
     if not val_metric:
-        return get_default_val_metric(task)
+        return get_default_val_metric(task_type)
 
-    metric = val_metric.strip().upper()
-    allowed = get_task_to_metrics_names().get(task)
+    allowed = get_task_to_metrics_names().get(task_type)
     if not allowed:
-        raise ValueError(f"Unknown task_type: {task_type!r}. Expected 'classification' or 'regression'.")
-    if metric not in allowed:
+        raise ValueError(f"Unknown task_type: {task_type}. Expected 'classification' or 'regression'.")
+    if val_metric not in allowed:
         raise ValueError(
-            f"Validation metric '{metric}' is invalid for task type '{task}'. "
+            f"Validation metric '{val_metric}' is invalid for task type '{task_type}'. "
             f"Allowed metrics: {', '.join(allowed)}"
         )
-    return metric
+    return val_metric
