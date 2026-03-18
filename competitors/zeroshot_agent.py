@@ -152,10 +152,10 @@ def generate_and_run_scripts(client, model, data_dir, work_dir, run_name, temper
         - Train a robust model suitable for the given dataset
         - Save the trained model to: {submission_dir}/model.pkl using joblib or pickle
         - Save all model artifacts to {submission_dir}/
-        - Support optional CLI args:
+        - Support CLI args:
           --train-data (default: {train_csv_path})
           --validation-data (optional; if provided, use it as validation instead of splitting train)
-          --artifacts-dir (default: {submission_dir})
+          --artifacts-dir (Directory to store all the artifacts from the training process (e.g. model file). Default: {submission_dir})
         - If --validation-data is not provided, split the train file to train and validation.
         - Do not hardcode /home/data paths inside logic.
 
