@@ -11,7 +11,7 @@ Complete reference for `run.sh` command-line options.
 | `--iterations <n>` | Number of iterations | Prompted in interactive mode (default 5) |
 | `--val-metric <metric>` | Validation metric to optimize | Interactive selection |
 | `--timeout <seconds>` | Time limit for entire run | None |
-| `--run-python-timeout <seconds>` | Timeout for each model training execution | `21600` (6 hours) |
+| `--run-python-timeout <seconds>` | Timeout in seconds for each run_python tool execution - this will determine the maximum training time | `21600` (6 hours) |
 
 The run stops when either the iteration count is reached or the timeout expires.
 

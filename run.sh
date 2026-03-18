@@ -38,7 +38,7 @@ Required Arguments (for non-interactive runs):
   --iterations <N>    Number of iterations to run the agent (recommended more than 5).
   --timeout <int>   Amount of seconds the agent is allowed to run for. This or --iterations will dictate the duration, whichever will expire first. (recommended
   ~480s)
-  --run-python-timeout <int>  Timeout in seconds for each Python training execution (default: 21600, i.e. 6 hours).
+  --run-python-timeout <int>  Timeout in seconds for each run_python tool execution - this will determine the maximum training time (default: 21600, i.e. 6 hours).
   --split-allowed-iterations <N>    Number of initial iterations that are allowed to (re)split the data into train/validation (e.g., 1).
   --exploration-iterations <N>     Number of initial iterations that should focus on baseline/exploration models (e.g., 4).
   --val-metric <name> The metric to optimize (e.g., 'ACC').
