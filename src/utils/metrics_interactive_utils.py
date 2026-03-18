@@ -59,19 +59,3 @@ def display_metrics_table(task_type=None):
 
     console.print(Columns(boxes, padding=(0, 1), expand=False))
     return metrics_to_show
-
-def interactive_metric_selection(task_type=None, default=None):
-    """Get validation metric through interactive selection (requires TTY)."""
-    console = Console()
-    console.print("Selecting validation metric interactively...", style="cyan")
-    console.print("Select validation metric for model evaluation:", style="cyan")
-    showed_metrics = display_metrics_table(task_type)
-
-    choice = get_user_input_for_int(
-        prompt_text=f"Select metric number (1-{len(showed_metrics)})",
-        valid_options=list(range(1, len(showed_metrics) + 1)),
-    )
-    
-    selected_metric = showed_metrics[choice-1]
-    console.print(f"Selected metric: {selected_metric}", style="green")
-    return selected_metric
