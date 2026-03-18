@@ -144,7 +144,7 @@ def main():
         exploration_iterations=args.exploration_iterations,
         timeout=args.timeout,
         split_timeout=args.split_timeout,
-        run_python_timeout=args.run_python_timeout,
+        run_python_timeout=args.run_python_timeout
     ))
     return 0
         

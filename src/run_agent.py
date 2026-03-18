@@ -52,7 +52,7 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric,
         exploration_iterations=exploration_iterations,
         time_deadline=time_deadline,
         split_time_deadline=split_time_deadline,
-        run_python_tool_timeout=run_python_tool_timeout,
+        run_python_tool_timeout=run_python_tool_timeout
     )
     ensure_workspace_folders(config)
     create_run_and_snapshot_dirs(config)
@@ -260,7 +260,7 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
             prepared_test_sets_dir=prepared_test_sets_dir,
             time_deadline=time_deadline,
             split_time_deadline=split_time_deadline,
-            run_python_tool_timeout=run_python_timeout,
+            run_python_tool_timeout=run_python_timeout
         )
     except TimeoutError:
         print('Timeout reached')
@@ -286,7 +286,7 @@ async def run_experiment_from_terminal():
         exploration_iterations=args.exploration_iterations,
         timeout=args.timeout,
         split_timeout=args.split_timeout,
-        run_python_timeout=args.run_python_timeout,
+        run_python_timeout=args.run_python_timeout
     )
 
 if __name__ == "__main__":
