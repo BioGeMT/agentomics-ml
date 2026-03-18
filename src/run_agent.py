@@ -219,7 +219,7 @@ def parse_args():
     parser.add_argument('--split-allowed-iterations', type=int, default=1, help='Number of initial iterations that allow the agent to split the data into training and validation sets')
     parser.add_argument('--exploration-iterations', type=int, default=4, help='Number of initial iterations that should focus on baseline/exploration models')
     parser.add_argument("--split-timeout", type=int, help="Timeout before the data splitting is no longer allowed in seconds. If not provided, split iterations are used as the limit.")
-    parser.add_argument("--run-python-timeout", type=int, default=60 * 60 * 6, help="Timeout in seconds for each run_python tool execution (default: 21600)")
+    parser.add_argument("--run-python-timeout", type=int, default=None, help="Timeout in seconds for each run_python tool execution (default: 21600)")
     parser.add_argument('--user-prompt', type=str, default="Develop a machine learning model that generalizes well to new unseen data.", help='(Optional) Text to overwrite the default user prompt')
 
     val_metric_choices = get_classification_metrics_names() + get_regression_metrics_names()
@@ -228,7 +228,7 @@ def parse_args():
     return parser.parse_args()
 
 async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir,
-                          workspace_dir, tags, iterations, user_prompt, provider, timeout, split_timeout, run_python_timeout=60 * 60 * 6,
+                          workspace_dir, tags, iterations, user_prompt, provider, timeout, split_timeout, run_python_timeout=None,
                           split_allowed_iterations=1, exploration_iterations=4, on_new_best_callbacks=[], on_iteration_start_callbacks=[]):      
     setup_nonsensitive_dataset_files_for_agent(
         prepared_datasets_dir=Path(prepared_datasets_dir),
