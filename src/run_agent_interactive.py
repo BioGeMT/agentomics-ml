@@ -5,14 +5,13 @@ import os
 from pathlib import Path
 from rich.console import Console
 from rich.panel import Panel
-import json
 import dotenv
 
 from utils.dataset_utils import get_all_prepared_datasets_info
 from utils.datasets_interactive_utils import interactive_dataset_selection, print_datasets_table
 from utils.metrics_interactive_utils import display_metrics_table
 from utils.providers.provider import Provider, get_provider_and_api_key
-from utils.metrics import get_classification_metrics_names, get_regression_metrics_names, resolve_val_metric
+from utils.metrics import get_classification_metrics_names, get_regression_metrics_names
 from utils.env_utils import are_wandb_vars_available
 from utils.user_input import get_user_input_for_int
 from run_agent import run_experiment
@@ -103,7 +102,7 @@ def main():
         console.print("Wandb env variables not set. Logging to WANDB is disabled.", style="yellow")
         console.print("To setup wandb, provide WANDB_API_KEY, WANDB_PROJECT_NAME, and WANDB_ENTITY env variables", style="yellow")
     
-    # Go to interactive selection if dataset/model/val_metric not provided
+    # Go to interactive selection if dataset/model not provided
     print_welcome()
     if not dataset:
         datasets = get_all_prepared_datasets_info(paths["prepared_datasets_dir"], paths["prepared_test_sets_dir"])
@@ -111,16 +110,6 @@ def main():
         if not dataset:
             console.print("No dataset selected", style="red")
             return 1
-    
-    # Load metadata
-    prepared_dataset_path = Path(paths["prepared_datasets_dir"]) / dataset
-    metadata_path = prepared_dataset_path / "metadata.json"
-    metadata = json.loads(metadata_path.read_text())
-    task_type = metadata.get("task_type")
-
-    val_metric = resolve_val_metric(task_type, val_metric)
-    if not args.val_metric:
-        console.print(f"No --val-metric provided. Using default for {task_type}: {val_metric}", style="cyan")
     
     if not model:
         model = provider.interactive_model_selection(limit=50)
