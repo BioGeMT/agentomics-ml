@@ -464,7 +464,7 @@ def generate_corr_tables(fin_df):
 
 def main():
     generate_rg_leaderboard()
-    zeroshot_df = generate_zeroshot_runs(tags=["ismb2026_zeroshot_v1", "imsb_2026_zeroshot_v1"], path='./paper_tables/zeroshots.csv')
+    zeroshot_df = generate_zeroshot_runs(tags=["ismb2026_zeroshot_v1", "imsb_2026_zeroshot_v2"], path='./paper_tables/zeroshots.csv')
     dataset_to_metric = get_dset_to_mainmetric()
     generate_zeroshot_summaries(zeroshot_df, dataset_to_metric, get_gb_leaderboard(), file_name='zeroshot_stats.csv')
     train_datasize_dict, test_datasize_dict = generate_dataset_sizes()
