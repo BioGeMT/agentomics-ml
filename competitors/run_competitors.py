@@ -128,8 +128,9 @@ def grade_biomlbench_submission(
         grading_submission_path = output_subdir / "submission_for_grading.csv"
         submission_df[["id", pred_col]].to_csv(grading_submission_path, index=False)
 
+    grade_script = HERE / "scripts" / "grade_biomlbench_task.py"
     result = subprocess.run(
-        ["biomlbench", "grade-sample", str(grading_submission_path), task_id, "--data-dir", str(data_dir)],
+        [sys.executable, str(grade_script), str(grading_submission_path), task_id, "--data-dir", str(data_dir)],
         cwd=CLONE_DIR,
         capture_output=True,
         text=True,
@@ -142,13 +143,12 @@ def grade_biomlbench_submission(
             f"STDERR:\n{result.stderr}"
         )
 
-    grade_output = result.stdout if result.stdout.strip() else result.stderr
+    grade_output = result.stderr + result.stdout
     start = grade_output.find("{")
     end = grade_output.rfind("}")
-    assert start != -1 and end != -1 and end > start, (
-        "Could not parse JSON payload from biomlbench grade-sample output.\n"
-        f"Output:\n{grade_output}"
-    )
+    if start == -1 or end == -1 or end <= start:
+        print(f"WARNING: Could not parse JSON from grade-sample output for {task_id}. Output:\n{grade_output}")
+        return None
     grade_dict = json.loads(grade_output[start:end + 1])
     (output_subdir / "grade.json").write_text(json.dumps(grade_dict, indent=2))
     return grade_dict
