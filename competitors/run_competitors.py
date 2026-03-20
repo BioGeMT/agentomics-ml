@@ -372,8 +372,8 @@ def main() -> int:
                         output_subdir=output_subdir,
                         data_dir=DATA_DIR,
                     )
-                    assert "score" in grade_dict, f"Missing score in biomlbench grade output: {grade_dict}"
-                    metrics["biomlbench_score"] = float(grade_dict["score"])
+                    score = grade_dict.get("score") if grade_dict is not None else None
+                    metrics["biomlbench_score"] = float(score) if score is not None else float("nan")
                     inference_stage = "matches" if agent == "zeroshot" else "exists"
 
                 (output_subdir / "inference_stage.json").write_text(
@@ -403,6 +403,7 @@ def main() -> int:
                     project=os.environ["WANDB_PROJECT_NAME"],
                     entity=os.environ["WANDB_ENTITY"],
                     name=f"{dataset}-{agent}-{json.loads((artifact_dir / 'metadata.json').read_text())['created_at']}",
+                    tags=args.tag or [],
                     config={
                         "dataset": dataset,
                         "agent": agent,
@@ -434,6 +435,7 @@ def main() -> int:
                     project=os.environ["WANDB_PROJECT_NAME"],
                     entity=os.environ["WANDB_ENTITY"],
                     name=f"{dataset}-{agent}-{time.strftime('%Y-%m-%dT%H-%M-%S-%Z', time.gmtime())}",
+                    tags=args.tag or [],
                     config={
                         "dataset": dataset,
                         "agent": agent,
@@ -444,15 +446,15 @@ def main() -> int:
                 )
                 if is_agentomics_task(task_id):
                     failure_metrics = {
-                        "ACC": None,
-                        "AUPRC": None,
-                        "AUROC": None,
-                        "F1": None,
-                        "LOG_LOSS": None,
-                        "MCC": None,
+                        "ACC": float("nan"),
+                        "AUPRC": float("nan"),
+                        "AUROC": float("nan"),
+                        "F1": float("nan"),
+                        "LOG_LOSS": float("nan"),
+                        "MCC": float("nan"),
                     }
                 else:
-                    failure_metrics = {"biomlbench_score": None}
+                    failure_metrics = {"biomlbench_score": float("nan")}
 
                 wandb.log(failure_metrics)
                 wandb.finish()
