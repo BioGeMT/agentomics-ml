@@ -80,6 +80,7 @@ def main() -> None:
         "human_enhancers_ensembl",
         "human_ocr_ensembl",
     ]
+
     for name in dataset_names:
         print(f"[setup_tasks] Preparing dataset: {name}")
         generate_task(clone_dir, prepared_datasets_dir, prepared_test_sets_dir, templates_dir, competitors_dir, name)
