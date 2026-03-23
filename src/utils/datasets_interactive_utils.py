@@ -113,21 +113,8 @@ def prepare_all_datasets(datasets_dir: str, prepared_datasets_dir: str, prepared
     cannot_prepare = [d for d in datasets_info if not d["can_prepare"] and not d["is_prepared"]]
     
     if not need_preparation:
-        if already_prepared:
-            console.print(f"[green]All {len(already_prepared)} dataset(s) are already prepared![/green]")
-        else:
+        if not already_prepared:
             console.print("[yellow]No datasets can be prepared. Check for missing train.csv files.[/yellow]")
-        
-        console.print("")
-        console.print("[blue]Summary:[/blue]")
-        console.print(f"  Total datasets: {len(datasets_info)}")
-        console.print(f"  Already prepared: [green]{len(already_prepared)}[/green]")
-        console.print(f"  Cannot prepare: [red]{len(cannot_prepare)}[/red]")
-        
-        if already_prepared:
-            console.print("")
-            console.print("[green]Ready to use![/green]")
-        
         sys.exit(0)
     
     # Prepare datasets with progress display
@@ -182,19 +169,6 @@ def prepare_all_datasets(datasets_dir: str, prepared_datasets_dir: str, prepared
     if prepared_now > 0:
         print_datasets_table(datasets_info, "Final Preparation Results")
         console.print("")
-    
-    # Summary
-    console.print("[blue]Preparation Summary:[/blue]")
-    console.print(f"  Total datasets: {len(datasets_info)}")
-    console.print(f"  Already prepared: [green]{len(already_prepared)}[/green]")
-    console.print(f"  Prepared now: [green]{prepared_now}[/green]")
-    console.print(f"  Failed: [red]{failed_now}[/red]")
-    console.print(f"  Ready to use: [green]{len(already_prepared) + prepared_now}[/green]")
-    
-    console.print("")
-    
-    if prepared_now > 0:
-        console.print(f"[green]Successfully prepared {prepared_now} dataset(s)![/green]")
     
     if failed_now > 0:
         console.print("")
