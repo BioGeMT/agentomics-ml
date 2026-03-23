@@ -468,23 +468,6 @@ else
         export OPENROUTER_API_KEY="$TEMP_API_KEY"
     fi
 
-    if [ "$CPU_ONLY" = false ]; then
-        if ! docker_has_gpu; then
-            warn "GPU not available (nvidia-smi not found or Docker lacks GPU support)"
-            warn "Automatically switching to CPU-only mode"
-            warn "To suppress this warning, use --cpu-only flag"
-            CPU_ONLY=true
-        fi
-    fi
-
-    GPU_FLAGS=()
-    if [ "$CPU_ONLY" = false ]; then
-        GPU_FLAGS+=(--gpus all)
-        GPU_FLAGS+=(--env NVIDIA_VISIBLE_DEVICES=all)
-        info "GPU mode enabled"
-    else
-        info "Running in CPU-only mode"
-    fi
     OLLAMA_FLAGS=()
     if [ "$OLLAMA" = true ]; then
         OLLAMA_FLAGS+=(--network="host")
@@ -507,6 +490,23 @@ else
 
     if [ "$USE_PROVISIONING_KEY" = true ]; then
         DOCKER_API_KEY_ENV_VARS+=(-e "OPENROUTER_API_KEY=${OPENROUTER_API_KEY}")
+    fi
+
+    if [ "$LIST_MODE" = false ]; then
+        if [ "$CPU_ONLY" = false ]; then
+            if ! docker_has_gpu; then
+                warn "GPU not available (nvidia-smi not found or Docker lacks GPU support)"
+                warn "Automatically switching to CPU-only mode"
+                warn "To suppress this warning, use --cpu-only flag"
+                CPU_ONLY=true
+            fi
+        fi
+
+        GPU_FLAGS=()
+        if [ "$CPU_ONLY" = false ]; then
+            GPU_FLAGS+=(--gpus all)
+            GPU_FLAGS+=(--env NVIDIA_VISIBLE_DEVICES=all)
+        fi
     fi
 
     if [ "$TEST_MODE" = true ]; then
