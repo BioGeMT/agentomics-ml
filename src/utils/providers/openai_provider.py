@@ -33,7 +33,7 @@ class OpenAiProvider(Provider):
         if not models:
             return
 
-        self.console.print(f"[bold blue]Available Models[/bold blue] ({len(models)} models)\n")
+        self.console.print(f"[white]Top models from {self.name}[/white]\n", style="underline")
 
         lines = []
         max_num_width = len(str(len(models)))

@@ -35,7 +35,6 @@ class Provider():
             response = requests.get(self.list_models_endpoint, headers=self.headers, timeout=10)
             response.raise_for_status()
             models = response.json().get("data", [])
-            self.console.print(f"Fetched {len(models)} models from {self.name}")
             return models
         except Exception as e:
             self.console.print(f"Failed to fetch models from {self.name}: {e}")
@@ -50,7 +49,7 @@ class Provider():
             print(f"No models available for {self.name}")
             return
         
-        table = Table(title=f"Available {self.name} Models ({len(models)})", box=box.ROUNDED)
+        table = Table(title=f"Top models from {self.name}", box=box.ROUNDED)
         table.add_column("#", style="cyan", no_wrap=True, width=4)
         table.add_column("Model Name", style="green")
         
