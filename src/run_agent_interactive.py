@@ -18,14 +18,6 @@ from run_agent import run_experiment
 
 console = Console()
 
-def print_welcome():
-    welcome_text = """
-===============================================
-Welcome to Agentomics-ML
-===============================================
-"""    
-    console.print(Panel(welcome_text, style="bold blue"))
-
 def check_tty_available():
     """Check if TTY is available for interactive operations."""
     return sys.stdin.isatty() and sys.stdout.isatty()
@@ -101,9 +93,8 @@ def main():
     if not are_wandb_vars_available():
         console.print("Wandb env variables not set. Logging to WANDB is disabled.", style="yellow")
         console.print("To setup wandb, provide WANDB_API_KEY, WANDB_PROJECT_NAME, and WANDB_ENTITY env variables", style="yellow")
-    
+        
     # Go to interactive selection if dataset/model not provided
-    print_welcome()
     if not dataset:
         datasets = get_all_prepared_datasets_info(paths["prepared_datasets_dir"], paths["prepared_test_sets_dir"])
         dataset = interactive_dataset_selection(datasets)
