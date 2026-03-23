@@ -22,6 +22,7 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
     ORANGE = '\033[38;5;208m'
+    PRETTY_BLUE = '\033[38;5;33m'
 
 def pretty_print(content, width=120, color=None):
     if color:
@@ -226,3 +227,6 @@ def pretty_print_node(node):
 def truncate_float(f, decimals=3):
     factor = 10 ** decimals
     return int(f * factor) / factor
+
+def print_phase(title: str):
+    print(f"\n{bcolors.BOLD}{bcolors.PRETTY_BLUE}■ {title}{bcolors.ENDC}\n")

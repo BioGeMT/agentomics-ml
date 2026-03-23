@@ -14,6 +14,7 @@ from utils.providers.provider import Provider, get_provider_and_api_key
 from utils.metrics import get_classification_metrics_names, get_regression_metrics_names
 from utils.env_utils import are_wandb_vars_available
 from utils.user_input import get_user_input_for_int
+from utils.printing_utils import print_phase
 from run_agent import run_experiment
 
 console = Console()
@@ -96,6 +97,7 @@ def main():
         
     # Go to interactive selection if dataset/model not provided
     if not dataset:
+        print_phase("Dataset Selection")
         datasets = get_all_prepared_datasets_info(paths["prepared_datasets_dir"], paths["prepared_test_sets_dir"])
         dataset = interactive_dataset_selection(datasets)
         if not dataset:
@@ -103,9 +105,11 @@ def main():
             return 1
     
     if not model:
+        print_phase("Model Selection")
         model = provider.interactive_model_selection(limit=50)
 
     if not iterations:
+        print_phase("Run Configuration")
         iterations = get_user_input_for_int("Enter number of iterations to run (Recommended more than 5):", default=5)
     
     # Run the agent
