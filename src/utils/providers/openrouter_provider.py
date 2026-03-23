@@ -165,7 +165,7 @@ class OpenRouterProvider(Provider):
                 providers[provider] = []
             providers[provider].append(model)
 
-        self.console.print(f"[bold blue]Available Models[/bold blue] ({len(models)} models from {len(providers)} companies)\n")
+        self.console.print(f"[white]Top models from {self.name}[/white]\n", style="underline")
 
         provider_names = {
             "openai": "OpenAI", "anthropic": "Anthropic", "google": "Google",
@@ -239,8 +239,7 @@ class OpenRouterProvider(Provider):
 
         self.console.print(Columns(col_renderables, padding=(0, 1), expand=False))
         self.console.print("\n[dim]Prices per million tokens[/dim]")
-        self.console.print("[dim]If target model is not displayed here, browse from OpenRouter: https://openrouter.ai/models and pass it through " \
-            "the --model argument to run.sh (e.g. ./run.sh --model openai/gpt-5-mini)[/dim]")
+        self.console.print("[dim]Not listed? Browse all models at https://openrouter.ai/models and use --model <id> (e.g. ./run.sh --model openai/gpt-5-codex-max)[/dim]")
         return display_order_models
 
     def interactive_model_selection(self, limit: int = 20) -> Optional[str]:

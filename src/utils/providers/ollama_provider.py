@@ -61,7 +61,7 @@ class OllamaProvider(Provider):
                 families[family] = []
             families[family].append(model)
 
-        self.console.print(f"[bold blue]Available Models[/bold blue] ({len(models)} models from {len(families)} families)\n")
+        self.console.print(f"[white]Top models from {self.name}[/white]", style="underline")
 
         family_boxes = []
         global_index = 1

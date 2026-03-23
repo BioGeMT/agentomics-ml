@@ -19,7 +19,7 @@ class AnthropicProvider(Provider):
         if models is None:
             models = self.fetch_models()
 
-        self.console.print(f"[bold blue]Available Models[/bold blue] ({len(models)} models)\n")
+        self.console.print(f"[white]Top models from {self.name}[/white]\n", style="underline")
 
         lines = []
         max_num_width = len(str(len(models)))
