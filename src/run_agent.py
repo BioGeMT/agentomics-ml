@@ -18,6 +18,7 @@ from utils.create_user import create_run_and_snapshot_dirs
 from utils.dataset_utils import setup_nonsensitive_dataset_files_for_agent
 from utils.fallbacks import save_splits_to_fallback, load_fallbacks_to_rundir
 from utils.config import Config
+from utils.printing_utils import print_phase
 from utils.exceptions import IterationRunFailed, FeedbackAgentFailed, AgentScriptFailed
 from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics, populate_iteration_dir, lock_split_files
 from utils.workspace_setup import ensure_workspace_folders
@@ -233,7 +234,8 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
                           split_allowed_iterations=1, exploration_iterations=4, on_new_best_callbacks=[], on_iteration_start_callbacks=[]):      
     task_type = get_task_type_from_prepared_dataset(Path(prepared_datasets_dir) / dataset_name)
     val_metric = resolve_val_metric(task_type, val_metric)
-    print(f"Using validation metric: {val_metric} (task type: {task_type})")
+
+    print_phase("Agentomics run started")
 
     setup_nonsensitive_dataset_files_for_agent(
         prepared_datasets_dir=Path(prepared_datasets_dir),
@@ -245,7 +247,6 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
     time_deadline = time.time() + timeout if timeout is not None else None
     split_time_deadline = time.time() + split_timeout if split_timeout is not None else None
     try:
-        print(f'Starting a run with a {timeout} second timeout')
         await timeouted_main(
             model_name=model,
             feedback_model_name=FEEDBACK_MODEL,

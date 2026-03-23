@@ -84,8 +84,7 @@ def prepare_all_datasets(datasets_dir: str, prepared_datasets_dir: str, prepared
         datasets_dir: Path to raw datasets directory
         prepared_datasets_dir: Path to prepared datasets directory
     """
-    console.print("[bold blue]Agentomics-ML Dataset Preparation[/bold blue]")
-    console.print("=" * 50)
+    console.print("[bold blue]■ Dataset Preparation[/bold blue]")
     console.print("")
     
     # Get initial dataset information
