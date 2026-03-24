@@ -11,70 +11,49 @@ from utils.dataset_utils import prepare_dataset, get_all_datasets_info
 
 console = Console()
 
-def print_datasets_table(datasets: List[Dict], title: str = "Dataset Preparation Status") -> None:
+def print_datasets_table(datasets: List[Dict], skip_status_column: bool = False) -> None:
     """
     Display datasets in a Rich table for preparation.
 
     Args:
         datasets: List of dataset dictionaries
-        title: Table title
     """
     if not datasets:
         console.print("[red]No datasets found[/red]")
         return
 
-    console.print(f"[bold blue]{title}[/bold blue] ({len(datasets)} datasets)\n")
-
-    name_lines = []
-    train_lines = []
-    val_lines = []
-    test_lines = []
-    status_lines = []
-
-    max_num_width = len(str(len(datasets)))
+    table = Table(border_style="cyan")
+    table.add_column("#", style="dim")
+    table.add_column("Dataset Name", style="white")
+    table.add_column("Train", justify="right")
+    table.add_column("Validation", justify="right")
+    table.add_column("Test", justify="right")
+    if not skip_status_column:
+        table.add_column("Status")
 
     for i, dataset in enumerate(datasets, 1):
-        num_str = str(i).rjust(max_num_width)
-        name_lines.append(f"[white]{num_str}[/white] [bold cyan]{dataset['name']}[/bold cyan]")
+        train = f"{dataset['train_rows']:,}" if dataset['train_rows'] > 0 else "[dim]N/A[/dim]"
+        val = f"{dataset['validation_rows']:,}" if dataset['validation_rows'] > 0 else "[dim]N/A[/dim]"
+        test = f"{dataset['test_rows']:,}" if dataset['test_rows'] > 0 else "[dim]N/A[/dim]"
 
-        if dataset['train_rows'] > 0:
-            train_lines.append(f"[green]{dataset['train_rows']:,}[/green]")
-        else:
-            train_lines.append("[dim]N/A[/dim]")
+        row = [str(i), dataset['name'], train, val, test]
 
-        if dataset['validation_rows'] > 0:
-            val_lines.append(f"[yellow]{dataset['validation_rows']:,}[/yellow]")
-        else:
-            val_lines.append("[dim]N/A (Will be created by agent)[/dim]")
+        if not skip_status_column:
+            status = dataset["status"]
+            if status in ("Already prepared", "Prepared"):
+                row.append(f"[green]✓ {status}[/green]")
+            elif status == "Ready to prepare":
+                row.append(f"[yellow]⏳ {status}[/yellow]")
+            elif status == "Failed":
+                row.append(f"[red]✗ {status}[/red]")
+            elif "Missing" in status or "Empty" in status:
+                row.append(f"[red]⚠ {status}[/red]")
+            else:
+                row.append(f"[red]{status}[/red]")
 
-        if dataset['test_rows'] > 0:
-            test_lines.append(f"[blue]{dataset['test_rows']:,}[/blue]")
-        else:
-            test_lines.append("[dim]N/A[/dim]")
+        table.add_row(*row)
 
-        status = dataset["status"]
-        if status == "Already prepared":
-            status_lines.append(f"[bold green]✓ {status}[/bold green]")
-        elif status == "Prepared":
-            status_lines.append(f"[bold green]✓ {status}[/bold green]")
-        elif status == "Ready to prepare":
-            status_lines.append(f"[bold yellow]⏳ {status}[/bold yellow]")
-        elif status == "Failed":
-            status_lines.append(f"[bold red]✗ {status}[/bold red]")
-        elif "Missing" in status or "Empty" in status:
-            status_lines.append(f"[bold red]⚠ {status}[/bold red]")
-        else:
-            status_lines.append(f"[red]{status}[/red]")
-
-    boxes = [
-        Panel("\n".join(name_lines), title="[bold]Dataset Name[/bold]", border_style="cyan"),
-        Panel("\n".join(train_lines), title="[bold]Train Rows[/bold]", border_style="green"),
-        Panel("\n".join(val_lines), title="[bold]Validation Rows[/bold]", border_style="yellow"),
-        Panel("\n".join(test_lines), title="[bold]Test Rows[/bold]", border_style="blue"),
-        Panel("\n".join(status_lines), title="[bold]Status[/bold]", border_style="magenta")
-    ]
-
-    console.print(Columns(boxes, padding=(0, 1), expand=False))
+    console.print(table)
 
 def prepare_all_datasets(datasets_dir: str, prepared_datasets_dir: str, prepared_test_sets_dir: str) -> None:
     """
@@ -104,7 +83,7 @@ def prepare_all_datasets(datasets_dir: str, prepared_datasets_dir: str, prepared
     
     # Show initial status
     #TODO make sure table shows classification/regression that was detected
-    print_datasets_table(datasets_info, "Datasets Found - Preparation Status")
+    print_datasets_table(datasets_info)
     console.print("")
     
     # Count datasets needing preparation
@@ -162,7 +141,7 @@ def prepare_all_datasets(datasets_dir: str, prepared_datasets_dir: str, prepared
                 progress.update(task, description=f"{dataset_info['name']} preparation failed")
                 failed_now += 1
                 dataset_info["status"] = "Failed"
-    
+            
     console.print("")
     
     # Show final status
@@ -178,7 +157,7 @@ def prepare_all_datasets(datasets_dir: str, prepared_datasets_dir: str, prepared
 
 def interactive_dataset_selection(datasets: List[Dict]) -> Optional[str]:
     """
-    Interactive dataset selection with status display.
+    Interactive dataset selection with info display.
     
     Args:
         datasets: List of dataset dictionaries
@@ -190,8 +169,7 @@ def interactive_dataset_selection(datasets: List[Dict]) -> Optional[str]:
         console.print("[red]No datasets available[/red]")
         return None
     
-    console.print("Selecting dataset interactively...", style="cyan")
-    print_datasets_table(datasets)
+    print_datasets_table(datasets, skip_status_column=True)
     prepared_datasets_table_indicies = [i+1 for i,d in enumerate(datasets)]
 
     if not datasets:
