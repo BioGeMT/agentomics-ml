@@ -186,10 +186,10 @@ def choose_provider(available_keys) -> int:
 
     for i, key in enumerate(keys_list, 1):
         num_str = str(i).rjust(max_num_width)
-        lines.append(f"[white]{num_str}[/white] [green]{key}[/green]")
+        lines.append(f"[dim]{num_str}.[/dim] [white]{key}[/white]")
 
     panel_width = max_num_width + max_provider_width + 10
-    panel = Panel("\n".join(lines), title="[bold]Provider[/bold]", border_style="cyan", width=panel_width)
+    panel = Panel("\n".join(lines), title="[bold white]Provider[/bold white]", border_style="cyan", width=panel_width)
     console.print(panel)
 
     prompt = "Multiple provider API keys found. Select the provider to use:"
