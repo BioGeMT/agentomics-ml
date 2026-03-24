@@ -229,11 +229,11 @@ class OpenRouterProvider(Provider):
                 lines = []
                 for clean_name, input_cost, output_cost, context in model_data:
                     num_str = str(global_index).rjust(max_num_width)
-                    lines.append(f"[dim]{num_str}.[/dim] [cyan]{clean_name}[/cyan]")
+                    lines.append(f"[dim]{num_str}.[/dim] [white]{clean_name}[/white]")
                     lines.append(f"   Input: [yellow]{input_cost}[/yellow]  Output: [yellow]{output_cost}[/yellow]  Context: [magenta]{context}[/magenta]")
                     global_index += 1
-                panel = Panel("\n".join(lines), title=f"[bold green]{provider_display}[/bold green]",
-                             title_align="left", border_style="green", width=col_max_widths[col_idx])
+                panel = Panel("\n".join(lines), title=f"[bold white]{provider_display}[/bold white]",
+                             title_align="left", border_style="cyan", width=col_max_widths[col_idx])
                 panels.append(panel)
             col_renderables.append(Group(*panels))
 
