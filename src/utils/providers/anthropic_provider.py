@@ -27,11 +27,11 @@ class AnthropicProvider(Provider):
 
         for i, model in enumerate(models, 1):
             num_str = str(i).rjust(max_num_width)
-            lines.append(f"[dim]{num_str}.[/dim] [cyan]{model.get('display_name', '')}[/cyan]")
+            lines.append(f"[dim]{num_str}.[/dim] [white]{model.get('display_name', '')}[/white]")
 
         panel_width = max_num_width + max_name_width + 10
-        panel = Panel("\n".join(lines), title="[bold green]Anthropic[/bold green]",
-                     title_align="left", border_style="green", width=panel_width)
+        panel = Panel("\n".join(lines), title="[bold white]Anthropic[/bold white]",
+                     title_align="left", border_style="cyan", width=panel_width)
         self.console.print(panel)
 
     def create_model(self, model_name: str, config: Config) -> AnthropicModel:
