@@ -13,6 +13,7 @@ def setup_logging(config, dir=None):
     api_key = os.getenv("WANDB_API_KEY")
     wandb_project_name = os.getenv("WANDB_PROJECT_NAME")
     wandb_entity = os.getenv("WANDB_ENTITY")
+    os.environ.setdefault("WANDB_SILENT", "true")
 
     success = login_to_wandb(api_key)
     if not success:
