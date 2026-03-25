@@ -78,13 +78,13 @@ conda env create -f environment_prepare.yaml
 conda activate agentomics-prepare-env
 
 # Prepare datasets
-python src/prepare_datasets.py --prepare-all
+python -m agentomics.prepare_datasets --prepare-all
 ```
 
 ### Preparation Options
 
 ```bash
-python src/prepare_datasets.py --help
+python -m agentomics.prepare_datasets --help
 ```
 
 Key options:

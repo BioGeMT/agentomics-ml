@@ -77,13 +77,13 @@ Run with:
 ```
 
 Docker mode connects to the Ollama base URL defined in
-`src/utils/providers/configured_providers.yaml`
+`src/agentomics/utils/providers/configured_providers.yaml`
 (default: `http://host.docker.internal:11434/v1`).
 Ensure your Ollama server is reachable from the host at `:11434`.
 
 ### Local Mode
 
-For local mode, set the Ollama base URL in `src/utils/providers/configured_providers.yaml`
+For local mode, set the Ollama base URL in `src/agentomics/utils/providers/configured_providers.yaml`
 to `http://localhost:11434/v1`, then run:
 
 ```bash
@@ -98,7 +98,7 @@ Run `ollama list` to see available models.
 
 ## Custom Providers
 
-Add custom providers in `src/utils/providers/configured_providers.yaml`:
+Add custom providers in `src/agentomics/utils/providers/configured_providers.yaml`:
 
 ```yaml
 providers:

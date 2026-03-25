@@ -90,7 +90,7 @@ See [Proxy Settings](../developer/proxy-settings.md) for Docker proxy configurat
 
 ## Ollama Configuration
 
-Ollama uses the base URL defined in `src/utils/providers/configured_providers.yaml`.
+Ollama uses the base URL defined in `src/agentomics/utils/providers/configured_providers.yaml`.
 Edit the `Ollama` provider entry to point to your Ollama server.
 
 ## GPU Configuration
@@ -127,7 +127,7 @@ WANDB_ENTITY=my-team
 # NO_PROXY=localhost,127.0.0.1
 
 # Ollama (optional)
-# Configure in src/utils/providers/configured_providers.yaml
+# Configure in src/agentomics/utils/providers/configured_providers.yaml
 ```
 
 ## Security Notes

@@ -172,7 +172,7 @@ dependencies:
 
 ### Modifying Entry Point
 
-The entry point is `/repository/src/run_agent_interactive.py`.
+The entry point is `python -m agentomics.run_agent_interactive`.
 
 To change, edit the `ENTRYPOINT` in the Dockerfile.
 

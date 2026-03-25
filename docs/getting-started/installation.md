@@ -110,12 +110,12 @@ Run with local models using Ollama for privacy or offline use.
     ./run.sh --ollama
     ```
 
-Docker mode connects to the URL configured in `src/utils/providers/configured_providers.yaml`
+Docker mode connects to the URL configured in `src/agentomics/utils/providers/configured_providers.yaml`
 (default: `http://host.docker.internal:11434/v1`).
 
 ### Local Mode Setup
 
-For local mode, set the Ollama base URL in `src/utils/providers/configured_providers.yaml`
+For local mode, set the Ollama base URL in `src/agentomics/utils/providers/configured_providers.yaml`
 to `http://localhost:11434/v1`, then run:
 
 ```bash
