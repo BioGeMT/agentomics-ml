@@ -272,7 +272,7 @@ if [ "$LOCAL_MODE" = true ]; then
     eval "$(conda shell.bash hook)"
     conda activate agentomics-env
 
-    AGENT_ID=$(python src/utils/create_user.py)
+    AGENT_ID=$(python -m agentomics.utils.create_user)
     export AGENT_ID
 
     WORKSPACE_DIR="$(pwd)/workspace/${AGENT_ID}"
@@ -298,7 +298,7 @@ if [ "$LOCAL_MODE" = true ]; then
     fi
 
     mkdir -p prepared_datasets
-    conda run -n agentomics-prepare-env python src/prepare_datasets.py --prepare-all
+    conda run -n agentomics-prepare-env python -m agentomics.prepare_datasets --prepare-all
 
     if ! conda env list | grep -q "^agent_start_env "; then
         conda env create -f environment_agent.yaml -q
@@ -313,7 +313,7 @@ if [ "$LOCAL_MODE" = true ]; then
     if [ -n "$FOUNDATION_MODEL_TYPE" ]; then
         FOUNDATION_MODELS_MARKER="$HF_HOME/.downloaded_${FOUNDATION_MODEL_TYPE}"
         if [[ ! -f "$FOUNDATION_MODELS_MARKER" ]]; then
-            conda run -n agentomics-env python src/utils/download_foundation_models.py
+            conda run -n agentomics-env python -m agentomics.utils.download_foundation_models
             touch "$FOUNDATION_MODELS_MARKER"
         fi
     fi
@@ -321,7 +321,7 @@ if [ "$LOCAL_MODE" = true ]; then
     TEMP_API_KEY_HASH=""
     if [ "$USE_PROVISIONING_KEY" = true ]; then
         echo "Creating temporary API key with spend limit: $SPEND_LIMIT"
-        API_KEY_OUTPUT=$(PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys_utils.py create --name "agentomics_run_$(date +%s)" --limit "$SPEND_LIMIT")
+        API_KEY_OUTPUT=$(conda run -n agentomics-env python -m agentomics.utils.api_keys_utils create --name "agentomics_run_$(date +%s)" --limit "$SPEND_LIMIT")
         TEMP_API_KEY=$(echo "$API_KEY_OUTPUT" | cut -d',' -f1)
         TEMP_API_KEY_HASH=$(echo "$API_KEY_OUTPUT" | cut -d',' -f2)
         export OPENROUTER_API_KEY="$TEMP_API_KEY"
@@ -356,8 +356,7 @@ if [ "$LOCAL_MODE" = true ]; then
         die "Config not found: ${CONFIG_PATH}"
     fi
 
-    export PYTHONPATH=./src
-    python src/run_logging/evaluate_log_test.py --workspace-dir "$WORKSPACE_DIR" --agent-id "$AGENT_ID"
+    python -m agentomics.run_logging.evaluate_log_test --workspace-dir "$WORKSPACE_DIR" --agent-id "$AGENT_ID"
 
     mkdir -p outputs/${AGENT_ID}/best_run_files outputs/${AGENT_ID}/reports outputs/${AGENT_ID}/run_files outputs/${AGENT_ID}/extras
     cp -r "${WORKSPACE_DIR}/snapshots/${AGENT_ID}/." outputs/${AGENT_ID}/best_run_files/
@@ -367,11 +366,11 @@ if [ "$LOCAL_MODE" = true ]; then
 
     if [ "$USE_PROVISIONING_KEY" = true ]; then
         echo "Logging costs and cleaning up temporary API key"
-        PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys_utils.py cleanup-and-log --config-path "$CONFIG_PATH" --api-key-hash "$TEMP_API_KEY_HASH"
+        conda run -n agentomics-env python -m agentomics.utils.api_keys_utils cleanup-and-log --config-path "$CONFIG_PATH" --api-key-hash "$TEMP_API_KEY_HASH"
     fi
 
     write_outputs_readme "${AGENT_ID}"
-    conda run -n agentomics-env python src/generate_final_reports.py \
+    conda run -n agentomics-env python -m agentomics.generate_final_reports \
         --agent-dir "outputs/${AGENT_ID}" \
         --prepared-datasets $(pwd)/prepared_datasets \
         --prepared-tests $(pwd)/prepared_test_sets
@@ -462,7 +461,7 @@ else
             conda env create -f environment.yaml -q
         fi
         echo "Creating temporary API key with spend limit: $SPEND_LIMIT"
-        API_KEY_OUTPUT=$(PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys_utils.py create --name "agentomics_run_$(date +%s)" --limit "$SPEND_LIMIT")
+        API_KEY_OUTPUT=$(conda run -n agentomics-env python -m agentomics.utils.api_keys_utils create --name "agentomics_run_$(date +%s)" --limit "$SPEND_LIMIT")
         TEMP_API_KEY=$(echo "$API_KEY_OUTPUT" | cut -d',' -f1)
         TEMP_API_KEY_HASH=$(echo "$API_KEY_OUTPUT" | cut -d',' -f2)
         export OPENROUTER_API_KEY="$TEMP_API_KEY"
@@ -604,7 +603,7 @@ else
         if [ "$USE_PROVISIONING_KEY" = true ]; then
             echo "Logging costs and cleaning up temporary API key"
             CONFIG_PATH="outputs/${AGENT_ID}/extras/config.json"
-            PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys_utils.py cleanup-and-log --config-path "$CONFIG_PATH" --api-key-hash "$TEMP_API_KEY_HASH"
+            conda run -n agentomics-env python -m agentomics.utils.api_keys_utils cleanup-and-log --config-path "$CONFIG_PATH" --api-key-hash "$TEMP_API_KEY_HASH"
         fi
         write_outputs_readme "${AGENT_ID}"
 
