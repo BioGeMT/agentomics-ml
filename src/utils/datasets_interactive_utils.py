@@ -163,10 +163,6 @@ def interactive_dataset_selection(datasets: List[Dict]) -> Optional[str]:
     
     print_datasets_table(datasets, skip_status_column=True)
     prepared_datasets_table_indicies = [i+1 for i,d in enumerate(datasets)]
-
-    if not datasets:
-        console.print("[red]No prepared datasets available for selection[/red]")
-        return None
     
     choice = get_user_input_for_int(
         f"Select a prepared dataset", 
@@ -174,5 +170,5 @@ def interactive_dataset_selection(datasets: List[Dict]) -> Optional[str]:
         default=prepared_datasets_table_indicies[0],
     )
     selected_dataset = datasets[choice-1]["name"]
-    console.print(f"[green]Selected: {selected_dataset}[/green]")
+    console.print(f"[cyan]Selected: {selected_dataset}[/cyan]")
     return selected_dataset
