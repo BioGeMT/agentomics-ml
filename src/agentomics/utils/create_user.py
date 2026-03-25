@@ -1,6 +1,10 @@
 import sys
 from hrid import HRID
 
+
+def create_user() -> str:
+    return HRID().generate()
+
 def create_run_and_snapshot_dirs(config):
     run_dir = config.runs_dir / config.agent_id
     snapshot_dir = config.snapshots_dir / config.agent_id

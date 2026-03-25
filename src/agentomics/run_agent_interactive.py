@@ -15,6 +15,7 @@ from agentomics.utils.metrics import get_classification_metrics_names, get_regre
 from agentomics.utils.env_utils import are_wandb_vars_available
 from agentomics.utils.user_input import get_user_input_for_int
 from agentomics.run_agent import run_experiment
+from agentomics.utils.create_user import create_user
 
 console = Console()
 
@@ -59,7 +60,10 @@ def main():
     model = args.model
     val_metric = args.val_metric
     iterations = args.iterations
-
+    if not os.environ.get("AGENT_ID"):
+        os.environ["AGENT_ID"] = create_user()
+        console.print(f"[yellow]AGENT_ID not set. Generated: {os.environ['AGENT_ID']}[/yellow]")
+    
     repository_dir = Path(__file__).resolve().parents[2]
     repository_parent_dir = repository_dir.parent.resolve()
     workspace_dir = Path(os.environ.get("AGENTOMICS_WORKSPACE_DIR", str(repository_parent_dir / "workspace"))).resolve()
