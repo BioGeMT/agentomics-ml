@@ -437,7 +437,7 @@ else
         echo "Build done"
     fi
     AGENT_ID=$(docker run --rm -u $(id -u):$(id -g) -v "$(pwd)":/repository:ro --entrypoint \
-               /opt/conda/envs/agentomics-env/bin/python "$AGENTOMICS_IMAGE" /repository/src/utils/create_user.py)
+           /opt/conda/envs/agentomics-env/bin/python "$AGENTOMICS_IMAGE" -m agentomics.utils.create_user)
     docker run \
         -u $(id -u):$(id -g) \
         --rm \
@@ -570,7 +570,7 @@ else
             -v "$(pwd)/prepared_test_sets":/repository/prepared_test_sets:ro \
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
             --entrypoint /opt/conda/envs/agentomics-env/bin/python \
-            "$AGENTOMICS_IMAGE" src/run_logging/evaluate_log_test.py --agent-id "${AGENT_ID}"
+            "$AGENTOMICS_IMAGE" -m agentomics.run_logging.evaluate_log_test --agent-id "${AGENT_ID}"
 
         mkdir -p outputs/${AGENT_ID}/best_run_files outputs/${AGENT_ID}/reports outputs/${AGENT_ID}/run_files outputs/${AGENT_ID}/extras
 
@@ -594,7 +594,7 @@ else
           -v "$(pwd)":/repository \
           -v "$(pwd)/outputs/${AGENT_ID}":/agent_out \
           --entrypoint /opt/conda/envs/agentomics-env/bin/python \
-          agentomics_img /repository/src/generate_final_reports.py \
+          agentomics_img -m agentomics.generate_final_reports \
             --agent-dir /agent_out --prepared-datasets /repository/prepared_datasets \
             --prepared-tests /repository/prepared_test_sets
 

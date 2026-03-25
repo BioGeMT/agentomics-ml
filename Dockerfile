@@ -45,4 +45,4 @@ RUN conda run -n agent_start_env conda-pack -o ${START_ENV_PKG}
 
 WORKDIR /repository
 
-ENTRYPOINT ["/opt/conda/envs/agentomics-env/bin/python", "/repository/src/run_agent_interactive.py"]
+ENTRYPOINT ["/opt/conda/envs/agentomics-env/bin/python", "-m", "agentomics.run_agent_interactive"]
