@@ -38,6 +38,16 @@ has_tty() {
     [[ -t 0 && -t 1 ]]
 }
 
+# Run a command and suppress its output. Still prints errors if the command fails
+printless_command(){
+    "$@" > /dev/null 
+}
+
+# Setup a trap to clean up the Docker volume on script exit
+cleanup_volume_on_finish() {
+    trap 'docker volume rm temp_agentomics_volume_${AGENT_ID} >/dev/null 2>&1 || true' EXIT
+}
+
 # Print info message in green
 info() {
     echo -e "${GREEN}$*${NOCOLOR}"
