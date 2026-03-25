@@ -9,27 +9,27 @@ import wandb
 import weave
 from timeout_function_decorator import timeout as timeout_decorator
 
-from run_logging.evaluate_log_run import run_inference_and_log
-from run_logging.logging_helpers import log_serial_metrics, log_feedback_failure, log_iteration_duration, log_new_best, log_split_is_allowed
-from run_logging.wandb_setup import setup_logging
-from run_logging.log_files import log_files, export_config_to_extras
-from utils.env_utils import are_wandb_vars_available
-from utils.create_user import create_run_and_snapshot_dirs
-from utils.dataset_utils import setup_nonsensitive_dataset_files_for_agent
-from utils.fallbacks import save_splits_to_fallback, load_fallbacks_to_rundir
-from utils.config import Config
-from utils.exceptions import IterationRunFailed, FeedbackAgentFailed, AgentScriptFailed
-from utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics, populate_iteration_dir, lock_split_files
-from utils.workspace_setup import ensure_workspace_folders
-from agents.architecture import run_iteration
-from utils.metrics import get_classification_metrics_names, get_regression_metrics_names, resolve_val_metric
-from utils.report_logger import add_metrics_to_report, add_summary_to_report
-from utils.providers.provider import Provider, get_provider_from_string
-from feedback.feedback_agent import get_feedback
-from tools.setup_tools import create_tools, get_tool_names
-from utils.snapshots import reset_snapshot_if_val_split_changed, create_split_fingerprint, wipe_current_iter_files, move_metrics_files_to_extras
-from agents.steps.data_split import DataSplit
-from utils.dataset_utils import get_task_type_from_prepared_dataset
+from agentomics.run_logging.evaluate_log_run import run_inference_and_log
+from agentomics.run_logging.logging_helpers import log_serial_metrics, log_feedback_failure, log_iteration_duration, log_new_best, log_split_is_allowed
+from agentomics.run_logging.wandb_setup import setup_logging
+from agentomics.run_logging.log_files import log_files, export_config_to_extras
+from agentomics.utils.env_utils import are_wandb_vars_available
+from agentomics.utils.create_user import create_run_and_snapshot_dirs
+from agentomics.utils.dataset_utils import setup_nonsensitive_dataset_files_for_agent
+from agentomics.utils.fallbacks import save_splits_to_fallback, load_fallbacks_to_rundir
+from agentomics.utils.config import Config
+from agentomics.utils.exceptions import IterationRunFailed, FeedbackAgentFailed, AgentScriptFailed
+from agentomics.utils.snapshots import is_new_best, snapshot, get_new_and_best_metrics, populate_iteration_dir, lock_split_files
+from agentomics.utils.workspace_setup import ensure_workspace_folders
+from agentomics.agents.architecture import run_iteration
+from agentomics.utils.metrics import get_classification_metrics_names, get_regression_metrics_names, resolve_val_metric
+from agentomics.utils.report_logger import add_metrics_to_report, add_summary_to_report
+from agentomics.utils.providers.provider import Provider, get_provider_from_string
+from agentomics.feedback.feedback_agent import get_feedback
+from agentomics.tools.setup_tools import create_tools, get_tool_names
+from agentomics.utils.snapshots import reset_snapshot_if_val_split_changed, create_split_fingerprint, wipe_current_iter_files, move_metrics_files_to_extras
+from agentomics.agents.steps.data_split import DataSplit
+from agentomics.utils.dataset_utils import get_task_type_from_prepared_dataset
 
 async def main(model_name, feedback_model_name, dataset, tags, val_metric,
                workspace_dir, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir, iterations,

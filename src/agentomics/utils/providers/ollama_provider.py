@@ -7,8 +7,8 @@ from rich.console import Group
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.models.openai import OpenAIModel
 
-from utils.config import Config
-from utils.user_input import get_user_input_for_int
+from agentomics.utils.config import Config
+from agentomics.utils.user_input import get_user_input_for_int
 from .provider import Provider
 
 class OllamaProvider(Provider):

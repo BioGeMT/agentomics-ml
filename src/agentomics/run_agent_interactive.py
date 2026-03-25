@@ -7,14 +7,14 @@ from rich.console import Console
 from rich.panel import Panel
 import dotenv
 
-from utils.dataset_utils import get_all_prepared_datasets_info
-from utils.datasets_interactive_utils import interactive_dataset_selection, print_datasets_table
-from utils.metrics_interactive_utils import display_metrics_table
-from utils.providers.provider import Provider, get_provider_and_api_key
-from utils.metrics import get_classification_metrics_names, get_regression_metrics_names
-from utils.env_utils import are_wandb_vars_available
-from utils.user_input import get_user_input_for_int
-from run_agent import run_experiment
+from agentomics.utils.dataset_utils import get_all_prepared_datasets_info
+from agentomics.utils.datasets_interactive_utils import interactive_dataset_selection, print_datasets_table
+from agentomics.utils.metrics_interactive_utils import display_metrics_table
+from agentomics.utils.providers.provider import Provider, get_provider_and_api_key
+from agentomics.utils.metrics import get_classification_metrics_names, get_regression_metrics_names
+from agentomics.utils.env_utils import are_wandb_vars_available
+from agentomics.utils.user_input import get_user_input_for_int
+from agentomics.run_agent import run_experiment
 
 console = Console()
 

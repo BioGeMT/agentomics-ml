@@ -1,5 +1,5 @@
 import pandas as pd
-from generate_method_dfs import generate_zeroshot_runs, generate_iterative_runs
+from agentomics.eval.generate_method_dfs import generate_zeroshot_runs, generate_iterative_runs
 
 def generate_rg_leaderboard():
     data = {

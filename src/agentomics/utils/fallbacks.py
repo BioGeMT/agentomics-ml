@@ -1,6 +1,6 @@
 from pathlib import Path
 import shutil
-from utils.snapshots import unlock_file
+from agentomics.utils.snapshots import unlock_file
 
 def save_splits_to_fallback(config):
     runs_dir = config.runs_dir

@@ -3,7 +3,7 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from run_logging.logging_helpers import is_wandb_active
+from agentomics.run_logging.logging_helpers import is_wandb_active
 
 def log_files(config, files=None, iteration=None):
     if not is_wandb_active():

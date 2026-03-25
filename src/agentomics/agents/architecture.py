@@ -4,17 +4,17 @@ from pydantic_ai import Agent
 import weave
 from rich.console import Console
 
-from agents.prompts.prompts_utils import get_iteration_prompt, get_iteration_0_prompt
-from agents.steps.model_inference import get_model_inference_prompt, create_model_inference_agent
-from agents.steps.data_split import DataSplit, get_data_split_prompt, create_data_split_agent
-from agents.steps.model_architecture import get_model_architecture_prompt, create_model_architecture_agent
-from agents.steps.data_representation import get_data_representation_prompt, create_data_representation_agent
-from agents.steps.data_exploration import get_data_exploration_prompt, create_data_exploration_agent
-from agents.steps.model_training import get_model_training_prompt, create_model_training_agent
-from agents.steps.prediction_exploration import get_prediction_exploration_prompt, create_prediction_exploration_agent
-from agents.agent_utils import run_agent, get_final_result_messages, fabricate_final_result_messages, replace_message_result_with_validated_files, get_sytem_and_user_prompt_messages
-from utils.config import Config
-from utils.report_logger import save_step_output
+from agentomics.agents.prompts.prompts_utils import get_iteration_prompt, get_iteration_0_prompt
+from agentomics.agents.steps.model_inference import get_model_inference_prompt, create_model_inference_agent
+from agentomics.agents.steps.data_split import DataSplit, get_data_split_prompt, create_data_split_agent
+from agentomics.agents.steps.model_architecture import get_model_architecture_prompt, create_model_architecture_agent
+from agentomics.agents.steps.data_representation import get_data_representation_prompt, create_data_representation_agent
+from agentomics.agents.steps.data_exploration import get_data_exploration_prompt, create_data_exploration_agent
+from agentomics.agents.steps.model_training import get_model_training_prompt, create_model_training_agent
+from agentomics.agents.steps.prediction_exploration import get_prediction_exploration_prompt, create_prediction_exploration_agent
+from agentomics.agents.agent_utils import run_agent, get_final_result_messages, fabricate_final_result_messages, replace_message_result_with_validated_files, get_sytem_and_user_prompt_messages
+from agentomics.utils.config import Config
+from agentomics.utils.report_logger import save_step_output
 
 console = Console()
 

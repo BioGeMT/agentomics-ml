@@ -6,8 +6,8 @@ from rich.panel import Panel
 from rich.columns import Columns
 from rich.console import Group
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from utils.user_input import get_user_input_for_int
-from utils.dataset_utils import prepare_dataset, get_all_datasets_info
+from agentomics.utils.user_input import get_user_input_for_int
+from agentomics.utils.dataset_utils import prepare_dataset, get_all_datasets_info
 
 console = Console()
 

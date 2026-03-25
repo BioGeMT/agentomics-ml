@@ -4,7 +4,7 @@ import dotenv
 import os
 
 from wandb.errors import CommError
-from run_logging.logging_helpers import login_to_wandb
+from agentomics.run_logging.logging_helpers import login_to_wandb
 import weave
 
 

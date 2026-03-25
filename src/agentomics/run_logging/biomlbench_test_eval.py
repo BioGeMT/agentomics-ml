@@ -6,11 +6,11 @@ import wandb
 import statistics
 import pandas as pd
 
-from utils.config import Config
-from run_logging.logging_helpers import log_inference_stage_and_metrics
-from run_logging.wandb_setup import resume_wandb_run
-from run_logging.evaluate_log_run import get_metrics
-from utils.biomlbench_target_utils import get_target_col_from_description
+from agentomics.utils.config import Config
+from agentomics.run_logging.logging_helpers import log_inference_stage_and_metrics
+from agentomics.run_logging.wandb_setup import resume_wandb_run
+from agentomics.run_logging.evaluate_log_run import get_metrics
+from agentomics.utils.biomlbench_target_utils import get_target_col_from_description
 
 def run_test_evaluation(config_path, predictions_path, labeled_test_path, label_col, output_metrics_file, biomlbench_grade_dict):
     dotenv.load_dotenv()

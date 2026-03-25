@@ -9,8 +9,8 @@ from pydantic.json_schema import SkipJsonSchema
 from pydantic_ai import ModelRetry, Agent, RunContext
 import pandas as pd
 
-from utils.text_processing_utils import concise_output, collapse_repeated_lines
-from agents.agent_utils import get_new_rundir_files, does_file_contain_iteration_pattern
+from agentomics.utils.text_processing_utils import concise_output, collapse_repeated_lines
+from agentomics.agents.agent_utils import get_new_rundir_files, does_file_contain_iteration_pattern
 
 class ModelTraining(BaseModel):
     path_to_train_file: str = Field(

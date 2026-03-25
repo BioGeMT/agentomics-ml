@@ -6,8 +6,8 @@ import stat
 import subprocess
 import wandb
 from pathlib import Path
-from utils.metrics import get_classification_metrics_functions, get_higher_is_better_map, get_regression_metrics_functions
-from run_logging.logging_helpers import is_wandb_active
+from agentomics.utils.metrics import get_classification_metrics_functions, get_higher_is_better_map, get_regression_metrics_functions
+from agentomics.run_logging.logging_helpers import is_wandb_active
 
 def get_metrics_from_file(file_path):
     metrics = {}

@@ -3,7 +3,7 @@ from typing import List, Optional
 from rich.panel import Panel
 
 from .provider import Provider
-from utils.user_input import get_user_input_for_int
+from agentomics.utils.user_input import get_user_input_for_int
 
 class OpenAiProvider(Provider):
     def __init__(self, api_key: str, base_url: str, list_models_endpoint: str):

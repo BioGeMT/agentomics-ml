@@ -1,5 +1,5 @@
 import os
-from foundation_models_utils import load_models_config
+from agentomics.utils.foundation_models_utils import load_models_config
 
 from transformers import AutoTokenizer
 from transformers import AutoModel, AutoModelForMaskedLM

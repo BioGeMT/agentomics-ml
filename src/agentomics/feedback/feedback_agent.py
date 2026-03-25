@@ -2,12 +2,12 @@ from pydantic_ai import Agent
 import time
 import weave
 import traceback
-from utils.exceptions import FeedbackAgentFailed
+from agentomics.utils.exceptions import FeedbackAgentFailed
 from pydantic import BaseModel, Field
-from utils.printing_utils import truncate_float
-from utils.snapshots import get_best_iteration
-from utils.foundation_models_utils import format_foundation_model_catalog
-from agents.prompts.prompts_utils import get_dataset_knowledge
+from agentomics.utils.printing_utils import truncate_float
+from agentomics.utils.snapshots import get_best_iteration
+from agentomics.utils.foundation_models_utils import format_foundation_model_catalog
+from agentomics.agents.prompts.prompts_utils import get_dataset_knowledge
 
 class IterationInstructions(BaseModel):
     data_exploration_instructions: str = Field(

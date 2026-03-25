@@ -6,7 +6,7 @@ import os
 import time
 
 from pydantic_ai import Tool
-from utils.text_processing_utils import collapse_repeated_lines, concise_output
+from agentomics.utils.text_processing_utils import collapse_repeated_lines, concise_output
 
 class BashProcess:
     def __init__(self, agent_id, runs_dir, autoconda=True, timeout=60, proxy=False):

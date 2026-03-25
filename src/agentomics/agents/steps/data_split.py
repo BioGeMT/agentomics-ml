@@ -6,7 +6,7 @@ from pydantic.json_schema import SkipJsonSchema
 from pydantic_ai import Agent, RunContext, ModelRetry
 import pandas as pd
 
-from agents.agent_utils import get_new_rundir_files
+from agentomics.agents.agent_utils import get_new_rundir_files
 
 class DataSplit(BaseModel):
     train_path: str = Field(description="Path to generated train.csv file")

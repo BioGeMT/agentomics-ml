@@ -4,8 +4,8 @@ from pydantic import BaseModel, Field
 from pydantic.json_schema import SkipJsonSchema
 from pydantic_ai import Agent, RunContext, ModelRetry
 
-from agents.agent_utils import does_file_contain_iteration_pattern, get_invalid_iteration_folders, get_new_rundir_files
-from run_logging.evaluate_log_run import run_inference_and_log
+from agentomics.agents.agent_utils import does_file_contain_iteration_pattern, get_invalid_iteration_folders, get_new_rundir_files
+from agentomics.run_logging.evaluate_log_run import run_inference_and_log
 
 class PredictionExploration(BaseModel):
     statistics: str = Field(

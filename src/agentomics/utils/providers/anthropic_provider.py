@@ -6,7 +6,7 @@ from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.providers.anthropic import AnthropicProvider as PydanticAnthropicProvider # would clash with our class name
 from rich.panel import Panel
 
-from utils.config import Config
+from agentomics.utils.config import Config
 from .provider import Provider
 
 class AnthropicProvider(Provider):

@@ -3,11 +3,11 @@ from pathlib import Path
 import argparse
 import time
 
-from utils.config import Config
-from run_logging.evaluate_log_run import run_inference_and_log
-from run_logging.logging_helpers import log_inference_stage_and_metrics, log_test_inference_duration
-from run_logging.wandb_setup import resume_wandb_run
-from utils.snapshots import replace_python_paths
+from agentomics.utils.config import Config
+from agentomics.run_logging.evaluate_log_run import run_inference_and_log
+from agentomics.run_logging.logging_helpers import log_inference_stage_and_metrics, log_test_inference_duration
+from agentomics.run_logging.wandb_setup import resume_wandb_run
+from agentomics.utils.snapshots import replace_python_paths
 
 def run_test_evaluation(workspace_dir, agent_id=None):
     start = time.time()

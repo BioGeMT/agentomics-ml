@@ -3,8 +3,8 @@ import os
 from pathlib import Path
 from rich.console import Console
 
-from utils.dataset_utils import prepare_dataset
-from utils.datasets_interactive_utils import prepare_all_datasets
+from agentomics.utils.dataset_utils import prepare_dataset
+from agentomics.utils.datasets_interactive_utils import prepare_all_datasets
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Dataset preparation with auto-detection")

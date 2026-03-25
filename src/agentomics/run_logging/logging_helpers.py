@@ -1,7 +1,7 @@
 import wandb
 import math
 from wandb.errors import AuthenticationError, UsageError
-from utils.metrics import get_task_to_metrics_names
+from agentomics.utils.metrics import get_task_to_metrics_names
 
 def login_to_wandb(api_key):
     try:

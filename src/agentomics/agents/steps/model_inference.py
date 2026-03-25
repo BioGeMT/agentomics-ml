@@ -3,9 +3,9 @@ from pydantic import BaseModel, Field
 from pydantic.json_schema import SkipJsonSchema
 from pydantic_ai import Agent, RunContext, ModelRetry
 
-from utils.dataset_utils import get_classes_integers
-from agents.agent_utils import does_file_contain_iteration_pattern, does_file_contain_string, get_new_rundir_files
-from run_logging.evaluate_log_run import run_inference_and_log
+from agentomics.utils.dataset_utils import get_classes_integers
+from agentomics.agents.agent_utils import does_file_contain_iteration_pattern, does_file_contain_string, get_new_rundir_files
+from agentomics.run_logging.evaluate_log_run import run_inference_and_log
 
 class ModelInference(BaseModel):
     path_to_inference_file: str = Field(

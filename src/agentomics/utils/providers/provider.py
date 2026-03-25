@@ -14,8 +14,8 @@ from openai import AsyncOpenAI
 from rich.console import Console
 from rich.panel import Panel
 
-from utils.config import Config
-from utils.user_input import get_user_input_for_int
+from agentomics.utils.config import Config
+from agentomics.utils.user_input import get_user_input_for_int
 
 
 class Provider():

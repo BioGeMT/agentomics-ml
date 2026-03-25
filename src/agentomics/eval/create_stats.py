@@ -2,7 +2,7 @@ import ast
 import numpy as np
 import pandas as pd
 from scipy import stats
-from mining_enhanced_data import build_mdf
+from agentomics.eval.mining_enhanced_data import build_mdf
 
 # --- Data loading ---
 df = pd.read_csv('./paper_tables/agentomics_all.csv')

@@ -7,11 +7,11 @@ import subprocess
 from pathlib import Path
 import wandb
 
-from utils.dataset_utils import prepare_dataset
-from utils.biomlbench_proteingym_cv import generate_proteingym_submission_with_cv
-from run_agent import run_experiment
-from utils.create_user import create_agent_id
-from utils.biomlbench_target_utils import get_target_col_from_description
+from agentomics.utils.dataset_utils import prepare_dataset
+from agentomics.utils.biomlbench_proteingym_cv import generate_proteingym_submission_with_cv
+from agentomics.run_agent import run_experiment
+from agentomics.utils.create_user import create_agent_id
+from agentomics.utils.biomlbench_target_utils import get_target_col_from_description
 
 def setup_agentomics_folder_structure_and_files(description_path, train_data_path, task_type, dataset_name, is_proteingym):
     os.mkdir('/home/workspace')

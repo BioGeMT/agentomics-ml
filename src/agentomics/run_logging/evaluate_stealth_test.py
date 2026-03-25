@@ -2,12 +2,12 @@ import json
 import argparse
 import tempfile
 from pathlib import Path
-from utils.config import Config
-from eval.evaluate_result import get_metrics
-from run_logging.wandb_setup import resume_wandb_run
+from agentomics.utils.config import Config
+from agentomics.eval.evaluate_result import get_metrics
+from agentomics.run_logging.wandb_setup import resume_wandb_run
 import wandb
 import pandas as pd
-from run_agent_biomlbench import extract_task_type_from_val_metric
+from agentomics.run_agent_biomlbench import extract_task_type_from_val_metric
 
 # Protein datasets that use CV retraining
 PROTEINGYM_DATASETS = [

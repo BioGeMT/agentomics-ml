@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 from pydantic.json_schema import SkipJsonSchema
 from pydantic_ai import Agent, RunContext
 
-from agents.agent_utils import get_new_rundir_files
+from agentomics.agents.agent_utils import get_new_rundir_files
 
 class ModelArchitecture(BaseModel):
     architecture: str = Field(

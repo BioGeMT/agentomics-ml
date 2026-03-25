@@ -5,14 +5,14 @@ from pathlib import Path
 import pandas as pd
 
 from pydantic_ai import ModelRetry
-from eval.evaluate_result import get_metrics
-from utils.exceptions import AgentScriptFailed
-from run_logging.logging_helpers import log_inference_stage_and_metrics, log_serial_metrics
+from agentomics.eval.evaluate_result import get_metrics
+from agentomics.utils.exceptions import AgentScriptFailed
+from agentomics.run_logging.logging_helpers import log_inference_stage_and_metrics, log_serial_metrics
 from rich.console import Console
 
 console = Console()
 
-from utils.text_processing_utils import concise_output, collapse_repeated_lines
+from agentomics.utils.text_processing_utils import concise_output, collapse_repeated_lines
 
 def run_inference_and_log(config, iteration, evaluation_stage, use_best_snapshot=False):
     with open(config.prepared_dataset_dir / "metadata.json") as f:

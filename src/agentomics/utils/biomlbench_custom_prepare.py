@@ -2,9 +2,9 @@
 import shutil
 import pandas as pd
 from pathlib import Path
-from utils.biomlbench_target_utils import get_target_col_from_description
-from utils.dataset_utils import prepare_dataset
-from run_agent_biomlbench import extract_val_metric_from_description, extract_task_type_from_val_metric
+from agentomics.utils.biomlbench_target_utils import get_target_col_from_description
+from agentomics.utils.dataset_utils import prepare_dataset
+from agentomics.run_agent_biomlbench import extract_val_metric_from_description, extract_task_type_from_val_metric
 
 def prepare_biomlbench_dataset(
         agentomics_dir,

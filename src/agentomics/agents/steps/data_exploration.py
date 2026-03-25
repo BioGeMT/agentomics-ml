@@ -2,8 +2,8 @@ from pydantic import BaseModel, Field
 from pydantic.json_schema import SkipJsonSchema
 from pydantic_ai import Agent, RunContext
 
-from agents.prompts.prompts_utils import get_system_prompt
-from agents.agent_utils import get_new_rundir_files
+from agentomics.agents.prompts.prompts_utils import get_system_prompt
+from agentomics.agents.agent_utils import get_new_rundir_files
 
 class DataExploration(BaseModel):
     data_description: str = Field(

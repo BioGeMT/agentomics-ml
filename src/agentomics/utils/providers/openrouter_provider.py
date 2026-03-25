@@ -6,7 +6,7 @@ from rich.panel import Panel
 from rich.columns import Columns
 from rich.console import Group
 
-from utils.user_input import get_user_input_for_int
+from agentomics.utils.user_input import get_user_input_for_int
 from .provider import Provider
 
 

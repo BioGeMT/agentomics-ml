@@ -1,4 +1,4 @@
-from utils.foundation_models_utils import format_foundation_model_catalog, get_foundation_model_family_info
+from agentomics.utils.foundation_models_utils import format_foundation_model_catalog, get_foundation_model_family_info
 from pydantic_ai import Tool
 
 def create_foundation_models_info_tool(foundation_model_to_desc, max_retries):
