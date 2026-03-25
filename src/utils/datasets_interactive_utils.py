@@ -2,9 +2,6 @@ import sys
 from typing import List, Dict, Optional
 from rich.console import Console
 from rich.table import Table
-from rich.panel import Panel
-from rich.columns import Columns
-from rich.console import Group
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from utils.user_input import get_user_input_for_int
 from utils.dataset_utils import prepare_dataset, get_all_datasets_info
@@ -67,7 +64,6 @@ def prepare_all_datasets(datasets_dir: str, prepared_datasets_dir: str, prepared
     console.print("")
     
     # Get initial dataset information
-    console.print(f"[dim]Scanning datasets in {datasets_dir}...[/dim]")
     datasets_info = get_all_datasets_info(datasets_dir, prepared_datasets_dir)
     
     if not datasets_info:
@@ -89,7 +85,6 @@ def prepare_all_datasets(datasets_dir: str, prepared_datasets_dir: str, prepared
     # Count datasets needing preparation
     need_preparation = [d for d in datasets_info if d["should_prepare"]]
     already_prepared = [d for d in datasets_info if d["is_prepared"]]
-    cannot_prepare = [d for d in datasets_info if not d["can_prepare"] and not d["is_prepared"]]
     
     if not need_preparation:
         if not already_prepared:
@@ -102,18 +97,16 @@ def prepare_all_datasets(datasets_dir: str, prepared_datasets_dir: str, prepared
     
     prepared_now = 0
     failed_now = 0
-    
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console
-    ) as progress:
+
+    for dataset_info in need_preparation:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
         
-        for dataset_info in need_preparation:
-            task = progress.add_task(f"Preparing {dataset_info['name']}...", total=None)
+            task = progress.add_task(f"Preparing {dataset_info['name']}", total=None)
             try:
-                console.print(f"[yellow]Preparing dataset '{dataset_info['name']}'[/yellow]")
-                progress.stop()
                 prepare_dataset(
                     dataset_dir=dataset_info['path'],
                     target_col=None, #auto-detected inside
@@ -124,7 +117,6 @@ def prepare_all_datasets(datasets_dir: str, prepared_datasets_dir: str, prepared
                     interactive=True,
                     test_sets_output_dir=prepared_test_sets_dir
                 )
-                progress.start()
                 success = True
             except Exception as e:
                 console.print(f"[red]Error preparing dataset '{dataset_info['name']}': {e}[/red]")
@@ -146,7 +138,7 @@ def prepare_all_datasets(datasets_dir: str, prepared_datasets_dir: str, prepared
     
     # Show final status
     if prepared_now > 0:
-        print_datasets_table(datasets_info, "Final Preparation Results")
+        print_datasets_table(datasets_info)
         console.print("")
     
     if failed_now > 0:
