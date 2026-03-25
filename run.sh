@@ -298,7 +298,11 @@ if [ "$LOCAL_MODE" = true ]; then
     fi
 
     mkdir -p prepared_datasets
-    conda run -n agentomics-prepare-env python src/prepare_datasets.py --prepare-all
+    if [ -n "$DATASET_NAME" ]; then
+        conda run -n agentomics-prepare-env python src/prepare_datasets.py --dataset-dir "./datasets/${DATASET_NAME}"
+    else
+        conda run -n agentomics-prepare-env python src/prepare_datasets.py --prepare-all
+    fi
 
     if ! conda env list | grep -q "^agent_start_env "; then
         conda env create -f environment_agent.yaml -q
@@ -439,6 +443,14 @@ else
     fi
     AGENT_ID=$(docker run --rm -u $(id -u):$(id -g) -v "$(pwd)":/repository:ro --entrypoint \
                /opt/conda/envs/agentomics-env/bin/python "$AGENTOMICS_IMAGE" /repository/src/utils/create_user.py)
+
+    PREPARE_ARGS=()
+    if [ -n "$DATASET_NAME" ]; then
+        PREPARE_ARGS=(--dataset-dir "./datasets/${DATASET_NAME}")
+    else
+        PREPARE_ARGS=(--prepare-all)
+    fi
+
     docker run \
         -u $(id -u):$(id -g) \
         --rm \
@@ -446,7 +458,7 @@ else
         -e PYTHONWARNINGS=ignore \
         --name agentomics_prepare_cont_${AGENT_ID} \
         -v "$(pwd)":/repository \
-        "$PREPARE_IMAGE"
+        "$PREPARE_IMAGE" ${PREPARE_ARGS[@]+"${PREPARE_ARGS[@]}"}
 
     printless_command docker volume create temp_agentomics_volume_${AGENT_ID}
     cleanup_volume_on_finish
