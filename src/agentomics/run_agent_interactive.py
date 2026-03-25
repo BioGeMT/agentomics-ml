@@ -60,7 +60,7 @@ def main():
     val_metric = args.val_metric
     iterations = args.iterations
 
-    repository_dir = Path(__file__).parent.parent.resolve()
+    repository_dir = Path(__file__).resolve().parents[2]
     repository_parent_dir = repository_dir.parent.resolve()
     workspace_dir = Path(os.environ.get("AGENTOMICS_WORKSPACE_DIR", str(repository_parent_dir / "workspace"))).resolve()
     paths = {
