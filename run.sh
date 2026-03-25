@@ -448,11 +448,8 @@ else
         -v "$(pwd)":/repository \
         "$PREPARE_IMAGE"
 
-    docker volume create temp_agentomics_volume_${AGENT_ID}
-    cleanup() {
-        docker volume rm temp_agentomics_volume_${AGENT_ID} >/dev/null 2>&1 || true
-    }
-    trap cleanup EXIT
+    printless_command docker volume create temp_agentomics_volume_${AGENT_ID}
+    cleanup_volume_on_finish
 
     TEMP_API_KEY_HASH=""
     if [ "$USE_PROVISIONING_KEY" = true ]; then
