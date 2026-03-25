@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentomics-ml"
+version = "0.1.0"
+description = "Agentomics: autonomous ML agent for biological machine learning tasks"
+readme = "README.md"
+requires-python = ">=3.12"
+
+dependencies = [
+  "rich>=14,<15",
+  "python-dotenv>=1.1,<2",
+  "wandb>=0.21,<0.22",
+  "weave>=0.52,<0.53",
+  "timeout-function-decorator>=2.0,<3",
+  "openai>=2.16,<3",
+  "anthropic>=0.79,<0.80",
+  "requests>=2.32,<3",
+]
+
+[project.scripts]
+agentomics = "agentomics.run_agent_interactive:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
