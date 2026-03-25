@@ -68,7 +68,7 @@ Listing Flags (Run the script with only one of these):
   --list-metrics      List all available validation metrics and exit.
 
 Environment:
-  API keys read from 'src/utils/providers/configured_providers.yaml' must be set as
+  API keys read from 'src/agentomics/utils/providers/configured_providers.yaml' must be set as
   environment variables in your host environment (e.g., in a shell session or .env file)
   to be injected into the Docker container.
 
@@ -493,7 +493,7 @@ else
     [[ -f "$ENV_FILE_PATH" ]] || die "Env file not found: $ENV_FILE_PATH (create it from .env.example)"
     ENV_FILE_ARGS=(--env-file "$ENV_FILE_PATH")
 
-    PROVIDERS_CONFIG_FILE="src/utils/providers/configured_providers.yaml"
+    PROVIDERS_CONFIG_FILE="src/agentomics/utils/providers/configured_providers.yaml"
     [[ -f "$PROVIDERS_CONFIG_FILE" ]] || die "Missing providers config: $PROVIDERS_CONFIG_FILE"
     API_KEY_NAMES=$(grep -E 'apikey:' "$PROVIDERS_CONFIG_FILE" | grep -o '\${[^}]*}' | tr -d '${}' | sort -u)
     DOCKER_API_KEY_ENV_VARS=()
