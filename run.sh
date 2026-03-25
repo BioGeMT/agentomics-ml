@@ -331,7 +331,7 @@ if [ "$LOCAL_MODE" = true ]; then
         need_cmd timeout
         [[ "$TIMEOUT_SECS" =~ ^[0-9]+$ ]] || die "--timeout must be an integer number of seconds (got: $TIMEOUT_SECS)"
         set +e
-        timeout "$TIMEOUT_SECS" python src/run_agent_interactive.py ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
+        timeout "$TIMEOUT_SECS" agentomics ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
         exit_code=$?
         set -e
         if [[ "$exit_code" -eq 124 ]]; then
@@ -340,7 +340,7 @@ if [ "$LOCAL_MODE" = true ]; then
             exit "$exit_code"
         fi
     else
-        python src/run_agent_interactive.py ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
+        agentomics ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
     fi
 
     if [[ "$LIST_MODE" = true ]]; then
