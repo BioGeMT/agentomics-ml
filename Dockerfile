@@ -27,10 +27,10 @@ ENV HF_HOME=/cache/foundation_models
 ARG FOUNDATION_MODEL_TYPE=
 ENV FOUNDATION_MODEL_TYPE=${FOUNDATION_MODEL_TYPE}
 COPY foundation_models/ /foundation_models/
-COPY src/utils/foundation_models_utils.py /repository/src/utils/foundation_models_utils.py
-COPY src/utils/download_foundation_models.py /repository/src/utils/download_foundation_models.py
+COPY src/agentomics/utils/foundation_models_utils.py /repository/src/agentomics/utils/foundation_models_utils.py
+COPY src/agentomics/utils/download_foundation_models.py /repository/src/agentomics/utils/download_foundation_models.py
 RUN if [ -n "$FOUNDATION_MODEL_TYPE" ]; then \
-      /opt/conda/envs/agentomics-env/bin/python /repository/src/utils/download_foundation_models.py; \
+      /opt/conda/envs/agentomics-env/bin/python -m agentomics.utils.download_foundation_models; \
     else \
       echo "Skipping foundation model download (FOUNDATION_MODEL_TYPE not set)"; \
     fi
