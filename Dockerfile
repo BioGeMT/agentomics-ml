@@ -1,4 +1,4 @@
-FROM condaforge/mambaforge:23.3.1-0
+FROM condaforge/mambaforge:24.9.2-0
 
 # Always set -y to conda install commands
 ENV CONDA_ALWAYS_YES=true 
