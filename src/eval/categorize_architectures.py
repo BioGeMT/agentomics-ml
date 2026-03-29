@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 CATEGORIES = [
     "XGBoost",
     "Random Forest",
+    "Decision Tree",
     "Custom Ensemble",
     "CNN",
     "Linear Regression",
@@ -24,7 +25,7 @@ CATEGORIES = [
     "MLP",
     "SVM",
     "Log. Regression",
-    "FM Fine-Tuning",
+    "Foundation Model",
     "Naive Bayes"
 ]
 
@@ -45,7 +46,7 @@ def init_ollama_client():
     return client
 
 
-def categorize_architecture(client, architecture_text: str, model: str = 'gpt-oss:120b', timeout: int = 5) -> str:
+def categorize_architecture(client, architecture_text: str, model: str = 'gpt-oss:120b', timeout: int = 3) -> str:
     """
     Categorize a single architecture description using LLM.
 

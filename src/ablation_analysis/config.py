@@ -11,6 +11,8 @@ ABLATION_TAGS = [
     "ablation_v2",
     "ablation_v3",
     "ablation_v4",
+    "ablation_v5",
+    "ablation_v6"
 ]
 
 # Output directory

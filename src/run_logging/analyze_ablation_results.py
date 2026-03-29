@@ -60,13 +60,12 @@ def main():
         # Filter by model if specified
         if args.model:
             try:
-                # run.config is a JSON string, parse it
-                config_dict = json.loads(run.config)
-                model_name = config_dict.get("model_name", {}).get("value", "")
+                config_dict = run.config if isinstance(run.config, dict) else json.loads(run.config)
+                val = config_dict.get("model_name", "")
+                model_name = val.get("value") if isinstance(val, dict) else val
                 if model_name != args.model:
                     continue
             except:
-                # Skip runs we can't parse
                 continue
 
         # Get ablation from tags
@@ -76,9 +75,9 @@ def main():
                 ablation = tag.replace("ablation:", "")
                 break
 
-        # Parse the JSON string from _json_dict
+        # Get summary dict
         try:
-            summary_dict = json.loads(run.summary._json_dict)
+            summary_dict = run.summary._json_dict if isinstance(run.summary._json_dict, dict) else json.loads(run.summary._json_dict)
         except:
             summary_dict = {}
 
