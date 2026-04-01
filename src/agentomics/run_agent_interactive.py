@@ -14,6 +14,7 @@ from agentomics.utils.providers.provider import Provider, get_provider_and_api_k
 from agentomics.utils.metrics import get_classification_metrics_names, get_regression_metrics_names
 from agentomics.utils.env_utils import are_wandb_vars_available
 from agentomics.utils.user_input import get_user_input_for_int
+from agentomics.utils.path_defaults import resolve_agentomics_paths
 from agentomics.run_agent import run_experiment
 from agentomics.utils.create_user import create_user
 
@@ -49,6 +50,10 @@ def main():
     parser.add_argument('--user-prompt', type=str, default="Develop a machine learning model that generalizes well to new unseen data.", help='(Optional) Text to overwrite the default user prompt')
     parser.add_argument("--model", help="Model name. Should be compatible with the selected provider")
     parser.add_argument("--provider", help="(Optional) Preferred provider to use when multiple api-key provided.")
+    parser.add_argument("--workspace-dir", type=Path, help="Workspace directory. Defaults to AGENTOMICS_WORKSPACE_DIR or ./workspace from the repo root/current working directory.")
+    parser.add_argument("--prepared-datasets-dir", type=Path, help="Prepared datasets directory. Defaults to PREPARED_DATASETS_DIR or ./prepared_datasets from the repo root/current working directory.")
+    parser.add_argument("--prepared-test-sets-dir", type=Path, help="Prepared test sets directory. Defaults to PREPARED_TEST_SETS_DIR/PREPARED_TESTS_DIR or ./prepared_test_sets from the repo root/current working directory.")
+    parser.add_argument("--agent-datasets-dir", type=Path, help="Directory containing non-test datasets visible to the agent. Defaults to AGENTOMICS_AGENT_DATASETS_DIR or <workspace>/datasets.")
 
     available_metrics = get_classification_metrics_names() + get_regression_metrics_names()
     parser.add_argument("--val-metric", help="Validation metric", choices=available_metrics)
@@ -63,17 +68,13 @@ def main():
     if not os.environ.get("AGENT_ID"):
         os.environ["AGENT_ID"] = create_user()
         console.print(f"[yellow]AGENT_ID not set. Generated: {os.environ['AGENT_ID']}[/yellow]")
-    
-    repository_dir = Path(__file__).resolve().parents[2]
-    repository_parent_dir = repository_dir.parent.resolve()
-    workspace_dir = Path(os.environ.get("AGENTOMICS_WORKSPACE_DIR", str(repository_parent_dir / "workspace"))).resolve()
-    paths = {
-        "datasets_dir": str(repository_dir / "datasets"),
-        "prepared_datasets_dir": str(repository_dir / "prepared_datasets"),
-        "prepared_test_sets_dir": str(repository_dir / "prepared_test_sets"),
-        "workspace_dir": str(workspace_dir),
-        "agent_datasets_dir": str(workspace_dir / "datasets")
-    }
+
+    paths = resolve_agentomics_paths(
+        workspace_dir=args.workspace_dir,
+        prepared_datasets_dir=args.prepared_datasets_dir,
+        prepared_test_sets_dir=args.prepared_test_sets_dir,
+        agent_datasets_dir=args.agent_datasets_dir,
+    )
 
     api_key, provider_name = get_provider_and_api_key(preferred_provider=args.provider)
     provider = Provider.create_provider(provider_name, api_key)
@@ -81,7 +82,7 @@ def main():
     # Handle list-only modes (these don't require interactivity)
     if args.list_datasets:
         console.print("Available Datasets", style="cyan")
-        datasets = get_all_prepared_datasets_info(paths["prepared_datasets_dir"], paths["prepared_test_sets_dir"])
+        datasets = get_all_prepared_datasets_info(paths.prepared_datasets_dir, paths.prepared_test_sets_dir)
         print_datasets_table(datasets)
         return 0
     
@@ -99,7 +100,7 @@ def main():
     if (not dataset or not model) and not check_tty_available():
         console.print("Interactive terminal required for dataset/model selection but not available", style="red")
         console.print("For non-interactive use, specify --dataset and --model arguments", style="cyan")
-        console.print("Example: python agentomics-entrypoint.py --dataset breast_cancer --model 'openai/gpt-4'", style="cyan")
+        console.print("Example: agentomics --dataset breast_cancer --model 'openai/gpt-4'", style="cyan")
         return 1
     
     if not are_wandb_vars_available():
@@ -109,7 +110,7 @@ def main():
     # Go to interactive selection if dataset/model not provided
     print_welcome()
     if not dataset:
-        datasets = get_all_prepared_datasets_info(paths["prepared_datasets_dir"], paths["prepared_test_sets_dir"])
+        datasets = get_all_prepared_datasets_info(paths.prepared_datasets_dir, paths.prepared_test_sets_dir)
         dataset = interactive_dataset_selection(datasets)
         if not dataset:
             console.print("No dataset selected", style="red")
@@ -126,10 +127,10 @@ def main():
         model=model,
         dataset_name=dataset,
         val_metric=val_metric,
-        prepared_datasets_dir=paths["prepared_datasets_dir"],
-        prepared_test_sets_dir=paths["prepared_test_sets_dir"],
-        agent_datasets_dir=paths["agent_datasets_dir"],
-        workspace_dir=paths["workspace_dir"],
+        prepared_datasets_dir=paths.prepared_datasets_dir,
+        prepared_test_sets_dir=paths.prepared_test_sets_dir,
+        agent_datasets_dir=paths.agent_datasets_dir,
+        workspace_dir=paths.workspace_dir,
         tags=args.tags,
         iterations=iterations,
         user_prompt=args.user_prompt,

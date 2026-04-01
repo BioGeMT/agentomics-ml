@@ -30,6 +30,7 @@ from agentomics.tools.setup_tools import create_tools, get_tool_names
 from agentomics.utils.snapshots import reset_snapshot_if_val_split_changed, create_split_fingerprint, wipe_current_iter_files, move_metrics_files_to_extras
 from agentomics.agents.steps.data_split import DataSplit
 from agentomics.utils.dataset_utils import get_task_type_from_prepared_dataset
+from agentomics.utils.path_defaults import resolve_agentomics_paths
 
 async def main(model_name, feedback_model_name, dataset, tags, val_metric,
                workspace_dir, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir, iterations,
@@ -208,12 +209,10 @@ def parse_args():
     parser.add_argument('--dataset-name', required=True, help='Name of the folder containing dataset files')
     parser.add_argument('--model', help='LLM model to use', required=True)
     parser.add_argument('--provider', required=True, help=f'API provider to use. Available: {Provider.get_available_providers()}.')
-    default_workspace_dir = Path(os.environ.get("AGENTOMICS_WORKSPACE_DIR", "../workspace")).resolve()
-    default_agent_datasets_dir = default_workspace_dir / "datasets"
-    parser.add_argument('--workspace-dir', type=Path, default=default_workspace_dir, help='Path to a directory which will store agent runs, snapshots, and reports')
-    parser.add_argument('--prepared-datasets-dir', type=Path, default=Path('../repository/prepared_datasets').resolve(), help='Path to a directory which contains prepared datasets.')
-    parser.add_argument('--prepared-test-sets-dir', type=Path, default=Path('../repository/prepared_test_sets').resolve(), help='Path to a directory which contains prepared test sets.')
-    parser.add_argument('--agent-datasets-dir', type=Path, default=default_agent_datasets_dir, help='Path to a directory which contains non-test data accessible by agents.')
+    parser.add_argument('--workspace-dir', type=Path, help='Path to a directory which will store agent runs, snapshots, and reports. Defaults to AGENTOMICS_WORKSPACE_DIR or ./workspace from the repo root/current working directory.')
+    parser.add_argument('--prepared-datasets-dir', type=Path, help='Path to a directory which contains prepared datasets. Defaults to PREPARED_DATASETS_DIR or ./prepared_datasets from the repo root/current working directory.')
+    parser.add_argument('--prepared-test-sets-dir', type=Path, help='Path to a directory which contains prepared test sets. Defaults to PREPARED_TEST_SETS_DIR/PREPARED_TESTS_DIR or ./prepared_test_sets from the repo root/current working directory.')
+    parser.add_argument('--agent-datasets-dir', type=Path, help='Path to a directory which contains non-test data accessible by agents. Defaults to AGENTOMICS_AGENT_DATASETS_DIR or <workspace>/datasets.')
     parser.add_argument('--tags', nargs='*', default=[], help='(Optional) Tags for a wandb run logging')
     parser.add_argument('--iterations', type=int, default=5, help='Number of training iterations to run')
     parser.add_argument("--timeout", type=int, help="Timeout before the run is shut down in seconds")
@@ -274,15 +273,21 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
 
 async def run_experiment_from_terminal():
     args = parse_args()
+    paths = resolve_agentomics_paths(
+        workspace_dir=args.workspace_dir,
+        prepared_datasets_dir=args.prepared_datasets_dir,
+        prepared_test_sets_dir=args.prepared_test_sets_dir,
+        agent_datasets_dir=args.agent_datasets_dir,
+    )
 
     await run_experiment(
         model=args.model,
         dataset_name=args.dataset_name,
         val_metric=args.val_metric,
-        prepared_datasets_dir=args.prepared_datasets_dir,
-        prepared_test_sets_dir=args.prepared_test_sets_dir,
-        agent_datasets_dir=args.agent_datasets_dir,
-        workspace_dir=args.workspace_dir,
+        prepared_datasets_dir=paths.prepared_datasets_dir,
+        prepared_test_sets_dir=paths.prepared_test_sets_dir,
+        agent_datasets_dir=paths.agent_datasets_dir,
+        workspace_dir=paths.workspace_dir,
         tags=args.tags,
         iterations=args.iterations,
         user_prompt=args.user_prompt,
