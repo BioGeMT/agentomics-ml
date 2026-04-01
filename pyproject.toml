@@ -27,5 +27,12 @@ dependencies = [
 [project.scripts]
 agentomics = "agentomics.run_agent_interactive:main"
 
+[tool.setuptools]
+include-package-data = true
+
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"agentomics.utils.providers" = ["configured_providers.yaml"]
+"agentomics.resources.foundation_models" = ["*.yaml", "*.md"]

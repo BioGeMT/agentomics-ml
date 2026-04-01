@@ -1,25 +1,37 @@
 import os
 import yaml
+from importlib import resources
 from pathlib import Path
 
 BASE_DIR = os.environ.get('HF_HOME', '/cache/foundation_models')
-MODELS_YAML = os.environ.get('FOUNDATION_MODELS_YAML', os.path.join('/foundation_models', 'models.yaml'))
 FOUNDATION_MODEL_TYPE_ENV = "FOUNDATION_MODEL_TYPE"
+FOUNDATION_MODELS_PACKAGE = "agentomics.resources.foundation_models"
 
-def load_models_config():
-    models_path = Path(MODELS_YAML)
+
+def _load_models_config_from_path(models_path: Path):
     if not models_path.exists():
         return None
     with open(models_path, 'r') as f:
         config = yaml.safe_load(f)
     if not config:
         return config
+
     base_dir = models_path.parent
     for meta in config.values():
         path_to_info = meta.get("path_to_info")
         if path_to_info and not Path(path_to_info).is_absolute():
             meta["path_to_info"] = str(base_dir / path_to_info)
     return config
+
+
+def load_models_config():
+    configured_path = os.environ.get('FOUNDATION_MODELS_YAML')
+    if configured_path:
+        return _load_models_config_from_path(Path(configured_path))
+
+    packaged_models = resources.files(FOUNDATION_MODELS_PACKAGE).joinpath("models.yaml")
+    with resources.as_file(packaged_models) as packaged_models_path:
+        return _load_models_config_from_path(packaged_models_path)
 
 def build_foundation_model_catalog():
     """
