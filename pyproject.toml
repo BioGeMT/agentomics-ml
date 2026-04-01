@@ -15,13 +15,34 @@ dependencies = [
   "wandb>=0.21,<0.22",
   "weave>=0.52,<0.53",
   "timeout-function-decorator>=2.0,<3",
+  "pydantic>=2,<3",
+  "pydantic-ai>=1.53,<2",
   "openai>=2.16,<3",
   "anthropic>=0.79,<0.80",
+  "httpx>=0.28,<1",
   "requests>=2.32,<3",
+  "PyYAML>=6,<7",
   "numpy>=1.26,<3",
   "pandas>=2.2,<3",
   "scikit-learn>=1.5,<2",
-    "hrid",
+  "scipy>=1.13,<2",
+  "hrid>=0.3,<1",
+]
+
+[project.optional-dependencies]
+foundation-models = [
+  "torch>=2.9,<3",
+  "transformers>=4.47,<5",
+  "einops>=0.8,<1",
+  "multimolecule>=0.0.8,<1",
+]
+reports = [
+  "matplotlib>=3.8,<4",
+  "reportlab>=4.2,<5",
+  "seaborn>=0.13,<1",
+]
+all = [
+  "agentomics-ml[foundation-models,reports]",
 ]
 
 [project.scripts]
