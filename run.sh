@@ -21,7 +21,7 @@ VAL_METRIC=""
 LIST_MODE=false
 FOUNDATION_MODEL_TYPE=""
 STEALTH_TEST=false
-PULL_IMAGES=false
+BUILD_IMAGES=false
 DOCKERHUB_USERNAME="biogemt"
 
 show_help() {
@@ -54,7 +54,7 @@ Operational Flags:
                       (Note: Only supported in Docker mode, not in local Conda mode.)
   --cpu-only          Force Docker/Conda to run using CPU only (skip GPU configuration).
   --ollama            Enable support for an Ollama server running on the host machine.
-  --pull-images       Pull prebuilt Docker images from Docker Hub instead of building locally (uses biogemt images).
+  --build-images      Build Docker images locally instead of pulling prebuilt biogemt images from Docker Hub.
   --foundation-model-type <dna|rna|molecule|protein|all>
                       Enable foundation models of a specific type. Use 'all' to download all types. When omitted, no foundation models are used or pre-downloaded.
   --use-provisioning-key  Use OpenRouter provisioning key to create temporary API key and log costs.
@@ -184,8 +184,8 @@ while [[ $# -gt 0 ]]; do
             SPEND_LIMIT="$2"
             shift 2
             ;;
-        --pull-images)
-            PULL_IMAGES=true
+        --build-images)
+            BUILD_IMAGES=true
             shift
             ;;
         --foundation-model-type)
@@ -394,22 +394,6 @@ else
         fi
     fi
 
-    if [[ "$IS_INTERACTIVE_RUN" = true && "$PULL_IMAGES" = false ]]; then
-        echo ""
-        echo "Docker images"
-        echo "Select how to obtain Docker images:"
-        echo "  1) build locally"
-        echo "  2) pull prebuilt (biogemt)"
-        echo ""
-        read -r -p "Enter choice [2]: " images_choice
-        images_choice="${images_choice:-2}"
-        case "$images_choice" in
-            1) PULL_IMAGES=false;;
-            2) PULL_IMAGES=true;;
-            *) die "Invalid choice.";;
-        esac
-    fi
-
     FOUNDATION_MODEL_FLAGS=()
     DOCKER_BUILD_ARGS=()
     if [ -n "$FOUNDATION_MODEL_TYPE" ]; then
@@ -420,7 +404,15 @@ else
     AGENTOMICS_IMAGE="agentomics_img"
     PREPARE_IMAGE="agentomics_prepare_img"
 
-    if [ "$PULL_IMAGES" = true ]; then
+    if [ "$BUILD_IMAGES" = true ]; then
+        echo "Building the run image"
+        docker build -t "$AGENTOMICS_IMAGE" -f Dockerfile ${DOCKER_BUILD_ARGS[@]+"${DOCKER_BUILD_ARGS[@]}"} .
+        echo "Build done"
+
+        echo "Building the data preparation image"
+        docker build -t "$PREPARE_IMAGE" -f Dockerfile.prepare .
+        echo "Build done"
+    else
         FM_TAG="NONE"
         if [ -n "$FOUNDATION_MODEL_TYPE" ]; then
             FM_TAG="$(echo "$FOUNDATION_MODEL_TYPE" | tr '[:lower:]' '[:upper:]')"
@@ -432,14 +424,6 @@ else
         docker pull "$AGENTOMICS_IMAGE"
         echo "Pulling the data preparation image"
         docker pull "$PREPARE_IMAGE"
-    else
-        echo "Building the run image"
-        docker build -t "$AGENTOMICS_IMAGE" -f Dockerfile ${DOCKER_BUILD_ARGS[@]+"${DOCKER_BUILD_ARGS[@]}"} .
-        echo "Build done"
-
-        echo "Building the data preparation image"
-        docker build -t "$PREPARE_IMAGE" -f Dockerfile.prepare .
-        echo "Build done"
     fi
     AGENT_ID=$(docker run --rm -u $(id -u):$(id -g) -v "$(pwd)":/repository:ro --entrypoint \
                /opt/conda/envs/agentomics-env/bin/python "$AGENTOMICS_IMAGE" /repository/src/utils/create_user.py)
