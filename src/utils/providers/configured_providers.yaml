@@ -3,6 +3,11 @@ providers:
     apikey: "${OPENAI_API_KEY}"
     base_url: "https://api.openai.com/v1"
     list_models_endpoint: "https://api.openai.com/v1/models"
+
+  - name: "Codex"
+    apikey: ""
+    base_url: "https://chatgpt.com/backend-api/codex"
+    list_models_endpoint: ""
   
   - name: "Anthropic"
     apikey: "${ANTHROPIC_API_KEY}"

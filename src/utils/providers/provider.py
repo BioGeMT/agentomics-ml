@@ -28,6 +28,17 @@ class Provider():
         self.base_url = base_url
         self.list_models_endpoint = list_models_endpoint
         self.headers = {}
+
+    @staticmethod
+    def get_proxy_url() -> Optional[str]:
+        return (
+            os.getenv("HTTPS_PROXY")
+            or os.getenv("https_proxy")
+            or os.getenv("HTTP_PROXY")
+            or os.getenv("http_proxy")
+            or os.getenv("ALL_PROXY")
+            or os.getenv("all_proxy")
+        )
     
     def fetch_models(self) -> Optional[List[Dict]]:
         """Get available models. Override in subclasses when necessary."""
@@ -152,6 +163,9 @@ class Provider():
         elif name_lower == "openai":
             from .openai_provider import OpenAiProvider
             return OpenAiProvider(api_key, base_url, provider_config["list_models_endpoint"])
+        elif name_lower == "codex":
+            from .codex_provider import CodexProvider
+            return CodexProvider(base_url, provider_config["list_models_endpoint"])
         # elif name_lower == "googleai": requires pydanticai version update
         #     from .googleai_provider import GoogleAiProvider
         #     return GoogleAiProvider(api_key, base_url, list_models_endpoint)
@@ -170,6 +184,11 @@ def get_provided_api_keys() -> Dict[str, str]:
 
         if (api_key_env and os.getenv(api_key_env)) or (provider_name.lower() == "ollama" and os.getenv("OLLAMA_BASE_URL")):
               provided_keys[provider_name] = os.getenv(api_key_env, "")
+        elif provider_name.lower() == "codex":
+            from .codex_auth import CodexAuthStore
+
+            if CodexAuthStore.is_available():
+                provided_keys[provider_name] = ""
 
     return provided_keys #{"provider": api_key, ...}
 
@@ -207,7 +226,9 @@ def get_provider_and_api_key(preferred_provider: str = None) -> tuple[str, str]:
     elif preferred_provider:
         match = next((key for key in api_keys_provided if key.lower() == preferred_provider.lower()), None)
         if match is None:
-            raise ValueError(f"--provider '{preferred_provider}' API key is not set in env variables. Available: {list(api_keys_provided.keys())}")
+            raise ValueError(
+                f"--provider '{preferred_provider}' is not configured. Available: {list(api_keys_provided.keys())}"
+            )
         return api_keys_provided[match], match
     elif len(api_keys_provided) > 1:
         if not (sys.stdin.isatty() and sys.stdout.isatty()): #non-interactive run
@@ -236,6 +257,8 @@ def list_required_api_keys() -> str:
             required_env_vars.append(api_key_env)
         elif provider_name.lower() == "ollama":
             required_env_vars.append("OLLAMA_BASE_URL")
+        elif provider_name.lower() == "codex":
+            required_env_vars.append("codex login (~/.codex/auth.json)")
     
     return ", ".join(required_env_vars)
 
