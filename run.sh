@@ -16,6 +16,7 @@ USE_PROVISIONING_KEY=false
 SPEND_LIMIT=10
 TIMEOUT_SECS=""
 MODEL_NAME=""
+PREFERRED_PROVIDER=""
 DATASET_NAME=""
 VAL_METRIC=""
 LIST_MODE=false
@@ -70,6 +71,8 @@ Environment:
   API keys read from 'src/utils/providers/configured_providers.yaml' must be set as
   environment variables in your host environment (e.g., in a shell session or .env file)
   to be injected into the Docker container.
+  For the 'codex' provider, run `codex login` on the host so `~/.codex/auth.json`
+  is available to the launcher.
 
 Output:
   Results are copied from the temporary workspace to the local 'outputs/<AGENT_ID>' directory.
@@ -110,6 +113,7 @@ while [[ $# -gt 0 ]]; do
         --provider)
             require_opt_value "$1" "${2:-}"
             AGENTOMICS_ARGS+=(--provider "$2")
+            PREFERRED_PROVIDER="$2"
             shift 2
             ;;
         --dataset)
@@ -514,6 +518,43 @@ else
         fi
     fi
 
+    CODEX_DOCKER_FLAGS=()
+    HOST_CODEX_DIR="${HOME}/.codex"
+    if [[ -d "$HOST_CODEX_DIR" ]] && ([[ -z "$PREFERRED_PROVIDER" ]] || [[ "$PREFERRED_PROVIDER" == "codex" ]]); then
+        CODEX_DOCKER_FLAGS+=(-v "${HOST_CODEX_DIR}:/mnt/codex-host:ro")
+        CODEX_DOCKER_FLAGS+=(-e "CODEX_AUTH_FILE=/tmp/codex/auth.json")
+        CODEX_DOCKER_FLAGS+=(-e "CODEX_MODELS_CACHE_FILE=/tmp/codex/models_cache.json")
+    fi
+
+    TEST_EXEC=(--entrypoint /opt/conda/envs/agentomics-env/bin/python "$AGENTOMICS_IMAGE" -m test.run_all_tests)
+    RUN_EXEC=("$AGENTOMICS_IMAGE" "${AGENTOMICS_ARGS[@]}")
+    if [[ ${#CODEX_DOCKER_FLAGS[@]} -gt 0 ]]; then
+        CODEX_BOOTSTRAP='
+            mkdir -p /tmp/codex
+            if [[ -f /mnt/codex-host/auth.json ]]; then cp -f /mnt/codex-host/auth.json /tmp/codex/auth.json; fi
+            if [[ -f /mnt/codex-host/models_cache.json ]]; then cp -f /mnt/codex-host/models_cache.json /tmp/codex/models_cache.json; fi
+            exec "$@"
+        '
+        TEST_EXEC=(
+            --entrypoint /bin/bash
+            "$AGENTOMICS_IMAGE"
+            -lc "$CODEX_BOOTSTRAP"
+            --
+            /opt/conda/envs/agentomics-env/bin/python
+            -m
+            test.run_all_tests
+        )
+        RUN_EXEC=(
+            --entrypoint /bin/bash
+            "$AGENTOMICS_IMAGE"
+            -lc "$CODEX_BOOTSTRAP"
+            --
+            /opt/conda/envs/agentomics-env/bin/python
+            /repository/src/run_agent_interactive.py
+            "${AGENTOMICS_ARGS[@]}"
+        )
+    fi
+
     if [ "$TEST_MODE" = true ]; then
         docker run \
             -it \
@@ -526,12 +567,12 @@ else
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
             ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
+            ${CODEX_DOCKER_FLAGS[@]+"${CODEX_DOCKER_FLAGS[@]}"} \
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/test":/repository/test:ro \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
-            --entrypoint /opt/conda/envs/agentomics-env/bin/python \
-            "$AGENTOMICS_IMAGE" -m test.run_all_tests
+            ${TEST_EXEC[@]+"${TEST_EXEC[@]}"}
     else
         AGENTOMICS_ARGS+=(--workspace-dir /workspace --prepared-datasets-dir /repository/prepared_datasets)
 
@@ -546,13 +587,12 @@ else
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
             ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
+            ${CODEX_DOCKER_FLAGS[@]+"${CODEX_DOCKER_FLAGS[@]}"} \
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
             -v "$(pwd)/prepared_test_sets":/repository/prepared_test_sets:ro \
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
-            "$AGENTOMICS_IMAGE" ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
-        RUN_EXIT_CODE=$?
-        set -e
+            ${RUN_EXEC[@]+"${RUN_EXEC[@]}"}
 
         if [ "$LIST_MODE" = true ]; then
             exit "$RUN_EXIT_CODE"

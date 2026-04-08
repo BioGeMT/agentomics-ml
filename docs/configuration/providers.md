@@ -8,6 +8,7 @@ Agentomics-ML supports multiple LLM providers out of the box.
 |----------|---------------------|--------|
 | [OpenRouter](https://openrouter.ai/) | `OPENROUTER_API_KEY` | 100+ models |
 | [OpenAI](https://openai.com/) | `OPENAI_API_KEY` | Use `--list-models` to see available models |
+| OpenAI Codex | `codex login` | Uses your local Codex/ChatGPT login |
 | [Ollama](https://ollama.ai/) | Local setup | Local models |
 
 ## OpenRouter
@@ -56,6 +57,33 @@ export OPENAI_API_KEY="sk-xxxxxxxxxxxx"
 ### Available Models
 
 Use `./run.sh --list-models` to see what your API key can access.
+
+---
+
+## Codex (ChatGPT OAuth)
+
+Experimental support for the local Codex CLI login flow.
+
+### Setup
+
+First, sign into Codex on the same machine:
+
+```bash
+codex login
+```
+
+Then run Agentomics with the `codex` provider:
+
+```bash
+./run.sh --provider codex --list-models
+./run.sh --provider codex --model gpt-5.4
+```
+
+This provider reads your local Codex auth state from `~/.codex/auth.json` and
+uses the ChatGPT Codex backend instead of `OPENAI_API_KEY`.
+
+If you are also setting `OPENAI_API_KEY` or `OPENROUTER_API_KEY`, pass
+`--provider codex` explicitly for non-interactive runs.
 
 ---
 
