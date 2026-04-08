@@ -32,7 +32,7 @@ cp .env.example .env
 # Download example datasets
 ./download_example_datasets.sh
 
-./run.sh --pull-images
+./run.sh
 ```
 
 Recommended model: `gpt-5.1-codex-max`

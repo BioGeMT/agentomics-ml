@@ -13,7 +13,7 @@ cd Agentomics-ML
 
 ## Docker with Pre-built Images
 
-**Fastest setup** - Downloads pre-built images from Docker Hub.
+**Default mode** - Downloads pre-built images from Docker Hub.
 
 ### Requirements
 
@@ -27,16 +27,16 @@ cp .env.example .env
 # Edit .env and set at least one API key
 
 # Run with pre-built images
-./run.sh --pull-images
+./run.sh
 ```
 
-The images will be downloaded automatically on first run.
+The images will be downloaded automatically on first run. All subsequent runs will use the cached images.
 
 ---
 
 ## Docker with Local Build
 
-**Default mode** - Builds Docker images locally.
+**Alternative mode** - Builds Docker images locally.
 
 ### Requirements
 
@@ -49,8 +49,8 @@ The images will be downloaded automatically on first run.
 cp .env.example .env
 # Edit .env and set at least one API key
 
-# Run (will prompt to build images on first run)
-./run.sh
+# Run while building images locally
+./run.sh --build-images
 ```
 
 On first run, you'll be prompted to build the Docker images. This takes a few minutes but only needs to be done once.
