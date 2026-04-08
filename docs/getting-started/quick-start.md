@@ -29,10 +29,8 @@ cp .env.example .env
 ### 3. Run the Agent
 
 ```bash
-./run.sh --pull-images
+./run.sh
 ```
-
-The `--pull-images` flag automatically downloads pre-built Docker images from Docker Hub, which is the fastest way to get started.
 
 ### 4. Follow the Interactive Prompts
 

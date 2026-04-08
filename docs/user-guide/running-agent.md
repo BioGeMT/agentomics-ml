@@ -62,7 +62,7 @@ For non-interactive runs, provide at least `--model`, `--dataset`, and `--iterat
 
 | Flag | Description |
 |------|-------------|
-| `--pull-images` | Pull pre-built Docker images |
+| `--build-images` | Build Docker images locally |
 | `--local` | Run without Docker (uses conda) |
 | `--cpu-only` | Disable GPU acceleration |
 | `--ollama` | Use local Ollama models |
