@@ -57,7 +57,6 @@ nav:
     - Foundation Models: reference/foundation-models.md
     - Workspace Structure: reference/workspace-structure.md
   - Developer Guide:
-    - Building Images: developer/building-images.md
     - Proxy Settings: developer/proxy-settings.md
     - GPU Settings: developer/gpu-settings.md
 
