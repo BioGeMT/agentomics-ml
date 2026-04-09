@@ -595,7 +595,7 @@ else
           -v "$(pwd)":/repository \
           -v "$(pwd)/outputs/${AGENT_ID}":/agent_out \
           --entrypoint /opt/conda/envs/agentomics-env/bin/python \
-          agentomics_img /repository/src/generate_final_reports.py \
+          "$AGENTOMICS_IMAGE" /repository/src/generate_final_reports.py \
             --agent-dir /agent_out --prepared-datasets /repository/prepared_datasets \
             --prepared-tests /repository/prepared_test_sets
 
