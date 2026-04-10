@@ -111,7 +111,20 @@ fi
 
 OLLAMA_FLAGS=()
 if [ "$OLLAMA" = true ]; then
-    OLLAMA_FLAGS+=(--add-host=host.docker.internal:host-gateway)
+    OLLAMA_FLAGS+=(--network=host)
+fi
+
+# RAG preparation: start pgvector and load knowledge once before any runs
+if [ "$KNOWLEDGE_MODE" = "rag" ]; then
+    echo "Preparing RAG knowledge sources"
+    bash src/rag/pgvector.sh start
+
+    if ! conda env list | grep -q "agentomics-env"; then
+        conda env create -f environment.yaml -q
+    fi
+
+    conda run -n agentomics-env python src/rag/knowledge_to_db.py --dataset "${DATASETS[0]}" #expects the first dataset to be the one used for RAG
+    echo "RAG preparation done"
 fi
 
 # Run ablation loops
