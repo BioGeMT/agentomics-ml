@@ -39,6 +39,9 @@ TAGS=(
     # "experiment_v1"
 )
 
+# Knowledge integration mode: "none", "icl", or "rag"
+KNOWLEDGE_MODE="icl"
+
 # Runtime flags
 CPU_ONLY=false
 OLLAMA=false
@@ -70,6 +73,7 @@ echo "============================================"
 echo "Models: ${MODELS[*]}"
 echo "Datasets: ${DATASETS[*]}"
 echo "Provider: $PROVIDER"
+echo "Knowledge Mode: $KNOWLEDGE_MODE"
 echo "Val Metric: $VAL_METRIC"
 echo "Iterations per run: $ITERATIONS"
 echo "Repetitions: $REPETITIONS"
@@ -82,7 +86,7 @@ echo ""
 
 # Build Docker images once
 echo "Building the run image"
-docker build -t agentomics_img -f Dockerfile .
+docker build -t agentomics_ablation_img -f Dockerfile .
 echo "Build done"
 
 echo "Building the data preparation image"
@@ -163,6 +167,7 @@ for model in "${MODELS[@]}"; do
                     --iterations "$ITERATIONS"
                     --user-prompt "$USER_PROMPT"
                     --provider "$PROVIDER"
+                    --knowledge-mode "$KNOWLEDGE_MODE"
                 )
 
                 # Add tags
@@ -170,6 +175,7 @@ for model in "${MODELS[@]}"; do
                     AGENTOMICS_ARGS+=(--tags "$tag")
                 done
                 AGENTOMICS_ARGS+=(--tags "ablation:${ABLATION_NAME}")
+                AGENTOMICS_ARGS+=(--tags "knowledge:${KNOWLEDGE_MODE}")
 
                 # Add steps to skip if not baseline
                 if [ -n "$STEPS_TO_SKIP" ]; then

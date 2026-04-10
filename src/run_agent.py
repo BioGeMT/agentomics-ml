@@ -25,8 +25,8 @@ from feedback.feedback_agent import get_feedback, aggregate_feedback
 from tools.setup_tools import create_tools
 
 
-async def main(model_name, feedback_model_name, dataset, tags, val_metric, 
-               workspace_dir, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir, iterations, user_prompt, provider_name, steps_to_skip):
+async def main(model_name, feedback_model_name, dataset, tags, val_metric,
+               workspace_dir, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir, iterations, user_prompt, provider_name, steps_to_skip, knowledge_mode="none"):
     agent_id = os.getenv('AGENT_ID')
     # Initialize configuration 
     config = Config(
@@ -43,6 +43,7 @@ async def main(model_name, feedback_model_name, dataset, tags, val_metric,
         iterations=iterations,
         user_prompt=user_prompt,
         steps_to_skip=steps_to_skip,
+        knowledge_mode=knowledge_mode,
     )
     ensure_workspace_folders(config)
     create_run_and_snapshot_dirs(config)
@@ -169,6 +170,7 @@ def parse_args():
     parser.add_argument('--iterations', type=int, default=5, help='Number of training iterations to run')
     parser.add_argument('--user-prompt', type=str, default="Create the best possible machine learning model that will generalize to new unseen data.", help='(Optional) Text to overwrite the default user prompt')
     parser.add_argument('--steps-to-skip', nargs='*', default=[], help='(Optional) List of steps to skip. Available steps: data_exploration, data_split, data_representation, model_architecture, model_training, final_outcome')
+    parser.add_argument('--knowledge-mode', choices=['none', 'icl', 'rag'], default='none', help='Knowledge integration mode: none (default), icl (full in-context), or rag (retrieval-augmented)')
 
     val_metric_choices = get_classification_metrics_names() + get_regression_metrics_names()
     parser.add_argument('--val-metric', help='Validation metric to use for the best model selection', required=True, choices=val_metric_choices)
@@ -181,8 +183,8 @@ def parse_args():
 
     return args
 
-async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir, 
-                          workspace_dir, tags, iterations, user_prompt, provider, steps_to_skip):
+async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir, prepared_test_sets_dir, agent_datasets_dir,
+                          workspace_dir, tags, iterations, user_prompt, provider, steps_to_skip, knowledge_mode="none"):
     setup_nonsensitive_dataset_files_for_agent(
         prepared_datasets_dir=Path(prepared_datasets_dir),
         agent_datasets_dir=Path(agent_datasets_dir),
@@ -190,37 +192,39 @@ async def run_experiment(model, dataset_name, val_metric, prepared_datasets_dir,
     )
     FEEDBACK_MODEL = model
     await main(
-        model_name=model, 
-        feedback_model_name=FEEDBACK_MODEL, 
-        dataset=dataset_name, 
+        model_name=model,
+        feedback_model_name=FEEDBACK_MODEL,
+        dataset=dataset_name,
         tags=tags,
-        val_metric=val_metric, 
-        workspace_dir=workspace_dir, 
-        prepared_datasets_dir=prepared_datasets_dir, 
+        val_metric=val_metric,
+        workspace_dir=workspace_dir,
+        prepared_datasets_dir=prepared_datasets_dir,
         prepared_test_sets_dir=prepared_test_sets_dir,
         agent_datasets_dir=agent_datasets_dir,
         iterations=iterations,
         user_prompt=user_prompt,
         provider_name=provider,
-        steps_to_skip=steps_to_skip
+        steps_to_skip=steps_to_skip,
+        knowledge_mode=knowledge_mode,
     )
 
 async def run_experiment_from_terminal():
     args = parse_args()
 
     await run_experiment(
-        model=args.model, 
-        dataset_name=args.dataset_name, 
-        val_metric=args.val_metric, 
-        prepared_datasets_dir=args.prepared_datasets_dir, 
+        model=args.model,
+        dataset_name=args.dataset_name,
+        val_metric=args.val_metric,
+        prepared_datasets_dir=args.prepared_datasets_dir,
         prepared_test_sets_dir=args.prepared_test_sets_dir,
-        agent_datasets_dir=args.agent_datasets_dir, 
-        workspace_dir=args.workspace_dir, 
+        agent_datasets_dir=args.agent_datasets_dir,
+        workspace_dir=args.workspace_dir,
         tags=args.tags,
         iterations=args.iterations,
         user_prompt=args.user_prompt,
         provider=args.provider,
-        steps_to_skip=args.steps_to_skip
+        steps_to_skip=args.steps_to_skip,
+        knowledge_mode=args.knowledge_mode,
     )
 
 if __name__ == "__main__":

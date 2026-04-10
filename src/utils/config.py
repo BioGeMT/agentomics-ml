@@ -25,6 +25,7 @@ class Config:
     task_type: str
     user_prompt: str
     steps_to_skip: List[str]
+    knowledge_mode: str  # "none", "icl", or "rag"
 
     wandb_run_id: Optional[str] = None
     # static defaults
@@ -54,6 +55,7 @@ class Config:
         agent_datasets_dir: Path,
         user_prompt: str,
         steps_to_skip: List[str] = None,
+        knowledge_mode: str = "none",
         max_steps: Optional[int] = None,
         iterations: Optional[int] = 5,
     ):
@@ -75,6 +77,7 @@ class Config:
         self.task_type = get_task_type_from_prepared_dataset(prepared_datasets_dir / dataset)
         self.user_prompt = user_prompt
         self.steps_to_skip = steps_to_skip if steps_to_skip is not None else []
+        self.knowledge_mode = knowledge_mode
         self.explicit_valid_set_provided = (agent_datasets_dir / dataset / "validation.csv").exists()
 
         if max_steps is not None:
@@ -104,6 +107,7 @@ class Config:
         print('VAL METRIC:', self.val_metric)
         print('AGENT ID:', self.agent_id)
         print('ITERATIONS:', self.iterations)
+        print('KNOWLEDGE MODE:', self.knowledge_mode)
         print('USER PROMPT:', self.user_prompt)
 
         gpu_info = self._check_gpu_availability()

@@ -351,6 +351,15 @@ def prepare_dataset(dataset_dir, target_col,
 
     (out_dir / 'metadata.json').write_text(json.dumps(meta, indent=4))
 
+    # Copy cleaned knowledge files if they exist
+    knowledge_clean_dir = dataset_dir / "knowledge" / "clean"
+    if knowledge_clean_dir.is_dir():
+        out_knowledge_dir = out_dir / "knowledge"
+        if out_knowledge_dir.exists():
+            shutil.rmtree(out_knowledge_dir)
+        shutil.copytree(knowledge_clean_dir, out_knowledge_dir)
+        print(f"INFO: Copied {len(list(out_knowledge_dir.glob('*.md')))} knowledge files to {out_knowledge_dir}")
+
 def setup_nonsensitive_dataset_files_for_agent(prepared_datasets_dir: Path, agent_datasets_dir: Path, dataset_name: str):
     """
     Copies non-sensitive (non-test) dataset files to a shared directory accessible by agents.
@@ -375,3 +384,11 @@ def setup_nonsensitive_dataset_files_for_agent(prepared_datasets_dir: Path, agen
             #TODO make it read-only simlink 
             #TODO check raw data -> prepared data is not a symlink but a hard copy!
             shutil.copy2(source_file, target_file)
+
+    # Copy knowledge directory if it exists
+    source_knowledge_dir = source_dataset_dir / "knowledge"
+    target_knowledge_dir = target_dataset_dir / "knowledge"
+    if source_knowledge_dir.is_dir():
+        if target_knowledge_dir.exists():
+            shutil.rmtree(target_knowledge_dir)
+        shutil.copytree(source_knowledge_dir, target_knowledge_dir)
