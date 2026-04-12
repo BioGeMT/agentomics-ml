@@ -1,102 +1,198 @@
-import os
-from pathlib import Path
+from __future__ import annotations
 
-from pydantic import BaseModel, Field
-from pydantic.json_schema import SkipJsonSchema
-from pydantic_ai import Agent, RunContext, ModelRetry
+import os
+import shutil
+import time
+from pathlib import Path
+from typing import cast
+
+from pydantic import Field
+from pydantic_ai import Agent, ModelRetry, RunContext
 import pandas as pd
 
-from agents.agent_utils import get_new_rundir_files
+from agents.steps.base import AgenticStep, AgenticStepOutput
+from runtime.filesystem import chown_tree_to_root
+from runtime.read_write_utils import get_last_successful_iteration, load_current_iteration_index, load_iteration_metadata
+from runtime.step_outputs import load_step_output
+from run_logging.logging_helpers import log_split_is_allowed
+from utils.dataset_utils import get_numeric_label_col_from_prepared_dataset
 
-class DataSplit(BaseModel):
+class DataSplitOutput(AgenticStepOutput):
     train_path: str = Field(description="Path to generated train.csv file")
     val_path: str = Field(description="Path to generated validation.csv file")
     splitting_strategy: str = Field(description="Detailed description of the splitting strategy used")
-    files_created: SkipJsonSchema[list[str]] = Field(
-        default_factory=list,
-        description="""
-        List of files created during data split step. Populated programmatically.
-        """
+    split_changed: bool = Field(
+        default=False,
+        description="Whether the train/validation split changed during this step. Populated programmatically.",
     )
 
-def get_data_split_prompt(config, iteration, last_split_strategy="Split does not exist"):
-    if config.task_type == 'classification':
-        extra_instructions = "Ensure that the validation split contains representative samples from ALL classes."
-    elif config.task_type == 'regression':
-        extra_instructions = ""
-    else:
-        raise ValueError(f"Unknown task type: {config.task_type}. Supported types are 'classification' and 'regression'.")
+class DataSplitStep(AgenticStep):
+    step_id = "data_split"
+    display_name = "SPLITTING"
+    output_type = DataSplitOutput
 
-    if(iteration != 0 and last_split_strategy is not None):
-        extra_info = f"""
-        Note: Train ({config.agent_dataset_dir / "train.csv"}) and validation ({config.agent_dataset_dir / "validation.csv"}) split files from past iteration already exist. 
-        If you don't have a reason to change the splitting strategy, return the already existing split files paths immediately, for created files return an empty list, and return this text as the splitting strategy:\n{last_split_strategy}\n.
-        """
-    else:
-        extra_info = ""
-    
-    train_csv_path = config.agent_dataset_dir / "train.csv"
-    return f"""
-        Your next task: Split the training dataset ({train_csv_path}) into training and validation sets:
-        Ensure the validation split is representative of new unseen data, since it will be used for optimizing choices like architecture, hyperparameters, and training strategies.
-        {extra_instructions}
-        - Save 'train.csv' and 'validation.csv' in {config.runs_dir / config.agent_id}.
-        Return the absolute paths to these files.
+    def _get_latest_split_strategy(self) -> str:
+        iteration = get_last_successful_iteration(self.config)
+        assert iteration is not None
+        return load_step_output(self.config, self.step_id, self.config.iteration_dir(iteration)).splitting_strategy
 
-        {extra_info}
-        """
+    def _get_latest_split_dir(self) -> Path | None:
+        dirs = [d for d in self.config.splits_dir.iterdir() if d.is_dir()]
+        return max(dirs, key=lambda d: int(d.name.split("_")[1])) if dirs else None
 
-def create_data_split_agent(config, model, tools):
-    data_split_agent = Agent(
-        model=model,
-        tools=tools,
-        model_settings={'temperature': config.temperature},
-        output_type=DataSplit,
-        retries=config.max_validation_retries,
-        deps_type=dict,
-    )
+    def _get_next_split_dir(self) -> Path:
+        latest = self._get_latest_split_dir()
+        if latest is None:
+            return self.config.splits_dir / "split_0"
+        n = int(latest.name.split("_")[1])
+        return self.config.splits_dir / f"split_{n + 1}"
 
-    @data_split_agent.output_validator
-    async def validate_split_dataset(ctx: RunContext[dict], result: DataSplit) -> DataSplit:
-        if not os.path.exists(result.train_path) or not os.path.exists(result.val_path):
-            raise ModelRetry("Split dataset files do not exist.")
-        
+    def _move_split_to_versioned_dir(self, result: DataSplitOutput) -> DataSplitOutput:
         train_path = Path(result.train_path)
         val_path = Path(result.val_path)
-        if(train_path.name != 'train.csv' or val_path.name != 'validation.csv'):
-            # Care to not delete original training or validation data
-            original_train_csv_path = config.agent_dataset_dir / "train.csv"
-            original_valid_csv_path = config.agent_dataset_dir / "validation.csv"
-            if (train_path.resolve() != original_train_csv_path.resolve() and train_path.resolve() != original_valid_csv_path.resolve()):
-                train_path.unlink()
-            if (val_path.resolve() != original_train_csv_path.resolve() and val_path.resolve() != original_valid_csv_path.resolve()):
-                val_path.unlink()
-
-            raise ModelRetry(f"The files must be called exactly 'train.csv' and 'validation.csv'. Files ({train_path.name} and {val_path.name}) have been deleted.")
-        
-        target_col = 'numeric_label' #TODO generalize and take from metadata.json or config
-        train_df = pd.read_csv(result.train_path)
-        val_df = pd.read_csv(result.val_path)
-
-        if target_col not in train_df.columns:
-            raise ModelRetry(f"Target column {target_col} not found in train dataset {result.train_path}. Columns found: {train_df.columns.tolist()}")
-        if target_col not in val_df.columns:
-            raise ModelRetry(f"Target column {target_col} not found in validation dataset {result.val_path}. Columns found: {val_df.columns.tolist()}")
-
-        # Validate that both datasets have id column
-        if 'id' not in train_df.columns:
-            raise ModelRetry(f"ID column 'id' is missing in train dataset {result.train_path}. Columns found: {train_df.columns.tolist()}")
-        if 'id' not in val_df.columns:
-            raise ModelRetry(f"ID column 'id' is missing in validation dataset {result.val_path}. Columns found: {val_df.columns.tolist()}")
-
-        # Validate that train and validation have no overlapping IDs
-        train_ids = set(train_df['id'].dropna().tolist())
-        val_ids = set(val_df['id'].dropna().tolist())
-        overlapping_ids = train_ids.intersection(val_ids)
-        if overlapping_ids:
-            raise ModelRetry(f"Train and validation datasets have overlapping IDs. IDs must be unique across train and validation splits.")
-
-        result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
+        next_split_dir = self._get_next_split_dir()
+        next_split_dir.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(train_path), next_split_dir / "train.csv")
+        shutil.move(str(val_path), next_split_dir / "validation.csv")
+        result.train_path = str(next_split_dir / "train.csv")
+        result.val_path = str(next_split_dir / "validation.csv")
+        result.split_changed = True
         return result
-    
-    return data_split_agent
+
+    def attach_output_validator(self, agent: Agent[dict, AgenticStepOutput]) -> None:
+        config = self.config
+        step = self
+
+        @agent.output_validator
+        async def validate_split_dataset(ctx: RunContext[dict], result: AgenticStepOutput) -> AgenticStepOutput:
+            result = cast(DataSplitOutput, result)
+            if not os.path.exists(result.train_path) or not os.path.exists(result.val_path):
+                raise ModelRetry("Split dataset files do not exist.")
+
+            train_path = Path(result.train_path)
+            val_path = Path(result.val_path)
+            if train_path.name != 'train.csv' or val_path.name != 'validation.csv':
+                step_dir = config.current_step_dir
+                for p in (train_path, val_path):
+                    if p.parent == step_dir:
+                        p.unlink(missing_ok=True)
+                raise ModelRetry(f"The files must be called exactly 'train.csv' and 'validation.csv'. Files ({train_path.name} and {val_path.name}) have been deleted.")
+
+            target_col = get_numeric_label_col_from_prepared_dataset(config.prepared_dataset_dir)
+            required_cols = [target_col, 'id']
+            train_df, val_df = pd.read_csv(result.train_path), pd.read_csv(result.val_path)
+            for df, path in [(train_df, result.train_path), (val_df, result.val_path)]:
+                missing = [col for col in required_cols if col not in df.columns]
+                if missing:
+                    raise ModelRetry(f"Required columns {missing} missing from {path}.")
+
+            train_ids = set(train_df['id'].dropna().tolist())
+            val_ids = set(val_df['id'].dropna().tolist())
+            if train_ids.intersection(val_ids):
+                raise ModelRetry("Train and validation datasets have overlapping IDs. IDs must be unique across train and validation splits.")
+
+            #The moved files will be absent from created_files field of the output object, however will be in the structured output field
+            if not Path(result.train_path).is_relative_to(config.splits_dir):
+                #TODO what if its the explicit split files -> should be moved or copied?
+                result = step._move_split_to_versioned_dir(result)
+            else:
+                result.splitting_strategy = step._get_latest_split_strategy()
+            return result
+
+    def step_prompt(self) -> str:
+        iteration = load_current_iteration_index(self.config)
+        latest_split_dir = self._get_latest_split_dir()
+        current_step_dir = self.config.current_step_dir
+
+        if self.config.task_type == 'classification':
+            extra_instructions = "Ensure that the validation split contains representative samples from ALL classes."
+        elif self.config.task_type == 'regression':
+            extra_instructions = ""
+        else:
+            raise ValueError(f"Unknown task type: {self.config.task_type}. Supported types are 'classification' and 'regression'.")
+
+        if iteration != 0 and latest_split_dir is not None:
+            extra_info = f"""
+            Note: An existing split is already available at {latest_split_dir} (train.csv and validation.csv).
+            If you don't have a reason to change the splitting strategy, return those existing paths immediately and return an empty string for the splitting strategy.
+            If you do create a new split, save 'train.csv' and 'validation.csv' in {current_step_dir}.
+            """
+        else:
+            extra_info = f"Save 'train.csv' and 'validation.csv' in {current_step_dir}."
+
+        train_csv_path = self.config.agent_dataset_dir / "train.csv"
+        return f"""
+            Your next task: Split the training dataset ({train_csv_path}) into training and validation sets.
+            Ensure the validation split is representative of new unseen data, since it will be used for optimizing choices like architecture, hyperparameters, and training strategies.
+            {extra_instructions}
+            Return the absolute paths to the train and validation files.
+
+            {extra_info}
+            """
+
+    @classmethod
+    def is_split_allowed(cls, config, iteration: int) -> bool:
+        # TODO: maybe resolve through on_iteration_start callback writing into metadata?
+        if (config.agent_dataset_dir / "validation.csv").exists():
+            return False
+        splits_dir = config.splits_dir
+        has_reusable = any(d.is_dir() for d in splits_dir.iterdir())
+        if not has_reusable:
+            return True
+        if config.split_time_deadline is None:
+            return iteration < config.split_allowed_iterations
+        return time.time() < config.split_time_deadline
+
+    def should_run(self) -> bool:
+        iteration = load_current_iteration_index(self.config)
+        return self.is_split_allowed(self.config, iteration)
+
+    def build_skipped_output(self) -> DataSplitOutput:
+        latest_split_dir = self._get_latest_split_dir()
+        if latest_split_dir is None:
+            if not (self.config.agent_dataset_dir / "validation.csv").exists(): #check for explicit validation files
+                raise AssertionError(
+                    "Agent did not have a chance to split data. "
+                    "Provide a non-zero split budget or ensure split files are available on disk."
+                )
+            latest_split_dir = self._get_next_split_dir()
+            latest_split_dir.mkdir(parents=True, exist_ok=True)
+            for f in ("train.csv", "validation.csv"):
+                shutil.copy2(self.config.agent_dataset_dir / f, latest_split_dir / f)
+            splitting_strategy = ""
+        else:
+            splitting_strategy = self._get_latest_split_strategy()
+        return DataSplitOutput(
+            train_path=str(latest_split_dir / "train.csv"),
+            val_path=str(latest_split_dir / "validation.csv"),
+            splitting_strategy=splitting_strategy,
+            split_changed=False,
+        )
+
+    def on_step_success(self, output: DataSplitOutput) -> None:
+        if self.config.agent_user:
+            chown_tree_to_root(Path(output.train_path).parent)
+        super().on_step_success(output)
+
+    def on_iteration_fail(self, iteration: int) -> None:
+        output = load_step_output(self.config, self.step_id, self.config.current_iteration_dir)
+        if output is not None and output.split_changed:
+            split_dir = Path(output.train_path).parent
+            if split_dir.exists():
+                shutil.rmtree(split_dir)
+
+    def on_iteration_end(self, iteration: int) -> None:
+        iteration_metadata = load_iteration_metadata(self.config.current_iteration_dir)
+        log_split_is_allowed(
+            iteration=iteration,
+            is_allowed=bool(iteration_metadata.get("split_allowed_at_start", False)),
+        )
+        #TODO log if split has changed?
+
+    @classmethod
+    def get_split_version(cls, config, iteration_dir: Path) -> int:
+        data_split = load_step_output(config, cls.step_id, iteration_dir=iteration_dir)
+        split_dir_name = Path(data_split.train_path).parent.name
+        if not split_dir_name.startswith("split_"):
+            raise ValueError(f"Expected split path inside a versioned split directory, got: {data_split.train_path}")
+        return int(split_dir_name.removeprefix("split_"))
