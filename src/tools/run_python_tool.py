@@ -2,15 +2,15 @@ import time
 
 from pydantic_ai import Tool
 from pathlib import Path
+from runtime.conda_utils import get_shared_environment_path
 from .bash_tool import BashProcess
 
-def create_run_python_tool(agent_id, runs_dir, timeout, max_retries, proxy):
+
+def create_run_python_tool(config):
     bash = BashProcess(
-        agent_id=agent_id,
-        runs_dir=runs_dir,
+        config=config,
         autoconda=False,
-        timeout=timeout,
-        proxy = proxy
+        timeout=config.run_python_tool_timeout,
     )
 
     def _run_python(python_file_path: str, args: str = ""):
@@ -28,12 +28,16 @@ def create_run_python_tool(agent_id, runs_dir, timeout, max_retries, proxy):
         # validate path is a file
         if not Path(python_file_path).is_file():
             return f"{python_file_path} is not a valid python file path"
+        if not str(Path(python_file_path).resolve()).startswith(str(config.current_iteration_dir.resolve())):
+            return f"{python_file_path} must be inside the current iteration directory ({config.current_iteration_dir})"
 
-        env_path = runs_dir / agent_id / ".conda" / "envs" / f"{agent_id}_env"
+        env_path = get_shared_environment_path(config)
         if args and args.strip():
             command = f"conda run -p {env_path} --no-capture-output python {python_file_path} {args.strip()}"
         else:
             command = f"conda run -p {env_path} --no-capture-output python {python_file_path}"
+        if config.agent_user:
+            command = f"runuser -u {config.agent_user} -- {command}"
         out = bash.run(command)
         timer_msg = f"\n[Tool call took {time.time() - start_time:.1f} seconds]"
         return out + timer_msg
@@ -41,7 +45,7 @@ def create_run_python_tool(agent_id, runs_dir, timeout, max_retries, proxy):
     run_python_tool = Tool(
         function=_run_python, 
         takes_ctx=False, 
-        max_retries=max_retries,
+        max_retries=config.max_tool_retries,
         require_parameter_descriptions=True,
         name="run_python",
         sequential=True,

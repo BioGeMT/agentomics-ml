@@ -3,7 +3,8 @@ import time
 from pydantic_ai import Tool
 from pathlib import Path
 
-def create_write_python_tool(agent_id, max_retries, runs_dir):
+
+def create_write_python_tool(config):
     def _write_python(code: str, file_path: str):
         """
         A tool to write python code into a single file.
@@ -21,8 +22,8 @@ def create_write_python_tool(agent_id, max_retries, runs_dir):
         """
         start_time = time.time()
         
-        # Check if the file_path points to agents directory (we're not using bash, so we can't check privileges)
-        necessary_prefix = str(runs_dir / agent_id)
+        # Check if the file_path points to the current step working directory.
+        necessary_prefix = str(config.current_step_dir.resolve())
         if not str(Path(file_path).resolve()).startswith(necessary_prefix):
             return f"Error: file_path must start with {necessary_prefix}. Provided: {file_path}"
         
@@ -48,7 +49,7 @@ def create_write_python_tool(agent_id, max_retries, runs_dir):
     write_python_tool = Tool(
         function=_write_python, 
         takes_ctx=False, 
-        max_retries=max_retries,
+        max_retries=config.max_tool_retries,
         # description=None, # Infered from the function docstring
         require_parameter_descriptions=True,
         name="write_python",

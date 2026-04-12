@@ -1,21 +1,21 @@
 import subprocess
 import re
 import threading
-import shlex    
+import shlex
 import os
 import time
 
 from pydantic_ai import Tool
+from runtime.conda_utils import get_shared_environment_path
 from utils.text_processing_utils import collapse_repeated_lines, concise_output
 
+
 class BashProcess:
-    def __init__(self, agent_id, runs_dir, autoconda=True, timeout=60, proxy=False):
+    def __init__(self, config, autoconda=True, timeout=60):
         self.locked = threading.Lock()
-        self.agent_id = agent_id
-        self.runs_dir = runs_dir
+        self.config = config
         self.autoconda = autoconda
         self.timeout = timeout
-        self.proxy = proxy
         self.agent_env = self.filter_agent_env_vars()
 
         if autoconda:
@@ -32,12 +32,27 @@ class BashProcess:
         return agent_env
 
     def create_preloaded_conda(self):
-        conda_env_path = self.runs_dir / self.agent_id / ".conda" / "envs" / f"{self.agent_id}_env"
-        start_env_pkg=os.getenv('START_ENV_PKG')
-        self.run(f"mkdir -p {conda_env_path}")
-        self.run(f"tar -xf {start_env_pkg} -C {conda_env_path}")
-        self.run(f"source {conda_env_path}/bin/activate && conda-unpack")
-
+        conda_env_path = get_shared_environment_path(self.config)
+        start_env_pkg = os.getenv('START_ENV_PKG')
+        shared_dir = str(self.config.shared_dir)
+        for cmd in [
+            f"mkdir -p {conda_env_path}",
+            f"tar -xf {start_env_pkg} -C {conda_env_path}",
+            f"source {conda_env_path}/bin/activate && conda-unpack",
+        ]:
+            subprocess.run(
+                cmd,
+                shell=True,
+                executable="/bin/bash",
+                cwd=shared_dir,
+                env=self.agent_env,
+                check=True,
+            )
+        if self.config.agent_user:
+            subprocess.run(
+                ["chown", "-R", self.config.agent_user, str(conda_env_path)],
+                check=True,
+            )
 
     def run(self, command: str):
         with self.locked: #exclusive bash access
@@ -51,7 +66,7 @@ class BashProcess:
                     "text": True,
                     "env": self.agent_env,
                     "errors": "replace",  # handle invalid UTF-8 bytes
-                    "cwd": f"{self.runs_dir}/{self.agent_id}"
+                    "cwd": str(self.config.current_step_dir)
                 }
 
                 result = subprocess.run(
@@ -90,13 +105,11 @@ class BashProcess:
             output = output[:5000]+"\n ... (output truncated, too long)"
         return output.strip()
 
-def create_bash_tool(agent_id, runs_dir, timeout, max_retries, autoconda=True, proxy=False):
+def create_bash_tool(config):
         bash = BashProcess(
-            agent_id=agent_id,
-            runs_dir=runs_dir,
-            autoconda=autoconda,
-            timeout=timeout,
-            proxy=proxy
+            config=config,
+            autoconda=True,
+            timeout=config.bash_tool_timeout,
         )
 
         def _bash(command: str):
@@ -119,9 +132,11 @@ def create_bash_tool(agent_id, runs_dir, timeout, max_retries, autoconda=True, p
                 command: A valid bash command.
             """  
             start_time = time.time()
-            env_path = runs_dir / agent_id / ".conda" / "envs" / f"{agent_id}_env"
+            env_path = get_shared_environment_path(config)
             command_parsed = shlex.quote(command)
             command = f"conda run -p {env_path} --no-capture-output bash -c {command_parsed}"
+            if config.agent_user:
+                command = f"runuser -u {config.agent_user} -- {command}"
             out = bash.run(command)
             timer_msg = f"\n[Tool call took {time.time() - start_time:.1f} seconds]"
             return out + timer_msg
@@ -129,7 +144,7 @@ def create_bash_tool(agent_id, runs_dir, timeout, max_retries, autoconda=True, p
         bash_tool = Tool(
             function=_bash,
             takes_ctx=False,
-            max_retries=max_retries,
+            max_retries=config.max_tool_retries,
             # description=None, # Inferred from the function docstring
             require_parameter_descriptions=True,
             name="bash",
