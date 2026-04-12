@@ -13,16 +13,30 @@ from agents.steps.model_architecture import ModelArchitecture, get_model_archite
 from agents.steps.data_representation import DataRepresentation, get_data_representation_prompt
 from agents.steps.data_exploration import DataExploration, get_data_exploration_prompt
 from agents.steps.model_training import ModelTraining, get_model_training_prompt
+from agents.steps.knowledge_integration import KnowledgeIntegration, get_knowledge_integration_prompt
 from utils.config import Config
 from utils.report_logger import save_step_output
 from run_logging.evaluate_log_run import run_inference_and_log
 from run_logging.log_agent_results import log_agent_step_result_to_file, log_failed_step_to_file
 from utils.exceptions import IterationRunFailed
+from rag.rag_utils.retrieval import run_rag_retrieval, RAG_AVAILABLE, RAG_IMPORT_ERROR
+
+
+_run_rag_retrieval = weave.op(run_rag_retrieval)
 
 def create_agents(config: Config, model, tools):
-    text_output_agent = Agent( # this is data exploration, representation, architecture reasoning agent
+    knowledge_integration_agent = Agent(
         model=model,
         system_prompt=get_system_prompt(config),
+        tools=tools,
+        model_settings={'temperature': config.temperature},
+        retries=config.max_run_retries,
+        output_type=KnowledgeIntegration,
+        result_retries=config.max_validation_retries,
+    )
+
+    text_output_agent = Agent( # this is data exploration, representation, architecture reasoning agent
+        model=model,
         tools=tools,
         model_settings={'temperature': config.temperature},
         retries=config.max_run_retries,
@@ -80,6 +94,7 @@ def create_agents(config: Config, model, tools):
         return result      
 
     return {
+        "knowledge_integration_agent": knowledge_integration_agent,
         "text_output_agent": text_output_agent,
         "split_dataset_agent": split_dataset_agent,
         "training_agent": training_agent,
@@ -87,7 +102,7 @@ def create_agents(config: Config, model, tools):
     } 
 
 
-async def run_ablation_architecture(text_output_agent: Agent, inference_agent: Agent, split_dataset_agent: Agent, training_agent: Agent, config: Config, base_prompt: str, iteration: int, steps_to_skip: list):
+async def run_ablation_architecture(knowledge_integration_agent: Agent, text_output_agent: Agent, inference_agent: Agent, split_dataset_agent: Agent, training_agent: Agent, config: Config, base_prompt: str, iteration: int, steps_to_skip: list):
     all_steps = ['data_exploration', 'data_split', 'data_representation', 'model_architecture', 'model_training', 'final_outcome']
     messages = None
     
@@ -106,13 +121,41 @@ async def run_ablation_architecture(text_output_agent: Agent, inference_agent: A
             # Log partial messages from failed run
             log_failed_step_to_file('full_agent', e.context_messages, iteration, config, e.message)
             raise
-    
+
+    rag_context = ""
+    if iteration == 0 and config.knowledge_mode == "rag" and not RAG_AVAILABLE:
+        print(
+            f"[RAG] WARNING: knowledge_mode='rag' but RAG imports failed — retrieval will be skipped. "
+            f"ImportError: {RAG_IMPORT_ERROR}"
+        )
+    if iteration == 0 and config.knowledge_mode == "rag" and RAG_AVAILABLE:
+        complete_output = None
+        try:
+            complete_output, messages, knowledge_integration_output = await run_agent(
+                agent=knowledge_integration_agent,
+                user_prompt=base_prompt + get_knowledge_integration_prompt(),
+                max_steps=config.max_steps,
+                output_type=KnowledgeIntegration, # this is overriding the output_type
+                message_history=messages,
+            )
+            save_step_output(config, 'knowledge_integration', knowledge_integration_output, iteration)
+            log_agent_step_result_to_file('knowledge_integration', complete_output, iteration, config)
+            rag_context, rag_log = _run_rag_retrieval(knowledge_integration_output.queries)
+            save_step_output(config, 'rag_retrieval', rag_log, iteration)
+        except IterationRunFailed as e:
+            # Log partial messages from failed run
+            log_failed_step_to_file('data_exploration', e.context_messages, iteration, config, e.message)
+            raise
+
     if 'data_exploration' not in steps_to_skip:
+        prompt = (base_prompt + get_data_exploration_prompt()) if messages is None or iteration > 0 else get_data_exploration_prompt()
+        if rag_context:
+            prompt = rag_context + "\n" + prompt
         complete_output = None
         try:
             complete_output, messages, data_exploration_output = await run_agent(
                 agent=text_output_agent,
-                user_prompt=base_prompt + get_data_exploration_prompt(),
+                user_prompt=prompt,
                 max_steps=config.max_steps,
                 output_type=DataExploration, # this is overriding the output_type
                 message_history=messages,
@@ -221,6 +264,7 @@ async def run_iteration(config: Config, model, iteration, feedback, tools, steps
         base_prompt = get_iteration_prompt(config, iteration, feedback)
 
     messages = await run_ablation_architecture(
+        knowledge_integration_agent=agents_dict["knowledge_integration_agent"],
         text_output_agent=agents_dict["text_output_agent"],
         split_dataset_agent=agents_dict["split_dataset_agent"],
         training_agent=agents_dict["training_agent"],

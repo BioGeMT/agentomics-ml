@@ -1,6 +1,6 @@
 """
 Smoke test for the RAG stack: chunk a real document, embed with
-KaLM-Embedding-Gemma3-12B (HuggingFace), store in pgvector, retrieve by similarity.
+Qwen3-Embedding-8B (via Ollama), store in pgvector, retrieve by similarity.
 
 Usage:
     conda run -n agentomics-env python src/rag/test_rag_stack.py
@@ -12,19 +12,16 @@ import re
 os.environ["no_proxy"] = "localhost,127.0.0.1"
 os.environ["NO_PROXY"] = "localhost,127.0.0.1"
 
-os.makedirs("/SCRATCH/hf", exist_ok=True)
-os.environ["HF_HOME"] = "/SCRATCH/hf"
-
-import torch
+import requests
 import psycopg2
 from psycopg2.extras import execute_values
 from pathlib import Path
-from sentence_transformers import SentenceTransformer
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-EMBED_MODEL = "tencent/KaLM-Embedding-Gemma3-12B-2511"
-EMBED_DIMS  = 3840
+OLLAMA_URL  = "http://localhost:11434/api/embed"
+EMBED_MODEL = "ryanshillington/Qwen3-Embedding-8B:latest"
+EMBED_DIMS  = 4096
 
 PG_HOST     = "localhost"
 PG_PORT     = 54320
@@ -40,20 +37,12 @@ MIN_CHUNK_CHARS = 80
 
 QUERY = "Which model performed best on the Hejret 2023 test set?"
 
-# ── Model loading ─────────────────────────────────────────────────────────────
+# ── Embedding ─────────────────────────────────────────────────────────────────
 
-def load_model() -> SentenceTransformer:
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"Loading {EMBED_MODEL} on {device}...")
-    model = SentenceTransformer(
-        EMBED_MODEL,
-        trust_remote_code=True,
-        model_kwargs={"torch_dtype": torch.bfloat16},
-        device=device,
-    )
-    model.max_seq_length = 512
-    print("Model loaded.\n")
-    return model
+def embed(texts: list[str]) -> list[list[float]]:
+    resp = requests.post(OLLAMA_URL, json={"model": EMBED_MODEL, "input": texts})
+    resp.raise_for_status()
+    return resp.json()["embeddings"]
 
 # ── Chunking ──────────────────────────────────────────────────────────────────
 
@@ -62,8 +51,8 @@ def chunk_markdown(text: str) -> list[dict]:
     Section-aware paragraph chunking.
 
     Splits on ## headings, then on blank lines within each section.
-    Each chunk is a paragraph prefixed with its section heading so the
-    embedding captures both local content and document context.
+    Each chunk is prefixed with its section heading so the embedding
+    captures both local content and document context.
     """
     chunks = []
     current_section = "Preamble"
@@ -105,8 +94,6 @@ def get_conn():
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    model = load_model()
-
     # 1. Chunk the document
     text = SOURCE_DOC.read_text(encoding="utf-8")
     chunks = chunk_markdown(text)
@@ -131,13 +118,14 @@ def main():
     """)
     conn.commit()
 
-    # 3. Embed documents and insert
+    # 3. Embed and insert (batch all at once — Ollama handles it)
     print(f"Embedding {len(chunks)} chunks...")
     contents = [c["content"] for c in chunks]
-    vecs = model.encode_document(contents, show_progress_bar=True)
+    vecs = embed(contents)
+    print(f"  Done.\n")
 
     rows = [
-        (c["source"], c["section"], c["content"], str(v.tolist()))
+        (c["source"], c["section"], c["content"], str(v))
         for c, v in zip(chunks, vecs)
     ]
     execute_values(
@@ -148,14 +136,14 @@ def main():
     conn.commit()
 
     # 4. Query by similarity
-    print(f"\nQuery: '{QUERY}'")
-    query_vec = model.encode_query([QUERY])[0]
+    print(f"Query: '{QUERY}'")
+    query_vec = embed([QUERY])[0]
     cur.execute(f"""
         SELECT section, content, 1 - (embedding <=> %s::vector) AS score
         FROM {TABLE}
         ORDER BY embedding <=> %s::vector
         LIMIT 3
-    """, (str(query_vec.tolist()), str(query_vec.tolist())))
+    """, (str(query_vec), str(query_vec)))
 
     print("\nTop 3 results:")
     for i, (section, content, score) in enumerate(cur.fetchall(), 1):

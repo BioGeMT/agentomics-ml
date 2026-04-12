@@ -39,8 +39,8 @@ TAGS=(
     # "experiment_v1"
 )
 
-# Knowledge integration mode: "none", "icl", or "rag"
-KNOWLEDGE_MODE="icl"
+# Knowledge integration mode: "none", "icl", "rag" (upfront), or "rag_od" (on-demand tool)
+KNOWLEDGE_MODE="rag_od"
 
 # Runtime flags
 CPU_ONLY=false
@@ -110,12 +110,13 @@ if [ "$CPU_ONLY" = false ]; then
 fi
 
 OLLAMA_FLAGS=()
-if [ "$OLLAMA" = true ]; then
+if [ "$OLLAMA" = true ] || [[ "$KNOWLEDGE_MODE" == rag* ]]; then
     OLLAMA_FLAGS+=(--network=host)
 fi
 
-# RAG preparation: start pgvector and load knowledge once before any runs
-if [ "$KNOWLEDGE_MODE" = "rag" ]; then
+# RAG preparation: start pgvector and load knowledge once before any runs.
+# Fires for any rag* mode (upfront "rag" and on-demand "rag_od" both query the same DB).
+if [[ "$KNOWLEDGE_MODE" == rag* ]]; then
     echo "Preparing RAG knowledge sources"
     bash src/rag/pgvector.sh start
 

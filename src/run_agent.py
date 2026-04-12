@@ -170,7 +170,7 @@ def parse_args():
     parser.add_argument('--iterations', type=int, default=5, help='Number of training iterations to run')
     parser.add_argument('--user-prompt', type=str, default="Create the best possible machine learning model that will generalize to new unseen data.", help='(Optional) Text to overwrite the default user prompt')
     parser.add_argument('--steps-to-skip', nargs='*', default=[], help='(Optional) List of steps to skip. Available steps: data_exploration, data_split, data_representation, model_architecture, model_training, final_outcome')
-    parser.add_argument('--knowledge-mode', choices=['none', 'icl', 'rag'], default='none', help='Knowledge integration mode: none (default), icl (full in-context), or rag (retrieval-augmented)')
+    parser.add_argument('--knowledge-mode', choices=['none', 'icl', 'rag', 'rag_od'], default='none', help='Knowledge integration mode: none (default), icl (full in-context), rag (upfront retrieval-augmented), or rag_od (on-demand retrieval tool available to the agent)')
 
     val_metric_choices = get_classification_metrics_names() + get_regression_metrics_names()
     parser.add_argument('--val-metric', help='Validation metric to use for the best model selection', required=True, choices=val_metric_choices)

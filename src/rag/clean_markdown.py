@@ -9,12 +9,28 @@ import re
 from pathlib import Path
 
 # Section headings to drop (along with all their content until the next heading).
-# Matched case-insensitively against the heading text.
+# Matched case-insensitively against the heading text. The leading pattern
+# tolerates decorative prefixes like "■ " and numeric prefixes like "1. ".
+_HEADING_PREFIX = r"(?:■\s*)?(?:\d+\.?\s*)?"
+
 REMOVE_SECTIONS = re.compile(
-    r"^("
+    r"^" + _HEADING_PREFIX + r"("
     r"references.*"
     r"|acknowledgements?[\s:]*"
     r"|author contributions?[\s:]*"
+    r"|author information[\s:]*"
+    r"|corresponding author[\s:]*"
+    r"|authors?[\s:]*"
+    r"|notes?[\s:]*"
+    r"|access[\s:]*"
+    r"|associated content[\s:]*"
+    r"|one[-\s]sentence summary[\s:]*"
+    r"|citation[\s:]*"
+    r"|editor[\s:]*"
+    r"|received[\s:]*"
+    r"|accepted[\s:]*"
+    r"|published[\s:]*"
+    r"|copyright[\s:]*"
     r"|declaration of interests?[\s:]*"
     r"|competing interests?[\s:]*"
     r"|data availability[\s:]*"
@@ -27,6 +43,19 @@ REMOVE_SECTIONS = re.compile(
     r"|hhs public access[\s:]*"
     r"|#.*equal contribution.*"
     r")$",
+    re.IGNORECASE,
+)
+
+# Headings that mark the real start of paper content. Everything before the
+# first match is dropped by trim_preamble(). Tolerates decorative "■" and
+# numeric "1." prefixes.
+CONTENT_START_HEADINGS = re.compile(
+    r"^" + _HEADING_PREFIX + r"("
+    r"abstract"
+    r"|introduction"
+    r"|background"
+    r"|main\s+text"
+    r")\b",
     re.IGNORECASE,
 )
 
@@ -55,6 +84,25 @@ def remove_sections(text: str) -> str:
     return "".join(kept)
 
 
+def trim_preamble(text: str) -> str:
+    """
+    Drop everything before the first heading matching CONTENT_START_HEADINGS
+    (Abstract, Introduction, Background, Main text). This removes the
+    title/authors/affiliations/citation/dates block that docling emits above
+    the first real section.
+
+    If no matching heading is found, returns the text unchanged so downstream
+    cleaning can still do what it can.
+    """
+    parts = re.split(r"(?=^## )", text, flags=re.MULTILINE)
+    for i, part in enumerate(parts):
+        first_line = part.splitlines()[0] if part.strip() else ""
+        heading = re.sub(r"^#{1,6}\s*", "", first_line).strip()
+        if CONTENT_START_HEADINGS.match(heading):
+            return "".join(parts[i:])
+    return text
+
+
 def remove_placeholder_lines(text: str) -> str:
     lines = [ln for ln in text.splitlines() if not REMOVE_LINES.match(ln)]
     return "\n".join(lines)
@@ -65,6 +113,7 @@ def collapse_blank_lines(text: str) -> str:
 
 
 def clean(text: str) -> str:
+    text = trim_preamble(text)
     text = remove_sections(text)
     text = remove_placeholder_lines(text)
     text = collapse_blank_lines(text)
