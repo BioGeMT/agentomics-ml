@@ -1,0 +1,192 @@
+from __future__ import annotations
+
+import subprocess
+from abc import ABC, abstractmethod
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+from pydantic import BaseModel, Field
+from pydantic.json_schema import SkipJsonSchema
+from pydantic_ai import Agent, ModelRetry, RunContext
+from pydantic_ai.models import Model
+from pydantic_ai.settings import ModelSettings
+
+from agents.prompts.prompts_utils import get_system_prompt
+from agents.agent_utils import (
+    fabricate_final_result_messages,
+    fabricate_initial_prompt_messages,
+    run_agent,
+)
+from rich.console import Console
+from runtime.conda_utils import export_shared_environment_descriptor
+from runtime.filesystem import chown_tree_to_root
+from runtime.git_checkpoints import commit_step_checkpoint
+from runtime.read_write_utils import (
+    get_new_rundir_files,
+    load_current_iteration_base_prompt,
+    load_current_iteration_index,
+)
+from runtime.step_outputs import load_step_outputs, save_step_output
+from utils.config import Config
+from utils.providers.provider import Provider
+
+
+_console = Console()
+
+class RuntimeStep(ABC):
+    step_id: str
+    display_name: str
+    output_type: Any = None
+
+    def __init__(self, config: Config, model: Model, feedback_model: Model, provider: Provider, tools: list) -> None:
+        self.config = config
+        self.model = model
+        self.feedback_model = feedback_model
+        self.provider = provider
+        self.tools = tools
+
+    async def run(self) -> None:
+        if not self.should_run():
+            self.on_step_success(self.build_skipped_output())
+            return
+        self.on_step_start()
+        output = await self._execute()
+        self.on_step_success(output)
+
+    def should_run(self) -> bool:
+        return True
+
+    def build_skipped_output(self) -> Any:
+        raise RuntimeError(f"Step '{self.step_id}' does not support being skipped.")
+
+    @abstractmethod
+    async def _execute(self) -> Any:
+        raise NotImplementedError
+
+    def on_step_start(self) -> None:
+        iteration = load_current_iteration_index(self.config)
+        _console.print(f"[bold purple]ITERATION {iteration} | {self.display_name} STEP[/bold purple]")
+        self.config.current_step_dir.mkdir(exist_ok=True)
+        if self.config.agent_user:
+            subprocess.run(
+                ["chown", self.config.agent_user, str(self.config.current_step_dir)],
+                check=True,
+            )
+
+    def on_step_success(self, output: Any) -> None:
+        save_step_output(self.config, self.step_id, output)
+        export_shared_environment_descriptor(self.config)
+        self._archive_step_folder()
+        commit_step_checkpoint(self.config, iteration=load_current_iteration_index(self.config), step_id=self.step_id)
+
+    def on_iteration_fail(self, iteration: int) -> None:
+        return None
+
+    def on_iteration_end(self, iteration: int) -> None:
+        return None
+    
+    def _archive_step_folder(self) -> None:
+        step_dir = self.config.current_step_dir
+        archived_dir = self.config.archived_step_dir(self.step_id)
+        step_dir.rename(archived_dir)
+        self._rewrite_paths_in_step_output(archived_dir, str(step_dir), str(archived_dir))
+        if self.config.agent_user:
+            chown_tree_to_root(archived_dir)
+
+    def _rewrite_paths_in_step_output(self, directory: Path, old: str, new: str) -> None:
+        from runtime.step_outputs import OUTPUT_FILENAME
+        output_file = directory / OUTPUT_FILENAME
+        if output_file.exists():
+            content = output_file.read_text(encoding="utf-8")
+            output_file.write_text(content.replace(old, new), encoding="utf-8")
+
+class AgenticStepOutput(BaseModel):
+    files_created: SkipJsonSchema[list[str]] = Field(
+        default_factory=list,
+        description="List of files created during the step. Populated programmatically.",
+    )
+
+class AgenticStep(RuntimeStep):
+    output_type: type[AgenticStepOutput]
+
+    def create_agent(self) -> Agent[dict, AgenticStepOutput]:
+        agent = Agent(
+            model=self.model,
+            system_prompt=self.get_system_prompt(),
+            tools=self.tools,
+            model_settings=ModelSettings(temperature=self.config.temperature),
+            output_type=self.output_type,
+            retries=self.config.max_validation_retries,
+            deps_type=dict,
+        )
+        self.attach_output_validator(agent)
+        self._attach_common_validators(agent)
+        return agent
+
+    def _attach_common_validators(self, agent: Agent[dict, AgenticStepOutput]) -> None:
+        @agent.output_validator
+        async def _no_symlinks(ctx: RunContext[dict], result: AgenticStepOutput) -> AgenticStepOutput:
+            new_files = get_new_rundir_files(self.config, ctx.deps["start_time"])
+            symlinks = [f for f in new_files if (self.config.current_iteration_dir / f).is_symlink()]
+            if symlinks:
+                raise ModelRetry(
+                    f"Your step created symlink(s), which are not allowed: {symlinks}. "
+                    "Use actual file copies instead of symbolic links."
+                )
+            return result
+
+    def get_system_prompt(self) -> str:
+        return get_system_prompt(self.config)
+
+    def attach_output_validator(self, agent: Agent[dict, AgenticStepOutput]) -> None:
+        return None
+
+    def step_prompt(self) -> str:
+        raise NotImplementedError(f"{type(self).__name__} must define step_prompt() or override build_user_prompt().")
+
+    def build_user_prompt(self) -> str:
+        user_prompt = self.step_prompt()
+        return f"{user_prompt}\nSummarized outputs from your previous steps are in previous messages."
+
+    def build_deps(self, step_started_at: datetime) -> dict[str, Any]:
+        return {"start_time": step_started_at}
+
+    def _populate_files_created(self, output: AgenticStepOutput, step_started_at: datetime) -> AgenticStepOutput:
+        return output.model_copy(
+            update={
+                "files_created": get_new_rundir_files(
+                    self.config,
+                    since_timestamp=step_started_at,
+                )
+            }
+        )
+
+    def get_message_history(self):
+        base_prompt = load_current_iteration_base_prompt(self.config)
+        history = fabricate_initial_prompt_messages(
+            system_prompt=self.get_system_prompt(),
+            user_prompt=base_prompt,
+        )
+        for output in load_step_outputs(self.config):
+            history.extend(
+                fabricate_final_result_messages(
+                    output,
+                    model_name=self.config.model_name,
+                )
+            )
+        return history
+
+    async def _execute(self) -> AgenticStepOutput:
+        step_started_at = datetime.now()
+        message_history = self.get_message_history()
+        user_prompt = self.build_user_prompt()
+        agent = self.create_agent()
+        _, output = await run_agent(
+            agent=agent,
+            user_prompt=user_prompt,
+            max_steps=self.config.max_steps,
+            message_history=message_history,
+            deps=self.build_deps(step_started_at),
+        )
+        return self._populate_files_created(output, step_started_at)
