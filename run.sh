@@ -296,10 +296,17 @@ if [ "$LOCAL_MODE" = true ]; then
     fi
 
     mkdir -p prepared_datasets
-    conda run -n agentomics-prepare-env python src/prepare_datasets.py --prepare-all \
-        --datasets-dir "$(pwd)/datasets" \
-        --prepared-datasets-dir "$(pwd)/prepared_datasets" \
-        --prepared-test-sets-dir "$(pwd)/prepared_test_sets"
+    if [ -n "$DATASET_NAME" ]; then
+        conda run -n agentomics-prepare-env python src/prepare_datasets.py \
+            --dataset-dir "./datasets/${DATASET_NAME}" \
+            --prepared-datasets-dir "$(pwd)/prepared_datasets" \
+            --prepared-test-sets-dir "$(pwd)/prepared_test_sets"
+    else
+        conda run -n agentomics-prepare-env python src/prepare_datasets.py --prepare-all \
+            --datasets-dir "$(pwd)/datasets" \
+            --prepared-datasets-dir "$(pwd)/prepared_datasets" \
+            --prepared-test-sets-dir "$(pwd)/prepared_test_sets"
+    fi
 
     if ! conda env list | grep -q "^agent_start_env "; then
         conda env create -f environment_agent.yaml -q
@@ -473,6 +480,14 @@ else
     fi
     AGENT_ID=$(docker run --rm -u $(id -u):$(id -g) -v "$(pwd)":/repository:ro --entrypoint \
                /opt/conda/envs/agentomics-env/bin/python "$AGENTOMICS_IMAGE" /repository/src/utils/create_user.py)
+
+    PREPARE_ARGS=()
+    if [ -n "$DATASET_NAME" ]; then
+        PREPARE_ARGS=(--dataset-dir "./datasets/${DATASET_NAME}")
+    else
+        PREPARE_ARGS=(--prepare-all)
+    fi
+
     docker run \
         -u $(id -u):$(id -g) \
         --rm \
@@ -480,13 +495,10 @@ else
         -e PYTHONWARNINGS=ignore \
         --name agentomics_prepare_cont_${AGENT_ID} \
         -v "$(pwd)":/repository \
-        "$PREPARE_IMAGE"
+        "$PREPARE_IMAGE" ${PREPARE_ARGS[@]+"${PREPARE_ARGS[@]}"}
 
-    docker volume create temp_agentomics_volume_${AGENT_ID}
-    cleanup() {
-        docker volume rm temp_agentomics_volume_${AGENT_ID} >/dev/null 2>&1 || true
-    }
-    trap cleanup EXIT
+    printless_command docker volume create temp_agentomics_volume_${AGENT_ID}
+    cleanup_volume_on_finish
 
     TEMP_API_KEY_HASH=""
     if [ "$USE_PROVISIONING_KEY" = true ]; then
@@ -502,23 +514,6 @@ else
         export OPENROUTER_API_KEY="$TEMP_API_KEY"
     fi
 
-    if [ "$CPU_ONLY" = false ]; then
-        if ! docker_has_gpu; then
-            warn "GPU not available (nvidia-smi not found or Docker lacks GPU support)"
-            warn "Automatically switching to CPU-only mode"
-            warn "To suppress this warning, use --cpu-only flag"
-            CPU_ONLY=true
-        fi
-    fi
-
-    GPU_FLAGS=()
-    if [ "$CPU_ONLY" = false ]; then
-        GPU_FLAGS+=(--gpus all)
-        GPU_FLAGS+=(--env NVIDIA_VISIBLE_DEVICES=all)
-        info "GPU mode enabled"
-    else
-        info "Running in CPU-only mode"
-    fi
     OLLAMA_FLAGS=()
     if [ "$OLLAMA" = true ]; then
         OLLAMA_FLAGS+=(--network="host")
@@ -541,6 +536,23 @@ else
 
     if [ "$USE_PROVISIONING_KEY" = true ]; then
         DOCKER_API_KEY_ENV_VARS+=(-e "OPENROUTER_API_KEY=${OPENROUTER_API_KEY}")
+    fi
+
+    if [ "$LIST_MODE" = false ]; then
+        if [ "$CPU_ONLY" = false ]; then
+            if ! docker_has_gpu; then
+                warn "GPU not available (nvidia-smi not found or Docker lacks GPU support)"
+                warn "Automatically switching to CPU-only mode"
+                warn "To suppress this warning, use --cpu-only flag"
+                CPU_ONLY=true
+            fi
+        fi
+
+        GPU_FLAGS=()
+        if [ "$CPU_ONLY" = false ]; then
+            GPU_FLAGS+=(--gpus all)
+            GPU_FLAGS+=(--env NVIDIA_VISIBLE_DEVICES=all)
+        fi
     fi
 
     if [ "$TEST_MODE" = true ]; then
@@ -625,7 +637,7 @@ else
               -v "$(pwd)":/repository \
               -v "$(pwd)/outputs/${AGENT_ID}":/agent_out \
               --entrypoint /opt/conda/envs/agentomics-env/bin/python \
-              agentomics_img /repository/src/generate_final_reports.py \
+              "$AGENTOMICS_IMAGE" /repository/src/generate_final_reports.py \
                 --agent-dir /agent_out --prepared-datasets /repository/prepared_datasets \
                 --prepared-tests /repository/prepared_test_sets
 

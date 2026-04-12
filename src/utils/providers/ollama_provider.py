@@ -62,7 +62,7 @@ class OllamaProvider(Provider):
                 families[family] = []
             families[family].append(model)
 
-        self.console.print(f"[bold blue]Available Models[/bold blue] ({len(models)} models from {len(families)} families)\n")
+        self.console.print(f"[white]Top models from {self.name}[/white]", style="underline")
 
         family_boxes = []
         global_index = 1
@@ -76,12 +76,12 @@ class OllamaProvider(Provider):
                 quantization_level = model.get("details", {}).get("quantization_level", "N/A")
 
                 num_str = str(global_index).rjust(max_num_width)
-                lines.append(f"[dim]{num_str}.[/dim] [cyan]{model_name}[/cyan]")
+                lines.append(f"[dim]{num_str}.[/dim] [white]{model_name}[/white]")
                 lines.append(f"   Size: [yellow]{parameter_size}[/yellow]  Quant: [blue]{quantization_level}[/blue]")
                 global_index += 1
 
-            panel = Panel("\n".join(lines), title=f"[bold green]{family.title()}[/bold green]",
-                         title_align="left", border_style="green")
+            panel = Panel("\n".join(lines), title=f"[bold white]{family.title()}[/bold white]",
+                         title_align="left", border_style="cyan")
             family_boxes.append((len(family_models) * 2, panel))
 
         num_cols = 4

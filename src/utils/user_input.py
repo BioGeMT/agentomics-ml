@@ -2,7 +2,7 @@ from rich.prompt import Prompt
 from rich.console import Console
 
 
-def get_user_input_for_int(prompt_text: str, default: int = None, valid_options: list[int] = None, color: str = "green") -> int:
+def get_user_input_for_int(prompt_text: str, default: int = None, valid_options: list[int] = None, color: str = "white") -> int:
     """
     Safely prompt for input with TTY validation.
     If valid_options are not provided, any integer input is accepted.
@@ -13,7 +13,7 @@ def get_user_input_for_int(prompt_text: str, default: int = None, valid_options:
         prompt_text = f"{prompt_text} (options: {valid_options})"
     if(default is None):
         default = valid_options[0] if valid_options else 0
-    prompt_text = f"{prompt_text} Press ENTER for default value ({default})"
+    prompt_text = f"> {prompt_text} Press ENTER for default value ({default})"
     if(color):
         prompt_text = f"[{color}]{prompt_text}[/{color}]"
     while True:

@@ -165,7 +165,7 @@ class OpenRouterProvider(Provider):
                 providers[provider] = []
             providers[provider].append(model)
 
-        self.console.print(f"[bold blue]Available Models[/bold blue] ({len(models)} models from {len(providers)} companies)\n")
+        self.console.print(f"[white]Top models from {self.name}[/white]\n", style="underline")
 
         provider_names = {
             "openai": "OpenAI", "anthropic": "Anthropic", "google": "Google",
@@ -229,18 +229,17 @@ class OpenRouterProvider(Provider):
                 lines = []
                 for clean_name, input_cost, output_cost, context in model_data:
                     num_str = str(global_index).rjust(max_num_width)
-                    lines.append(f"[dim]{num_str}.[/dim] [cyan]{clean_name}[/cyan]")
+                    lines.append(f"[dim]{num_str}.[/dim] [white]{clean_name}[/white]")
                     lines.append(f"   Input: [yellow]{input_cost}[/yellow]  Output: [yellow]{output_cost}[/yellow]  Context: [magenta]{context}[/magenta]")
                     global_index += 1
-                panel = Panel("\n".join(lines), title=f"[bold green]{provider_display}[/bold green]",
-                             title_align="left", border_style="green", width=col_max_widths[col_idx])
+                panel = Panel("\n".join(lines), title=f"[bold white]{provider_display}[/bold white]",
+                             title_align="left", border_style="cyan", width=col_max_widths[col_idx])
                 panels.append(panel)
             col_renderables.append(Group(*panels))
 
         self.console.print(Columns(col_renderables, padding=(0, 1), expand=False))
         self.console.print("\n[dim]Prices per million tokens[/dim]")
-        self.console.print("[dim]If target model is not displayed here, browse from OpenRouter: https://openrouter.ai/models and pass it through " \
-            "the --model argument to run.sh (e.g. ./run.sh --model openai/gpt-5-mini)[/dim]")
+        self.console.print("[dim]Not listed? Browse all models at https://openrouter.ai/models and use --model <id> (e.g. ./run.sh --model openai/gpt-5-codex-max)[/dim]")
         return display_order_models
 
     def interactive_model_selection(self, limit: int = 20) -> Optional[str]:

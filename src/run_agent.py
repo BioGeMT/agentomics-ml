@@ -13,6 +13,7 @@ from runtime.run_lifecycle import run_agentomics
 from utils.config import Config
 from utils.dataset_utils import setup_nonsensitive_dataset_files_for_agent
 from utils.env_utils import are_wandb_vars_available
+from utils.printing_utils import print_phase
 from utils.providers.provider import get_provider_from_string
 
 
@@ -65,6 +66,7 @@ async def run_experiment(
         foundation_models_yaml=foundation_models_yaml,
         agent_user=agent_user,
     )
+    print_phase("Agentomics run started")
     initialize_run_directories(config)
     setup_nonsensitive_dataset_files_for_agent(
         prepared_datasets_dir=config.prepared_dataset_dir.parent,

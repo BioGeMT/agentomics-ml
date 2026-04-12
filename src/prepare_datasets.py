@@ -42,7 +42,7 @@ def main():
                 negative_class=args.negative_class,
                 task_type=args.task_type,
                 output_dir=prepared_datasets_dir,
-                test_output_dir=prepared_test_sets_dir
+                test_sets_output_dir=prepared_test_sets_dir
             )
             console.print(f"[green]Dataset '{args.dataset_dir.name}' prepared successfully![/green]")
         except Exception as e:

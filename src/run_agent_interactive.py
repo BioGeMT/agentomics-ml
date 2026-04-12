@@ -5,7 +5,6 @@ from pathlib import Path
 
 import dotenv
 from rich.console import Console
-from rich.panel import Panel
 
 from agents.prompts.prompts_utils import DEFAULT_USER_PROMPT
 from run_agent import run_experiment
@@ -16,6 +15,7 @@ from utils.env_utils import are_wandb_vars_available
 from utils.metrics import get_classification_metrics_names, get_regression_metrics_names, resolve_val_metric
 from utils.metrics_interactive_utils import display_metrics_table
 from utils.providers.provider import Provider, get_provider_and_api_key
+from utils.printing_utils import print_phase
 from utils.user_input import get_user_input_for_int
 
 console = Console()
@@ -145,16 +145,6 @@ def handle_list_modes(args, provider: Provider) -> int | None:
 def _is_tty_available() -> bool:
     return sys.stdin.isatty() and sys.stdout.isatty()
 
-
-def print_welcome():
-    welcome_text = """
-===============================================
-Welcome to Agentomics-ML
-===============================================
-"""
-    console.print(Panel(welcome_text, style="bold blue"))
-
-
 def resolve_interactive_params(args, provider: Provider) -> tuple[str, str, int]:
     """Prompt for dataset, model, and iterations if not provided via CLI. Returns (dataset, model, iterations)."""
     needs_interactive = not args.dataset or not args.model
@@ -163,10 +153,9 @@ def resolve_interactive_params(args, provider: Provider) -> tuple[str, str, int]
         console.print("For non-interactive use, specify --dataset and --model arguments", style="cyan")
         raise SystemExit(1)
 
-    print_welcome()
-
     dataset = args.dataset
     if not dataset:
+        print_phase("Dataset Selection")
         datasets = get_all_prepared_datasets_info(args.prepared_datasets_dir)
         dataset = interactive_dataset_selection(datasets)
         if not dataset:
@@ -175,10 +164,12 @@ def resolve_interactive_params(args, provider: Provider) -> tuple[str, str, int]
 
     model = args.model
     if not model:
+        print_phase("Model Selection")
         model = provider.interactive_model_selection(limit=50)
 
     iterations = args.iterations
     if iterations is None:
+        print_phase("Run Configuration")
         if _is_tty_available():
             iterations = get_user_input_for_int(
                 "Enter number of iterations to run (Recommended more than 5):",

@@ -34,7 +34,7 @@ class OpenAiProvider(Provider):
         if not models:
             return
 
-        self.console.print(f"[bold blue]Available Models[/bold blue] ({len(models)} models)\n")
+        self.console.print(f"[white]Top models from {self.name}[/white]\n", style="underline")
 
         lines = []
         max_num_width = len(str(len(models)))
@@ -42,11 +42,11 @@ class OpenAiProvider(Provider):
 
         for i, model in enumerate(models, 1):
             num_str = str(i).rjust(max_num_width)
-            lines.append(f"[dim]{num_str}.[/dim] [cyan]{model.get('id', '')}[/cyan]")
+            lines.append(f"[dim]{num_str}.[/dim] [white]{model.get('id', '')}[/white]")
 
         panel_width = max_num_width + max_name_width + 10
-        panel = Panel("\n".join(lines), title="[bold green]OpenAI[/bold green]",
-                     title_align="left", border_style="green", width=panel_width)
+        panel = Panel("\n".join(lines), title="[bold white]OpenAI[/bold white]",
+                     title_align="left", border_style="cyan", width=panel_width)
         self.console.print(panel)
 
     def interactive_model_selection(self, limit: int = None) -> Optional[str]:

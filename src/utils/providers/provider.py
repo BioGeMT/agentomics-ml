@@ -34,7 +34,6 @@ class Provider():
             response = requests.get(self.list_models_endpoint, headers=self.headers, timeout=10)
             response.raise_for_status()
             models = response.json().get("data", [])
-            self.console.print(f"Fetched {len(models)} models from {self.name}")
             return models
         except Exception as e:
             self.console.print(f"Failed to fetch models from {self.name}: {e}")
@@ -49,7 +48,7 @@ class Provider():
             print(f"No models available for {self.name}")
             return
         
-        table = Table(title=f"Available {self.name} Models ({len(models)})", box=box.ROUNDED)
+        table = Table(title=f"Top models from {self.name}", box=box.ROUNDED)
         table.add_column("#", style="cyan", no_wrap=True, width=4)
         table.add_column("Model Name", style="green")
         
@@ -188,10 +187,10 @@ def choose_provider(available_keys) -> int:
 
     for i, key in enumerate(keys_list, 1):
         num_str = str(i).rjust(max_num_width)
-        lines.append(f"[white]{num_str}[/white] [green]{key}[/green]")
+        lines.append(f"[dim]{num_str}.[/dim] [white]{key}[/white]")
 
     panel_width = max_num_width + max_provider_width + 10
-    panel = Panel("\n".join(lines), title="[bold]Provider[/bold]", border_style="cyan", width=panel_width)
+    panel = Panel("\n".join(lines), title="[bold white]Provider[/bold white]", border_style="cyan", width=panel_width)
     console.print(panel)
 
     prompt = "Multiple provider API keys found. Select the provider to use:"
