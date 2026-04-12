@@ -9,6 +9,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from utils.user_input import get_user_input_for_int
 from utils.dataset_utils import prepare_dataset, get_all_datasets_info
 
+
 console = Console()
 
 def print_datasets_table(datasets: List[Dict], title: str = "Dataset Preparation Status") -> None:
@@ -200,8 +201,6 @@ def prepare_all_datasets(datasets_dir: str, prepared_datasets_dir: str, prepared
     if failed_now > 0:
         console.print("")
         console.print(f"[yellow]{failed_now} dataset(s) failed to prepare. Check your data files.[/yellow]")
-
-
 
 def interactive_dataset_selection(datasets: List[Dict]) -> Optional[str]:
     """

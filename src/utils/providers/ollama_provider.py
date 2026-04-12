@@ -11,6 +11,7 @@ from utils.config import Config
 from utils.user_input import get_user_input_for_int
 from .provider import Provider
 
+
 class OllamaProvider(Provider):
     def __init__(self, base_url: str, list_models_endpoint: str):
         super().__init__(name="Ollama", base_url=base_url, list_models_endpoint=list_models_endpoint)

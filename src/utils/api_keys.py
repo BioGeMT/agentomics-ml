@@ -3,6 +3,7 @@ import dotenv
 import os
 from pathlib import Path
 
+
 dotenv.load_dotenv(Path(__file__).parents[2] / ".env") # load env in the root of the project
 
 PROVISIONING_API_KEY = os.getenv("PROVISIONING_OPENROUTER_API_KEY")
@@ -27,7 +28,6 @@ def create_new_api_key(name, limit):
         'hash': hash,
         'key': key,
     }
-
 
 def get_api_key(key_hash):
     headers = {"Authorization": f"Bearer {PROVISIONING_API_KEY}"}

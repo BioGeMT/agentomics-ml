@@ -1,12 +1,6 @@
 import sys
 from hrid import HRID
 
-def create_run_and_snapshot_dirs(config):
-    run_dir = config.runs_dir / config.agent_id
-    snapshot_dir = config.snapshots_dir / config.agent_id
-
-    run_dir.mkdir(parents=True, exist_ok=True)
-    snapshot_dir.mkdir(parents=True, exist_ok=True)
 
 def create_agent_id():
     return "_".join(HRID().generate().replace("-", "_").replace(" ","_").split("_")[:-1])[:32]

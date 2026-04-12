@@ -1,9 +1,10 @@
-import os
+import argparse
 from foundation_models_utils import load_models_config
 
 from transformers import AutoTokenizer
 from transformers import AutoModel, AutoModelForMaskedLM
 import multimolecule  # noqa: F401  # Required for loading specific HF models with remote code.
+
 
 def download_model(model_name, model_class):
     try:
@@ -19,17 +20,18 @@ def download_model(model_name, model_class):
         print(f"Error: {str(e)}")
 
 def main():
-    enabled_type = os.environ.get("FOUNDATION_MODEL_TYPE")
-    if not enabled_type:
-        return
+    parser = argparse.ArgumentParser(description="Download foundation models")
+    parser.add_argument("--foundation-models-type", required=True, help="Foundation model type to download (dna, rna, molecule, protein, all)")
+    parser.add_argument("--models-yaml", required=True, help="Path to the foundation models YAML config file")
+    args = parser.parse_args()
 
-    config = load_models_config()
+    config = load_models_config(args.models_yaml)
     if config is None:
         print('INFO: NO FOUNDATION MODELS FOUND IN CONFIG')
         return
 
     for _, family_data in config.items():
-        if enabled_type != "all" and family_data.get("type") != enabled_type:
+        if args.foundation_models_type != "all" and family_data.get("type") != args.foundation_models_type:
             continue
         models = family_data.get('models')
         hf_class = AutoModel if family_data.get('can_load_with_hf_automodel') else AutoModelForMaskedLM

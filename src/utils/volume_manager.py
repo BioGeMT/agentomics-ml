@@ -10,10 +10,11 @@ try:
     from rich import box
     from rich.panel import Panel
     from rich.text import Text
+
+
 except ImportError:
     print("Error: rich library not found. Please install it with: pip install rich", file=sys.stderr)
     sys.exit(1)
-
 
 class VolumeManager:
     def __init__(self):
@@ -169,7 +170,6 @@ class VolumeManager:
                 self.console.print("Volume creation cancelled", style="yellow")
                 return None
 
-
 def main():
     parser = argparse.ArgumentParser(description="Docker Volume Manager")
     parser.add_argument("--select-only", action="store_true", 
@@ -192,7 +192,6 @@ def main():
         # Default mode - just show available volumes
         volumes = manager.get_existing_volumes()
         manager.display_volumes_table(volumes)
-
 
 if __name__ == "__main__":
     main()

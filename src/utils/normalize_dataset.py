@@ -3,6 +3,7 @@ import csv
 import sys
 from pathlib import Path
 
+
 def normalize_input_dataset(input_path: Path, output_path: Path):
     """
     Normalize a csv dataset before entering the train/inference pipeline. Ensures it contains the id column.

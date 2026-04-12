@@ -204,6 +204,11 @@ def get_task_type_from_prepared_dataset(prepared_dataset_dir: str) -> str:
     metadata = json.loads(metadata_path.read_text())
     return metadata.get("task_type")
 
+def get_numeric_label_col_from_prepared_dataset(prepared_dataset_dir: Path) -> str:
+    metadata_path = prepared_dataset_dir / "metadata.json"
+    metadata = json.loads(metadata_path.read_text())
+    return metadata["numeric_label_col"]
+
 def get_classes_integers(config):
     """Get classes integers from the prepared dataset metadata."""
     if config.task_type != "classification":
@@ -237,7 +242,8 @@ def smart_sort_labels(labels):
     def sort_key(label):
         # Try to extract numeric part for sorting
         import re
-        
+
+
         # Check if the entire label is numeric
         if str(label).strip().replace('.', '').replace('-', '').isdigit():
             return (0, float(label))  # Numeric labels first, sorted by value
@@ -330,7 +336,6 @@ def add_id_column(train_df, validation_df=None, test_df=None):
 
     return train_df, validation_df, test_df
 
-
 def prepare_dataset(dataset_dir, target_col,
                    positive_class, negative_class, task_type, output_dir, test_sets_output_dir, interactive=False):
     """
@@ -378,7 +383,7 @@ def prepare_dataset(dataset_dir, target_col,
     test_out_dir = test_sets_output_dir / dataset_name
     test_out_dir.mkdir(parents=True, exist_ok=True)
     
-    # Generate train, test, and no_label CSV files
+    # Generate prepared split CSV files with numeric labels, plus a labelless held-out test file.
     for split_name, df in dataframes:
         try:
             if task_type == 'classification':
@@ -390,9 +395,8 @@ def prepare_dataset(dataset_dir, target_col,
 
         target_dir = test_out_dir if split_name == 'test' else out_dir
         df.drop(columns=[target_col]).to_csv(target_dir / f'{split_name}.csv', index=False)
-        df.drop([target_col, 'numeric_label'], axis=1).to_csv(
-            target_dir / f'{split_name}.no_label.csv', index=False
-        )
+        if split_name == 'test':
+            df.drop(columns=[target_col, 'numeric_label']).to_csv(target_dir / 'test.no_label.csv', index=False)
     
     # Generate dataset description file
     if(description is not None):
@@ -430,7 +434,7 @@ def setup_nonsensitive_dataset_files_for_agent(prepared_datasets_dir: Path, agen
 
     assert target_dataset_dir.is_dir()
 
-    target_files = ['dataset_description.md', 'train.csv', 'train.no_label.csv', 'validation.csv', 'validation.no_label.csv']
+    target_files = ['dataset_description.md', 'train.csv', 'validation.csv']
     for file in target_files:
         source_file = source_dataset_dir / file
         target_file = target_dataset_dir / file

@@ -1,34 +1,11 @@
 import argparse
-import json
 import dotenv
 import wandb
-from pathlib import Path
 
-from utils.config import Config
 from utils.api_keys import create_new_api_key, get_api_key_usage, delete_api_key
 from run_logging.wandb_setup import resume_wandb_run
+from runtime.read_write_utils import load_config
 
-def load_run_config(config_path):
-    with open(config_path, 'r') as f:
-        config_dict = json.load(f)
-
-    config = Config(
-        agent_id=config_dict['agent_id'],
-        model_name=config_dict['model_name'],
-        feedback_model_name=config_dict['feedback_model_name'],
-        dataset=config_dict['dataset'],
-        tags=config_dict['tags'],
-        val_metric=config_dict['val_metric'],
-        workspace_dir=Path(config_dict['workspace_dir']),
-        prepared_datasets_dir=Path(config_dict['prepared_dataset_dir']).parent,
-        prepared_test_sets_dir=Path(config_dict['prepared_test_set_dir']).parent,
-        agent_datasets_dir=Path(config_dict['agent_dataset_dir']).parent,
-        user_prompt=config_dict['user_prompt'],
-        iterations=config_dict['iterations'],
-        task_type=config_dict['task_type'],
-    )
-    config.wandb_run_id = config_dict.get('wandb_run_id')
-    return config
 
 def create_key(args):
     result = create_new_api_key(args.name, args.limit)
@@ -36,7 +13,7 @@ def create_key(args):
 
 def cleanup_and_log(args):
     dotenv.load_dotenv()
-    config = load_run_config(args.config_path)
+    config = load_config(args.config_path)
     resume_wandb_run(config, dir='./cleanup_wandb_logs')
 
     usage = get_api_key_usage(args.api_key_hash)

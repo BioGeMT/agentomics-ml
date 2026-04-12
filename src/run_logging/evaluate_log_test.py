@@ -1,63 +1,76 @@
-import json
-from pathlib import Path
 import argparse
 import time
+from pathlib import Path
 
-from utils.config import Config
-from run_logging.evaluate_log_run import run_inference_and_log
-from run_logging.logging_helpers import log_inference_stage_and_metrics, log_test_inference_duration
+import wandb
+
+from run_logging.logging_helpers import is_wandb_active, log_test_inference_duration
 from run_logging.wandb_setup import resume_wandb_run
-from utils.snapshots import replace_python_paths
+from runtime.conda_utils import get_snapshot_environment_path
+from runtime.filesystem import remove_path
+from runtime.inference_runner import compute_metrics, run_inference_script
+from runtime.read_write_utils import load_config_from_run_dir, load_dataset_metadata
+from utils.exceptions import AgentScriptFailed
+from utils.metrics import get_task_to_metrics_names
 
-def run_test_evaluation(workspace_dir, agent_id=None):
+
+def run_test_evaluation(workspace_dir, agent_id, prepared_test_sets_dir: Path):
     start = time.time()
     print("\nRunning final test evaluation...")
     config = None
     try:
-        config = load_run_config(extras_dir = Path(workspace_dir) / 'extras')
+        config = load_config_from_run_dir(Path(workspace_dir) / "runs" / agent_id)
         resume_wandb_run(config)
-        run_inference_and_log(config, iteration=None, evaluation_stage='test', use_best_snapshot=True)
+        dataset_metadata = load_dataset_metadata(config)
+        snapshot_dir = config.snapshot_dir
+        #TODO should use the step id by importing it
+        inference_script_path = snapshot_dir / "model_inference" / "inference.py"
+        output_path = config.snapshot_dir / "eval_predictions_test.csv"
+        remove_path(output_path)
+        prepared_test_set_dir = prepared_test_sets_dir / config.dataset
+        test_input_path = prepared_test_set_dir / "test.no_label.csv"
+        labeled_test_path = prepared_test_set_dir / "test.csv"
+        if not test_input_path.exists() or not labeled_test_path.exists():
+            raise FileNotFoundError(
+                f"Expected both test.no_label.csv and test.csv in {prepared_test_set_dir} for final test evaluation."
+            )
+        result = run_inference_script(
+            env_path=get_snapshot_environment_path(config),
+            script_path=inference_script_path,
+            input_path=test_input_path,
+            output_path=output_path,
+            #TODO should use the step id by importing it
+            artifacts_dir=snapshot_dir / "model_training" / "training_artifacts",
+        )
+        if result.returncode != 0:
+            raise AgentScriptFailed(f"Inference on test failed: {str(result)}")
+        metrics = compute_metrics(
+            results_file=output_path,
+            labeled_input_path=labeled_test_path,
+            numeric_label_col=dataset_metadata["numeric_label_col"],
+            task_type=dataset_metadata["task_type"],
+            evaluation_stage="test",
+        )
+        if is_wandb_active() and metrics is not None:
+            wandb.log(metrics)
     except Exception as e:
-        print('FINAL TEST EVAL FAIL', str(e))
-        if config is not None:
-            log_inference_stage_and_metrics(1, task_type=config.task_type)
-        else:
-            log_inference_stage_and_metrics(1, task_type='classification') #fallback
+        print("FINAL TEST EVAL FAIL", str(e))
+        if is_wandb_active() and config is not None:
+            wandb.log({metric_name: float("nan") for metric_name in get_task_to_metrics_names()[config.task_type]})
     log_test_inference_duration(time.time() - start)
-
-def load_run_config(extras_dir):
-    config_path = extras_dir.resolve() / "config.json"
-        
-    with open(config_path, 'r') as f:
-        config_dict = json.load(f)
-
-    config_constructor_params = {      
-          'agent_id': config_dict['agent_id'],                                                                                      
-          'model_name': config_dict['model_name'],
-          'feedback_model_name': config_dict['feedback_model_name'],
-          'dataset': config_dict['dataset'],
-          'tags': config_dict['tags'],
-          'val_metric': config_dict['val_metric'],
-          'workspace_dir': Path(config_dict['workspace_dir']),
-          'prepared_datasets_dir': Path(config_dict['prepared_dataset_dir']).parent,
-          'prepared_test_sets_dir': Path(config_dict['prepared_test_set_dir']).parent,
-          'agent_datasets_dir': Path(config_dict['agent_dataset_dir']).parent,
-          'user_prompt': config_dict['user_prompt'],
-          'iterations': config_dict['iterations'],
-      }
-     
-    config = Config(**config_constructor_params)
-    config.wandb_run_id = config_dict.get('wandb_run_id')
-
-    return config
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--workspace-dir', type=Path, default=Path('/workspace').resolve(), help='Path to workspace directory')
-    parser.add_argument('--agent-id', type=str, help='Agent id for snapshot selection')
+    parser.add_argument('--agent-id', type=str, required=True, help='Agent id for snapshot selection')
+    parser.add_argument('--prepared-test-sets-dir', type=Path, required=True, help='Path to prepared test sets root directory')
     args = parser.parse_args()
 
-    run_test_evaluation(args.workspace_dir, agent_id=args.agent_id)
+    run_test_evaluation(
+        args.workspace_dir,
+        agent_id=args.agent_id,
+        prepared_test_sets_dir=args.prepared_test_sets_dir.resolve(),
+    )
 
 if __name__ == "__main__":
     main()

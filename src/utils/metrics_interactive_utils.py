@@ -5,6 +5,7 @@ from rich.console import Console
 from utils.metrics import get_classification_metrics_names, get_regression_metrics_names
 from utils.user_input import get_user_input_for_int
 
+
 def display_metrics_table(task_type=None):
     """Display available validation metrics in a rich table format."""
     console = Console()

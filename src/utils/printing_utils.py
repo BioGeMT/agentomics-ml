@@ -11,6 +11,7 @@ from pygments.lexers import PythonLexer
 from pygments.formatters import TerminalTrueColorFormatter as TF
 from pygments.formatters import TerminalFormatter as TF
 
+
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'

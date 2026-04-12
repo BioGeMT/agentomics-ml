@@ -1,10 +1,10 @@
 import argparse
-import os
 from pathlib import Path
 from rich.console import Console
 
 from utils.dataset_utils import prepare_dataset
 from utils.datasets_interactive_utils import prepare_all_datasets
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Dataset preparation with auto-detection")
@@ -14,16 +14,18 @@ def parse_args():
     parser.add_argument('--task-type', choices=['classification', 'regression'], default=None, help='Task type (auto-detected if not provided)')
     parser.add_argument('--positive-class', help='Value used in the label column for a positive class (affects some binary classification metrics). If not provided, numeric labels are assigned based on the label appearance order in the train csv file.', default=None)
     parser.add_argument('--negative-class', help='Value used in the label column for a negative class (affects some binary classification metrics). If not provided, numeric labels are assigned based on the label appearance order in the train csv file.', default=None)
+    parser.add_argument('--datasets-dir', default='./datasets', help='Directory containing raw datasets')
+    parser.add_argument('--prepared-datasets-dir', default='./prepared_datasets', help='Output directory for prepared datasets')
+    parser.add_argument('--prepared-test-sets-dir', default='./prepared_test_sets', help='Output directory for prepared test sets')
     return parser.parse_args()
 
 def main():
     args = parse_args()
     console = Console()
-    
-    # If environment variables are set, override defaults
-    datasets_dir = os.environ.get("DATASETS_DIR", default="./datasets")
-    prepared_datasets_dir = os.environ.get("PREPARED_DATASETS_DIR", default="./prepared_datasets")
-    prepared_test_sets_dir = os.environ.get("PREPARED_TESTS_DIR", default="./prepared_test_sets")
+
+    datasets_dir = args.datasets_dir
+    prepared_datasets_dir = args.prepared_datasets_dir
+    prepared_test_sets_dir = args.prepared_test_sets_dir
     
     Path(prepared_datasets_dir).mkdir(parents=True, exist_ok=True)
     Path(prepared_test_sets_dir).mkdir(parents=True, exist_ok=True)

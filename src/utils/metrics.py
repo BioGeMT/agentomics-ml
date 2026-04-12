@@ -3,6 +3,7 @@ from scipy.stats import pearsonr, spearmanr
 import numpy as np
 from typing import Optional
 
+
 class Metric:
     """
     A metric class that encapsulates:
@@ -120,16 +121,6 @@ def get_regression_metrics_functions():
             higher_is_better=True
         ),
     }
-
-def get_classification_metrics_requiring_probabilities():
-    """Return a set of metric names that require probability scores instead of hard predictions."""
-    metrics = get_classification_metrics_functions()
-    return {name for name, metric in metrics.items() if metric.needs_probabilities}
-
-def get_classification_metrics_requiring_predictions():
-    """Return a set of metric names that require hard predictions instead of probabilities."""
-    metrics = get_classification_metrics_functions()
-    return {name for name, metric in metrics.items() if not metric.needs_probabilities}
 
 def get_classification_metrics_names():
     return list(get_classification_metrics_functions().keys())

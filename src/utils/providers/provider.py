@@ -17,7 +17,6 @@ from rich.panel import Panel
 from utils.config import Config
 from utils.user_input import get_user_input_for_int
 
-
 class Provider():
     """Parent provider class. All providers must extend this class."""
     console = Console()
@@ -152,6 +151,8 @@ class Provider():
             return AnthropicProvider(api_key, base_url, provider_config["list_models_endpoint"])
         elif name_lower == "openai":
             from .openai_provider import OpenAiProvider
+
+
             return OpenAiProvider(api_key, base_url, provider_config["list_models_endpoint"])
         # elif name_lower == "googleai": requires pydanticai version update
         #     from .googleai_provider import GoogleAiProvider

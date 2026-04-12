@@ -47,6 +47,8 @@ def generate_mirbench_files():
 
 def generate_genomic_benchmarks_files():
     from genomic_benchmarks.loc2seq import download_dataset
+
+
     # Description pulled from the genomic benchmarks publication text
     dataset_description = {
         "human_enhancers_cohn": "The Human enhancers Cohn dataset was adapted from [BioRxiv. 2018:264200]. Enhancers are genomic regulatory functional elements that can be bound by specific DNA binding proteins so as to regulate the transcription of a particular gene. Unlike promoters, enhancers do not need to be in a close proximity to the affected gene, and may be up to several million bases away, making their detection a difficult task.",

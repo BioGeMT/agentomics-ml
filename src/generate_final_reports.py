@@ -14,6 +14,9 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from eval.evaluate_result import get_metrics
+from utils.config import Config
+from runtime.read_write_utils import load_config_from_run_dir
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -37,7 +40,6 @@ class DatasetMeta:
     numeric_label_col: str
     label_to_scalar: Optional[Dict[str, int]] = None
 
-
 @dataclass(frozen=True)
 class RunMeta:
     agent_id: str
@@ -48,7 +50,6 @@ class RunMeta:
     split_allowed_iterations: Optional[int]
     exploration_iterations: Optional[int]
 
-
 @dataclass
 class SplitArtifacts:
     split_name: str  # train/validation/test
@@ -56,19 +57,16 @@ class SplitArtifacts:
     preds_csv: Optional[Path]
     metrics: Dict[str, float]
 
-
 @dataclass
 class IterationInputs:
     iteration: int
     report_md: Optional[Path]
     splits: List[SplitArtifacts]
 
-
 @dataclass
 class Step:
     title: str
     body: str
-
 
 # Styles
 def build_styles():
@@ -156,7 +154,6 @@ def build_styles():
     )
     return styles
 
-
 def apply_pub_style() -> None:
     plt.rcParams.update(
         {
@@ -183,7 +180,6 @@ def apply_pub_style() -> None:
         }
     )
 
-
 # IO helpers
 def ensure_dir(p: Path) -> None:
     p.mkdir(parents=True, exist_ok=True)
@@ -196,49 +192,49 @@ def safe_read_csv(path: Optional[Path]) -> Optional[pd.DataFrame]:
     except Exception:
         return None
 
-def parse_metrics_txt(path: Optional[Path]) -> Dict[str, float]:
-    metrics: Dict[str, float] = {}
-    if not path or not path.exists():
-        return metrics
-    for line in path.read_text().splitlines():
-        line = line.strip()
-        if not line or ":" not in line:
-            continue
-        k, v = line.split(":", 1)
-        try:
-            metrics[k.strip()] = float(v.strip())
-        except Exception:
-            continue
-    return metrics
+def load_validation_metrics(iter_dir: Path) -> Dict[str, float]:
+    output_path = iter_dir / "validation_evaluation" / "output.json"
+    if not output_path.exists():
+        return {}
 
-def load_config_json(agent_dir: Path) -> Dict:
-    cfg = agent_dir / "extras" / "config.json"
-    if cfg.exists():
-        try:
-            return json.loads(cfg.read_text(encoding="utf-8"))
-        except Exception:
-            return {}
-    return {}
+    metrics = json.loads(output_path.read_text(encoding="utf-8"))["payload"]["metrics"]
+    return {str(key): float(value) for key, value in metrics.items()}
 
-def load_run_meta(agent_dir: Path) -> RunMeta:
-    cfg = load_config_json(agent_dir)
-    return RunMeta(
-        agent_id=str(cfg.get("agent_id", "—")),
-        model_name=str(cfg.get("model_name", "—")),
-        dataset=str(cfg.get("dataset", "—")),
-        task_type=str(cfg.get("task_type", "—")).strip().lower(),
-        val_metric=str(cfg.get("val_metric")) if cfg.get("val_metric") else None,
-        split_allowed_iterations=cfg.get("split_allowed_iterations"),
-        exploration_iterations=cfg.get("exploration_iterations"),
+def get_split_metrics(metrics: Dict[str, float], split_name: str) -> Dict[str, float]:
+    split_prefix = f"{split_name}/"
+    return {
+        metric_name.removeprefix(split_prefix): metric_value
+        for metric_name, metric_value in metrics.items()
+        if metric_name.startswith(split_prefix)
+    }
+
+def load_test_metrics(
+    labeled_csv: Optional[Path],
+    preds_csv: Optional[Path],
+    dataset_meta: DatasetMeta,
+) -> Dict[str, float]:
+    if not labeled_csv or not labeled_csv.exists() or not preds_csv or not preds_csv.exists():
+        return {}
+    return get_metrics(
+        results_file=preds_csv,
+        test_file=labeled_csv,
+        task_type=dataset_meta.task_type,
+        numeric_label_col=dataset_meta.numeric_label_col,
     )
 
-def load_prepared_dataset_meta(agent_dir: Path) -> DatasetMeta:
-    cfg = load_config_json(agent_dir)
-    dataset = cfg.get("dataset")
-    if not dataset:
-        raise SystemExit("config.json missing required key: 'dataset'")
-    repo_root = Path(__file__).resolve().parents[1]
-    meta_path = repo_root / "prepared_datasets" / str(dataset) / "metadata.json"
+def load_run_meta(config: Config) -> RunMeta:
+    return RunMeta(
+        agent_id=config.agent_id,
+        model_name=config.model_name,
+        dataset=config.dataset,
+        task_type=str(config.task_type).strip().lower(),
+        val_metric=config.val_metric,
+        split_allowed_iterations=config.split_allowed_iterations,
+        exploration_iterations=config.exploration_iterations,
+    )
+
+def load_prepared_dataset_meta(prepared_datasets_dir: Path, dataset_name: str) -> DatasetMeta:
+    meta_path = prepared_datasets_dir / dataset_name / "metadata.json"
     if not meta_path.exists():
         raise SystemExit(f"prepared dataset metadata not found: {meta_path}")
     try:
@@ -277,16 +273,26 @@ def discover_iterations(agent_dir: Path) -> List[int]:
     return sorted(set(iters))
 
 def get_best_iter_number(agent_dir: Path) -> int:
-    best_iter_dir_file = agent_dir / "best_run_files" / "iteration_number.txt"
-    best_iter_number = best_iter_dir_file.read_text().strip()
-    return int(best_iter_number)
+    best_run_dir = agent_dir / "best_run_files"
+    metadata_path = best_run_dir / Config.RUNTIME_INFO_DIRNAME / "iteration_metadata.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    iteration = metadata.get("iteration")
+    if not isinstance(iteration, int):
+        raise ValueError(f"Best run metadata at {metadata_path} is missing integer field 'iteration'.")
+    return iteration
 
-def gather_iteration_inputs(agent_dir: Path, prepared_datasets: Path, prepared_tests: Path, iteration: int) -> IterationInputs:
+def gather_iteration_inputs(
+    agent_dir: Path,
+    dataset_name: str,
+    prepared_datasets: Path,
+    prepared_tests: Path,
+    dataset_meta: DatasetMeta,
+    iteration: int,
+) -> IterationInputs:
     reports_dir = agent_dir / "reports"
     run_files = agent_dir / "run_files"
     iter_dir = run_files / f"iteration_{iteration}"
-    extras_dir = agent_dir / "extras"
-    dataset_name = load_run_meta(agent_dir).dataset
+    validation_metrics = load_validation_metrics(iter_dir)
 
     report_md = reports_dir / f"run_report_iter_{iteration}.md"
     if not report_md.exists():
@@ -312,17 +318,13 @@ def gather_iteration_inputs(agent_dir: Path, prepared_datasets: Path, prepared_t
     val_preds = iter_dir / "eval_predictions_validation.csv"
     test_preds = run_files / "eval_predictions_test.csv"
 
-    train_metrics_path = extras_dir / f"train_metrics_iter_{iteration}.txt"
-    val_metrics_path = extras_dir / f"validation_metrics_iter_{iteration}.txt"
-    test_metrics_path = run_files / "test_metrics.txt"
-
     splits: List[SplitArtifacts] = [
-        SplitArtifacts("train", train_csv, train_preds, parse_metrics_txt(train_metrics_path)),
-        SplitArtifacts("validation", val_csv, val_preds, parse_metrics_txt(val_metrics_path)),
+        SplitArtifacts("train", train_csv, train_preds, get_split_metrics(validation_metrics, "train")),
+        SplitArtifacts("validation", val_csv, val_preds, get_split_metrics(validation_metrics, "validation")),
     ]
 
     if iteration == get_best_iter_number(agent_dir):
-        test_metrics = parse_metrics_txt(test_metrics_path)
+        test_metrics = load_test_metrics(test_csv, test_preds, dataset_meta)
         if (test_csv and test_csv.exists()) or (test_preds and test_preds.exists()) or bool(test_metrics):
             splits.append(SplitArtifacts("test", test_csv, test_preds, test_metrics))
 
@@ -867,8 +869,9 @@ def main() -> None:
     prepared_datasets: Path = args.prepared_datasets.resolve()
     prepared_tests: Path = args.prepared_tests.resolve()
 
-    run_meta = load_run_meta(agent_dir)
-    dataset_meta = load_prepared_dataset_meta(agent_dir)
+    config = load_config_from_run_dir(agent_dir / "run_files")
+    run_meta = load_run_meta(config)
+    dataset_meta = load_prepared_dataset_meta(prepared_datasets, config.dataset)
 
     if run_meta.task_type in ("classification", "regression") and run_meta.task_type != dataset_meta.task_type:
         print(f"[WARN] task_type mismatch: config={run_meta.task_type} metadata={dataset_meta.task_type}")
@@ -884,7 +887,7 @@ def main() -> None:
     split_order = ["train", "validation", "test"]
 
     for it in iterations:
-        inp = gather_iteration_inputs(agent_dir, prepared_datasets, prepared_tests, it)
+        inp = gather_iteration_inputs(agent_dir, config.dataset, prepared_datasets, prepared_tests, dataset_meta, it)
         report_text = inp.report_md.read_text(encoding="utf-8") if inp.report_md else None
 
         metrics_by_split: Dict[str, Dict[str, float]] = {

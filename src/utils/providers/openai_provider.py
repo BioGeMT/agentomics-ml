@@ -5,6 +5,7 @@ from rich.panel import Panel
 from .provider import Provider
 from utils.user_input import get_user_input_for_int
 
+
 class OpenAiProvider(Provider):
     def __init__(self, api_key: str, base_url: str, list_models_endpoint: str):
         super().__init__(name="OpenAI", api_key=api_key, base_url=base_url, list_models_endpoint=list_models_endpoint)

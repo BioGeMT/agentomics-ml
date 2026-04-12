@@ -1,5 +1,4 @@
 import wandb
-from dataclasses import asdict
 import dotenv
 import os
 
@@ -17,23 +16,22 @@ def setup_logging(config, dir=None):
     success = login_to_wandb(api_key)
     if not success:
         print("W&B login failed - skipping experiment logging")
-        return False
+        return None
     try:
         wandb.init(
             dir=config.extras_dir / 'run_logs' if dir is None else dir,
             entity=wandb_entity,
             project=wandb_project_name,
             tags=config.tags,
-            config=asdict(config),
+            config=vars(config),
             name=config.agent_id,
         )
-        config.wandb_run_id = wandb.run.id
         if wandb_entity and wandb_project_name:
             weave.init(f"{wandb_entity}/{wandb_project_name}")
-        return True
+        return wandb.run.id
     except CommError:
         print("W&B initialization failed - skipping experiment logging")
-        return False
+        return None
 
 def resume_wandb_run(config, dir=None):
     dotenv.load_dotenv()  # env handling consistent
@@ -44,7 +42,8 @@ def resume_wandb_run(config, dir=None):
 
     if not (api_key and wandb_project_name and wandb_entity):
         return None
-    if not getattr(config, "wandb_run_id", None):
+    wandb_run_id = config.wandb_run_id
+    if not wandb_run_id:
         return None
     success = login_to_wandb(api_key)
     if not success:
@@ -53,7 +52,7 @@ def resume_wandb_run(config, dir=None):
     try:
         run = wandb.init(
             dir=config.extras_dir / 'test_logs' if dir is None else dir,
-            id=config.wandb_run_id,
+            id=wandb_run_id,
             project=wandb_project_name,
             entity=wandb_entity,
             resume="allow"
