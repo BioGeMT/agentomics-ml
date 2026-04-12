@@ -25,7 +25,7 @@ class Config:
     task_type: str
     user_prompt: str
     steps_to_skip: List[str]
-    knowledge_mode: str  # "none", "icl", or "rag"
+    knowledge_mode: str  # "none", "icl", "rag", or "rag_od"
 
     wandb_run_id: Optional[str] = None
     # static defaults
