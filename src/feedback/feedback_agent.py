@@ -1,6 +1,6 @@
 import time
 import weave
-from pydantic_ai.messages import ModelRequest, SystemPromptPart, UserPromptPart
+from pydantic_ai.messages import ModelRequest, SystemPromptPart, UserPromptPart, TextPart
 from pydantic_ai.models import ModelRequestParameters
 
 @weave.op(call_display_name="Get Feedback")
@@ -49,7 +49,11 @@ async def get_feedback(context, config, new_metrics, best_metrics, is_new_best, 
         )
     )
 
-    return response.parts[0].content
+    text_parts = [p.content for p in response.parts if isinstance(p, TextPart)]
+    if text_parts:
+        return "\n".join(text_parts)
+    # Fallback: stringify the response if the model returned no text parts
+    return str(response.parts)
 
 def aggregate_feedback(feedback_list):
     if len(feedback_list) == 1: #TODO first iteration list contains None
