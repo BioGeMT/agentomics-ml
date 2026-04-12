@@ -38,8 +38,6 @@ After preparation, datasets are formatted for the agent:
 prepared_datasets/my_dataset/
 ├── train.csv              # Processed training data
 ├── validation.csv         # Processed validation data
-├── train.no_label.csv     # Training data without labels
-├── validation.no_label.csv
 ├── dataset_description.md # Copied/created description
 └── metadata.json          # Task info (type, classes, etc.)
 ```
@@ -66,14 +64,17 @@ Current run working directory:
 
 ```
 workspace/runs/<agent_id>/
-├── train.csv                    # Copy of prepared data
-├── validation.csv
-├── dataset_description.md
-├── train.py                     # Generated training script
-├── inference.py                 # Generated inference script
-├── training_artifacts/          # Model and artifacts
-├── .conda/                      # Conda environment
-└── iteration_0/                 # Iteration-specific snapshot
+├── shared/
+│   ├── .conda/                  # Shared Conda environment
+│   ├── config.json
+│   ├── environment.yml
+│   └── datasets/
+├── current_iteration/
+│   ├── current_step/            # Active step workspace
+│   └── runtime_info/
+├── iteration_0/                 # Archived iteration snapshot
+├── iteration_1/
+└── ...
 ```
 
 ### workspace/snapshots/
@@ -82,9 +83,13 @@ Best iteration backup:
 
 ```
 workspace/snapshots/<agent_id>/
-├── train.py
-├── inference.py
-├── training_artifacts/
+├── model_training/
+│   ├── train.py
+│   └── training_artifacts/
+├── model_inference/
+│   └── inference.py
+├── runtime_info/
+├── environment.yml
 └── .conda/
 ```
 
@@ -120,15 +125,14 @@ Final results after run completion:
 ```
 outputs/<agent_id>/
 ├── best_run_files/           # Best iteration artifacts
-│   ├── inference.py          # Inference script
-│   ├── train.py              # Training script
-│   ├── training_artifacts/   # Model and artifacts
-│   ├── validation_metrics.txt
-│   ├── train_metrics.txt
-│   ├── structured_outputs.txt
-│   ├── config.json
+│   ├── model_training/
+│   │   ├── train.py
+│   │   └── training_artifacts/
+│   ├── model_inference/
+│   │   └── inference.py
+│   ├── runtime_info/
 │   ├── environment.yml
-│   └── iteration_number.txt  # Which iteration was best
+│   └── .conda/
 ├── run_files/                # All iterations + data splits
 │   ├── train.csv
 │   ├── validation.csv
@@ -149,8 +153,10 @@ outputs/<agent_id>/
 
 ## File Notes
 
-Iteration contents and artifact names can vary by run. Use
-`outputs/<agent_id>/README.md` for the most accurate per-run details.
+Iteration contents and artifact names can vary by run. Use `<step_id>/output.json`
+inside each archived iteration or best-run snapshot as the structured source of
+truth for step outputs. Use `outputs/<agent_id>/README.md` for the most accurate
+per-run details.
 
 ## Cleanup
 

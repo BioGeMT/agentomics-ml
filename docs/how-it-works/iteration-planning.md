@@ -1,33 +1,33 @@
-# Feedback Loop
+# Iteration Planning
 
-The feedback agent guides improvements between iterations.
+The iteration-plan step guides improvements between iterations.
 
 ## How It Works
 
 After each iteration completes:
 
 1. **Results Collected** - Metrics, model outputs, and analysis from all steps
-2. **Feedback Generated** - A separate LLM analyzes what worked and what didn't
+2. **Plan Generated** - A separate LLM analyzes what worked and what didn't
 3. **Instructions Created** - Specific guidance for each step in the next iteration
-4. **Next Iteration Starts** - Agents receive feedback as part of their context
+4. **Next Iteration Starts** - Agents receive the iteration plan as part of their context
 
-## Feedback Structure
+## Iteration-Plan Structure
 
-The feedback agent produces instructions for each step:
+The iteration-planning step produces instructions for each step:
 
 ```
-IterationInstructions
+IterationPlanOutput
 ├── data_exploration_instructions
 ├── data_split_instructions
 ├── data_representation_instructions
 ├── model_architecture_instructions
 ├── model_training_instructions
-├── inference_instructions
+├── model_inference_instructions
 ├── prediction_exploration_instructions
 └── other_instructions
 ```
 
-## What Feedback Considers
+## What Iteration Planning Considers
 
 ### Performance Metrics
 
@@ -53,7 +53,7 @@ IterationInstructions
 - Remaining time (if timeout set)
 - Training duration of previous models
 
-## Feedback Examples
+## Iteration-Plan Examples
 
 ### Overfitting Detected
 
@@ -78,7 +78,7 @@ IterationInstructions
 
 ## Exploration vs. Optimization
 
-The feedback agent manages two phases:
+The iteration-planning step manages two phases:
 
 ### Exploration Phase
 
@@ -100,7 +100,7 @@ Later iterations:
 
 ## Combination Tracking
 
-The feedback agent tracks which combinations have been tried:
+The iteration-planning step tracks which combinations have been tried:
 
 ```
 Representation × Architecture Combinations:
@@ -122,20 +122,20 @@ For early iterations, the agent may suggest split changes:
 
 After `--split-allowed-iterations`, splits are frozen to ensure fair comparison.
 
-## Feedback Agent Model
+## Iteration-Planning Model
 
-The feedback agent uses the same LLM as the main agent.
+The iteration-planning step uses the same LLM as the main agent.
 
-## Viewing Feedback
+## Viewing Iteration Plans
 
-Feedback is included in iteration reports:
+Iteration-plan guidance is included in iteration reports:
 
 ```
 reports/run_report_iter_N.md
 ```
 
 Each report shows:
-- What feedback was received
+- What iteration plan was received
 - How the agent responded
 - Results of the iteration
 

@@ -7,17 +7,18 @@ After a run completes, results are saved to `outputs/<agent_id>/`.
 ```
 outputs/<agent_id>/
 ├── best_run_files/           # Best iteration artifacts
-│   ├── train.py              # Training script
-│   ├── inference.py          # Inference script
-│   ├── training_artifacts/   # Model and artifacts
-│   ├── validation_metrics.txt
-│   ├── train_metrics.txt
-│   ├── eval_predictions_train.csv
-│   ├── eval_predictions_validation.csv
-│   ├── structured_outputs.txt
-│   ├── config.json
+│   ├── model_training/
+│   │   ├── train.py          # Training script
+│   │   └── training_artifacts/
+│   ├── model_inference/
+│   │   └── inference.py      # Inference script
+│   ├── validation_evaluation/
+│   │   ├── eval_predictions_train.csv
+│   │   └── eval_predictions_validation.csv
+│   ├── runtime_info/
+│   │   └── iteration_metadata.json
 │   ├── environment.yml
-│   └── iteration_number.txt  # Which iteration was best
+│   └── .conda/
 ├── run_files/                # All iterations + data splits
 │   ├── train.csv
 │   ├── validation.csv
@@ -42,23 +43,17 @@ The most important directory - contains the best-performing iteration's artifact
 
 | File | Description |
 |------|-------------|
-| `inference.py` | Script to run predictions |
-| `train.py` | Script that trained the model |
-| `training_artifacts/` | Trained model files (format varies) |
-| `config.json` | Run configuration snapshot |
+| `model_inference/inference.py` | Script to run predictions |
+| `model_training/train.py` | Script that trained the model |
+| `model_training/training_artifacts/` | Trained model files (format varies) |
+| `runtime_info/iteration_metadata.json` | Which iteration produced the snapshot |
 | `environment.yml` | Export of the conda env used |
-| `iteration_number.txt` | Which iteration this came from |
+| `.conda/` | Bundled Conda environment for execution |
 
 ### Using the Best Model
 
 ```bash
-# Run inference
 ./inference.sh --agent-dir outputs/<agent_id> --input data.csv --output predictions.csv
-
-# Or directly (local mode)
-conda run -p outputs/<agent_id>/best_run_files/.conda/envs/<agent_id>_env \
-  python outputs/<agent_id>/best_run_files/inference.py \
-  --input data.csv --output predictions.csv
 ```
 
 ## Iteration Directories
@@ -67,10 +62,15 @@ Each iteration's files are preserved under `run_files/iteration_N/`:
 
 ```
 run_files/iteration_N/
-├── train.py                  # Training script
-├── inference.py              # Inference script
-├── training_artifacts/       # Model and artifacts
-├── validation_metrics.txt
+├── model_training/
+│   ├── train.py
+│   └── training_artifacts/
+├── model_inference/
+│   └── inference.py
+├── runtime_info/
+│   ├── environment.yml
+│   ├── iteration_metadata.json
+│   └── iteration_state.json
 └── ...                       # Other iteration artifacts
 ```
 
@@ -130,7 +130,7 @@ To reproduce a run:
 2. Use the same model and parameters
 3. Set the same random seed (if applicable)
 
-The `train.py` and `inference.py` scripts contain all logic needed to reproduce the model.
+The `model_training/train.py` and `model_inference/inference.py` scripts contain all logic needed to reproduce the model.
 
 ## Cleaning Up
 

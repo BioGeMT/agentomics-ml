@@ -79,27 +79,18 @@ GPU is used automatically if available:
 ./inference.sh --cpu-only --agent-dir outputs/my_agent ...
 ```
 
-## Using the Inference Script Directly
-
-For more control, use the agent's inference script directly:
-
-```bash
-# Navigate to agent's best run
-cd outputs/<agent_id>/best_run_files
-
-# Run inference using the saved environment
-conda run -p outputs/<agent_id>/best_run_files/.conda/envs/<agent_id>_env \
-  python outputs/<agent_id>/best_run_files/inference.py \
-  --input /path/to/data.csv --output /path/to/predictions.csv
-```
-
 ## What's in best_run_files
 
 ```
 outputs/<agent_id>/best_run_files/
-├── inference.py           # Inference script
-├── train.py               # Training script
-├── training_artifacts/    # Model files (format varies)
+├── model_inference/
+│   └── inference.py       # Inference script
+├── model_training/
+│   ├── train.py           # Training script
+│   └── training_artifacts/ # Model files (format varies)
+├── runtime_info/
+│   └── iteration_metadata.json
+├── environment.yml
 ├── .conda/                # Conda environment
 └── ...                    # Other artifacts (tokenizers, etc.)
 ```
@@ -124,7 +115,7 @@ Use `--cpu-only` flag or reduce batch size in the inference script.
 
 ## Batch Inference
 
-For large datasets, the inference script handles batching automatically. If you need custom batch sizes, modify the `inference.py` script in `best_run_files/`.
+For large datasets, the inference script handles batching automatically. If you need custom batch sizes, modify `best_run_files/model_inference/inference.py`.
 
 ## Next Steps
 

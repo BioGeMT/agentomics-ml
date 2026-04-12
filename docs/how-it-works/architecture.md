@@ -4,30 +4,38 @@ Agentomics-ML uses a multi-step iterative architecture where each iteration refi
 
 ## The Iteration Loop
 
-Each iteration consists of 7 sequential steps:
+Each iteration consists of 9 sequential steps:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                       ITERATION N                            │
 ├─────────────────────────────────────────────────────────────┤
-│  1. Data Exploration    → Analyze data characteristics       │
-│  2. Data Split          → Create train/validation split      │
-│  3. Data Representation → Define feature encoding            │
-│  4. Model Architecture  → Select and configure model         │
-│  5. Training            → Train the model                    │
-│  6. Inference           → Create prediction pipeline         │
-│  7. Prediction Analysis → Evaluate and analyze results       │
-├─────────────────────────────────────────────────────────────┤
-│                    ↓ Feedback Agent ↓                        │
-│              (Guides next iteration)                         │
+│  1. Iteration Plan      → Create step-by-step guidance       │
+│  2. Data Exploration    → Analyze data characteristics       │
+│  3. Data Split          → Create train/validation split      │
+│  4. Data Representation → Define feature encoding            │
+│  5. Model Architecture  → Select and configure model         │
+│  6. Model Training      → Train the model                    │
+│  7. Model Inference     → Create prediction pipeline         │
+│  8. Prediction Exploration → Analyze validation predictions  │
+│  9. Validation Evaluation → Score the iteration              │
 └─────────────────────────────────────────────────────────────┘
-                           ↓
-                    ITERATION N+1
 ```
 
 ## Step Details
 
-### 1. Data Exploration
+### 1. Iteration Plan
+
+The iteration-planning step analyzes archived results and produces concrete instructions for the rest of the iteration:
+
+- Reviews prior step outputs and validation metrics
+- Accounts for split-version changes and time budget
+- Decides whether to explore new combinations or refine promising ones
+- Produces per-step instructions in `IterationPlanOutput`
+
+**Output:** Structured iteration-plan instructions stored with the iteration
+
+### 2. Data Exploration
 
 The agent analyzes the dataset:
 
@@ -39,7 +47,7 @@ The agent analyzes the dataset:
 
 **Output:** Captured in structured outputs and iteration reports
 
-### 2. Data Split
+### 3. Data Split
 
 Creates or modifies train/validation split:
 
@@ -52,7 +60,7 @@ Creates or modifies train/validation split:
 !!! note
     The agent can modify splits during early iterations (controlled by `--split-allowed-iterations`).
 
-### 3. Data Representation
+### 4. Data Representation
 
 Defines how data is encoded:
 
@@ -63,7 +71,7 @@ Defines how data is encoded:
 
 **Output:** Captured in structured outputs and iteration reports
 
-### 4. Model Architecture
+### 5. Model Architecture
 
 Selects and configures the model:
 
@@ -74,38 +82,48 @@ Selects and configures the model:
 
 **Output:** Captured in structured outputs and iteration reports
 
-### 5. Training
+### 6. Model Training
 
 Implements and runs training:
 
-- Generates `train.py` script
+- Generates `model_training/train.py`
 - Sets up conda environment
 - Executes training
 - Monitors for issues (overfitting, convergence)
 
-**Output:** `train.py` and training artifacts
+**Output:** `model_training/train.py` and sibling `training_artifacts/`
 
-### 6. Inference
+### 7. Model Inference
 
 Creates prediction pipeline:
 
-- Generates `inference.py` script
+- Generates `model_inference/inference.py`
 - Ensures reproducibility
 - Handles data preprocessing
 - Validates predictions
 
-**Output:** `inference.py` script
+**Output:** `model_inference/inference.py`
 
-### 7. Prediction Analysis
+### 8. Prediction Exploration
 
-Evaluates model performance:
+Analyzes the validation-set predictions produced by the current inference pipeline:
 
-- Calculates validation metrics
+- Generates prediction summaries
 - Analyzes prediction distributions
 - Identifies potential issues
-- Compares to previous iterations
+- Surfaces patterns worth addressing in later iterations
 
-**Output:** Metrics and analysis
+**Output:** Structured prediction analysis and iteration reports
+
+### 9. Validation Evaluation
+
+Runs the final validation pass for the iteration:
+
+- Executes the generated inference pipeline on train and validation splits
+- Computes metrics used for model selection
+- Decides whether the iteration becomes the new best run
+
+**Output:** Validation metrics and best-run status
 
 ## Agent Tools
 
@@ -123,7 +141,7 @@ The agent has access to these tools:
 
 Each step uses an LLM agent that:
 
-1. Receives context (data info, previous results, feedback)
+1. Receives context (data info, previous results, and the iteration plan when applicable)
 2. Generates a structured output (validated by Pydantic)
 3. Validates the output meets requirements
 4. Retries if validation fails (up to 10 times)
@@ -132,14 +150,16 @@ Each step uses an LLM agent that:
 
 ```
 Iteration 0 (Baseline)
+├── Iteration planning
 ├── Full exploration
 ├── Initial split
 ├── Basic representation
 ├── Simple model
-└── Baseline metrics
+└── Baseline validation metrics
 
 Iteration 1-N (Refinement)
-├── Focused exploration (guided by feedback)
+├── Iteration planning from archived results
+├── Focused exploration (guided by the iteration plan)
 ├── Split adjustment (if allowed)
 ├── Improved representation
 ├── Better model/hyperparameters
@@ -175,5 +195,5 @@ Key architecture parameters in `src/utils/config.py`:
 
 ## Next Steps
 
-- [Feedback Loop](feedback-loop.md) - How iterations improve
+- [Iteration Planning](iteration-planning.md) - How iterations improve
 - [Evaluation](evaluation.md) - Metrics and testing

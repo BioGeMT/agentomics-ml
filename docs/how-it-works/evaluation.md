@@ -121,7 +121,7 @@ The agent monitors for overfitting by comparing:
 - Training metrics vs. validation metrics
 - Large gaps indicate overfitting
 
-Example feedback when overfitting detected:
+Example iteration-plan guidance when overfitting is detected:
 
 > Train ACC: 0.98, Validation ACC: 0.72
 > Significant overfitting detected. Consider regularization.

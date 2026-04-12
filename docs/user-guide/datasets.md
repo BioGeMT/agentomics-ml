@@ -105,14 +105,12 @@ After preparation, datasets are stored in:
 prepared_datasets/my_dataset/
 ├── train.csv              # Training data
 ├── validation.csv         # Validation data (created if not provided)
-├── train.no_label.csv     # Training data without labels (for inference)
-├── validation.no_label.csv
 ├── dataset_description.md # Copied/created description
 └── metadata.json          # Task type, classes, etc.
 
 prepared_test_sets/my_dataset/
 ├── test.csv               # Test data (if provided)
-└── test.no_label.csv
+└── test.no_label.csv      # Test data without labels
 ```
 
 ## Example Datasets

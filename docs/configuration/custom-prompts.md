@@ -54,12 +54,14 @@ The user prompt influences all agent steps:
 
 | Step | How It's Used |
 |------|---------------|
+| Iteration Planning | Cross-step guidance for the current iteration |
 | Data Exploration | What to look for in the data |
 | Data Split | Split strategy considerations |
 | Data Representation | Feature encoding choices |
 | Model Architecture | Model selection and design |
-| Training | Training approach and hyperparameters |
-| Inference | Prediction pipeline design |
+| Model Training | Training approach and hyperparameters |
+| Model Inference | Prediction pipeline design |
+| Validation Evaluation | What success criteria matter most |
 
 ## Prompt Tips
 

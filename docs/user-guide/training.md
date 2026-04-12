@@ -50,7 +50,7 @@ After the agent completes a run, you can re-train the model with new data using 
 
 The script:
 
-1. Loads the agent's `train.py` script from `best_run_files/`
+1. Loads the agent's `model_training/train.py` script from `best_run_files/`
 2. Uses the agent's conda environment
 3. Runs training with the new data
 4. Saves artifacts to the specified directory
