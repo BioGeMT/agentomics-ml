@@ -1,183 +1,166 @@
-import json
-from dataclasses import dataclass
-from pathlib import Path
-import subprocess
-import time
-from functools import lru_cache
-from typing import List, Optional
-from .dataset_utils import get_task_type_from_prepared_dataset
-from .foundation_models_utils import build_foundation_model_catalog
+from __future__ import annotations
 
-@dataclass
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import ClassVar
+
+from runtime.system_resources import get_resources_summary
+
+
+@dataclass(kw_only=True)
 class Config:
-    # defined at runtime
+    CONFIG_FILENAME: ClassVar[str] = "config.json"
+    SHARED_DIRNAME: ClassVar[str] = "shared"
+    RUNTIME_INFO_DIRNAME: ClassVar[str] = "runtime_info"
+    DEFAULT_ITERATIONS: ClassVar[int] = 5
+    DEFAULT_SPLIT_ALLOWED_ITERATIONS: ClassVar[int] = 1
+    DEFAULT_EXPLORATION_ITERATIONS: ClassVar[int] = 4
+    DEFAULT_STEP_SEQUENCE: ClassVar[tuple[str, ...]] = (
+        "iteration_plan",
+        "data_exploration",
+        "data_split",
+        "data_representation",
+        "model_architecture",
+        "model_training",
+        "model_inference",
+        "prediction_exploration",
+        "validation_evaluation",
+    )
+    DEFAULT_TOOL_IDS: ClassVar[tuple[str, ...]] = (
+        "bash",
+        "write_python",
+        "run_python",
+        "foundation_models_info",
+        "replace",
+    )
+    DEFAULT_MAX_STEPS: ClassVar[int] = 100
+    DEFAULT_TEMPERATURE: ClassVar[float] = 0.7
+    DEFAULT_MAX_VALIDATION_RETRIES: ClassVar[int] = 5
+    DEFAULT_USE_PROXY: ClassVar[bool] = True
+    DEFAULT_LLM_RESPONSE_TIMEOUT: ClassVar[int] = 60 * 10
+    DEFAULT_BASH_TOOL_TIMEOUT: ClassVar[int] = 60 * 3
+    DEFAULT_MAX_TOOL_RETRIES: ClassVar[int] = 5
+    DEFAULT_RUN_PYTHON_TOOL_TIMEOUT: ClassVar[int] = 60 * 60 * 6
+
     agent_id: str
     model_name: str
     feedback_model_name: str
     dataset: str
-    tags: List[str]
+    tags: list[str]
     val_metric: str
-    prepared_dataset_dir: Path
-    prepared_test_set_dir: Path
-    agent_dataset_dir: Path
-    workspace_dir: Path
-    snapshots_dir: Path
-    runs_dir: Path
-    reports_dir: Path
-    iterations: int
-    task_type: str
+    workspace_dir: str
+    prepared_datasets_dir: str
     user_prompt: str
-    split_allowed_iterations: int
-    exploration_iterations: int
-    time_deadline: Optional[int] = None
+    task_type: str
+    iterations: int = DEFAULT_ITERATIONS
+    provider_name: str | None = None
+    max_steps: int = DEFAULT_MAX_STEPS
+    split_allowed_iterations: int = DEFAULT_SPLIT_ALLOWED_ITERATIONS
+    exploration_iterations: int = DEFAULT_EXPLORATION_ITERATIONS
+    step_sequence: list[str] = field(default_factory=lambda: list(Config.DEFAULT_STEP_SEQUENCE))
+    tool_ids: list[str] = field(default_factory=lambda: list(Config.DEFAULT_TOOL_IDS))
+    time_deadline: int | None = None
+    split_time_deadline: int | None = None
+    run_python_tool_timeout: int = DEFAULT_RUN_PYTHON_TOOL_TIMEOUT
+    temperature: float = DEFAULT_TEMPERATURE
+    max_validation_retries: int = DEFAULT_MAX_VALIDATION_RETRIES
+    use_proxy: bool = DEFAULT_USE_PROXY
+    llm_response_timeout: int = DEFAULT_LLM_RESPONSE_TIMEOUT
+    bash_tool_timeout: int = DEFAULT_BASH_TOOL_TIMEOUT
+    max_tool_retries: int = DEFAULT_MAX_TOOL_RETRIES
+    wandb_run_id: str | None = None
+    foundation_models_type: str | None = None
+    foundation_models_yaml: str | None = None
+    agent_user: str | None = None
 
-    wandb_run_id: Optional[str] = None
-    # static defaults
-    temperature: float = 1.0
-    max_steps: int = 100 #TODO rename, this is per-step limit
-    max_validation_retries: int = 10
-    use_proxy: bool = True
-    llm_response_timeout: int = 60 * 15
-    bash_tool_timeout: int = 60 * 5
-    write_python_tool_timeout: int = 60 * 1
-    run_python_tool_timeout: int = 60 * 60 * 6 #This affects max training time
-    credit_budget: int = 30 # Only applies when using a provisioning openrouter key #TODO
-    max_tool_retries: int = 10
+    @property
+    def runs_dir(self) -> Path:
+        return Path(self.workspace_dir) / "runs"
 
-    def __init__(
-        self,
-        agent_id: str,
-        model_name: str,
-        feedback_model_name: str,
-        dataset: str,
-        tags: List[str],
-        val_metric: str,
-        workspace_dir: Path,
-        prepared_datasets_dir: Path,
-        prepared_test_sets_dir: Path,
-        agent_datasets_dir: Path,
-        user_prompt: str,
-        task_type: Optional[str] = None,
-        max_steps: Optional[int] = None,
-        iterations: Optional[int] = 5,
-        split_allowed_iterations: int = 1,
-        exploration_iterations: int = 4,
-        time_deadline: Optional[int] = None,
-        split_time_deadline: Optional[int] = None,
-        run_python_tool_timeout: Optional[int] = None,
-    ):
-        self.agent_id = agent_id
-        self.model_name = model_name
-        self.feedback_model_name = feedback_model_name
-        self.dataset = dataset
-        self.tags = tags
-        self.val_metric = val_metric
-        self.prepared_dataset_dir = prepared_datasets_dir / dataset
-        self.prepared_test_set_dir = prepared_test_sets_dir / dataset
-        self.agent_dataset_dir = agent_datasets_dir / dataset
-        self.workspace_dir = workspace_dir
-        self.runs_dir = workspace_dir / "runs"
-        self.snapshots_dir = workspace_dir / "snapshots"
-        self.fallbacks_dir = workspace_dir / "fallbacks"
-        self.reports_dir = workspace_dir / "reports"
-        self.extras_dir = workspace_dir / "extras"
-        self.iterations = iterations
-        self.task_type = task_type if task_type is not None else get_task_type_from_prepared_dataset(prepared_datasets_dir / dataset)
-        self.user_prompt = user_prompt
-        self.explicit_valid_set_provided = (agent_datasets_dir / dataset / "validation.csv").exists()
-        self.split_allowed_iterations = split_allowed_iterations if not self.explicit_valid_set_provided else 0
-        self.exploration_iterations = exploration_iterations
-        self.time_deadline = time_deadline
-        self.split_time_deadline = split_time_deadline
-        self.foundation_model_to_desc = build_foundation_model_catalog()
-        if run_python_tool_timeout is not None:
-            self.run_python_tool_timeout = run_python_tool_timeout
-        
-        if max_steps is not None:
-            self.max_steps = max_steps
+    @property
+    def snapshots_dir(self) -> Path:
+        return Path(self.workspace_dir) / "snapshots"
 
-    def get_numeric_label_col_name(self):
-        metadata_path = self.prepared_dataset_dir / "metadata.json"
-        with open(metadata_path, "r") as f:
-            metadata = json.load(f)
-        return metadata["numeric_label_col"]
+    @property
+    def fallbacks_dir(self) -> Path:
+        return Path(self.workspace_dir) / "fallbacks"
 
-    def can_iteration_split_data(self, iteration):
-        return not self.explicit_valid_set_provided and iteration < self.split_allowed_iterations
+    @property
+    def reports_dir(self) -> Path:
+        return Path(self.workspace_dir) / "reports"
 
-    def can_split_data_at_time(self, split_time):
-        return not self.explicit_valid_set_provided and split_time < self.split_time_deadline
+    @property
+    def extras_dir(self) -> Path:
+        return Path(self.workspace_dir) / "extras"
 
-    def can_iteration_split_now_cached(self, iteration):
-        if(self.split_time_deadline is None): # time deadline takes precedence over iteration deadline
-            return self.can_iteration_split_data(iteration=iteration)
-        return self.can_split_data_at_time(split_time=Config.get_cached_iteration_time(iteration=iteration))
-    
-    @classmethod
-    @lru_cache(maxsize=128) # caches results -> whenver this is called the first time, save the result for future calls to avoid time.time() differences
-    def get_cached_iteration_time(cls, iteration):
-        return time.time()
+    @property
+    def prepared_dataset_dir(self) -> Path:
+        return Path(self.prepared_datasets_dir) / self.dataset
 
-    def check_gpu_availability(self) -> Optional[str]:
-        try:
-            result = subprocess.run(['nvidia-smi', '--list-gpus'], capture_output=True, text=True)
+    @property
+    def agent_dataset_dir(self) -> Path:
+        return self.shared_dir / "datasets" / self.dataset
 
-            if result.returncode == 0 and result.stdout.strip():
-                gpus = []
-                for line in result.stdout.strip().split('\n'):
-                    line = line.split('(UUID:')[0].strip() # remove UUID part
-                    line = line.split(':', 1)[1].strip() # get only device name
-                    gpu_max_memory = subprocess.run(
-                        ['nvidia-smi', '--query-gpu=memory.total', '--format=csv,noheader,nounits'],
-                        capture_output=True, text=True
-                    ).stdout.strip().split('\n')[len(gpus)-1]
-                    gpus.append(f'{line} (Memory: {gpu_max_memory} MB)')
-                return ', '.join(gpus)
-            return None
-        except:
-            return None
-    
-    def get_cpu_info(self):
-        cpu_info = subprocess.run(['lscpu'], capture_output=True, text=True).stdout
-        cpu_count = 'CPU count not available'
-        for line in cpu_info.split('\n'):
-            if 'CPU(s):' in line and 'NUMA' not in line:
-                cpu_count = line.split(':')[1].strip() + ' cores'
-                break
-        return cpu_count
-    
-    def get_ram_info(self):
-        mem_info = subprocess.run(['free', '-m'], capture_output=True, text=True).stdout
-        for line in mem_info.splitlines():
-            if line.strip().startswith('Mem:'):
-                return line.split()[1] + ' MB'  # Return total memory
-        return 'RAM info not available'
-    
-    def get_resources_summary(self):
-        gpu_info = self.check_gpu_availability()
-        resources = []
-        if gpu_info:
-            resources.append(f'GPU Resource Available ({gpu_info})')
-        else:
-            resources.append('CPU Resources Only')
-        resources.append(f'RAM: {self.get_ram_info()}')
-        resources.append(f'CPU: {self.get_cpu_info()}')
-        return ', '.join(resources)
+    @property
+    def run_dir(self) -> Path:
+        return self.runs_dir / self.agent_id
 
+    @property
+    def shared_dir(self) -> Path:
+        return self.run_dir / self.SHARED_DIRNAME
 
-    def print_summary(self):
-        print('=== AGENTOMICS CONFIGURATION ===')
-        print('MAIN MODEL:', self.model_name)
-        print('FEEDBACK MODEL:', self.feedback_model_name)
-        print('DATASET:', self.dataset)
-        print('TASK TYPE:', self.task_type)
-        print('VAL METRIC:', self.val_metric)
-        print('AGENT ID:', self.agent_id)
-        print('ITERATIONS:', self.iterations)
-        print('EXPLORATION ITERATIONS:', self.exploration_iterations)
-        print('SPLIT ALLOWED ITERATIONS:', self.split_allowed_iterations)
-        print('TIMEOUT IN HOURS:', (self.time_deadline - time.time()) / 3600 if self.time_deadline is not None else 'No timeout')
-        print('SPLIT TIMEOUT IN HOURS:', (self.split_time_deadline - time.time()) / 3600 if self.split_time_deadline is not None else 'No timeout')
-        print('USER PROMPT:', self.user_prompt)
-        print('RESOURCES SUMMARY:', self.get_resources_summary())
-        print('===============================')
+    @property
+    def config_path(self) -> Path:
+        return self.shared_dir / self.CONFIG_FILENAME
+
+    @property
+    def current_iteration_dir(self) -> Path:
+        return self.run_dir / "current_iteration"
+
+    @property
+    def current_step_dir(self) -> Path:
+        return self.current_iteration_dir / "current_step"
+
+    @property
+    def current_iteration_runtime_info_dir(self) -> Path:
+        return self.current_iteration_dir / self.RUNTIME_INFO_DIRNAME
+
+    @property
+    def splits_dir(self) -> Path:
+        return self.shared_dir / "splits"
+
+    @property
+    def snapshot_dir(self) -> Path:
+        return self.snapshots_dir / self.agent_id
+
+    def archived_step_dir(self, step_id: str) -> Path:
+        return self.current_iteration_dir / step_id
+
+    def iteration_dir(self, iteration: int) -> Path:
+        return self.run_dir / f"iteration_{iteration}"
+
+    def print_summary(self) -> None:
+        print("=== AGENTOMICS CONFIGURATION ===")
+        print("MAIN MODEL:", self.model_name)
+        print("FEEDBACK MODEL:", self.feedback_model_name)
+        print("DATASET:", self.dataset)
+        print("TASK TYPE:", self.task_type)
+        print("VAL METRIC:", self.val_metric)
+        print("AGENT ID:", self.agent_id)
+        print("ITERATIONS:", self.iterations)
+        print("EXPLORATION ITERATIONS:", self.exploration_iterations)
+        print("SPLIT ALLOWED ITERATIONS:", self.split_allowed_iterations)
+        print(
+            "TIMEOUT IN HOURS:",
+            (self.time_deadline - time.time()) / 3600 if self.time_deadline is not None else "No timeout",
+        )
+        print(
+            "SPLIT TIMEOUT IN HOURS:",
+            (self.split_time_deadline - time.time()) / 3600
+            if self.split_time_deadline is not None
+            else "No timeout",
+        )
+        print("USER PROMPT:", self.user_prompt)
+        print("RESOURCES SUMMARY:", get_resources_summary())
+        print("===============================")
