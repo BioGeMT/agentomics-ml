@@ -1,6 +1,9 @@
-from test.utils_test import BaseAgentTest
-from pathlib import Path
+import os
 import subprocess
+import unittest
+from pathlib import Path
+
+from test.utils_test import BaseAgentTest
 
 class TestAgentPermissions(BaseAgentTest):
     """Test suite for agent isolation and security."""
@@ -12,14 +15,14 @@ class TestAgentPermissions(BaseAgentTest):
         self.assertIn(expected_dir, result.strip(), f"Agent's working directory should be {expected_dir}, got: {result.strip()}")
 
     def test_agent_directory_access(self):
-        """Test that agent can access only its own work directory."""
+        """Test that agent can read its run directory and write inside current_step_dir."""
 
         result = self.bash_tool.function(f"ls -la {self.config.runs_dir}/{self.agent_id}/")
-        self.assertNotIn("Permission denied", result, "Agent should access its own directory")
+        self.assertNotIn("Permission denied", result, "Agent should be able to list its run directory")
         self.assertNotIn("Command failed", result, "ls command should succeed")
 
-        result = self.bash_tool.function(f"touch {self.config.runs_dir}/{self.agent_id}/test_file.txt")
-        self.assertNotIn("Permission denied", result, "Agent should create files in its directory")
+        result = self.bash_tool.function(f"touch {self.config.current_step_dir}/test_file.txt")
+        self.assertNotIn("Permission denied", result, "Agent should create files in current_step_dir")
         self.assertNotIn("Command failed", result, "touch command should succeed")
     
     def test_cross_agent_isolation(self):
@@ -61,7 +64,7 @@ class TestAgentPermissions(BaseAgentTest):
             result = self.bash_tool.function(f"head -5 {self.config.prepared_dataset_dir}/{file.name} 2>&1")
             self.assertNotIn("Permission denied", result, f"Agent should access the {file.name} file in prepared_datasets")
 
-        test_set_dir = self.config.prepared_test_set_dir
+        test_set_dir = self.prepared_test_sets_dir / self.config.dataset
         result = self.bash_tool.function(f"ls {test_set_dir} 2>&1")
         self.assertIn("No such file or directory", result, "Agent should not have access to prepared_test_sets directory")
 
@@ -88,7 +91,7 @@ class TestAgentPermissions(BaseAgentTest):
         """Test that conda environment is set up and isolated."""
         which_python = self.bash_tool.function("which python")
         self.assertNotIn("Command failed", which_python, "'which python' should succeed")
-        self.assertIn(f"{self.config.runs_dir}/{self.agent_id}/.conda/envs/{self.agent_id}_env/bin/python", which_python.strip(),
+        self.assertIn(f"{self.config.shared_dir}/.conda/envs/{self.agent_id}_env/bin/python", which_python.strip(),
                       "Python should be from the agent's conda environment")
         
         install_result = self.bash_tool.function("conda install matplotlib -y 2>&1")
@@ -98,6 +101,32 @@ class TestAgentPermissions(BaseAgentTest):
         python_result = self.bash_tool.function("python -c 'import matplotlib; print(f\"Matplotlib version: {matplotlib.__version__}\")' 2>&1")
         self.assertNotIn("Command failed", python_result, "Python command should succeed")
         self.assertIn("Matplotlib version:", python_result, "Should successfully import matplotlib")
+
+    @unittest.skipUnless(os.getenv("AGENT_USER"), "Agent user sandboxing only enforced in Docker mode")
+    def test_agent_runs_as_restricted_user(self):
+        """Test that agent tool subprocesses run as the restricted agent user, not root."""
+        result = self.bash_tool.function("whoami")
+        expected_user = os.getenv("AGENT_USER")
+        self.assertIn(expected_user, result, f"Agent should run as {expected_user}, got: {result}")
+
+    @unittest.skipUnless(os.getenv("AGENT_USER"), "Agent user sandboxing only enforced in Docker mode")
+    def test_cannot_write_to_current_iteration_dir(self):
+        """Test that the agent cannot create files directly in current_iteration_dir.
+        Only current_step_dir (chowned to the agent user) should be writable."""
+        evil_path = self.config.current_iteration_dir / "evil.txt"
+        result = self.bash_tool.function(f"touch {evil_path} 2>&1")
+        self.assertIn("Permission denied", result,
+                      f"Agent must not write directly to current_iteration_dir. Got: {result}")
+
+    @unittest.skipUnless(os.getenv("AGENT_USER"), "Agent user sandboxing only enforced in Docker mode")
+    def test_can_write_to_current_step_dir(self):
+        """Test that the agent can write inside current_step_dir (its designated workspace)."""
+        test_path = self.config.current_step_dir / "sandbox_write_test.txt"
+        result = self.bash_tool.function(f"touch {test_path} 2>&1")
+        self.assertNotIn("Permission denied", result,
+                         f"Agent should be able to write to current_step_dir. Got: {result}")
+        self.assertNotIn("Command failed", result,
+                         f"touch in current_step_dir should succeed. Got: {result}")
 
     def test_agent_python_tools_security(self):
         """Test that Python tools see proper workspace isolation."""
@@ -123,7 +152,7 @@ except Exception as e:
     print(f"Error during security test: {{e}}")
     """
 
-        test_file_path = self.config.runs_dir / self.config.agent_id / "security_test.py"
+        test_file_path = self.config.current_step_dir / "security_test.py"
         write_result = self.write_python_tool.function(
             file_path=test_file_path,
             code=disruptive_code
