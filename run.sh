@@ -137,10 +137,7 @@ else
         GPU_FLAGS+=(--gpus all)
         GPU_FLAGS+=(--env NVIDIA_VISIBLE_DEVICES=all)
     fi
-    OLLAMA_FLAGS=()
-    if [ "$OLLAMA" = true ]; then
-        OLLAMA_FLAGS+=(--add-host=host.docker.internal:host-gateway)
-    fi
+    OLLAMA_FLAGS=(--network=host)
 
     PROVIDERS_CONFIG_FILE="src/utils/providers/configured_providers.yaml"
     API_KEY_NAMES=$(grep -E 'apikey:' "$PROVIDERS_CONFIG_FILE" | grep -o '\${[^}]*}' | tr -d '${}' | sort -u)
