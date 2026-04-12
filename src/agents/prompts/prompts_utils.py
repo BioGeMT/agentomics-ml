@@ -1,5 +1,11 @@
 import json
 
+from runtime.system_resources import check_gpu_availability, get_resources_summary
+from utils.config import Config
+
+DEFAULT_USER_PROMPT = "Develop a machine learning model that generalizes well to new unseen data."
+
+
 def get_system_prompt(config):
     train_csv_path = config.agent_dataset_dir / "train.csv"
     validation_csv_path = config.agent_dataset_dir / "validation.csv"
@@ -8,21 +14,19 @@ def get_system_prompt(config):
     if validation_csv_path.exists():
         dataset_paths += f"\n    Validation path:\n    {validation_csv_path}"
     
-    gpu_available = config.check_gpu_availability() is not None
+    gpu_available = check_gpu_availability() is not None
 
-    available_resources = config.get_resources_summary()
+    available_resources = get_resources_summary()
+    ordered_steps = "\n".join(
+        f"    - {step_id.replace('_', ' ').title()}"
+        for step_id in config.step_sequence
+    )
 
     #TODO don't limit your models and training concepts because of the lack of GPU
     return f"""
     Your goal is to create a robust machine learning model that will generalize to new unseen data. Use tools and follow instructions to reach this goal.
     You're part of an agentic, multi-step architecture where each step builds upon the previous one:
-    - Data Exploration
-    - Data Splitting
-    - Data Representation
-    - Model Architecture
-    - Model Training
-    - Model Inference
-    - Prediction Exploration
+{ordered_steps}
 
     This is an iterative process. Each iteration takes all of these steps. You will have multiple iterations to refine your approach based on validation performance. 
     You are using a linux system.
@@ -31,9 +35,8 @@ def get_system_prompt(config):
     You are provided with your own already activated environment
     Use this environment to install any packages you need (use non-verbose mode for installations, run conda installations with -y option).
     Don't delete this environment.
+    Your conda environment lives under {config.shared_dir / ".conda"}.
     Write all your python scripts in files.
-    You can create files only in your own working directory: {config.runs_dir / config.agent_id}.
-    Don't create or modify any folders or files starting with 'iteration_'.
     Run all commands in a way that prints the least amount of tokens into the console.
     Always call tools with the right arguments, specifying each argument as separate key-value pair. 
     
@@ -55,23 +58,17 @@ def get_dataset_knowledge(config):
         dataset_knowledge += f"\n\nLabel mapping: {metadata.get('label_to_scalar', {})}"
     return dataset_knowledge
 
-def get_iteration_0_prompt(config):
+def build_iteration_base_prompt(config: Config, iteration: int) -> str:
     return f"""
     User instructions: {config.user_prompt}
-    Iteration 0 - Baseline implementation:
-    Your goal for this iteration is to implement a simple baseline model, not to achieve the best possible model.
-    Follow these instructions for these specific steps:
-    - Data Representation: implement the most basic commonly used representation for the data type
-    - Model Architecture: use a classical machine learning model
-    """
 
-def get_iteration_prompt(config, run_index, feedback):
-    past_iterations_range = f"iteration_0 up to iteration_{run_index-1}" if run_index > 1 else "iteration_0"
-    return f"""
-    You have already completed iterations {",".join([str(i) for i in range(run_index)])}. You are at iteration {run_index}. Files from past iterations ({past_iterations_range}) are available in read-only folders: {config.runs_dir / config.agent_id}/iteration_0, iteration_1, etc.
-    If you want to reuse any code or files from past iterations, copy them into your current working directory ({config.runs_dir / config.agent_id}). Files in past iteration folders won't be accessible during final inference.
-    Detailed outputs of any previous iteration and their summaries are available at {config.runs_dir / config.agent_id}/iteration_<iteration_number>/structured_outputs.txt
-    Instructions to follow for the current iteration:
-    {feedback}
-    {"You must not modify the train.csv and validation.csv files this iteration." if not config.can_iteration_split_now_cached(run_index) else ""}
+    Workspace rules:
+    - Your current writable directory is: {config.current_step_dir}
+    - Create and modify files only inside your current writable directory.
+    - Previous step and iteration folders are read-only.
+    - If you want to reuse earlier files, copy them into your current writable directory before modifying them.
+    - Don't create or modify any folders or files starting with 'iteration_'.
+
+    You are at iteration {iteration}.
+    {f"Archived iteration folders are available under {config.run_dir}/iteration_0, iteration_1, etc. Structured outputs are available under {config.run_dir}/iteration_<iteration_number>/<step_id>/output.json" if iteration > 0 else ""}
     """
