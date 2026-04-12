@@ -219,7 +219,7 @@ def _file_matches_quoted_pattern(file_path, pattern: str) -> bool:
     return re.search(pattern, content, re.DOTALL) is not None
 
 def _write_json(path: Path, payload: Any) -> None:
-    path.write_text(json.dumps(_to_jsonable(payload), indent=2), encoding="utf-8")
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 def _load_json_object(path: Path) -> dict[str, Any]:
     if not path.exists():
@@ -228,16 +228,3 @@ def _load_json_object(path: Path) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError(f"Expected a JSON object at {path}.")
     return payload
-
-def _to_jsonable(value: Any) -> Any:
-    if isinstance(value, Path):
-        return str(value)
-    if isinstance(value, dict):
-        return {str(key): _to_jsonable(item) for key, item in value.items()}
-    if isinstance(value, (list, tuple, set)):
-        return [_to_jsonable(item) for item in value]
-    if isinstance(value, (str, int, float, bool)) or value is None:
-        return value
-    if hasattr(value, "model_dump"):
-        return _to_jsonable(value.model_dump())
-    return str(value)
