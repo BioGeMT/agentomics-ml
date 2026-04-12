@@ -97,7 +97,6 @@ outputs/${agent_id}/
 │   ├── train_metrics.txt
 │   ├── eval_predictions_train.csv  # Predictions on training set
 │   ├── eval_predictions_validation.csv
-│   ├── structured_outputs.txt
 │   ├── config.json
 │   ├── conda_environment.yml
 │   └── iteration_number.txt        # Chosen best iteration index

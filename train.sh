@@ -88,11 +88,16 @@ fi
 [[ -d "$AGENT_DIR" ]] || die "--agent-dir does not exist: $AGENT_DIR"
 
 AGENT_NAME=$(basename "$AGENT_DIR")
-ENV_PATH="${AGENT_DIR}/best_run_files/.conda/envs/${AGENT_NAME}_env"
-TRAIN_PATH="${AGENT_DIR}/best_run_files/train.py"
+CODE_ROOT="${AGENT_DIR}/best_run_files"
+ENV_PATH="${CODE_ROOT}/.conda/envs/${AGENT_NAME}_env"
+TRAIN_PATH="${CODE_ROOT}/model_training/train.py"
+TRAIN_WORKDIR="$(dirname "$TRAIN_PATH")"
+DESCRIPTOR_PATH="${CODE_ROOT}/environment.yml"
 
 [[ -f "$TRAIN_DATA_PATH" ]] || die "--train-data does not exist: $TRAIN_DATA_PATH"
 [[ -f "$VALIDATION_DATA_PATH" ]] || die "--validation-data does not exist: $VALIDATION_DATA_PATH"
+[[ -f "$TRAIN_PATH" ]] || die "train.py not found at: $TRAIN_PATH"
+[[ -f "$DESCRIPTOR_PATH" ]] || die "environment.yml not found at: $DESCRIPTOR_PATH"
 
 if [[ "$DOCKER_MODE" == true ]]; then
     if [ "$CPU_ONLY" = false ]; then
@@ -144,32 +149,48 @@ if [[ "$DOCKER_MODE" == true ]]; then
     TRAIN_DATA_PATH_ABS="$(cd "$(dirname "$TRAIN_DATA_PATH")" && pwd)/$(basename "$TRAIN_DATA_PATH")"
     VALIDATION_DATA_PATH_ABS="$(cd "$(dirname "$VALIDATION_DATA_PATH")" && pwd)/$(basename "$VALIDATION_DATA_PATH")"
     ARTIFACTS_DIR_ABS="$(cd "$(dirname "$ARTIFACTS_DIR")" && pwd)/$(basename "$ARTIFACTS_DIR")"
+    CODE_ROOT_IN_CONTAINER="/workspace"
+    TRAIN_WORKDIR_IN_CONTAINER="${CODE_ROOT_IN_CONTAINER}/model_training"
+    DESCRIPTOR_PATH_IN_CONTAINER="${CODE_ROOT_IN_CONTAINER}/environment.yml"
+    if [[ ! -d "$ENV_PATH" ]]; then
+        echo "Conda environment not found at: $ENV_PATH"
+        echo "Creating conda environment inside Docker..."
+        docker run --rm \
+            -v "${AGENT_DIR_ABS}/best_run_files:${CODE_ROOT_IN_CONTAINER}" \
+            --entrypoint "" \
+            -w "${CODE_ROOT_IN_CONTAINER}" \
+            agentomics_img \
+            bash -c "conda install -n base mamba -c conda-forge -y && mamba env create -f \"${DESCRIPTOR_PATH_IN_CONTAINER}\" -p \"${CODE_ROOT_IN_CONTAINER}/.conda/envs/${AGENT_NAME}_env\""
+    fi
     docker run --rm \
-        -v "${AGENT_DIR_ABS}/best_run_files:/workspace" \
+        -v "${AGENT_DIR_ABS}/best_run_files:${CODE_ROOT_IN_CONTAINER}" \
         -v "$(dirname "$TRAIN_DATA_PATH_ABS"):/train_data_dir" \
         -v "$(dirname "$VALIDATION_DATA_PATH_ABS"):/validation_data_dir" \
         -v "$(dirname "$ARTIFACTS_DIR_ABS"):/artifacts_parent_dir" \
         ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
         --entrypoint "" \
-        -w /workspace \
-        -e PATH="/workspace/.conda/envs/${AGENT_NAME}_env/bin:$PATH" \
+        -w "${TRAIN_WORKDIR_IN_CONTAINER}" \
+        -e PATH="${CODE_ROOT_IN_CONTAINER}/.conda/envs/${AGENT_NAME}_env/bin:$PATH" \
         agentomics_img \
         python train.py \
         --train-data "/train_data_dir/$(basename "$TRAIN_DATA_PATH_ABS")" \
         --validation-data "/validation_data_dir/$(basename "$VALIDATION_DATA_PATH_ABS")" \
-        --artifacts-dir "/artifacts_parent_dir/$(basename "$ARTIFACTS_DIR_ABS")" "${ARGS[@]}"
+        --artifacts-dir "/artifacts_parent_dir/$(basename "$ARTIFACTS_DIR_ABS")" ${ARGS[@]+"${ARGS[@]}"}
     echo "Training done"
     print_summary "$ARTIFACTS_DIR"
 else
     need_cmd conda
+    if [[ ! -d "$ENV_PATH" ]]; then
+        echo "Conda environment not found at: $ENV_PATH"
+        conda env create -f "$DESCRIPTOR_PATH" -p "$ENV_PATH"
+    fi
     echo "Running training locally..."
-    cd "$(dirname "$TRAIN_PATH")"
+    cd "$TRAIN_WORKDIR"
     conda run -p "$ENV_PATH" \
         python "$TRAIN_PATH" \
         --train-data "$TRAIN_DATA_PATH" \
         --validation-data "$VALIDATION_DATA_PATH" \
-        --artifacts-dir "$ARTIFACTS_DIR" "${ARGS[@]}"
+        --artifacts-dir "$ARTIFACTS_DIR" ${ARGS[@]+"${ARGS[@]}"}
     echo "Training done"
     print_summary "$ARTIFACTS_DIR"
 fi
-

@@ -24,15 +24,17 @@ RUN conda init bash \
 # Pre-download foundation models
 RUN mkdir -p /foundation_models /cache/foundation_models
 ENV HF_HOME=/cache/foundation_models
-ARG FOUNDATION_MODEL_TYPE=
-ENV FOUNDATION_MODEL_TYPE=${FOUNDATION_MODEL_TYPE}
+ARG FOUNDATION_MODELS_TYPE=
 COPY foundation_models/ /foundation_models/
 COPY src/utils/foundation_models_utils.py /repository/src/utils/foundation_models_utils.py
 COPY src/utils/download_foundation_models.py /repository/src/utils/download_foundation_models.py
-RUN if [ -n "$FOUNDATION_MODEL_TYPE" ]; then \
-      /opt/conda/envs/agentomics-env/bin/python /repository/src/utils/download_foundation_models.py; \
+RUN if [ -n "$FOUNDATION_MODELS_TYPE" ]; then \
+      export LD_PRELOAD=$(find /opt/conda/envs/agentomics-env -path "*/scikit_learn.libs/libgomp*.so*" | head -1) && \
+      /opt/conda/envs/agentomics-env/bin/python /repository/src/utils/download_foundation_models.py \
+        --foundation-models-type "$FOUNDATION_MODELS_TYPE" \
+        --models-yaml /foundation_models/models.yaml; \
     else \
-      echo "Skipping foundation model download (FOUNDATION_MODEL_TYPE not set)"; \
+      echo "Skipping foundation model download (FOUNDATION_MODELS_TYPE not set)"; \
     fi
 
 # Setup agent start environment
@@ -42,6 +44,13 @@ RUN mamba env create -f environment_agent.yaml \
     && mamba clean -afy \
     && rm -rf /tmp/conda-pkgs
 RUN conda run -n agent_start_env conda-pack -o ${START_ENV_PKG}
+
+# Create a restricted user for sandboxed agent tool execution.
+# The runtime (root) owns the workspace; only current_step_dir is chowned to this user per step.
+# /cache/foundation_models is handed to this user so the agent can download new HF models at runtime.
+RUN useradd -m -s /bin/bash agentomics-agent \
+    && chown -R agentomics-agent /cache/foundation_models
+ENV AGENT_USER=agentomics-agent
 
 WORKDIR /repository
 

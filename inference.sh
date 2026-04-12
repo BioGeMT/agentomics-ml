@@ -93,26 +93,25 @@ fi
 
 AGENT_NAME=$(basename "$AGENT_DIR")
 CODE_PATH=${CODE_PATH:-"best_run_files"}
+CODE_ROOT="${AGENT_DIR}/${CODE_PATH}"
 echo "Using code path: $CODE_PATH"
-ENV_PATH="${AGENT_DIR}/${CODE_PATH}/.conda/envs/${AGENT_NAME}_env"
-INFERENCE_PATH="${AGENT_DIR}/${CODE_PATH}/inference.py"
+ENV_PATH="${CODE_ROOT}/.conda/envs/${AGENT_NAME}_env"
+INFERENCE_PATH="${CODE_ROOT}/model_inference/inference.py"
+INFERENCE_WORKDIR="$(dirname "$INFERENCE_PATH")"
+ARTIFACTS_PATH="${CODE_ROOT}/model_training/training_artifacts"
+DESCRIPTOR_PATH="${CODE_ROOT}/environment.yml"
+
+if [[ ! -f "$DESCRIPTOR_PATH" ]]; then
+    DESCRIPTOR_PATH="${CODE_ROOT}/runtime_info/environment.yml"
+fi
 
 if [[ ! -f "$INFERENCE_PATH" ]]; then
     echo "inference.py not found at: $INFERENCE_PATH"
     exit 1
 fi
 
-if [[ ! -d "$ENV_PATH" ]]; then
-    echo "Conda environment not found at: $ENV_PATH"
-    if [[ ! -f "$AGENT_DIR/${CODE_PATH}/conda_environment.yml" ]]; then
-        echo "conda_environment.yml not found at: $AGENT_DIR/${CODE_PATH}/conda_environment.yml"
-        exit 1
-    fi
-    conda env create -f "$AGENT_DIR/${CODE_PATH}/conda_environment.yml" -p "$ENV_PATH"
-fi
-
-if [[ ! -f "$INFERENCE_PATH" ]]; then
-    echo "inference.py not found at: $INFERENCE_PATH"
+if [[ ! -f "$DESCRIPTOR_PATH" ]]; then
+    echo "environment.yml not found at: $DESCRIPTOR_PATH"
     exit 1
 fi
 
@@ -146,20 +145,23 @@ if [[ "$DOCKER_MODE" == true ]]; then
     AGENT_DIR_ABS="$(cd "$(dirname "$AGENT_DIR")" && pwd)/$(basename "$AGENT_DIR")"
     INPUT_PATH_ABS="$(cd "$(dirname "$INPUT_PATH")" && pwd)/$(basename "$INPUT_PATH")"
     OUTPUT_PATH_ABS="$(cd "$(dirname "$OUTPUT_PATH")" && pwd)/$(basename "$OUTPUT_PATH")"
+    CODE_ROOT_IN_CONTAINER="/workspace"
+    INFERENCE_WORKDIR_IN_CONTAINER="${CODE_ROOT_IN_CONTAINER}/model_inference"
+    ARTIFACTS_PATH_IN_CONTAINER="${CODE_ROOT_IN_CONTAINER}/model_training/training_artifacts"
+    DESCRIPTOR_PATH_IN_CONTAINER="${CODE_ROOT_IN_CONTAINER}/environment.yml"
+    if [[ "$DESCRIPTOR_PATH" == "${CODE_ROOT}/runtime_info/environment.yml" ]]; then
+        DESCRIPTOR_PATH_IN_CONTAINER="${CODE_ROOT_IN_CONTAINER}/runtime_info/environment.yml"
+    fi
 
     if [[ ! -d "$ENV_PATH" ]]; then
         echo "Conda environment not found at: $ENV_PATH"
-        if [[ ! -f "$AGENT_DIR/${CODE_PATH}/conda_environment.yml" ]]; then
-            echo "conda_environment.yml not found at: $AGENT_DIR/${CODE_PATH}/conda_environment.yml"
-            exit 1
-        fi
         echo "Creating conda environment inside Docker..."
         docker run --rm \
-            -v "${AGENT_DIR_ABS}/${CODE_PATH}:/workspace" \
+            -v "${AGENT_DIR_ABS}/${CODE_PATH}:${CODE_ROOT_IN_CONTAINER}" \
             --entrypoint "" \
-            -w /workspace \
+            -w "${CODE_ROOT_IN_CONTAINER}" \
             agentomics_img \
-            bash -c "conda install -n base mamba -c conda-forge -y && mamba env create -f /workspace/conda_environment.yml -p /workspace/.conda/envs/${AGENT_NAME}_env"
+            bash -c "conda install -n base mamba -c conda-forge -y && mamba env create -f \"${DESCRIPTOR_PATH_IN_CONTAINER}\" -p \"${CODE_ROOT_IN_CONTAINER}/.conda/envs/${AGENT_NAME}_env\""
     fi
 
     NORMALIZE_SCRIPT_ABS="$(cd "$(dirname "$0")" && pwd)/src/utils/normalize_dataset.py"
@@ -176,21 +178,25 @@ if [[ "$DOCKER_MODE" == true ]]; then
 
     echo "Running inference in Docker..."
     docker run --rm \
-        -v "${AGENT_DIR_ABS}/${CODE_PATH}:/workspace" \
+        -v "${AGENT_DIR_ABS}/${CODE_PATH}:${CODE_ROOT_IN_CONTAINER}" \
         -v "$(dirname "$INPUT_PATH_ABS"):/input_dir" \
         -v "$(dirname "$OUTPUT_PATH_ABS"):/output_dir" \
         ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
         --entrypoint "" \
-        -w /workspace \
-        -e PATH="/workspace/.conda/envs/${AGENT_NAME}_env/bin:$PATH" \
+        -w "${INFERENCE_WORKDIR_IN_CONTAINER}" \
+        -e PATH="${CODE_ROOT_IN_CONTAINER}/.conda/envs/${AGENT_NAME}_env/bin:$PATH" \
         agentomics_img \
         python inference.py \
         --input "/input_dir/$(basename "$INPUT_PATH_ABS")" \
         --output "/output_dir/$(basename "$OUTPUT_PATH_ABS")" \
-        --artifacts-dir "/workspace/training_artifacts"
+        --artifacts-dir "${ARTIFACTS_PATH_IN_CONTAINER}"
     echo "Inference done"
 else
     need_cmd conda
+    if [[ ! -d "$ENV_PATH" ]]; then
+        echo "Conda environment not found at: $ENV_PATH"
+        conda env create -f "$DESCRIPTOR_PATH" -p "$ENV_PATH"
+    fi
     NORMALIZE_SCRIPT_ABS="$(cd "$(dirname "$0")" && pwd)/src/utils/normalize_dataset.py"
     NORMALIZED_FILENAME=$(python "$NORMALIZE_SCRIPT_ABS" --input "$INPUT_PATH")
     if [[ -n "$NORMALIZED_FILENAME" ]]; then
@@ -199,11 +205,12 @@ else
     fi
 
     echo "Running inference locally..."
-    cd "$(dirname "$INFERENCE_PATH")"
+    cd "$INFERENCE_WORKDIR"
     conda run -p "$ENV_PATH" \
         python "$INFERENCE_PATH" \
         --input "$INPUT_PATH" \
-        --output "$OUTPUT_PATH" ${ARGS[@]+"${ARGS[@]}"}
+        --output "$OUTPUT_PATH" \
+        --artifacts-dir "$ARTIFACTS_PATH" ${ARGS[@]+"${ARGS[@]}"}
     echo "Inference done"
 fi
 
@@ -211,11 +218,11 @@ if [[ "$REMOVE_CONDA_ENV" == true ]]; then
     echo "Removing conda environment at: $ENV_PATH"
     if [[ "$DOCKER_MODE" == true ]]; then
         docker run --rm \
-            -v "${AGENT_DIR_ABS}/${CODE_PATH}:/workspace" \
+            -v "${AGENT_DIR_ABS}/${CODE_PATH}:${CODE_ROOT_IN_CONTAINER}" \
             --entrypoint "" \
             agentomics_img \
-            bash -c "rm -rf /workspace/.conda/envs/${AGENT_NAME}_env"
+            bash -c "rm -rf ${CODE_ROOT_IN_CONTAINER}/.conda/envs/${AGENT_NAME}_env"
     else
-    rm -rf "$ENV_PATH"
-fi
+        rm -rf "$ENV_PATH"
+    fi
 fi

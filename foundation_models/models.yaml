@@ -33,30 +33,30 @@ HyenaDNA:
   path_to_info: HyenaDNA.md
   can_load_with_hf_automodel: true
 
-NucleotideTransformer:
-  type: dna
-  models:
-    - name: InstaDeepAI/nucleotide-transformer-500m-human-ref
-      params: 500M
-    - name: InstaDeepAI/nucleotide-transformer-v2-50m-3mer-multi-species
-      params: 50M
-    - name: InstaDeepAI/nucleotide-transformer-v2-50m-multi-species
-      params: 50M
-    - name: InstaDeepAI/nucleotide-transformer-v2-100m-multi-species
-      params: 100M
-    - name: InstaDeepAI/nucleotide-transformer-v2-250m-multi-species
-      params: 250M
-    - name: InstaDeepAI/nucleotide-transformer-v2-500m-multi-species
-      params: 500M
-    - name: InstaDeepAI/nucleotide-transformer-500m-1000g
-      params: 500M
-    - name: InstaDeepAI/nucleotide-transformer-2.5b-multi-species
-      params: 2.5B
-    - name: InstaDeepAI/nucleotide-transformer-2.5b-1000g
-      params: 2.5B
-  summary: NucleotideTransformer is a genomic language model trained on DNA sequences from 850 diverse species using a masked language modeling objective, enabling cross-species genomic representation learning for diverse genomic prediction tasks.
-  path_to_info: NucleotideTransformer.md
-  can_load_with_hf_automodel: false
+# NucleotideTransformer:
+#   type: dna
+#   models:
+    # - name: InstaDeepAI/nucleotide-transformer-500m-human-ref
+    #   params: 500M
+    # - name: InstaDeepAI/nucleotide-transformer-v2-50m-3mer-multi-species
+    #   params: 50M
+    # - name: InstaDeepAI/nucleotide-transformer-v2-50m-multi-species
+    #   params: 50M
+    # - name: InstaDeepAI/nucleotide-transformer-v2-100m-multi-species
+    #   params: 100M
+    # - name: InstaDeepAI/nucleotide-transformer-v2-250m-multi-species
+    #   params: 250M
+    # - name: InstaDeepAI/nucleotide-transformer-v2-500m-multi-species
+    #   params: 500M
+    # - name: InstaDeepAI/nucleotide-transformer-500m-1000g
+    #   params: 500M
+    # - name: InstaDeepAI/nucleotide-transformer-2.5b-multi-species
+    #   params: 2.5B
+    # - name: InstaDeepAI/nucleotide-transformer-2.5b-1000g
+    #   params: 2.5B
+  # summary: NucleotideTransformer is a genomic language model trained on DNA sequences from 850 diverse species using a masked language modeling objective, enabling cross-species genomic representation learning for diverse genomic prediction tasks.
+  # path_to_info: NucleotideTransformer.md
+  # can_load_with_hf_automodel: false
 
 rinalmo:
   type: rna
