@@ -3,7 +3,7 @@
 # Get the absolute directory of this script
 AGENTOMICS_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-source "$AGENTOMICS_DIR/bash_helpers.sh"
+source "$AGENTOMICS_DIR/scripts/bash_helpers.sh"
 
 cd "$AGENTOMICS_DIR" || die "Cannot cd into repository directory: $AGENTOMICS_DIR"
 
@@ -263,9 +263,9 @@ if [ "$LOCAL_MODE" = true ]; then
     fi
 
     if ! conda env list | grep -q "agentomics-env"; then
-        conda env create -f environment.yaml -q
+        conda env create -f envs/environment.yaml -q
     else
-        conda env update -n agentomics-env -f environment.yaml -q
+        conda env update -n agentomics-env -f envs/environment.yaml -q
     fi
 
     eval "$(conda shell.bash hook)"
@@ -292,7 +292,7 @@ if [ "$LOCAL_MODE" = true ]; then
     echo "For Docker mode (secure run), re-run without the --local flag."
     
     if ! conda env list | grep -q "agentomics-prepare-env"; then
-        conda env create -f environment_prepare.yaml -q
+        conda env create -f envs/environment_prepare.yaml -q
     fi
 
     mkdir -p prepared_datasets
@@ -309,7 +309,7 @@ if [ "$LOCAL_MODE" = true ]; then
     fi
 
     if ! conda env list | grep -q "^agent_start_env "; then
-        conda env create -f environment_agent.yaml -q
+        conda env create -f envs/environment_agent.yaml -q
     fi
     START_ENV_PKG_PATH="$WORKSPACE_DIR/agent_start_env.tar"
     if [[ ! -f "$START_ENV_PKG_PATH" ]]; then
@@ -507,7 +507,7 @@ else
         need_cmd conda
         if ! conda env list | grep -q "^agentomics-env "; then
             echo "Creating agentomics-env conda environment"
-            conda env create -f environment.yaml -q
+            conda env create -f envs/environment.yaml -q
         fi
         echo "Creating temporary API key with spend limit: $SPEND_LIMIT"
         API_KEY_OUTPUT=$(PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys.py create --name "agentomics_run_$(date +%s)" --limit "$SPEND_LIMIT")

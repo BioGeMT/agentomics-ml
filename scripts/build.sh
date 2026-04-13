@@ -1,9 +1,10 @@
 #!/bin/bash
 
 # Simple multi-architecture Docker build and push script
-# Usage: ./build.sh <username> [version]
+# Usage: ./scripts/build.sh <username> [version]
 
 set -e
+cd "$(dirname "$0")/.."
 
 USERNAME=${1:-}
 VERSION=${2:-latest}

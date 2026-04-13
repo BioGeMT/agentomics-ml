@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 
-./download_example_datasets.sh
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-REPOS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)" 
+"$REPO_DIR/scripts/download_example_datasets.sh"
+
+REPOS_DIR="$(cd "$REPO_DIR/.." && pwd)"
 
 SPEND_LIMIT=100
 MODELS=("openai/gpt-5.1-codex-max")
@@ -37,12 +39,12 @@ declare -A metric_map
       metric_map["$dataset"]="$metric"
   done
 
-./download_example_datasets.sh
+"$REPO_DIR/scripts/download_example_datasets.sh"
 
 for repetition in $(seq 1 $REPETITIONS); do
     for dataset in "${GENOMIC_DATASETS[@]}"; do
         for model in "${MODELS[@]}"; do
-            ./run.sh \
+            "$REPO_DIR/run.sh" \
                 --model "$model" \
                 --dataset "$dataset" \
                 --iterations "$ITERATIONS" \

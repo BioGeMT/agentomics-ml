@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-source "./bash_helpers.sh"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/bash_helpers.sh"
 
 DOCKER_MODE=true
 CPU_ONLY=false

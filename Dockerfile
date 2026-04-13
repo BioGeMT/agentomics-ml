@@ -11,8 +11,8 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
 RUN apt-get update && rm -rf /var/lib/apt/lists/*
 
-# Copy & create your conda environment\ using environment.yaml (with mamba for speed and memory efficiency)
-COPY environment.yaml .
+# Copy & create your conda environment using environment.yaml (with mamba for speed and memory efficiency)
+COPY envs/environment.yaml .
 RUN mamba env create -f environment.yaml \
     && mamba clean -afy \
     && rm -rf /tmp/conda-pkgs
@@ -39,7 +39,7 @@ RUN if [ -n "$FOUNDATION_MODELS_TYPE" ]; then \
 
 # Setup agent start environment
 ENV START_ENV_PKG=/opt/agent_start_env.tar.gz
-COPY environment_agent.yaml .
+COPY envs/environment_agent.yaml .
 RUN mamba env create -f environment_agent.yaml \
     && mamba clean -afy \
     && rm -rf /tmp/conda-pkgs
