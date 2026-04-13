@@ -20,14 +20,24 @@ def is_wandb_active():
     except:
         return False
 
-def log_serial_metrics(prefix, task_type, metrics=None, iteration=None):
+def define_serial_metrics(prefix, task_type, step_metric):
+    if not is_wandb_active():
+        return
+    for metric_name in get_task_to_metrics_names()[task_type]:
+        wandb.define_metric(f"{prefix}/{metric_name}", step_metric=step_metric)
+
+def log_serial_metrics(prefix, task_type, metrics=None, iteration=None, step_metric=None):
     if not is_wandb_active():
         return
     metrics_names = get_task_to_metrics_names()[task_type]
     payload = {f"{prefix}/{metric_name}": math.nan for metric_name in metrics_names}
     if metrics:
         payload.update({f"{prefix}/{key}": value for key, value in metrics.items()})
-    wandb.log(payload, step=iteration)
+    if step_metric is None:
+        wandb.log(payload, step=iteration)
+    else:
+        payload[step_metric] = iteration
+        wandb.log(payload)
 
 def log_iteration_metrics(metrics, iteration, task_type):
     for prefix in ("validation", "train"):

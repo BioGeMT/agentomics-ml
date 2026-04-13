@@ -325,8 +325,8 @@ def gather_iteration_inputs(
       test_csv = prepared_tests / dataset_name / "test.csv"
     test_csv = test_csv if test_csv.exists() else None
 
-    train_preds = iter_dir / "eval_predictions_train.csv"
-    val_preds = iter_dir / "eval_predictions_validation.csv"
+    train_preds = iter_dir / "validation_evaluation" / "eval_predictions_train.csv"
+    val_preds = iter_dir / "validation_evaluation" / "eval_predictions_validation.csv"
     test_preds = best_run_files / "eval_predictions_test.csv"
 
     splits: List[SplitArtifacts] = [
@@ -649,12 +649,11 @@ def plots_compare_splits_page_flowables(
     content_w = A4[0] - 4 * cm
     ncols = len(present_splits)
     gap = 0.25 * cm
-    col_w = (content_w - gap * (ncols - 1)) / ncols
+    max_col_w = 8 * cm
+    col_w = min((content_w - gap * (ncols - 1)) / ncols, max_col_w)
 
-    if task_type == "classification":
-        img_h = 6.6 * cm
-    else:
-        img_h = 4.6 * cm
+    aspect_ratio = 4.0 / 6.2  # matches matplotlib figure.figsize
+    img_h = col_w * aspect_ratio
 
     flows: List = []
     # NOTE: removed forced PageBreak so plots can appear right after metrics if desired.

@@ -31,37 +31,17 @@ def remove_environment(env_path: Path) -> None:
     remove_path(env_path)
 
 
-def materialize_environment_from_descriptor(descriptor_path: Path, env_path: Path, working_dir: Path) -> None:
+def create_environment_from_descriptor(descriptor_path: Path, env_path: Path) -> None:
     if not descriptor_path.exists():
-        return
+        raise FileNotFoundError(f"Missing environment descriptor at {descriptor_path}.")
 
     remove_environment(env_path)
     env_path.parent.mkdir(parents=True, exist_ok=True)
-
-    start_env_pkg = os.getenv("START_ENV_PKG")
-    if start_env_pkg:
-        subprocess.run(
-            f"mkdir -p {env_path} && tar -xf {start_env_pkg} -C {env_path} && source {env_path}/bin/activate && conda-unpack",
-            shell=True,
-            executable="/bin/bash",
-            check=True,
-            cwd=working_dir,
-        )
-
     subprocess.run(
-        [
-            "conda",
-            "env",
-            "update",
-            "-p",
-            str(env_path),
-            "-f",
-            str(descriptor_path),
-            "-q",
-        ],
+        ["conda", "env", "create", "-p", str(env_path), "-f", str(descriptor_path), "-q"],
         check=True,
-        cwd=working_dir,
     )
+
 def export_shared_environment_descriptor(config) -> None:
     conda_env = get_shared_environment_path(config)
     export_environment_descriptor_to_path(

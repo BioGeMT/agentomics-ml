@@ -9,20 +9,23 @@ from pathlib import Path
 import wandb
 
 from eval.evaluate_result import get_metrics
-from run_logging.logging_helpers import log_serial_metrics
+from run_logging.logging_helpers import define_serial_metrics, log_serial_metrics
 from run_logging.wandb_setup import resume_wandb_run
 from runtime.conda_utils import (
+    create_environment_from_descriptor,
     get_iteration_environment_descriptor_path,
     get_iteration_test_environment_path,
-    materialize_environment_from_descriptor,
     remove_environment,
 )
+from runtime.filesystem import remove_path
 from runtime.inference_runner import run_inference_script
 from runtime.read_write_utils import get_archived_iterations, load_config_from_run_dir, load_dataset_metadata
 from utils.config import Config
 
+ITERATION_TEST_ENVS_DIRNAME = "_iteration_test_envs"
 STEALTH_TEST_METRICS_FILENAME = "stealth_test_metrics.json"
 STEALTH_TEST_METRIC_PREFIX = "stealth_test"
+STEALTH_TEST_STEP_METRIC = "stealth_test/iteration"
 
 def evaluate_stealth_test_history(agent_dir: Path, prepared_test_sets_dir: Path) -> None:
     config = load_config_from_run_dir(agent_dir / "run_files")
@@ -36,6 +39,7 @@ def evaluate_stealth_test_history(agent_dir: Path, prepared_test_sets_dir: Path)
         )
 
     run = resume_wandb_run(config, dir=agent_dir / "extras" / "iteration_test_logs")
+    define_serial_metrics(STEALTH_TEST_METRIC_PREFIX, config.task_type, step_metric=STEALTH_TEST_STEP_METRIC)
     try:
         results = _evaluate_iterations(
             agent_dir=agent_dir,
@@ -47,6 +51,8 @@ def evaluate_stealth_test_history(agent_dir: Path, prepared_test_sets_dir: Path)
     finally:
         if run is not None:
             wandb.finish()
+
+    remove_path(agent_dir / ITERATION_TEST_ENVS_DIRNAME)
 
     results_path = agent_dir / "extras" / STEALTH_TEST_METRICS_FILENAME
     results_path.parent.mkdir(parents=True, exist_ok=True)
@@ -90,6 +96,7 @@ def _evaluate_iterations(
                 task_type=config.task_type,
                 metrics=result["metrics"] or None,
                 iteration=result["iteration"],
+                step_metric=STEALTH_TEST_STEP_METRIC,
             )
     return results
 
@@ -111,7 +118,7 @@ def _evaluate_single_iteration(
     output_path = temp_dir / f"{iteration_dir.name}_test_predictions.csv"
     env_path = get_iteration_test_environment_path(agent_dir, iteration_dir)
     try:
-        _materialize_iteration_test_environment(agent_dir, iteration_dir, env_path)
+        create_environment_from_descriptor(get_iteration_environment_descriptor_path(iteration_dir), env_path)
         run_inference_script(
             env_path=env_path,
             script_path=inference_script_path,
@@ -131,18 +138,6 @@ def _evaluate_single_iteration(
         return {"iteration": iteration, "status": "failed", "metrics": {}, "error": traceback.format_exc()}
     finally:
         remove_environment(env_path)
-
-def _materialize_iteration_test_environment(agent_dir: Path, iteration_dir: Path, env_path: Path) -> None:
-    iteration_descriptor_path = get_iteration_environment_descriptor_path(iteration_dir)
-    if iteration_descriptor_path.exists():
-        materialize_environment_from_descriptor(
-            descriptor_path=iteration_descriptor_path,
-            env_path=env_path,
-            working_dir=agent_dir,
-        )
-        return
-
-    raise FileNotFoundError(f"Missing environment.yml in {iteration_dir}.")
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate all successful archived iterations on the held-out test set.")
