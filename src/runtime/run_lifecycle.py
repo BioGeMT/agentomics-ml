@@ -4,7 +4,7 @@ import time
 
 import weave
 
-from agents.prompts.prompts_utils import build_iteration_base_prompt
+from agents.prompts.prompts_utils import build_iteration_base_prompt, get_system_prompt
 from run_logging.logging_helpers import log_files, log_iteration_duration
 from runtime.best_run_snapshot import update_best_run_snapshot
 from runtime.git_checkpoints import commit_iteration_end
@@ -17,6 +17,7 @@ from runtime.read_write_utils import (
     load_iteration_state,
     update_current_iteration_state,
     write_current_iteration_base_prompt,
+    write_current_iteration_system_prompt,
 )
 from agents.steps.data_split import DataSplitStep
 from agents.steps.step_registry import get_step_sequence
@@ -81,6 +82,7 @@ def _prepare_iteration_workspace(config, iteration: int) -> None:
         split_allowed_at_start=DataSplitStep.is_split_allowed(config, iteration),
     )
     initialize_current_iteration_state(config, started_at=started_at)
+    write_current_iteration_system_prompt(config, get_system_prompt(config))
     write_current_iteration_base_prompt(config, build_iteration_base_prompt(config, iteration))
 
 def _enforce_time_deadline(config) -> None:

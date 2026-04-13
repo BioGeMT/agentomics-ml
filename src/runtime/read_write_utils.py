@@ -16,6 +16,7 @@ from runtime.filesystem import (
 from utils.config import Config
 
 _BASE_PROMPT_FILENAME = "base_prompt.txt"
+_SYSTEM_PROMPT_FILENAME = "system_prompt.txt"
 _ITERATION_METADATA_FILENAME = "iteration_metadata.json"
 _ITERATION_STATE_FILENAME = "iteration_state.json"
 _ITERATION_DIR_PREFIX = "iteration_"
@@ -98,14 +99,26 @@ def get_last_successful_iteration(config: Config) -> int | None:
 def _get_current_iteration_base_prompt_path(config: Config) -> Path:
     return config.current_iteration_runtime_info_dir / _BASE_PROMPT_FILENAME
 
+def _get_current_iteration_system_prompt_path(config: Config) -> Path:
+    return config.current_iteration_runtime_info_dir / _SYSTEM_PROMPT_FILENAME
+
 def write_current_iteration_base_prompt(config: Config, base_prompt: str) -> None:
     _get_current_iteration_base_prompt_path(config).write_text(base_prompt, encoding="utf-8")
+
+def write_current_iteration_system_prompt(config: Config, system_prompt: str) -> None:
+    _get_current_iteration_system_prompt_path(config).write_text(system_prompt, encoding="utf-8")
 
 def load_current_iteration_base_prompt(config: Config) -> str:
     base_prompt_path = _get_current_iteration_base_prompt_path(config)
     if not base_prompt_path.exists():
         raise FileNotFoundError(f"Base prompt file not found at {base_prompt_path}.")
     return base_prompt_path.read_text(encoding="utf-8")
+
+def load_current_iteration_system_prompt(config: Config) -> str:
+    system_prompt_path = _get_current_iteration_system_prompt_path(config)
+    if not system_prompt_path.exists():
+        raise FileNotFoundError(f"System prompt file not found at {system_prompt_path}.")
+    return system_prompt_path.read_text(encoding="utf-8")
 
 def get_new_rundir_files(config: Config, since_timestamp: datetime.datetime) -> list[str]:
     run_dir = config.current_iteration_dir

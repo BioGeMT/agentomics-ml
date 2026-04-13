@@ -12,7 +12,6 @@ from pydantic_ai import Agent, ModelRetry, RunContext
 from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 
-from agents.prompts.prompts_utils import get_system_prompt
 from agents.agent_utils import (
     fabricate_final_result_messages,
     fabricate_initial_prompt_messages,
@@ -26,6 +25,7 @@ from runtime.read_write_utils import (
     get_new_rundir_files,
     load_current_iteration_base_prompt,
     load_current_iteration_index,
+    load_current_iteration_system_prompt,
 )
 from runtime.step_outputs import load_step_outputs, save_step_output
 from utils.config import Config
@@ -137,7 +137,7 @@ class AgenticStep(RuntimeStep):
             return result
 
     def get_system_prompt(self) -> str:
-        return get_system_prompt(self.config)
+        return load_current_iteration_system_prompt(self.config)
 
     def attach_output_validator(self, agent: Agent[dict, AgenticStepOutput]) -> None:
         return None
