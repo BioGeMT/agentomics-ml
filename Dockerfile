@@ -9,13 +9,8 @@ ENV PIP_NO_CACHE_DIR=1
 # Suppress pip version warnings
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
-RUN apt-get update && rm -rf /var/lib/apt/lists/*
-
 # Pre-download foundation models
 COPY environment_fm.yaml .
-RUN mamba env create -f environment_fm.yaml \
-    && mamba clean -afy \
-    && rm -rf /tmp/conda-pkgs
 RUN mkdir -p /foundation_models /cache/foundation_models
 ENV HF_HOME=/cache/foundation_models
 ARG FOUNDATION_MODEL_TYPE=
@@ -24,7 +19,11 @@ COPY foundation_models/ /foundation_models/
 COPY src/utils/foundation_models_utils.py /repository/src/utils/foundation_models_utils.py
 COPY src/utils/download_foundation_models.py /repository/src/utils/download_foundation_models.py
 RUN if [ -n "$FOUNDATION_MODEL_TYPE" ]; then \
-      /opt/conda/envs/fm-download-env/bin/python /repository/src/utils/download_foundation_models.py; \
+    mamba env create -f environment_fm.yaml \
+    && mamba clean -afy \
+    && rm -rf /tmp/conda-pkgs \
+    && /opt/conda/envs/fm-download-env/bin/python /repository/src/utils/download_foundation_models.py \
+    && conda env remove -n fm-download-env; \
     else \
       echo "Skipping foundation model download (FOUNDATION_MODEL_TYPE not set)"; \
     fi
@@ -44,8 +43,9 @@ ENV START_ENV_PKG=/opt/agent_start_env.tar.gz
 COPY environment_agent.yaml .
 RUN mamba env create -f environment_agent.yaml \
     && mamba clean -afy \
-    && rm -rf /tmp/conda-pkgs
-RUN conda run -n agent_start_env conda-pack -o ${START_ENV_PKG}
+    && rm -rf /tmp/conda-pkgs \
+    && conda run -n agent_start_env conda-pack -o ${START_ENV_PKG} \
+    && conda env remove -n agent_start_env
 
 WORKDIR /repository
 
