@@ -4,7 +4,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from utils.user_input import get_user_input_for_int
-from utils.dataset_utils import prepare_dataset, get_all_datasets_info
+from datasets.dataset_utils import prepare_dataset, get_all_datasets_info
 
 
 console = Console()

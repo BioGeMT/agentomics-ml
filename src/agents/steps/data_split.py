@@ -16,7 +16,7 @@ from runtime.filesystem import chown_tree_to_root
 from runtime.read_write_utils import get_last_successful_iteration, load_current_iteration_index, load_iteration_state, update_current_iteration_state
 from runtime.step_outputs import load_step_output
 from run_logging.logging_helpers import log_split_is_allowed
-from utils.dataset_utils import get_numeric_label_col_from_prepared_dataset
+from datasets.dataset_utils import get_numeric_label_col_from_prepared_dataset
 
 class DataSplitOutput(AgenticStepOutput):
     train_path: str = Field(description="Path to generated train.csv file")

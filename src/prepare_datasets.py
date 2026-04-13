@@ -2,8 +2,8 @@ import argparse
 from pathlib import Path
 from rich.console import Console
 
-from utils.dataset_utils import prepare_dataset
-from utils.datasets_interactive_utils import prepare_all_datasets
+from datasets.dataset_utils import prepare_dataset
+from datasets.datasets_interactive import prepare_all_datasets
 
 
 def parse_args():

@@ -16,7 +16,7 @@ from runtime.conda_utils import get_shared_environment_path
 from runtime.read_write_utils import does_file_contain_iteration_pattern
 from runtime.step_outputs import require_step_output
 from runtime.system_resources import check_gpu_availability
-from utils.dataset_utils import get_numeric_label_col_from_prepared_dataset
+from datasets.dataset_utils import get_numeric_label_col_from_prepared_dataset
 from utils.text_processing_utils import collapse_repeated_lines, concise_output
 
 

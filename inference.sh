@@ -164,7 +164,7 @@ if [[ "$DOCKER_MODE" == true ]]; then
             bash -c "conda install -n base mamba -c conda-forge -y && mamba env create -f \"${DESCRIPTOR_PATH_IN_CONTAINER}\" -p \"${CODE_ROOT_IN_CONTAINER}/.conda/envs/${AGENT_NAME}_env\""
     fi
 
-    NORMALIZE_SCRIPT_ABS="$(cd "$(dirname "$0")" && pwd)/src/utils/normalize_dataset.py"
+    NORMALIZE_SCRIPT_ABS="$(cd "$(dirname "$0")" && pwd)/src/datasets/normalize_dataset.py"
     NORMALIZED_FILENAME=$(docker run --rm \
         -v "$(dirname "$INPUT_PATH_ABS"):/input_dir" \
         -v "$NORMALIZE_SCRIPT_ABS:/normalize_dataset.py:ro" \
@@ -197,7 +197,7 @@ else
         echo "Conda environment not found at: $ENV_PATH"
         conda env create -f "$DESCRIPTOR_PATH" -p "$ENV_PATH"
     fi
-    NORMALIZE_SCRIPT_ABS="$(cd "$(dirname "$0")" && pwd)/src/utils/normalize_dataset.py"
+    NORMALIZE_SCRIPT_ABS="$(cd "$(dirname "$0")" && pwd)/src/datasets/normalize_dataset.py"
     NORMALIZED_FILENAME=$(python "$NORMALIZE_SCRIPT_ABS" --input "$INPUT_PATH")
     if [[ -n "$NORMALIZED_FILENAME" ]]; then
         trap "rm -f \"$(dirname "$INPUT_PATH")/$NORMALIZED_FILENAME\"" EXIT

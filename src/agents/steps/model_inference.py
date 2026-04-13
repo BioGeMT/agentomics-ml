@@ -19,7 +19,7 @@ from runtime.read_write_utils import (
     load_dataset_metadata,
 )
 from runtime.step_outputs import require_step_output
-from utils.dataset_utils import get_classes_integers
+from datasets.dataset_utils import get_classes_integers
 from utils.text_processing_utils import collapse_repeated_lines, concise_output
 
 
