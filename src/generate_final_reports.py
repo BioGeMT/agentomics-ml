@@ -291,6 +291,16 @@ def get_best_iter_number(agent_dir: Path) -> int:
         raise ValueError(f"Best run metadata at {metadata_path} is missing integer field 'iteration'.")
     return iteration
 
+def _find_split_csv(run_files: Path, split_name: str, fallback_dir: Path, dataset_name: str) -> Optional[Path]:
+    splits_dir = run_files / "shared" / "splits"
+    if splits_dir.exists():
+        for split_dir in sorted(splits_dir.iterdir()):
+            candidate = split_dir / f"{split_name}.csv"
+            if candidate.exists():
+                return candidate
+    p = fallback_dir / dataset_name / f"{split_name}.csv"
+    return p if p.exists() else None
+
 def gather_iteration_inputs(
     agent_dir: Path,
     dataset_name: str,
@@ -309,21 +319,9 @@ def gather_iteration_inputs(
     if not report_md.exists():
         report_md = None
 
-    #TODO refactor? This might be taken from config if valid set provided instead of checking the paths
-    train_csv = run_files / "train.csv"
-    if not train_csv.exists():
-      train_csv = prepared_datasets / dataset_name / "train.csv"
-    train_csv = train_csv if train_csv.exists() else None
-
-    val_csv = run_files / "validation.csv"
-    if not val_csv.exists():
-      val_csv = prepared_datasets / dataset_name / "validation.csv"
-    val_csv = val_csv if val_csv.exists() else None
-
-    test_csv = run_files / "test.csv"
-    if not test_csv.exists():
-      test_csv = prepared_tests / dataset_name / "test.csv"
-    test_csv = test_csv if test_csv.exists() else None
+    train_csv = _find_split_csv(run_files, "train", prepared_datasets, dataset_name)
+    val_csv = _find_split_csv(run_files, "validation", prepared_datasets, dataset_name)
+    test_csv = _find_split_csv(run_files, "test", prepared_tests, dataset_name)
 
     train_preds = iter_dir / "validation_evaluation" / "eval_predictions_train.csv"
     val_preds = iter_dir / "validation_evaluation" / "eval_predictions_validation.csv"
