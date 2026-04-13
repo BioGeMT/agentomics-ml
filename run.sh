@@ -217,38 +217,9 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-IS_INTERACTIVE_RUN=false
-if [[ -t 0 && ${#AGENTOMICS_ARGS[@]} -eq 0 && "$TEST_MODE" = false ]]; then
-    IS_INTERACTIVE_RUN=true
-fi
-
 if [ -n "$FOUNDATION_MODEL_TYPE" ] && [[ "$FOUNDATION_MODEL_TYPE" != "dna" && "$FOUNDATION_MODEL_TYPE" != "rna" && "$FOUNDATION_MODEL_TYPE" != "molecule" && "$FOUNDATION_MODEL_TYPE" != "protein" && "$FOUNDATION_MODEL_TYPE" != "all" ]]; then
     die "Invalid --foundation-model-type '$FOUNDATION_MODEL_TYPE'. Allowed: dna, rna, molecule, protein, all."
     exit 1
-fi
-
-if [[ "$IS_INTERACTIVE_RUN" = true && -z "$FOUNDATION_MODEL_TYPE" ]]; then
-    echo ""
-    echo "Foundation models (optional)"
-    echo "Select which foundation model type should be pre-downloaded and made available to the agent:"
-    echo "  1) none"
-    echo "  2) DNA"
-    echo "  3) RNA"
-    echo "  4) Molecule"
-    echo "  5) Protein"
-    echo "  6) All"
-    echo ""
-    read -r -p "Enter choice (default: 1): " fm_choice
-    fm_choice="${fm_choice:-1}"
-    case "$fm_choice" in
-        1) FOUNDATION_MODEL_TYPE="";;
-        2) FOUNDATION_MODEL_TYPE="dna";;
-        3) FOUNDATION_MODEL_TYPE="rna";;
-        4) FOUNDATION_MODEL_TYPE="molecule";;
-        5) FOUNDATION_MODEL_TYPE="protein";;
-        6) FOUNDATION_MODEL_TYPE="all";;
-        *) die "Invalid foundation model choice.";;
-    esac
 fi
 
 if [ "$LOCAL_MODE" = true ]; then
