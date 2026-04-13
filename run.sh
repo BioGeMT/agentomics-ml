@@ -331,7 +331,7 @@ if [ "$LOCAL_MODE" = true ]; then
     TEMP_API_KEY_HASH=""
     if [ "$USE_PROVISIONING_KEY" = true ]; then
         echo "Creating temporary API key with spend limit: $SPEND_LIMIT"
-        API_KEY_OUTPUT=$(PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys_utils.py create --name "agentomics_run_$(date +%s)" --limit "$SPEND_LIMIT")
+        API_KEY_OUTPUT=$(PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys.py create --name "agentomics_run_$(date +%s)" --limit "$SPEND_LIMIT")
         TEMP_API_KEY=$(echo "$API_KEY_OUTPUT" | cut -d',' -f1)
         TEMP_API_KEY_HASH=$(echo "$API_KEY_OUTPUT" | cut -d',' -f2)
         export OPENROUTER_API_KEY="$TEMP_API_KEY"
@@ -390,7 +390,7 @@ if [ "$LOCAL_MODE" = true ]; then
 
         if [ "$USE_PROVISIONING_KEY" = true ]; then
             echo "Logging costs and cleaning up temporary API key"
-            PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys_utils.py cleanup-and-log --config-path "$CONFIG_PATH" --api-key-hash "$TEMP_API_KEY_HASH"
+            PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys.py cleanup-and-log --config-path "$CONFIG_PATH" --api-key-hash "$TEMP_API_KEY_HASH"
         fi
 
         write_outputs_readme "${AGENT_ID}"
@@ -510,7 +510,7 @@ else
             conda env create -f environment.yaml -q
         fi
         echo "Creating temporary API key with spend limit: $SPEND_LIMIT"
-        API_KEY_OUTPUT=$(PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys_utils.py create --name "agentomics_run_$(date +%s)" --limit "$SPEND_LIMIT")
+        API_KEY_OUTPUT=$(PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys.py create --name "agentomics_run_$(date +%s)" --limit "$SPEND_LIMIT")
         TEMP_API_KEY=$(echo "$API_KEY_OUTPUT" | cut -d',' -f1)
         TEMP_API_KEY_HASH=$(echo "$API_KEY_OUTPUT" | cut -d',' -f2)
         export OPENROUTER_API_KEY="$TEMP_API_KEY"
@@ -649,7 +649,7 @@ else
             if [ "$USE_PROVISIONING_KEY" = true ]; then
                 echo "Logging costs and cleaning up temporary API key"
                 CONFIG_PATH="outputs/${AGENT_ID}/run_files/shared/config.json"
-                PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys_utils.py cleanup-and-log --config-path "$CONFIG_PATH" --api-key-hash "$TEMP_API_KEY_HASH"
+                PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys.py cleanup-and-log --config-path "$CONFIG_PATH" --api-key-hash "$TEMP_API_KEY_HASH"
             fi
 
             if [ "$ALL_ITERATIONS_TEST" = true ]; then
