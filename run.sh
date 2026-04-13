@@ -394,7 +394,7 @@ if [ "$LOCAL_MODE" = true ]; then
         fi
 
         write_outputs_readme "${AGENT_ID}"
-        conda run -n agentomics-env python src/runtime/generate_final_reports.py \
+        PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/runtime/generate_final_reports.py \
             --agent-dir "outputs/${AGENT_ID}" \
             --prepared-datasets $(pwd)/prepared_datasets \
             --prepared-tests $(pwd)/prepared_test_sets
@@ -637,6 +637,7 @@ else
             docker run --rm \
               -u "$(id -u):$(id -g)" \
               -e MPLCONFIGDIR="$MPLCONFIGDIR_IN_CONTAINER" \
+              -e PYTHONPATH=/repository/src \
               -v "$(pwd)":/repository \
               -v "$(pwd)/outputs/${AGENT_ID}":/agent_out \
               --entrypoint /opt/conda/envs/agentomics-env/bin/python \
