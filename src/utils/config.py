@@ -64,8 +64,8 @@ class Config:
     max_steps: int = DEFAULT_MAX_STEPS
     split_allowed_iterations: int = DEFAULT_SPLIT_ALLOWED_ITERATIONS
     exploration_iterations: int = DEFAULT_EXPLORATION_ITERATIONS
-    step_sequence: list[str] = field(default_factory=Config.DEFAULT_STEP_SEQUENCE.copy)
-    tool_ids: list[str] = field(default_factory=Config.DEFAULT_TOOL_IDS.copy)
+    step_sequence: list[str] = field(default_factory=lambda: Config.DEFAULT_STEP_SEQUENCE.copy())
+    tool_ids: list[str] = field(default_factory=lambda: Config.DEFAULT_TOOL_IDS.copy())
     time_deadline: int | None = None
     split_time_deadline: int | None = None
     run_python_tool_timeout: int = DEFAULT_RUN_PYTHON_TOOL_TIMEOUT
