@@ -1,4 +1,4 @@
-from test.utils_test import BaseAgentTest
+from test.test_utils import BaseAgentTest
 
 class TestGpuAccess(BaseAgentTest):
     """Test suite for GPU agent access"""

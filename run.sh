@@ -271,7 +271,7 @@ if [ "$LOCAL_MODE" = true ]; then
     eval "$(conda shell.bash hook)"
     conda activate agentomics-env
 
-    AGENT_ID=$(python src/utils/create_user.py)
+    AGENT_ID=$(python src/utils/agent_id.py)
     export AGENT_ID
 
     WORKSPACE_DIR="$(dirname "$AGENTOMICS_DIR")/workspace"
@@ -384,7 +384,7 @@ if [ "$LOCAL_MODE" = true ]; then
         fi
 
         export PYTHONPATH=./src
-        python src/run_logging/evaluate_log_test.py --workspace-dir "$WORKSPACE_DIR" --agent-id "$AGENT_ID" --prepared-test-sets-dir "$(pwd)/prepared_test_sets"
+        python src/run_logging/test_evaluation.py --workspace-dir "$WORKSPACE_DIR" --agent-id "$AGENT_ID" --prepared-test-sets-dir "$(pwd)/prepared_test_sets"
         cp -r "${WORKSPACE_DIR}/snapshots/${AGENT_ID}/." outputs/${AGENT_ID}/best_run_files/
         PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python -m runtime.iteration_reports --agent-dir "outputs/${AGENT_ID}"
 
@@ -481,7 +481,7 @@ else
         echo "Build done"
     fi
     AGENT_ID=$(docker run --rm -u $(id -u):$(id -g) -v "$(pwd)":/repository:ro --entrypoint \
-               /opt/conda/envs/agentomics-env/bin/python "$AGENTOMICS_IMAGE" /repository/src/utils/create_user.py)
+               /opt/conda/envs/agentomics-env/bin/python "$AGENTOMICS_IMAGE" /repository/src/utils/agent_id.py)
 
     PREPARE_ARGS=()
     if [ -n "$DATASET_NAME" ]; then
@@ -627,7 +627,7 @@ else
                 -v "$(pwd)/prepared_test_sets":/repository/prepared_test_sets:ro \
                 -v temp_agentomics_volume_${AGENT_ID}:/workspace \
                 --entrypoint /opt/conda/envs/agentomics-env/bin/python \
-                "$AGENTOMICS_IMAGE" src/run_logging/evaluate_log_test.py --agent-id "${AGENT_ID}" --prepared-test-sets-dir /repository/prepared_test_sets
+                "$AGENTOMICS_IMAGE" src/run_logging/test_evaluation.py --agent-id "${AGENT_ID}" --prepared-test-sets-dir /repository/prepared_test_sets
 
             docker run --rm -v temp_agentomics_volume_${AGENT_ID}:/workspace busybox chmod -R a+rX /workspace/snapshots/${AGENT_ID}/
             docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox cp -r /source/snapshots/${AGENT_ID}/. /dest/best_run_files/

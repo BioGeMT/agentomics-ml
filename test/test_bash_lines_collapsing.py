@@ -1,4 +1,4 @@
-from test.utils_test import BaseAgentTest
+from test.test_utils import BaseAgentTest
 
 class BashLinesCollapsing(BaseAgentTest):
     def test_error_output_collapsing(self):

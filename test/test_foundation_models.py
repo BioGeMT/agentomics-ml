@@ -1,6 +1,6 @@
 import unittest
 
-from test.utils_test import BaseAgentTest, check_foundation_model_gpu_usage
+from test.test_utils import BaseAgentTest, check_foundation_model_gpu_usage
 
 class TestFoundationModels(BaseAgentTest):
     """Test suite for foundation model usage in agents"""

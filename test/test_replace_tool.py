@@ -1,4 +1,4 @@
-from test.utils_test import BaseAgentTest
+from test.test_utils import BaseAgentTest
 
 class TestReplaceTool(BaseAgentTest):
     """Test suite for the replace tool functionality."""

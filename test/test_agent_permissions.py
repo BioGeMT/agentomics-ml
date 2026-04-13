@@ -3,7 +3,7 @@ import subprocess
 import unittest
 from pathlib import Path
 
-from test.utils_test import BaseAgentTest
+from test.test_utils import BaseAgentTest
 
 class TestAgentPermissions(BaseAgentTest):
     """Test suite for agent isolation and security."""

@@ -6,7 +6,7 @@ from pathlib import Path
 import dotenv
 from rich.console import Console
 
-from agents.prompts.prompts_utils import DEFAULT_USER_PROMPT
+from agents.prompts.prompt_builder import DEFAULT_USER_PROMPT
 from run_agent import run_experiment
 from utils.config import Config
 from utils.dataset_utils import get_all_prepared_datasets_info, get_task_type_from_prepared_dataset
