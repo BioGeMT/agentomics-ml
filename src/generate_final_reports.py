@@ -16,6 +16,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from eval.evaluate_result import get_metrics
 from utils.config import Config
+from runtime.iteration_reports import write_iteration_report
 from runtime.read_write_utils import load_config_from_run_dir
 
 from reportlab.lib import colors
@@ -882,13 +883,23 @@ def main() -> None:
 
     out_dir = agent_dir / "pdf_reports"
     plots_dir = out_dir / "plots"
+    reports_dir = agent_dir / "reports"
     ensure_dir(out_dir)
     ensure_dir(plots_dir)
+    ensure_dir(reports_dir)
     split_order = ["train", "validation", "test"]
 
     for it in iterations:
         inp = gather_iteration_inputs(agent_dir, config.dataset, prepared_datasets, prepared_tests, dataset_meta, it)
-        report_text = inp.report_md.read_text(encoding="utf-8") if inp.report_md else None
+        report_path = inp.report_md
+        if report_path is None:
+            report_path = write_iteration_report(
+                config,
+                iteration=it,
+                iteration_dir=agent_dir / "run_files" / f"iteration_{it}",
+                report_path=reports_dir / f"run_report_iter_{it}.md",
+            )
+        report_text = report_path.read_text(encoding="utf-8") if report_path.exists() else None
 
         metrics_by_split: Dict[str, Dict[str, float]] = {
             s.split_name: s.metrics for s in inp.splits if s.metrics

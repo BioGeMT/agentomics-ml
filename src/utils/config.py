@@ -97,6 +97,10 @@ class Config:
         return Path(self.workspace_dir) / "reports"
 
     @property
+    def agent_reports_dir(self) -> Path:
+        return self.reports_dir / self.agent_id
+
+    @property
     def extras_dir(self) -> Path:
         return Path(self.workspace_dir) / "extras"
 

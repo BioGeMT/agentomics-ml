@@ -374,6 +374,7 @@ if [ "$LOCAL_MODE" = true ]; then
     if [[ -d "${WORKSPACE_DIR}/extras" ]]; then
         cp -r "${WORKSPACE_DIR}/extras/." outputs/${AGENT_ID}/extras/
     fi
+    PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python -m runtime.iteration_reports --agent-dir "outputs/${AGENT_ID}"
 
     ARTIFACT_PATH="${WORKSPACE_DIR}/snapshots/${AGENT_ID}"
     RUN_SUCCEEDED=true
@@ -607,6 +608,7 @@ else
         docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox cp -r /source/runs/${AGENT_ID}/. /dest/run_files/
         docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox sh -c 'if [ -d /source/reports/'"${AGENT_ID}"' ]; then cp -r /source/reports/'"${AGENT_ID}"'/. /dest/reports/; fi'
         docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox sh -c 'if [ -d /source/extras ]; then cp -r /source/extras/. /dest/extras/; fi'
+        PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python -m runtime.iteration_reports --agent-dir "outputs/${AGENT_ID}"
 
         ARTIFACT_PATH="/workspace/snapshots/${AGENT_ID}"
         RUN_SUCCEEDED=true
