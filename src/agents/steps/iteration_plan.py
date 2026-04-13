@@ -18,7 +18,7 @@ from runtime.read_write_utils import (
     load_iteration_duration,
     load_iteration_metadata,
 )
-from runtime.step_outputs import load_step_output, load_step_outputs, save_step_output
+from runtime.step_outputs import load_step_output, load_step_outputs
 from runtime.system_resources import get_resources_summary
 from tools.tool_registry import get_tool_names
 from utils.config import Config
@@ -74,7 +74,7 @@ class IterationPlanStep(AgenticStep):
     output_type = IterationPlanOutput
     history_excluded_step_ids = {step_id, ValidationEvaluationStep.step_id}
 
-    class IterationHistoryRecord(TypedDict):  # TODO object or dict is better?
+    class IterationHistoryRecord(TypedDict):
         outputs: list[Any]
         metrics: dict[str, float]
         duration: str
@@ -154,10 +154,6 @@ class IterationPlanStep(AgenticStep):
         B) further develop an existing promising (S x R x A) combination. If the iteration history already contains a further developed version of a (S x R x A) combination that did not result in a validation {self.config.val_metric} improvement, you must not develop it further again.
         </your_instructions>
         """
-
-    def on_iteration_fail(self, iteration: int) -> None:
-        if load_step_output(self.config, self.step_id, self.config.current_iteration_dir) is None:
-            save_step_output(self.config, self.step_id, "Iteration failed, no iteration plan available.")
 
     def get_message_history(self):
         return None
