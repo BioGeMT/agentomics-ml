@@ -94,6 +94,26 @@ class TestStepOutputRoundtrip(unittest.TestCase):
         self.assertIsInstance(loaded, dict)
         self.assertEqual(loaded["summary"], "10 features, 1000 rows")
 
+    def test_save_creates_current_step_dir_for_skipped_step_flow(self):
+        split_output = DataSplitOutput(
+            train_path="/tmp/train.csv",
+            val_path="/tmp/val.csv",
+            splitting_strategy="reused previous split",
+            split_changed=False,
+        )
+
+        save_step_output(self.config, "data_split", split_output)
+
+        self.assertTrue(self.config.current_step_dir.exists())
+        archived = self.config.archived_step_dir("data_split")
+        self.config.current_step_dir.rename(archived)
+
+        loaded = load_step_output(self.config, "data_split", self.config.current_iteration_dir)
+
+        self.assertIsInstance(loaded, DataSplitOutput)
+        self.assertEqual(loaded.splitting_strategy, "reused previous split")
+        self.assertFalse(loaded.split_changed)
+
     def test_load_step_outputs_returns_all_archived_outputs_in_sequence_order(self):
         self._save_and_archive_step("data_exploration", {"origin": "exploration"})
         self._save_and_archive_step("data_split", DataSplitOutput(

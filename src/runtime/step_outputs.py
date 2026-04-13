@@ -30,6 +30,7 @@ def _load_step_output_file(output_path: Path) -> Any:
 
 def save_step_output(config: Config, step_id: str, output: Any) -> None:
     output_path = config.current_step_dir / Config.STEP_OUTPUT_FILENAME
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     if output_path.exists():
         raise FileExistsError(
             f"Step output for '{step_id}' already exists at {output_path}. "
