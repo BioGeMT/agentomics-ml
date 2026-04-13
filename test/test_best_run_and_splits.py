@@ -22,7 +22,6 @@ from runtime.read_write_utils import (
     save_config,
     update_current_iteration_state,
 )
-from runtime.step_outputs import OUTPUT_FILENAME
 from utils.config import Config
 
 
@@ -31,7 +30,7 @@ def _write_step_output(iteration_dir: Path, step_id: str, output) -> None:
     payload = output.model_dump() if hasattr(output, "model_dump") else output
     step_dir = iteration_dir / step_id
     step_dir.mkdir(parents=True, exist_ok=True)
-    (step_dir / OUTPUT_FILENAME).write_text(
+    (step_dir / Config.STEP_OUTPUT_FILENAME).write_text(
         json.dumps({
             "step_id": step_id,
             "model_type": type(output).__name__,
@@ -80,7 +79,7 @@ class TestBestRunSnapshot(unittest.TestCase):
         iteration_dir = self.config.iteration_dir(iteration)
         iteration_dir.mkdir(parents=True, exist_ok=True)
         (iteration_dir / Config.RUNTIME_INFO_DIRNAME).mkdir()
-        (iteration_dir / Config.RUNTIME_INFO_DIRNAME / "iteration_metadata.json").write_text(
+        (iteration_dir / Config.RUNTIME_INFO_DIRNAME / Config.ITERATION_METADATA_FILENAME).write_text(
             json.dumps({"iteration": iteration}), encoding="utf-8",
         )
         _write_step_output(iteration_dir, "data_split", DataSplitOutput(
@@ -99,7 +98,7 @@ class TestBestRunSnapshot(unittest.TestCase):
         snapshot_dir = self.config.snapshot_dir
         snapshot_dir.mkdir(parents=True, exist_ok=True)
         (snapshot_dir / Config.RUNTIME_INFO_DIRNAME).mkdir()
-        (snapshot_dir / Config.RUNTIME_INFO_DIRNAME / "iteration_metadata.json").write_text(
+        (snapshot_dir / Config.RUNTIME_INFO_DIRNAME / Config.ITERATION_METADATA_FILENAME).write_text(
             json.dumps({"iteration": 0}), encoding="utf-8",
         )
         (snapshot_dir / "old_model.bin").write_text("old", encoding="utf-8")
@@ -184,7 +183,7 @@ class TestIsNewBest(unittest.TestCase):
         snapshot_dir = self.config.snapshot_dir
         snapshot_dir.mkdir(parents=True, exist_ok=True)
         (snapshot_dir / Config.RUNTIME_INFO_DIRNAME).mkdir(exist_ok=True)
-        (snapshot_dir / Config.RUNTIME_INFO_DIRNAME / "iteration_metadata.json").write_text(
+        (snapshot_dir / Config.RUNTIME_INFO_DIRNAME / Config.ITERATION_METADATA_FILENAME).write_text(
             json.dumps({"iteration": 0}), encoding="utf-8",
         )
 

@@ -7,12 +7,6 @@ import subprocess
 from pathlib import Path
 
 
-EXCLUDED_WORKSPACE_NAMES = {
-    ".conda",
-    "__pycache__",
-    ".cache",
-}
-
 def remove_path(path: Path) -> None:
     if path.is_symlink() or path.is_file():
         path.unlink(missing_ok=True)
@@ -23,9 +17,12 @@ def remove_path(path: Path) -> None:
 def copy_workspace_tree(
     source_dir: Path,
     destination_dir: Path,
-    excluded_root_names: set[str] | None = None,
 ) -> None:
-    excluded_names = EXCLUDED_WORKSPACE_NAMES | (excluded_root_names or set())
+    excluded_names = {
+        ".conda",
+        "__pycache__",
+        ".cache",
+    }
 
     def ignore(directory: str, names: list[str]) -> set[str]:
         ignored = set()

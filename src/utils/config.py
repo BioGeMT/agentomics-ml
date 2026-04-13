@@ -13,6 +13,12 @@ class Config:
     CONFIG_FILENAME: ClassVar[str] = "config.json"
     SHARED_DIRNAME: ClassVar[str] = "shared"
     RUNTIME_INFO_DIRNAME: ClassVar[str] = "runtime_info"
+    ITERATION_DIR_PREFIX: ClassVar[str] = "iteration_"
+    BASE_PROMPT_FILENAME: ClassVar[str] = "base_prompt.txt"
+    SYSTEM_PROMPT_FILENAME: ClassVar[str] = "system_prompt.txt"
+    ITERATION_METADATA_FILENAME: ClassVar[str] = "iteration_metadata.json"
+    ITERATION_STATE_FILENAME: ClassVar[str] = "iteration_state.json"
+    STEP_OUTPUT_FILENAME: ClassVar[str] = "output.json"
     DEFAULT_ITERATIONS: ClassVar[int] = 5
     DEFAULT_SPLIT_ALLOWED_ITERATIONS: ClassVar[int] = 1
     DEFAULT_EXPLORATION_ITERATIONS: ClassVar[int] = 4
@@ -138,7 +144,7 @@ class Config:
         return self.current_iteration_dir / step_id
 
     def iteration_dir(self, iteration: int) -> Path:
-        return self.run_dir / f"iteration_{iteration}"
+        return self.run_dir / f"{self.ITERATION_DIR_PREFIX}{iteration}"
 
     def print_summary(self) -> None:
         print("=== AGENTOMICS CONFIGURATION ===")

@@ -15,12 +15,6 @@ from runtime.filesystem import (
 )
 from utils.config import Config
 
-_BASE_PROMPT_FILENAME = "base_prompt.txt"
-_SYSTEM_PROMPT_FILENAME = "system_prompt.txt"
-_ITERATION_METADATA_FILENAME = "iteration_metadata.json"
-_ITERATION_STATE_FILENAME = "iteration_state.json"
-_ITERATION_DIR_PREFIX = "iteration_"
-
 def initialize_run_directories(config: Config) -> None:
     config.snapshots_dir.mkdir(parents=False, exist_ok=True)
     config.reports_dir.mkdir(parents=False, exist_ok=True)
@@ -76,9 +70,9 @@ def get_archived_iterations(
     archived_iterations: list[int] = []
     root_dir = search_root_dir or config.run_dir
     for child in root_dir.iterdir():
-        if not child.is_dir() or not child.name.startswith(_ITERATION_DIR_PREFIX):
+        if not child.is_dir() or not child.name.startswith(Config.ITERATION_DIR_PREFIX):
             continue
-        suffix = child.name.removeprefix(_ITERATION_DIR_PREFIX)
+        suffix = child.name.removeprefix(Config.ITERATION_DIR_PREFIX)
         if not suffix.isdigit():
             continue
         if only_successful and load_iteration_state(child).get("status") != "success":
@@ -97,10 +91,10 @@ def get_last_successful_iteration(config: Config) -> int | None:
     return iterations[-1] if iterations else None
 
 def _get_current_iteration_base_prompt_path(config: Config) -> Path:
-    return config.current_iteration_runtime_info_dir / _BASE_PROMPT_FILENAME
+    return config.current_iteration_runtime_info_dir / Config.BASE_PROMPT_FILENAME
 
 def _get_current_iteration_system_prompt_path(config: Config) -> Path:
-    return config.current_iteration_runtime_info_dir / _SYSTEM_PROMPT_FILENAME
+    return config.current_iteration_runtime_info_dir / Config.SYSTEM_PROMPT_FILENAME
 
 def write_current_iteration_base_prompt(config: Config, base_prompt: str) -> None:
     _get_current_iteration_base_prompt_path(config).write_text(base_prompt, encoding="utf-8")
@@ -134,7 +128,7 @@ def get_new_rundir_files(config: Config, since_timestamp: datetime.datetime) -> 
     for element in run_dir.iterdir():
         if element.name in ignored_names:
             continue
-        if "iteration_" in element.name and element.is_dir():
+        if element.name.startswith(Config.ITERATION_DIR_PREFIX) and element.is_dir():
             continue
         if element.is_file():
             if datetime.datetime.fromtimestamp(element.stat().st_mtime) > since_timestamp:
@@ -151,10 +145,13 @@ def does_file_contain_string(file_path, search_string) -> bool:
     return _file_matches_quoted_pattern(file_path, rf"(['\"]){re.escape(search_string)}.*?\1")
 
 def does_file_contain_iteration_pattern(file_path) -> bool:
-    return _file_matches_quoted_pattern(file_path, r"(['\"])iteration_\d+.*?\1")
+    return _file_matches_quoted_pattern(
+        file_path,
+        rf"(['\"]){re.escape(Config.ITERATION_DIR_PREFIX)}\d+.*?\1",
+    )
 
 def load_iteration_metadata(iteration_dir: Path) -> dict[str, Any]:
-    return _load_json_object(iteration_dir / Config.RUNTIME_INFO_DIRNAME / _ITERATION_METADATA_FILENAME)
+    return _load_json_object(iteration_dir / Config.RUNTIME_INFO_DIRNAME / Config.ITERATION_METADATA_FILENAME)
 
 def load_best_run_iteration(config: Config) -> int | None:
     iteration = load_iteration_metadata(config.snapshot_dir).get("iteration")
@@ -171,14 +168,14 @@ def load_iteration_duration(iteration_dir: Path) -> float | None:
     return float(ended_at) - float(started_at)
 
 def load_iteration_state(iteration_dir: Path) -> dict[str, Any]:
-    return _load_json_object(iteration_dir / Config.RUNTIME_INFO_DIRNAME / _ITERATION_STATE_FILENAME)
+    return _load_json_object(iteration_dir / Config.RUNTIME_INFO_DIRNAME / Config.ITERATION_STATE_FILENAME)
 
 def load_current_iteration_index(config: Config) -> int:
     iteration_metadata = load_iteration_metadata(config.current_iteration_dir)
     iteration = iteration_metadata.get("iteration")
     if not isinstance(iteration, int):
         raise KeyError(
-            f"Current iteration metadata at {config.current_iteration_runtime_info_dir / _ITERATION_METADATA_FILENAME} "
+            f"Current iteration metadata at {config.current_iteration_runtime_info_dir / Config.ITERATION_METADATA_FILENAME} "
             "is missing integer field 'iteration'."
         )
     return iteration
@@ -189,7 +186,7 @@ def initialize_current_iteration_metadata(
     split_allowed_at_start: bool | None = None,
 ) -> None:
     _write_json(
-        config.current_iteration_runtime_info_dir / _ITERATION_METADATA_FILENAME,
+        config.current_iteration_runtime_info_dir / Config.ITERATION_METADATA_FILENAME,
         {
             "iteration": iteration,
             "split_allowed_at_start": split_allowed_at_start,
@@ -198,7 +195,7 @@ def initialize_current_iteration_metadata(
 
 def initialize_current_iteration_state(config: Config, started_at: float) -> None:
     _write_json(
-        config.current_iteration_runtime_info_dir / _ITERATION_STATE_FILENAME,
+        config.current_iteration_runtime_info_dir / Config.ITERATION_STATE_FILENAME,
         {
             "status": "running",
             "started_at": started_at,
@@ -210,7 +207,7 @@ def update_current_iteration_state(
     config: Config,
     **changes: object,
 ) -> None:
-    iteration_state_path = config.current_iteration_runtime_info_dir / _ITERATION_STATE_FILENAME
+    iteration_state_path = config.current_iteration_runtime_info_dir / Config.ITERATION_STATE_FILENAME
     iteration_state = _load_json_object(iteration_state_path)
 
     unknown_fields = sorted(set(changes) - set(iteration_state))

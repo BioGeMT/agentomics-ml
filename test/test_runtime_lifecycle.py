@@ -24,7 +24,6 @@ from runtime.read_write_utils import (
     update_current_iteration_state,
 )
 from runtime.step_outputs import (
-    OUTPUT_FILENAME,
     _deserialize_step_output_record,
     load_step_output,
     load_step_outputs,

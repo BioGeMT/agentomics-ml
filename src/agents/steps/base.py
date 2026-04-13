@@ -95,8 +95,7 @@ class RuntimeStep(ABC):
             chown_tree_to_root(archived_dir)
 
     def _rewrite_paths_in_step_output(self, directory: Path, old: str, new: str) -> None:
-        from runtime.step_outputs import OUTPUT_FILENAME
-        output_file = directory / OUTPUT_FILENAME
+        output_file = directory / Config.STEP_OUTPUT_FILENAME
         if output_file.exists():
             content = output_file.read_text(encoding="utf-8")
             output_file.write_text(content.replace(old, new), encoding="utf-8")
