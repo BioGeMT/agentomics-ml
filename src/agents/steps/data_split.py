@@ -12,7 +12,7 @@ import pandas as pd
 
 from agents.steps.base import AgenticStep, AgenticStepOutput
 from runtime.filesystem import chown_tree_to_root
-from runtime.read_write_utils import get_last_successful_iteration, load_current_iteration_index, load_iteration_metadata
+from runtime.read_write_utils import get_last_successful_iteration, load_current_iteration_index, load_iteration_state, update_current_iteration_state
 from runtime.step_outputs import load_step_output
 from run_logging.logging_helpers import log_split_is_allowed
 from utils.dataset_utils import get_numeric_label_col_from_prepared_dataset
@@ -130,22 +130,21 @@ class DataSplitStep(AgenticStep):
             {extra_info}
             """
 
-    @classmethod
-    def is_split_allowed(cls, config, iteration: int) -> bool:
-        # TODO: maybe resolve through on_iteration_start callback writing into metadata?
-        if (config.agent_dataset_dir / "validation.csv").exists():
-            return False
-        splits_dir = config.splits_dir
-        has_reusable = any(d.is_dir() for d in splits_dir.iterdir())
-        if not has_reusable:
-            return True
-        if config.split_time_deadline is None:
-            return iteration < config.split_allowed_iterations
-        return time.time() < config.split_time_deadline
+    def on_iteration_start(self, iteration: int) -> None:
+        if (self.config.agent_dataset_dir / "validation.csv").exists():
+            split_allowed = False
+        else:
+            has_reusable = any(d.is_dir() for d in self.config.splits_dir.iterdir())
+            if not has_reusable:
+                split_allowed = True
+            elif self.config.split_time_deadline is None:
+                split_allowed = iteration < self.config.split_allowed_iterations
+            else:
+                split_allowed = time.time() < self.config.split_time_deadline
+        update_current_iteration_state(self.config, split_allowed_at_start=split_allowed)
 
     def should_run(self) -> bool:
-        iteration = load_current_iteration_index(self.config)
-        return self.is_split_allowed(self.config, iteration)
+        return bool(load_iteration_state(self.config.current_iteration_dir)["split_allowed_at_start"])
 
     def build_skipped_output(self) -> DataSplitOutput:
         latest_split_dir = self._get_latest_split_dir()
@@ -182,10 +181,10 @@ class DataSplitStep(AgenticStep):
                 shutil.rmtree(split_dir)
 
     def on_iteration_end(self, iteration: int) -> None:
-        iteration_metadata = load_iteration_metadata(self.config.current_iteration_dir)
+        iteration_state = load_iteration_state(self.config.current_iteration_dir)
         log_split_is_allowed(
             iteration=iteration,
-            is_allowed=bool(iteration_metadata.get("split_allowed_at_start", False)),
+            is_allowed=bool(iteration_state["split_allowed_at_start"]),
         )
         #TODO log if split has changed?
 

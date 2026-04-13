@@ -80,6 +80,9 @@ class RuntimeStep(ABC):
         self._archive_step_folder()
         commit_step_checkpoint(self.config, iteration=load_current_iteration_index(self.config), step_id=self.step_id)
 
+    def on_iteration_start(self, iteration: int) -> None:
+        return None
+
     def on_iteration_fail(self, iteration: int) -> None:
         return None
 

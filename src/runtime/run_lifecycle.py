@@ -19,7 +19,6 @@ from runtime.read_write_utils import (
     write_current_iteration_base_prompt,
     write_current_iteration_system_prompt,
 )
-from agents.steps.data_split import DataSplitStep
 from agents.steps.step_registry import get_step_sequence
 from tools.tool_registry import create_tools
 from utils.config import Config
@@ -49,6 +48,8 @@ async def run_agentomics(
             iteration=iteration,
         )
         steps = [step_cls(config, default_model, iteration_plan_model, provider, tools) for step_cls in get_step_sequence(config)]
+        for step in steps:
+            step.on_iteration_start(iteration)
         try:
             for step in steps:
                 await step.run()
@@ -76,11 +77,7 @@ async def run_agentomics(
 def _prepare_iteration_workspace(config, iteration: int) -> None:
     started_at = time.time()
     initialize_current_iteration_workspace(config)
-    initialize_current_iteration_metadata(
-        config,
-        iteration=iteration,
-        split_allowed_at_start=DataSplitStep.is_split_allowed(config, iteration),
-    )
+    initialize_current_iteration_metadata(config, iteration=iteration)
     initialize_current_iteration_state(config, started_at=started_at)
     write_current_iteration_system_prompt(config, get_system_prompt(config))
     write_current_iteration_base_prompt(config, build_iteration_base_prompt(config, iteration))

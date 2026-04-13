@@ -17,6 +17,7 @@ from runtime.read_write_utils import (
     load_current_iteration_index,
     load_iteration_duration,
     load_iteration_metadata,
+    load_iteration_state,
 )
 from runtime.step_outputs import load_step_output, load_step_outputs
 from runtime.system_resources import get_resources_summary
@@ -242,7 +243,7 @@ class IterationPlanStep(AgenticStep):
         best_metric_iteration = load_best_run_iteration(self.config)
         latest_split_version = self._get_latest_split_version()
 
-        if not load_iteration_metadata(self.config.current_iteration_dir)["split_allowed_at_start"]:
+        if not load_iteration_state(self.config.current_iteration_dir)["split_allowed_at_start"]:
             return "Instruct to skip the splitting step, as the current iteration agent cannot split the data."
 
         if latest_split_version is None:

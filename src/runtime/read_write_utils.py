@@ -183,15 +183,12 @@ def load_current_iteration_index(config: Config) -> int:
 def initialize_current_iteration_metadata(
     config: Config,
     iteration: int,
-    split_allowed_at_start: bool | None = None,
 ) -> None:
     _write_json(
         config.current_iteration_runtime_info_dir / Config.ITERATION_METADATA_FILENAME,
-        {
-            "iteration": iteration,
-            "split_allowed_at_start": split_allowed_at_start,
-        },
+        {"iteration": iteration},
     )
+
 
 def initialize_current_iteration_state(config: Config, started_at: float) -> None:
     _write_json(
@@ -209,15 +206,6 @@ def update_current_iteration_state(
 ) -> None:
     iteration_state_path = config.current_iteration_runtime_info_dir / Config.ITERATION_STATE_FILENAME
     iteration_state = _load_json_object(iteration_state_path)
-
-    unknown_fields = sorted(set(changes) - set(iteration_state))
-    if unknown_fields:
-        unknown_fields_text = ", ".join(unknown_fields)
-        raise ValueError(
-            f"Cannot update iteration state at {iteration_state_path} because these fields do not exist: "
-            f"{unknown_fields_text}"
-        )
-
     iteration_state.update(changes)
     _write_json(iteration_state_path, iteration_state)
 
