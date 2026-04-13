@@ -47,7 +47,7 @@ async def run_experiment(
     config = Config(
         agent_id=agent_id,
         model_name=model,
-        feedback_model_name=model,
+        iteration_plan_model_name=model,
         provider_name=provider,
         dataset=dataset_name,
         tags=tags,
@@ -82,7 +82,7 @@ async def run_experiment(
 
     provider_obj = get_provider_from_string(config.provider_name)
     default_model = provider_obj.create_model(config.model_name, config)
-    feedback_model = provider_obj.create_model(config.feedback_model_name, config)
+    iteration_plan_model = provider_obj.create_model(config.iteration_plan_model_name, config)
 
     run_fn = run_agentomics
     if timeout is not None:
@@ -93,7 +93,7 @@ async def run_experiment(
         await run_fn(
             config=config,
             default_model=default_model,
-            feedback_model=feedback_model,
+            iteration_plan_model=iteration_plan_model,
             provider=provider_obj,
         )
     except TimeoutError:

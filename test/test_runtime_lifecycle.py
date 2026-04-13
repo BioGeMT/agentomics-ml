@@ -49,7 +49,7 @@ class TestStepOutputRoundtrip(unittest.TestCase):
         config = Config(
             agent_id=agent_id,
             model_name="test-model",
-            feedback_model_name="test-feedback-model",
+            iteration_plan_model_name="test-iteration-plan-model",
             dataset="toy",
             tags=[],
             val_metric="ACC",
@@ -142,7 +142,7 @@ class TestIterationArchival(unittest.TestCase):
         config = Config(
             agent_id=agent_id,
             model_name="test-model",
-            feedback_model_name="test-feedback-model",
+            iteration_plan_model_name="test-iteration-plan-model",
             dataset="toy",
             tags=[],
             val_metric="ACC",

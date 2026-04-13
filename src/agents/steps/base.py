@@ -39,10 +39,10 @@ class RuntimeStep(ABC):
     display_name: str
     output_type: Any = None
 
-    def __init__(self, config: Config, model: Model, feedback_model: Model, provider: Provider, tools: list) -> None:
+    def __init__(self, config: Config, model: Model, iteration_plan_model: Model, provider: Provider, tools: list) -> None:
         self.config = config
         self.model = model
-        self.feedback_model = feedback_model
+        self.iteration_plan_model = iteration_plan_model
         self.provider = provider
         self.tools = tools
 

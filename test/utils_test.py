@@ -36,7 +36,7 @@ def get_shared_test_resources():
         config = Config(
             agent_id=agent_id,
             model_name="openai/gpt-3.5-turbo",
-            feedback_model_name="openai/gpt-3.5-turbo",
+            iteration_plan_model_name="openai/gpt-3.5-turbo",
             dataset="AGO2_CLASH_Hejret2023",
             tags=[],
             val_metric="ACC",

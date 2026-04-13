@@ -18,7 +18,7 @@ def get_system_prompt(config):
 
     available_resources = get_resources_summary()
     ordered_steps = "\n".join(
-        f"    - {step_id.replace('_', ' ').title()}"
+        f"    - {str(step_id).replace('_', ' ').title()}"
         for step_id in config.step_sequence
     )
 

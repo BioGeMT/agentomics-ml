@@ -84,7 +84,7 @@ class IterationPlanStep(AgenticStep):
 
     def create_agent(self) -> Agent[dict, IterationPlanOutput]:
         return Agent(
-            model=self.feedback_model,
+            model=self.iteration_plan_model,
             retries=self.config.max_validation_retries,
             model_settings=self.provider.get_high_reasoning_model_settings(
                 kwargs={"temperature": self.config.temperature}

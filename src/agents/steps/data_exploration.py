@@ -39,6 +39,6 @@ class DataExplorationStep(AgenticStep):
         else:
             extra_info = ""
         return f"""
-        Your first task: explore the dataset. Be thorough, understanding the data deeply will inform subsequent steps for model development.
+        Your next task: explore the dataset. Be thorough, understanding the data deeply will inform subsequent steps for model development.
         {extra_info}
         """

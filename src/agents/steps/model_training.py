@@ -101,7 +101,7 @@ class ModelTrainingStep(AgenticStep):
         Training guidelines:
         - Train until validation performance stops improving, and output the best checkpoint.
         - Save all artifacts needed for inference (model file, tokenizers, etc...).
-        - If you failed to implement your intended model, when you call the final_output tool, put into unresolved issues what went wrong.
+        - If you failed to implement your intended model, when you call the final_result tool, put into unresolved issues what went wrong.
         {"If your model can be accelerated by GPU, implement the code to use GPU." if check_gpu_availability() else ""}
 
         The train script should take the following parameters

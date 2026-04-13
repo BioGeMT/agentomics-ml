@@ -31,7 +31,7 @@ from pydantic_ai.models import Model
 async def run_agentomics(
     config: Config,
     default_model: Model,
-    feedback_model: Model,
+    iteration_plan_model: Model,
     provider: Provider,
 ) -> None:
     total_iterations = config.iterations
@@ -47,7 +47,7 @@ async def run_agentomics(
             config=config,
             iteration=iteration,
         )
-        steps = [step_cls(config, default_model, feedback_model, provider, tools) for step_cls in get_step_sequence(config)]
+        steps = [step_cls(config, default_model, iteration_plan_model, provider, tools) for step_cls in get_step_sequence(config)]
         try:
             for step in steps:
                 await step.run()

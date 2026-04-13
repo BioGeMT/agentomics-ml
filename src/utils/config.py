@@ -45,7 +45,7 @@ class Config:
 
     agent_id: str
     model_name: str
-    feedback_model_name: str
+    iteration_plan_model_name: str
     dataset: str
     tags: list[str]
     val_metric: str
@@ -143,7 +143,7 @@ class Config:
     def print_summary(self) -> None:
         print("=== AGENTOMICS CONFIGURATION ===")
         print("MAIN MODEL:", self.model_name)
-        print("FEEDBACK MODEL:", self.feedback_model_name)
+        print("ITERATION PLAN MODEL:", self.iteration_plan_model_name)
         print("DATASET:", self.dataset)
         print("TASK TYPE:", self.task_type)
         print("VAL METRIC:", self.val_metric)
