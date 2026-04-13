@@ -374,7 +374,6 @@ if [ "$LOCAL_MODE" = true ]; then
     if [[ -d "${WORKSPACE_DIR}/extras" ]]; then
         cp -r "${WORKSPACE_DIR}/extras/." outputs/${AGENT_ID}/extras/
     fi
-    PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python -m runtime.iteration_reports --agent-dir "outputs/${AGENT_ID}"
 
     ARTIFACT_PATH="${WORKSPACE_DIR}/snapshots/${AGENT_ID}"
     RUN_SUCCEEDED=true
@@ -387,6 +386,7 @@ if [ "$LOCAL_MODE" = true ]; then
         export PYTHONPATH=./src
         python src/run_logging/evaluate_log_test.py --workspace-dir "$WORKSPACE_DIR" --agent-id "$AGENT_ID" --prepared-test-sets-dir "$(pwd)/prepared_test_sets"
         cp -r "${WORKSPACE_DIR}/snapshots/${AGENT_ID}/." outputs/${AGENT_ID}/best_run_files/
+        PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python -m runtime.iteration_reports --agent-dir "outputs/${AGENT_ID}"
 
         if [ "$USE_PROVISIONING_KEY" = true ]; then
             echo "Logging costs and cleaning up temporary API key"
@@ -412,6 +412,7 @@ if [ "$LOCAL_MODE" = true ]; then
         echo -e "${GREEN}To run inference on new data, use ./inference.sh --agent-dir outputs/${AGENT_ID} --input <path_to_input_csv> --output <path_to_output_csv>${NOCOLOR}"
     else
         RUN_SUCCEEDED=false
+        PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python -m runtime.iteration_reports --agent-dir "outputs/${AGENT_ID}"
         warn "Agent didn't produce any valid best snapshot. Exported run_files for later continuation to outputs/${AGENT_ID}."
         write_outputs_readme "${AGENT_ID}"
     fi
@@ -608,7 +609,6 @@ else
         docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox cp -r /source/runs/${AGENT_ID}/. /dest/run_files/
         docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox sh -c 'if [ -d /source/reports/'"${AGENT_ID}"' ]; then cp -r /source/reports/'"${AGENT_ID}"'/. /dest/reports/; fi'
         docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox sh -c 'if [ -d /source/extras ]; then cp -r /source/extras/. /dest/extras/; fi'
-        PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python -m runtime.iteration_reports --agent-dir "outputs/${AGENT_ID}"
 
         ARTIFACT_PATH="/workspace/snapshots/${AGENT_ID}"
         RUN_SUCCEEDED=true
@@ -631,6 +631,7 @@ else
 
             docker run --rm -v temp_agentomics_volume_${AGENT_ID}:/workspace busybox chmod -R a+rX /workspace/snapshots/${AGENT_ID}/
             docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox cp -r /source/snapshots/${AGENT_ID}/. /dest/best_run_files/
+            PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python -m runtime.iteration_reports --agent-dir "outputs/${AGENT_ID}"
 
             MPLCONFIGDIR_IN_CONTAINER="/tmp/mplconfig"
             docker run --rm \
@@ -674,6 +675,7 @@ else
             echo -e "${GREEN}To run inference on new data, use ./inference.sh --agent-dir outputs/${AGENT_ID} --input <path_to_input_csv> --output <path_to_output_csv>${NOCOLOR}"
         else
             RUN_SUCCEEDED=false
+            PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python -m runtime.iteration_reports --agent-dir "outputs/${AGENT_ID}"
             warn "Agent didn't produce any valid best snapshot. Exported run_files for later continuation to outputs/${AGENT_ID}."
             write_outputs_readme "${AGENT_ID}"
         fi

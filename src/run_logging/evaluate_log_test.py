@@ -1,4 +1,5 @@
 import argparse
+import json
 import time
 from pathlib import Path
 
@@ -14,6 +15,14 @@ from utils.exceptions import AgentScriptFailed
 from utils.metrics import get_task_to_metrics_names
 
 
+def _get_test_metrics_path(snapshot_dir: Path) -> Path:
+    return snapshot_dir / "test_metrics.json"
+
+
+def _write_test_metrics(snapshot_dir: Path, metrics: dict[str, float]) -> None:
+    _get_test_metrics_path(snapshot_dir).write_text(json.dumps(metrics, indent=2), encoding="utf-8")
+
+
 def run_test_evaluation(workspace_dir, agent_id, prepared_test_sets_dir: Path):
     start = time.time()
     print("\nRunning final test evaluation...")
@@ -23,6 +32,7 @@ def run_test_evaluation(workspace_dir, agent_id, prepared_test_sets_dir: Path):
         resume_wandb_run(config)
         dataset_metadata = load_dataset_metadata(config)
         snapshot_dir = config.snapshot_dir
+        remove_path(_get_test_metrics_path(snapshot_dir))
         #TODO should use the step id by importing it
         inference_script_path = snapshot_dir / "model_inference" / "inference.py"
         output_path = config.snapshot_dir / "eval_predictions_test.csv"
@@ -51,12 +61,19 @@ def run_test_evaluation(workspace_dir, agent_id, prepared_test_sets_dir: Path):
             task_type=dataset_metadata["task_type"],
             evaluation_stage="test",
         )
-        if is_wandb_active() and metrics is not None:
-            wandb.log(metrics)
+        if metrics is not None:
+            _write_test_metrics(snapshot_dir, metrics)
+            if is_wandb_active():
+                wandb.log({f"test/{metric_name}": metric_value for metric_name, metric_value in metrics.items()})
     except Exception as e:
         print("FINAL TEST EVAL FAIL", str(e))
         if is_wandb_active() and config is not None:
-            wandb.log({metric_name: float("nan") for metric_name in get_task_to_metrics_names()[config.task_type]})
+            wandb.log(
+                {
+                    f"test/{metric_name}": float("nan")
+                    for metric_name in get_task_to_metrics_names()[config.task_type]
+                }
+            )
     log_test_inference_duration(time.time() - start)
 
 def main():

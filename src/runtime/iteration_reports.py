@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any
 
 from runtime.read_write_utils import get_archived_iterations, load_config_from_run_dir
-from runtime.read_write_utils import load_iteration_state
 from runtime.step_outputs import load_step_output
 from utils.config import Config
 
@@ -17,6 +16,8 @@ def write_iteration_report(
     iteration: int,
     iteration_dir: Path | None = None,
     report_path: Path | None = None,
+    metrics: dict[str, float] | None = None,
+    test_metrics: dict[str, float] | None = None,
 ) -> Path:
     source_dir = iteration_dir or config.current_iteration_dir
     target_path = report_path or config.agent_reports_dir / f"run_report_iter_{iteration}.md"
@@ -26,6 +27,8 @@ def write_iteration_report(
             config=config,
             iteration=iteration,
             iteration_dir=source_dir,
+            metrics=metrics,
+            test_metrics=test_metrics,
         ),
         encoding="utf-8",
     )
@@ -36,6 +39,8 @@ def write_exported_run_reports(agent_dir: Path) -> list[Path]:
     config = load_config_from_run_dir(agent_dir / "run_files")
     reports_dir = agent_dir / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
+    best_iteration = _load_exported_best_iteration(agent_dir)
+    saved_test_metrics = _load_metrics_file(agent_dir / "best_run_files" / "test_metrics.json")
 
     report_paths: list[Path] = []
     for iteration in get_archived_iterations(
@@ -48,6 +53,11 @@ def write_exported_run_reports(agent_dir: Path) -> list[Path]:
                 iteration=iteration,
                 iteration_dir=agent_dir / "run_files" / f"{Config.ITERATION_DIR_PREFIX}{iteration}",
                 report_path=reports_dir / f"run_report_iter_{iteration}.md",
+                metrics=_load_validation_metrics(
+                    config,
+                    agent_dir / "run_files" / f"{Config.ITERATION_DIR_PREFIX}{iteration}",
+                ),
+                test_metrics=saved_test_metrics if iteration == best_iteration else None,
             )
         )
     return report_paths
@@ -57,28 +67,22 @@ def render_iteration_report(
     config: Config,
     iteration: int,
     iteration_dir: Path,
+    metrics: dict[str, float] | None = None,
+    test_metrics: dict[str, float] | None = None,
 ) -> str:
-    iteration_state = load_iteration_state(iteration_dir)
     lines = [
-        f"# Agentomics Run Report - Iteration {iteration}",
+        f"# Run Report - Iteration {iteration}",
         "",
-        f"Agent ID: {config.agent_id}",
-        f"Dataset: {config.dataset}",
-        f"Model: {config.model_name}",
-        f"Task: {config.task_type}",
-        f"Validation metric: {config.val_metric}",
+        f"**Agent ID:** `{config.agent_id}`  ",
+        f"**Dataset:** `{config.dataset}`  ",
+        f"**Model:** `{config.model_name}`  ",
+        f"**Task:** `{config.task_type}`  ",
+        f"**Validation metric:** `{config.val_metric}`  ",
+        f"**Generated:** {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        "",
+        "---",
+        "",
     ]
-    status = iteration_state.get("status")
-    if status is not None:
-        lines.append(f"Status: {status}")
-    lines.extend(
-        [
-            f"Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-            "",
-            "---",
-            "",
-        ]
-    )
 
     step_sections_added = 0
     for step_id in [str(step_id) for step_id in config.step_sequence]:
@@ -88,7 +92,7 @@ def render_iteration_report(
         step_sections_added += 1
         lines.extend(
             [
-                f"## {step_id.replace('_', ' ').title()}",
+                f"## {_humanize_step_title(step_id)}",
                 "",
                 _render_section_body(output),
                 "",
@@ -105,6 +109,12 @@ def render_iteration_report(
             ]
         )
 
+    if metrics:
+        lines.extend(["## Metrics", "", _render_metrics(metrics), ""])
+
+    if test_metrics:
+        lines.extend(["## Test Metrics", "", _render_metrics(test_metrics), ""])
+
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -116,11 +126,11 @@ def _render_section_body(output: Any) -> str:
     lines: list[str] = []
     files_created = payload.get("files_created")
     for key, value in payload.items():
-        if key == "files_created":
+        if key in {"files_created", "status", "unresolved_issues"}:
             continue
         lines.extend(
             [
-                f"{key.replace('_', ' ').title()}:",
+                f"**{key.replace('_', ' ').title()}:**",
                 "",
                 _render_value(value),
                 "",
@@ -128,8 +138,8 @@ def _render_section_body(output: Any) -> str:
         )
 
     if files_created:
-        lines.extend(["Files created:", ""])
-        lines.extend(f"- `{file_path}`" for file_path in files_created)
+        lines.extend(["**Files created:**", ""])
+        lines.extend(f"- `{Path(str(file_path)).name}`" for file_path in files_created)
         lines.append("")
 
     rendered = "\n".join(lines).strip()
@@ -158,6 +168,55 @@ def _quote_block(text: str) -> str:
         f"> {line}" if line.strip() else ">"
         for line in text.splitlines()
     )
+
+
+def _humanize_step_title(step_name: str) -> str:
+    normalized = step_name.replace("_", " ").strip()
+    special_cases = {
+        "dataexploration": "Data Exploration",
+        "predictionexploration": "Prediction Exploration",
+        "modelarchitecture": "Model Architecture",
+        "modeltraining": "Model Training",
+        "modelinference": "Model Inference",
+        "datarepresentation": "Data Representation",
+        "datasplit": "Data Split",
+    }
+    return special_cases.get(normalized.replace(" ", "").lower(), normalized.title())
+
+
+def _render_metrics(metrics: dict[str, float]) -> str:
+    return "\n".join(
+        f"- **{metric_name}**: {metric_value}"
+        for metric_name, metric_value in metrics.items()
+    ) or "_No metrics._"
+
+
+def _load_validation_metrics(config: Config, iteration_dir: Path) -> dict[str, float]:
+    validation_output = load_step_output(config, "validation_evaluation", iteration_dir)
+    if validation_output is None:
+        return {}
+    metrics = getattr(validation_output, "metrics", None)
+    if not isinstance(metrics, dict):
+        return {}
+    return {str(metric_name): float(metric_value) for metric_name, metric_value in metrics.items()}
+
+
+def _load_exported_best_iteration(agent_dir: Path) -> int | None:
+    metadata_path = agent_dir / "best_run_files" / Config.RUNTIME_INFO_DIRNAME / Config.ITERATION_METADATA_FILENAME
+    if not metadata_path.exists():
+        return None
+    payload = json.loads(metadata_path.read_text(encoding="utf-8"))
+    iteration = payload.get("iteration")
+    return iteration if isinstance(iteration, int) else None
+
+
+def _load_metrics_file(metrics_path: Path) -> dict[str, float]:
+    if not metrics_path.exists():
+        return {}
+    payload = json.loads(metrics_path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"Expected metrics JSON object at {metrics_path}.")
+    return {str(metric_name): float(metric_value) for metric_name, metric_value in payload.items()}
 
 
 def main() -> None:

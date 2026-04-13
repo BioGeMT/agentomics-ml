@@ -223,6 +223,15 @@ def load_test_metrics(
         numeric_label_col=dataset_meta.numeric_label_col,
     )
 
+
+def load_saved_metrics(metrics_path: Path) -> Dict[str, float]:
+    if not metrics_path.exists():
+        return {}
+    payload = json.loads(metrics_path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"Expected JSON object at {metrics_path}.")
+    return {str(metric_name): float(metric_value) for metric_name, metric_value in payload.items()}
+
 def load_run_meta(config: Config) -> RunMeta:
     return RunMeta(
         agent_id=config.agent_id,
@@ -292,6 +301,7 @@ def gather_iteration_inputs(
 ) -> IterationInputs:
     reports_dir = agent_dir / "reports"
     run_files = agent_dir / "run_files"
+    best_run_files = agent_dir / "best_run_files"
     iter_dir = run_files / f"iteration_{iteration}"
     validation_metrics = load_validation_metrics(iter_dir)
 
@@ -317,7 +327,7 @@ def gather_iteration_inputs(
 
     train_preds = iter_dir / "eval_predictions_train.csv"
     val_preds = iter_dir / "eval_predictions_validation.csv"
-    test_preds = run_files / "eval_predictions_test.csv"
+    test_preds = best_run_files / "eval_predictions_test.csv"
 
     splits: List[SplitArtifacts] = [
         SplitArtifacts("train", train_csv, train_preds, get_split_metrics(validation_metrics, "train")),
@@ -325,7 +335,11 @@ def gather_iteration_inputs(
     ]
 
     if iteration == get_best_iter_number(agent_dir):
-        test_metrics = load_test_metrics(test_csv, test_preds, dataset_meta)
+        test_metrics = load_saved_metrics(best_run_files / "test_metrics.json") or load_test_metrics(
+            test_csv,
+            test_preds,
+            dataset_meta,
+        )
         if (test_csv and test_csv.exists()) or (test_preds and test_preds.exists()) or bool(test_metrics):
             splits.append(SplitArtifacts("test", test_csv, test_preds, test_metrics))
 
@@ -534,11 +548,12 @@ def _remove_section_by_h2(md: str, title: str) -> str:
 def clean_report_md(md: str) -> str:
     s = md.replace("\r\n", "\n")
     s = _remove_section_by_h2(s, "Metrics")
+    s = _remove_section_by_h2(s, "Test Metrics")
     s = re.sub(r"(?m)^\s*-\s*-\s+", "- ", s)
     s = re.sub(r"`([^`]+)`", r"\1", s)
     s = re.sub(r"\*\*([^*]+)\*\*", r"\1", s)
     s = re.sub(r"(?m)^\s*#\s*Run Report.*\n?", "", s)
-    s = re.sub(r"(?mi)^\s*(Agent ID|Dataset|Model|Task|Validation metric|Val Metric|Optimized Metric|Generated)\s*:\s*.*\n?","",s)
+    s = re.sub(r"(?mi)^\s*(Agent ID|Dataset|Model|Task|Validation metric|Val Metric|Optimized Metric|Status|Generated)\s*:\s*.*\n?","",s)
     s = re.sub(r"(?m)^\s*---\s*$\n?", "", s)
     return s.strip()
 
@@ -558,6 +573,7 @@ def extract_steps(md: str) -> Tuple[List[str], List[Step]]:
         "validation metric:",
         "val metric:",
         "optimized metric:",
+        "status:",
         "generated:",
     )
     for ln in lines[:first_h2]:
@@ -822,18 +838,18 @@ def write_iteration_pdf(
     story.append(metrics_table_flowable(metrics_by_split, split_order, run_meta.val_metric, styles))
     story.append(Spacer(1, 10))
 
-    story.append(PageBreak())
-    story.extend(
-        plots_compare_splits_page_flowables(
-            iteration=iteration,
-            task_type=run_meta.task_type,
-            plot_groups=plot_groups,
-            split_order=split_order,
-            styles=styles,
-        )
+    plot_section = plots_compare_splits_page_flowables(
+        iteration=iteration,
+        task_type=run_meta.task_type,
+        plot_groups=plot_groups,
+        split_order=split_order,
+        styles=styles,
     )
-    story.append(PageBreak())
+    if plot_section:
+        story.append(PageBreak())
+        story.extend(plot_section)
     if report_text_raw:
+        story.append(PageBreak())
         cleaned = clean_report_md(report_text_raw)
         run_info, steps = extract_steps(cleaned)
 
@@ -893,11 +909,20 @@ def main() -> None:
         inp = gather_iteration_inputs(agent_dir, config.dataset, prepared_datasets, prepared_tests, dataset_meta, it)
         report_path = inp.report_md
         if report_path is None:
+            report_metrics = {
+                f"{split.split_name}/{metric_name}": metric_value
+                for split in inp.splits
+                if split.split_name != "test"
+                for metric_name, metric_value in split.metrics.items()
+            }
+            test_metrics = next((split.metrics for split in inp.splits if split.split_name == "test"), None)
             report_path = write_iteration_report(
                 config,
                 iteration=it,
                 iteration_dir=agent_dir / "run_files" / f"iteration_{it}",
                 report_path=reports_dir / f"run_report_iter_{it}.md",
+                metrics=report_metrics,
+                test_metrics=test_metrics,
             )
         report_text = report_path.read_text(encoding="utf-8") if report_path.exists() else None
 
