@@ -8,7 +8,7 @@ class TestFoundationModels(BaseAgentTest):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        if not cls.config.foundation_model_to_desc:
+        if not cls.config.foundation_models_type:
             raise unittest.SkipTest("Foundation model catalog is not available in config for testing.")
 
     def test_agent_access_docs(self):

@@ -3,6 +3,9 @@ from test.utils_test import BaseAgentTest
 class TestGpuAccess(BaseAgentTest):
     """Test suite for GPU agent access"""
 
+    def _tool_file_path(self, filename: str):
+        return self.config.current_step_dir / filename
+
     def test_gpu_access_bash(self):
         """Test if the agent can access the GPU using bash tool."""
 
@@ -30,9 +33,10 @@ class TestGpuAccess(BaseAgentTest):
             "    print('CUDA is not available')\n"
         )
         
-        file_path = self.config.runs_dir / self.config.agent_id / "test_pytorch.py"
+        file_path = self._tool_file_path("test_pytorch.py")
         write_result = self.write_python_tool.function(file_path=file_path, code=code)
         self.assertNotIn("Command failed", write_result, "Should be able to write test file")
+        self.assertNotIn("Error:", write_result, "Should be able to write test file")
 
         run_result = self.run_python_tool.function(python_file_path=file_path)
         self.assertIn("CUDA is available", run_result, "GPU access failed in python tool")
@@ -53,9 +57,10 @@ class TestGpuAccess(BaseAgentTest):
           "    print('No GPU devices found for TensorFlow')\n"
       )
         
-        file_path = self.config.runs_dir / self.config.agent_id / "test_tensorflow.py"
+        file_path = self._tool_file_path("test_tensorflow.py")
         write_result = self.write_python_tool.function(file_path=file_path, code=code)
         self.assertNotIn("Command failed", write_result, "Should be able to write TensorFlow test file")
+        self.assertNotIn("Error:", write_result, "Should be able to write TensorFlow test file")
 
         run_result = self.run_python_tool.function(python_file_path=file_path)
         self.assertNotIn("GPU devices found: 0", run_result, "No GPU devices found for TensorFlow")

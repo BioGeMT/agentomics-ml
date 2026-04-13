@@ -192,6 +192,7 @@ class TestIsNewBest(unittest.TestCase):
             train_path=str(self.config.splits_dir / f"split_{split_version}" / "train.csv"),
             val_path=str(self.config.splits_dir / f"split_{split_version}" / "validation.csv"),
             splitting_strategy="test", split_changed=split_version > 0,
+            split_version=split_version,
         ))
 
     def test_better_score_on_same_split_is_new_best(self):
@@ -286,18 +287,33 @@ class TestDataSplitSkipReuse(unittest.TestCase):
             split_changed=False,
         ))
 
+    def _make_step_for_iteration(self, iteration: int) -> DataSplitStep:
+        initialize_current_iteration_workspace(self.config)
+        initialize_current_iteration_metadata(self.config, iteration=iteration)
+        initialize_current_iteration_state(self.config, started_at=100.0)
+        return DataSplitStep(self.config, Mock(), Mock(), Mock(), [])
+
     def test_split_allowed_on_first_iteration(self):
-        self.assertTrue(DataSplitStep.is_split_allowed(self.config, iteration=0))
+        step = self._make_step_for_iteration(iteration=0)
+        step.on_iteration_start(iteration=0)
+
+        self.assertTrue(step.should_run())
 
     def test_split_blocked_after_budget_exhausted(self):
         self._create_split_dir(0)
-        self.assertFalse(DataSplitStep.is_split_allowed(self.config, iteration=1))
+        step = self._make_step_for_iteration(iteration=1)
+        step.on_iteration_start(iteration=1)
+
+        self.assertFalse(step.should_run())
 
     def test_split_blocked_when_explicit_validation_exists(self):
         (self.config.agent_dataset_dir / "validation.csv").write_text(
             "id,feature,numeric_label\n3,c,0\n", encoding="utf-8",
         )
-        self.assertFalse(DataSplitStep.is_split_allowed(self.config, iteration=0))
+        step = self._make_step_for_iteration(iteration=0)
+        step.on_iteration_start(iteration=0)
+
+        self.assertFalse(step.should_run())
 
     def test_skipped_output_copies_latest_split(self):
         self._create_split_dir(0)
