@@ -30,7 +30,7 @@ cp .env.example .env
 # Edit .env and set at least one API key (OPENROUTER_API_KEY or OPENAI_API_KEY)
 
 # Download example datasets
-./download_example_datasets.sh
+./scripts/download_example_datasets.sh
 
 ./run.sh --pull-images
 ```

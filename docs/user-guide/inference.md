@@ -1,11 +1,11 @@
 # Running Inference
 
-Use trained models to make predictions on new data with `inference.sh`.
+Use trained models to make predictions on new data with `scripts/inference.sh`.
 
 ## Basic Usage
 
 ```bash
-./inference.sh \
+./scripts/inference.sh \
   --agent-dir outputs/<agent_id> \
   --input /path/to/new_data.csv \
   --output /path/to/predictions.csv
@@ -30,7 +30,7 @@ Use trained models to make predictions on new data with `inference.sh`.
 ## Example
 
 ```bash
-./inference.sh \
+./scripts/inference.sh \
   --agent-dir outputs/enchanted_fixing_reigned \
   --input new_samples.csv \
   --output predictions.csv
@@ -61,10 +61,10 @@ scores in `[0, 1]`, but you should treat the exact schema as run-specific.
 
 ```bash
 # Docker mode (default, recommended)
-./inference.sh --agent-dir outputs/my_agent ...
+./scripts/inference.sh --agent-dir outputs/my_agent ...
 
 # Local mode
-./inference.sh --local --agent-dir outputs/my_agent ...
+./scripts/inference.sh --local --agent-dir outputs/my_agent ...
 ```
 
 ## GPU Support
@@ -73,10 +73,10 @@ GPU is used automatically if available:
 
 ```bash
 # Use GPU (default)
-./inference.sh --agent-dir outputs/my_agent ...
+./scripts/inference.sh --agent-dir outputs/my_agent ...
 
 # CPU only
-./inference.sh --cpu-only --agent-dir outputs/my_agent ...
+./scripts/inference.sh --cpu-only --agent-dir outputs/my_agent ...
 ```
 
 ## What's in best_run_files

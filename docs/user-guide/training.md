@@ -1,6 +1,6 @@
 # Re-training Models
 
-After the agent completes a run, you can re-train the model with new data using the `train.sh` script.
+After the agent completes a run, you can re-train the model with new data using the `scripts/train.sh` script.
 
 ## When to Use
 
@@ -11,7 +11,7 @@ After the agent completes a run, you can re-train the model with new data using 
 ## Basic Usage
 
 ```bash
-./train.sh \
+./scripts/train.sh \
   --agent-dir outputs/<agent_id> \
   --train-data /path/to/new_train.csv \
   --validation-data /path/to/new_validation.csv \
@@ -39,7 +39,7 @@ After the agent completes a run, you can re-train the model with new data using 
 
 ```bash
 # Re-train using new data
-./train.sh \
+./scripts/train.sh \
   --agent-dir outputs/enchanted_fixing_reigned \
   --train-data datasets/updated_data/train.csv \
   --validation-data datasets/updated_data/validation.csv \
@@ -78,10 +78,10 @@ By default, training runs in Docker for isolation. Use `--local` for direct exec
 
 ```bash
 # Docker mode (default)
-./train.sh --agent-dir outputs/my_agent ...
+./scripts/train.sh --agent-dir outputs/my_agent ...
 
 # Local mode
-./train.sh --local --agent-dir outputs/my_agent ...
+./scripts/train.sh --local --agent-dir outputs/my_agent ...
 ```
 
 ## GPU Support
@@ -89,7 +89,7 @@ By default, training runs in Docker for isolation. Use `--local` for direct exec
 GPU is used automatically if available. To disable:
 
 ```bash
-./train.sh --cpu-only --agent-dir outputs/my_agent ...
+./scripts/train.sh --cpu-only --agent-dir outputs/my_agent ...
 ```
 
 ## Troubleshooting

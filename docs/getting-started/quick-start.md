@@ -62,7 +62,7 @@ See [Preparing Datasets](../user-guide/datasets.md) for details.
 Download example datasets to try:
 
 ```bash
-./download_example_datasets.sh
+./scripts/download_example_datasets.sh
 ```
 
 ## What Happens Next

@@ -7,7 +7,7 @@ Build and distribute custom Docker images for Agentomics-ML.
 Use the provided build script to build and push multi-architecture images:
 
 ```bash
-./build.sh <dockerhub-username> [version]
+./scripts/build.sh <dockerhub-username> [version]
 ```
 
 This script always pushes to the registry and requires `docker login` first.
@@ -16,10 +16,10 @@ This script always pushes to the registry and requires `docker login` first.
 
 ```bash
 # Build and push to Docker Hub (latest)
-./build.sh myusername
+./scripts/build.sh myusername
 
 # Build and push a specific version
-./build.sh myusername v1.0
+./scripts/build.sh myusername v1.0
 ```
 
 ## Images
@@ -163,7 +163,7 @@ Lightweight image for dataset preparation:
 
 ### Adding Dependencies
 
-Edit `environment.yaml` and rebuild:
+Edit `envs/environment.yaml` and rebuild:
 
 ```yaml
 dependencies:

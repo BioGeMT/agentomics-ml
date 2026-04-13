@@ -74,7 +74,7 @@ For more control, run preparation separately:
 
 ```bash
 # Create preparation environment
-conda env create -f environment_prepare.yaml
+conda env create -f envs/environment_prepare.yaml
 conda activate agentomics-prepare-env
 
 # Prepare datasets
@@ -118,7 +118,7 @@ prepared_test_sets/my_dataset/
 Download example datasets:
 
 ```bash
-./download_example_datasets.sh
+./scripts/download_example_datasets.sh
 ```
 
 ## Data Format Tips

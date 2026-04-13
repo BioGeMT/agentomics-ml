@@ -53,7 +53,7 @@ The most important directory - contains the best-performing iteration's artifact
 ### Using the Best Model
 
 ```bash
-./inference.sh --agent-dir outputs/<agent_id> --input data.csv --output predictions.csv
+./scripts/inference.sh --agent-dir outputs/<agent_id> --input data.csv --output predictions.csv
 ```
 
 ## Iteration Directories
