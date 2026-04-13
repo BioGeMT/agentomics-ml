@@ -24,16 +24,12 @@ from tools.tool_registry import create_tools
 from utils.config import Config
 from utils.exceptions import IterationRunFailed
 from utils.providers.provider import Provider
+from pydantic_ai import Tool
 from pydantic_ai.models import Model
 
 
 @weave.op(call_display_name=lambda call: f"Agentomics run - agent_id: {call.inputs['config'].agent_id}")
-async def run_agentomics(
-    config: Config,
-    default_model: Model,
-    iteration_plan_model: Model,
-    provider: Provider,
-) -> None:
+async def run_agentomics(config: Config, default_model: Model, iteration_plan_model: Model, provider: Provider) -> None:
     total_iterations = config.iterations
     tools = create_tools(config, config.tool_ids)
     print(f"Starting training loop with {total_iterations} iterations") #TODO for run continuing this is wrong?
@@ -43,36 +39,44 @@ async def run_agentomics(
         if iteration >= total_iterations:
             return
         print(f"\n=== ITERATION {iteration} / {total_iterations - 1} ===")
-        _prepare_iteration_workspace(
-            config=config,
-            iteration=iteration,
+        await _run_iteration(
+            config=config, 
+            iteration=iteration, 
+            default_model=default_model,
+            iteration_plan_model=iteration_plan_model,
+            provider=provider,
+            tools=tools
         )
-        steps = [step_cls(config, default_model, iteration_plan_model, provider, tools) for step_cls in get_step_sequence(config)]
+
+@weave.op(call_display_name=lambda call: f"Iteration: {call.inputs['iteration']}")
+async def _run_iteration(config: Config, iteration: int, default_model: Model, iteration_plan_model: Model, provider: Provider, tools: list[Tool]):
+    _prepare_iteration_workspace(config=config, iteration=iteration)
+    steps = [step_cls(config, default_model, iteration_plan_model, provider, tools) for step_cls in get_step_sequence(config)]
+    for step in steps:
+        step.on_iteration_start(iteration)
+    try:
         for step in steps:
-            step.on_iteration_start(iteration)
-        try:
-            for step in steps:
-                await step.run()
-            update_current_iteration_state(config, ended_at=time.time(), status="success")
-        except IterationRunFailed:
-            for step in steps:
-                step.on_iteration_fail(iteration)
-            update_current_iteration_state(config, ended_at=time.time(), status="failed")
-
+            await step.run()
+        update_current_iteration_state(config, ended_at=time.time(), status="success")
+    except IterationRunFailed:
         for step in steps:
-            step.on_iteration_end(iteration)
+            step.on_iteration_fail(iteration)
+        update_current_iteration_state(config, ended_at=time.time(), status="failed")
 
-        iteration_state = load_iteration_state(config.current_iteration_dir)
-        iteration_duration = float(iteration_state["ended_at"]) - float(iteration_state["started_at"])
-        log_iteration_duration(iteration=iteration, duration=iteration_duration)
-        log_files(config, iteration=iteration)
+    for step in steps:
+        step.on_iteration_end(iteration)
 
-        archive_current_iteration(config, iteration)
-        if iteration_state["status"] == "success":
-            update_best_run_snapshot(config=config, iteration=iteration)
+    iteration_state = load_iteration_state(config.current_iteration_dir)
+    iteration_duration = float(iteration_state["ended_at"]) - float(iteration_state["started_at"])
+    log_iteration_duration(iteration=iteration, duration=iteration_duration)
+    log_files(config, iteration=iteration)
 
-        commit_iteration_end(config, iteration=iteration)
-        _enforce_time_deadline(config)
+    archive_current_iteration(config, iteration)
+    if iteration_state["status"] == "success":
+        update_best_run_snapshot(config=config, iteration=iteration)
+
+    commit_iteration_end(config, iteration=iteration)
+    _enforce_time_deadline(config)
 
 def _prepare_iteration_workspace(config, iteration: int) -> None:
     started_at = time.time()
