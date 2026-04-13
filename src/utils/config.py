@@ -22,7 +22,7 @@ class Config:
     DEFAULT_ITERATIONS: ClassVar[int] = 5
     DEFAULT_SPLIT_ALLOWED_ITERATIONS: ClassVar[int] = 1
     DEFAULT_EXPLORATION_ITERATIONS: ClassVar[int] = 4
-    DEFAULT_STEP_SEQUENCE: ClassVar[tuple[str, ...]] = (
+    DEFAULT_STEP_SEQUENCE: ClassVar[list[str]] = [
         "iteration_plan",
         "data_exploration",
         "data_split",
@@ -32,14 +32,14 @@ class Config:
         "model_inference",
         "prediction_exploration",
         "validation_evaluation",
-    )
-    DEFAULT_TOOL_IDS: ClassVar[tuple[str, ...]] = (
+    ]
+    DEFAULT_TOOL_IDS: ClassVar[list[str]] = [
         "bash",
         "write_python",
         "run_python",
         "foundation_models_info",
         "replace",
-    )
+    ]
     DEFAULT_MAX_STEPS: ClassVar[int] = 100
     DEFAULT_TEMPERATURE: ClassVar[float] = 0.7
     DEFAULT_MAX_VALIDATION_RETRIES: ClassVar[int] = 5
@@ -64,8 +64,8 @@ class Config:
     max_steps: int = DEFAULT_MAX_STEPS
     split_allowed_iterations: int = DEFAULT_SPLIT_ALLOWED_ITERATIONS
     exploration_iterations: int = DEFAULT_EXPLORATION_ITERATIONS
-    step_sequence: list[str] = field(default_factory=lambda: list(Config.DEFAULT_STEP_SEQUENCE))
-    tool_ids: list[str] = field(default_factory=lambda: list(Config.DEFAULT_TOOL_IDS))
+    step_sequence: list[str] = field(default_factory=Config.DEFAULT_STEP_SEQUENCE.copy)
+    tool_ids: list[str] = field(default_factory=Config.DEFAULT_TOOL_IDS.copy)
     time_deadline: int | None = None
     split_time_deadline: int | None = None
     run_python_tool_timeout: int = DEFAULT_RUN_PYTHON_TOOL_TIMEOUT
