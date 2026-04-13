@@ -12,7 +12,7 @@ from runtime.read_write_utils import initialize_run_directories, save_config
 from runtime.run_lifecycle import run_agentomics
 from utils.config import Config
 from utils.dataset_utils import setup_nonsensitive_dataset_files_for_agent
-from utils.env_utils import are_wandb_vars_available
+from run_logging.env_utils import are_wandb_vars_available
 from utils.printing_utils import print_phase
 from utils.providers.provider import get_provider_from_string
 

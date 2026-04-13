@@ -8,7 +8,7 @@ from pathlib import Path
 
 import wandb
 
-from eval.evaluate_result import get_metrics
+from runtime.evaluate_result import get_metrics
 from run_logging.logging_helpers import define_serial_metrics, log_serial_metrics
 from run_logging.wandb_setup import resume_wandb_run
 from runtime.conda_utils import (

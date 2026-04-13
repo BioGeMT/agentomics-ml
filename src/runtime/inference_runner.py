@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from eval.evaluate_result import get_metrics
+from runtime.evaluate_result import get_metrics
 from runtime.filesystem import remove_path
 from utils.exceptions import AgentScriptFailed
 

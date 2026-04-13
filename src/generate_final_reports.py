@@ -14,7 +14,7 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from eval.evaluate_result import get_metrics
+from runtime.evaluate_result import get_metrics
 from utils.config import Config
 from runtime.iteration_reports import write_iteration_report
 from runtime.read_write_utils import load_config_from_run_dir
