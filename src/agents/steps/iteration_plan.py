@@ -6,7 +6,7 @@ from typing import Any, TypedDict
 from pydantic import Field
 from pydantic_ai import Agent
 
-from agents.prompts.prompt_builder import get_dataset_knowledge
+from agents.prompt_builder import get_dataset_knowledge
 from agents.steps.base import AgenticStep, AgenticStepOutput
 from agents.steps.data_split import DataSplitStep
 from agents.steps.validation_evaluation import ValidationEvaluationStep

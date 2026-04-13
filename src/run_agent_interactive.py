@@ -6,14 +6,14 @@ from pathlib import Path
 import dotenv
 from rich.console import Console
 
-from agents.prompts.prompt_builder import DEFAULT_USER_PROMPT
+from agents.prompt_builder import DEFAULT_USER_PROMPT
 from run_agent import run_experiment
 from utils.config import Config
 from datasets.dataset_utils import get_all_prepared_datasets_info, get_task_type_from_prepared_dataset
 from datasets.datasets_interactive import interactive_dataset_selection, print_datasets_table
 from run_logging.env_utils import are_wandb_vars_available
 from utils.metrics import get_classification_metrics_names, get_regression_metrics_names, resolve_val_metric
-from utils.metrics_interactive_utils import display_metrics_table
+from utils.metrics_interactive import display_metrics_table
 from utils.providers.provider import Provider, get_provider_and_api_key
 from utils.printing_utils import print_phase
 from utils.user_input import get_user_input_for_int

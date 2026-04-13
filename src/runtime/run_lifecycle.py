@@ -4,7 +4,7 @@ import time
 
 import weave
 
-from agents.prompts.prompt_builder import build_iteration_base_prompt, get_system_prompt
+from agents.prompt_builder import build_iteration_base_prompt, get_system_prompt
 from run_logging.logging_helpers import log_files, log_iteration_duration
 from runtime.best_run_snapshot import update_best_run_snapshot
 from runtime.git_checkpoints import commit_iteration_end
