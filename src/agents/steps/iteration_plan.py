@@ -231,7 +231,7 @@ class IterationPlanStep(AgenticStep):
             ),
             metrics=val_output.metrics if val_output is not None else {},
             duration=f'{load_iteration_duration(iteration_dir) / 3600:.2f} hours' if load_iteration_duration(iteration_dir) else "",
-            split_version=DataSplitStep.get_split_version(self.config, iteration_dir=iteration_dir),
+            split_version=load_step_output(self.config, DataSplitStep.step_id, iteration_dir).split_version,
             split_changed=bool(
                 load_step_output(self.config, DataSplitStep.step_id, iteration_dir).split_changed
             ),
@@ -395,7 +395,6 @@ class IterationPlanStep(AgenticStep):
         latest_successful_iteration = get_last_successful_iteration(self.config)
         if latest_successful_iteration is None:
             return None
-        return DataSplitStep.get_split_version(
-            self.config,
-            iteration_dir=self.config.iteration_dir(latest_successful_iteration),
-        )
+        return load_step_output(
+            self.config, DataSplitStep.step_id, self.config.iteration_dir(latest_successful_iteration)
+        ).split_version

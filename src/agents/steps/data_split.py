@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import cast
 
 from pydantic import Field
+from pydantic.json_schema import SkipJsonSchema
 from pydantic_ai import Agent, ModelRetry, RunContext
 import pandas as pd
 
@@ -24,6 +25,10 @@ class DataSplitOutput(AgenticStepOutput):
     split_changed: bool = Field(
         default=False,
         description="Whether the train/validation split changed during this step. Populated programmatically.",
+    )
+    split_version: SkipJsonSchema[int] = Field(
+        default=0,
+        description="Version number of the split used in this step. Populated programmatically.",
     )
 
 class DataSplitStep(AgenticStep):
@@ -57,12 +62,10 @@ class DataSplitStep(AgenticStep):
         result.train_path = str(next_split_dir / "train.csv")
         result.val_path = str(next_split_dir / "validation.csv")
         result.split_changed = True
+        result.split_version = int(next_split_dir.name.removeprefix("split_"))
         return result
 
     def attach_output_validator(self, agent: Agent[dict, AgenticStepOutput]) -> None:
-        config = self.config
-        step = self
-
         @agent.output_validator
         async def validate_split_dataset(ctx: RunContext[dict], result: AgenticStepOutput) -> AgenticStepOutput:
             result = cast(DataSplitOutput, result)
@@ -72,13 +75,12 @@ class DataSplitStep(AgenticStep):
             train_path = Path(result.train_path)
             val_path = Path(result.val_path)
             if train_path.name != 'train.csv' or val_path.name != 'validation.csv':
-                step_dir = config.current_step_dir
                 for p in (train_path, val_path):
-                    if p.parent == step_dir:
+                    if p.parent == self.config.current_step_dir:
                         p.unlink(missing_ok=True)
                 raise ModelRetry(f"The files must be called exactly 'train.csv' and 'validation.csv'. Files ({train_path.name} and {val_path.name}) have been deleted.")
 
-            target_col = get_numeric_label_col_from_prepared_dataset(config.prepared_dataset_dir)
+            target_col = get_numeric_label_col_from_prepared_dataset(self.config.prepared_dataset_dir)
             required_cols = [target_col, 'id']
             train_df, val_df = pd.read_csv(result.train_path), pd.read_csv(result.val_path)
             for df, path in [(train_df, result.train_path), (val_df, result.val_path)]:
@@ -92,11 +94,12 @@ class DataSplitStep(AgenticStep):
                 raise ModelRetry("Train and validation datasets have overlapping IDs. IDs must be unique across train and validation splits.")
 
             #The moved files will be absent from created_files field of the output object, however will be in the structured output field
-            if not Path(result.train_path).is_relative_to(config.splits_dir):
+            if not Path(result.train_path).is_relative_to(self.config.splits_dir):
                 #TODO what if its the explicit split files -> should be moved or copied?
-                result = step._move_split_to_versioned_dir(result)
+                result = self._move_split_to_versioned_dir(result)
             else:
-                result.splitting_strategy = step._get_latest_split_strategy()
+                result.splitting_strategy = self._get_latest_split_strategy()
+                result.split_version = int(Path(result.train_path).parent.name.removeprefix("split_"))
             return result
 
     def step_prompt(self) -> str:
@@ -166,6 +169,7 @@ class DataSplitStep(AgenticStep):
             val_path=str(latest_split_dir / "validation.csv"),
             splitting_strategy=splitting_strategy,
             split_changed=False,
+            split_version=int(latest_split_dir.name.removeprefix("split_")),
         )
 
     def on_step_success(self, output: DataSplitOutput) -> None:
@@ -188,10 +192,3 @@ class DataSplitStep(AgenticStep):
         )
         #TODO log if split has changed?
 
-    @classmethod
-    def get_split_version(cls, config, iteration_dir: Path) -> int:
-        data_split = load_step_output(config, cls.step_id, iteration_dir=iteration_dir)
-        split_dir_name = Path(data_split.train_path).parent.name
-        if not split_dir_name.startswith("split_"):
-            raise ValueError(f"Expected split path inside a versioned split directory, got: {data_split.train_path}")
-        return int(split_dir_name.removeprefix("split_"))

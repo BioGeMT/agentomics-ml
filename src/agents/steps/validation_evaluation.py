@@ -124,11 +124,10 @@ class ValidationEvaluationStep(RuntimeStep):
         best_iteration = load_best_run_iteration(self.config)
         if best_iteration is None:
             return False
-        current_split_version = DataSplitStep.get_split_version(self.config, self.config.current_iteration_dir)
-        best_split_version = DataSplitStep.get_split_version(
-            self.config,
-            self.config.iteration_dir(best_iteration),
-        )
+        current_split_version = require_step_output(self.config, DataSplitStep.step_id, self.config.current_iteration_dir).split_version
+        best_split_version = require_step_output(
+            self.config, DataSplitStep.step_id, self.config.iteration_dir(best_iteration)
+        ).split_version
         return current_split_version != best_split_version
 
     def _get_best_metrics(self) -> dict[str, float]:
