@@ -1,4 +1,4 @@
-FROM condaforge/mambaforge:23.3.1-0
+FROM condaforge/mambaforge:24.9.2-0
 
 # Create preparation environment
 COPY envs/environment_prepare.yaml .

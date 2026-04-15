@@ -78,10 +78,6 @@ docker build \
   -t agentomics .
 ```
 
-`build.sh` does not pass proxy build args explicitly. If you need to enforce
-proxy settings for builds, use the manual `docker build` commands above or
-ensure your Docker daemon is configured with the proxy.
-
 ## Running with Proxy
 
 The `run.sh` script automatically passes proxy settings to containers.
@@ -170,4 +166,3 @@ In local mode (`--local`), proxy settings are inherited from your shell environm
 ## Related
 
 - [Environment Variables](../configuration/environment.md)
-- [Building Images](building-images.md)

@@ -61,7 +61,7 @@ Choose the setup that works best for you:
 export OPENROUTER_API_KEY="your-key-here"
 
 # Run the agent (pulls Docker images automatically)
-./run.sh --pull-images
+./run.sh
 ```
 
 The agent will guide you through selecting a model, dataset, and run parameters interactively.

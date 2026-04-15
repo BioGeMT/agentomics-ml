@@ -199,4 +199,3 @@ Use NC/ND series VMs with GPU support.
 ## Related
 
 - [Installation](../getting-started/installation.md)
-- [Building Images](building-images.md)

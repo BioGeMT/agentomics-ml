@@ -21,7 +21,7 @@ VAL_METRIC=""
 LIST_MODE=false
 FOUNDATION_MODELS_TYPE=""
 ALL_ITERATIONS_TEST=false
-PULL_IMAGES=false
+BUILD_IMAGES=false
 DOCKERHUB_USERNAME="biogemt"
 
 show_help() {
@@ -53,7 +53,7 @@ Operational Flags:
                       After the run finishes, evaluate every archived iteration on the held-out test set.
   --cpu-only          Force Docker/Conda to run using CPU only (skip GPU configuration).
   --ollama            Enable support for an Ollama server running on the host machine.
-  --pull-images       Pull prebuilt Docker images from Docker Hub instead of building locally (uses biogemt images).
+  --build-images      Build Docker images locally instead of pulling prebuilt biogemt images from Docker Hub.
   --foundation-models-type <dna|rna|molecule|protein|all>
                       Enable foundation models of a specific type. Use 'all' to download all types. When omitted, no foundation models are used or pre-downloaded.
   --use-provisioning-key  Use OpenRouter provisioning key to create temporary API key and log costs.
@@ -183,8 +183,8 @@ while [[ $# -gt 0 ]]; do
             SPEND_LIMIT="$2"
             shift 2
             ;;
-        --pull-images)
-            PULL_IMAGES=true
+        --build-images)
+            BUILD_IMAGES=true
             shift
             ;;
         --foundation-models-type)
@@ -216,39 +216,11 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-IS_INTERACTIVE_RUN=false
-if [[ -t 0 && ${#AGENTOMICS_ARGS[@]} -eq 0 && "$TEST_MODE" = false ]]; then
-    IS_INTERACTIVE_RUN=true
-fi
-
 if [ -n "$FOUNDATION_MODELS_TYPE" ] && [[ "$FOUNDATION_MODELS_TYPE" != "dna" && "$FOUNDATION_MODELS_TYPE" != "rna" && "$FOUNDATION_MODELS_TYPE" != "molecule" && "$FOUNDATION_MODELS_TYPE" != "protein" && "$FOUNDATION_MODELS_TYPE" != "all" ]]; then
     die "Invalid --foundation-models-type '$FOUNDATION_MODELS_TYPE'. Allowed: dna, rna, molecule, protein, all."
     exit 1
 fi
 
-if [[ "$IS_INTERACTIVE_RUN" = true && -z "$FOUNDATION_MODELS_TYPE" ]]; then
-    echo ""
-    echo "Foundation models (optional)"
-    echo "Select which foundation model type should be pre-downloaded and made available to the agent:"
-    echo "  1) none"
-    echo "  2) DNA"
-    echo "  3) RNA"
-    echo "  4) Molecule"
-    echo "  5) Protein"
-    echo "  6) All"
-    echo ""
-    read -r -p "Enter choice (default: 1): " fm_choice
-    fm_choice="${fm_choice:-1}"
-    case "$fm_choice" in
-        1) FOUNDATION_MODELS_TYPE="";;
-        2) FOUNDATION_MODELS_TYPE="dna";;
-        3) FOUNDATION_MODELS_TYPE="rna";;
-        4) FOUNDATION_MODELS_TYPE="molecule";;
-        5) FOUNDATION_MODELS_TYPE="protein";;
-        6) FOUNDATION_MODELS_TYPE="all";;
-        *) die "Invalid foundation model choice.";;
-    esac
-fi
 
 if [ "$LOCAL_MODE" = true ]; then
     need_cmd conda
@@ -434,32 +406,25 @@ else
         fi
     fi
 
-    if [[ "$IS_INTERACTIVE_RUN" = true && "$PULL_IMAGES" = false ]]; then
-        echo ""
-        echo "Docker images"
-        echo "Select how to obtain Docker images:"
-        echo "  1) build locally"
-        echo "  2) pull prebuilt (biogemt)"
-        echo ""
-        read -r -p "Enter choice [2]: " images_choice
-        images_choice="${images_choice:-2}"
-        case "$images_choice" in
-            1) PULL_IMAGES=false;;
-            2) PULL_IMAGES=true;;
-            *) die "Invalid choice.";;
-        esac
-    fi
 
     DOCKER_BUILD_ARGS=()
     if [ -n "$FOUNDATION_MODELS_TYPE" ]; then
-        DOCKER_BUILD_ARGS+=(--build-arg "FOUNDATION_MODELS_TYPE=$FOUNDATION_MODELS_TYPE")
+        DOCKER_BUILD_ARGS+=(--build-arg "FOUNDATION_MODEL_TYPE=$FOUNDATION_MODELS_TYPE")
         AGENTOMICS_ARGS+=(--foundation-models-type "$FOUNDATION_MODELS_TYPE")
     fi
 
     AGENTOMICS_IMAGE="agentomics_img"
     PREPARE_IMAGE="agentomics_prepare_img"
 
-    if [ "$PULL_IMAGES" = true ]; then
+    if [ "$BUILD_IMAGES" = true ]; then
+        echo "Building the run image"
+        docker build -t "$AGENTOMICS_IMAGE" -f Dockerfile ${DOCKER_BUILD_ARGS[@]+"${DOCKER_BUILD_ARGS[@]}"} .
+        echo "Build done"
+
+        echo "Building the data preparation image"
+        docker build -t "$PREPARE_IMAGE" -f Dockerfile.prepare .
+        echo "Build done"
+    else
         FM_TAG="NONE"
         if [ -n "$FOUNDATION_MODELS_TYPE" ]; then
             FM_TAG="$(echo "$FOUNDATION_MODELS_TYPE" | tr '[:lower:]' '[:upper:]')"
@@ -471,14 +436,6 @@ else
         docker pull "$AGENTOMICS_IMAGE"
         echo "Pulling the data preparation image"
         docker pull "$PREPARE_IMAGE"
-    else
-        echo "Building the run image"
-        docker build -t "$AGENTOMICS_IMAGE" -f Dockerfile ${DOCKER_BUILD_ARGS[@]+"${DOCKER_BUILD_ARGS[@]}"} .
-        echo "Build done"
-
-        echo "Building the data preparation image"
-        docker build -t "$PREPARE_IMAGE" -f Dockerfile.prepare .
-        echo "Build done"
     fi
     AGENT_ID=$(docker run --rm -u $(id -u):$(id -g) -v "$(pwd)":/repository:ro --entrypoint \
                /opt/conda/envs/agentomics-env/bin/python "$AGENTOMICS_IMAGE" /repository/src/utils/agent_id.py)
