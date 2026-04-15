@@ -1,7 +1,5 @@
 # Agentomics
-*Agentomics is currently under peer review.*
-
-**Reproducing publication results:** See the [ismb_submission branch](https://github.com/BioGeMT/agentomics-ml/tree/ismb_submission) README for instructions.
+NEWS: *Agentomics has been accepted into the ISMB 2026 Proceedings*
 
 ## Autonomous agentic system for supervised machine learning model development.
 
@@ -67,6 +65,9 @@ Features coming soon:
 - Run forking and continuing
 - Better local model support and configuration
 - Remote GPU support for GCP
+
+## Reproducing publication results
+See the [ismb_submission branch](https://github.com/BioGeMT/agentomics-ml/tree/ismb_post_review) README for instructions.
 
 ## Citation
 
