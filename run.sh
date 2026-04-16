@@ -526,6 +526,10 @@ else
         CODEX_DOCKER_FLAGS+=(-e "CODEX_MODELS_CACHE_FILE=/tmp/codex/models_cache.json")
     fi
 
+    if [ "$TEST_MODE" != true ]; then
+        AGENTOMICS_ARGS+=(--workspace-dir /workspace --prepared-datasets-dir /repository/prepared_datasets)
+    fi
+
     TEST_EXEC=(--entrypoint /opt/conda/envs/agentomics-env/bin/python "$AGENTOMICS_IMAGE" -m test.run_all_tests)
     RUN_EXEC=("$AGENTOMICS_IMAGE" "${AGENTOMICS_ARGS[@]}")
     if [[ ${#CODEX_DOCKER_FLAGS[@]} -gt 0 ]]; then
@@ -574,8 +578,6 @@ else
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
             ${TEST_EXEC[@]+"${TEST_EXEC[@]}"}
     else
-        AGENTOMICS_ARGS+=(--workspace-dir /workspace --prepared-datasets-dir /repository/prepared_datasets)
-
         set +e
         docker run \
             --rm \

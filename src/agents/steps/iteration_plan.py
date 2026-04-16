@@ -88,6 +88,7 @@ class IterationPlanStep(AgenticStep):
             model_settings=self.provider.get_high_reasoning_model_settings(
                 kwargs={"temperature": self.config.temperature}
             ),
+            system_prompt="You are an helpful assistant",
             output_type=IterationPlanOutput,
             deps_type=dict,
         )
