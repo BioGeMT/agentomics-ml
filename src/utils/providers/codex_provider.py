@@ -43,19 +43,21 @@ class CodexResponsesModel(OpenAIResponsesModel):
     @staticmethod
     def _rewrite_messages_for_codex(messages: list[ModelMessage]) -> list[ModelMessage]:
         rewritten_messages: list[ModelMessage] = []
+        carried_instructions: str | None = None
         for message in messages:
             if not isinstance(message, ModelRequest):
                 rewritten_messages.append(message)
                 continue
 
             system_parts = [part.content for part in message.parts if isinstance(part, SystemPromptPart)]
-            if not system_parts:
-                rewritten_messages.append(message)
-                continue
+            instructions = message.instructions or carried_instructions
 
-            instructions = "\n\n".join(system_parts)
-            if message.instructions:
-                instructions = "\n\n".join([message.instructions, instructions])
+            if system_parts:
+                joined_system_parts = "\n\n".join(system_parts)
+                instructions = "\n\n".join([instructions, joined_system_parts]) if instructions else joined_system_parts
+
+            if instructions:
+                carried_instructions = instructions
 
             rewritten_messages.append(
                 replace(

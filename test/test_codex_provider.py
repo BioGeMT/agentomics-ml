@@ -135,6 +135,17 @@ class TestCodexAuthStore(CodexTestCase):
         self.assertEqual(rewritten_request.instructions, "system")
         self.assertEqual([type(part).__name__ for part in rewritten_request.parts], ["UserPromptPart"])
 
+    def test_codex_carries_instructions_to_followup_requests(self):
+        requests = [
+            ModelRequest(parts=[SystemPromptPart(content="system"), UserPromptPart(content="user")]),
+            ModelRequest(parts=[UserPromptPart(content="follow-up")]),
+        ]
+
+        rewritten = CodexResponsesModel._rewrite_messages_for_codex(requests)
+
+        self.assertEqual(rewritten[0].instructions, "system")
+        self.assertEqual(rewritten[1].instructions, "system")
+
 
 class TestCodexRefresh(CodexTestCase, unittest.IsolatedAsyncioTestCase):
     async def test_refreshes_expiring_access_token_and_persists_new_tokens(self):
