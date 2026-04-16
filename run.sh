@@ -26,7 +26,7 @@ BUILD_IMAGES=false
 DOCKERHUB_USERNAME="biogemt"
 
 show_help() {
-    cat << EOF
+    cat <<'EOF'
 Usage: ./run.sh [OPTIONS]
 
 Orchestrates the Agentomics training and evaluation process. By default, it runs in Docker containers.
