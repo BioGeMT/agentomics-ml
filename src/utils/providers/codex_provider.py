@@ -152,8 +152,6 @@ class CodexProvider(Provider):
         if not models:
             return
 
-        self.console.print(f"[bold blue]Available Models[/bold blue] ({len(models)} models)\n")
-
         lines = []
         max_num_width = len(str(len(models)))
         max_name_width = max(len(model.get("display_name", model.get("id", ""))) for model in models)
@@ -162,16 +160,16 @@ class CodexProvider(Provider):
             num_str = str(i).rjust(max_num_width)
             display_name = model.get("display_name", model.get("id", ""))
             description = model.get("description", "")
-            lines.append(f"[dim]{num_str}.[/dim] [cyan]{display_name}[/cyan]")
+            lines.append(f"[dim]{num_str}.[/dim] [white]{display_name}[/white]")
             if description:
                 lines.append(f"   [dim]{description}[/dim]")
 
         panel_width = min(max_num_width + max_name_width + 14, 120)
         panel = Panel(
             "\n".join(lines),
-            title="[bold green]Codex[/bold green]",
+            title="[bold white]Codex[/bold white]",
             title_align="left",
-            border_style="green",
+            border_style="cyan",
             width=panel_width,
         )
         self.console.print(panel)
