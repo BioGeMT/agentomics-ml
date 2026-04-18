@@ -181,15 +181,11 @@ def load_current_iteration_index(config: Config) -> int:
         )
     return iteration
 
-def initialize_current_iteration_metadata(
-    config: Config,
-    iteration: int,
-) -> None:
+def initialize_current_iteration_metadata(config: Config, iteration: int) -> None:
     _write_json(
         config.current_iteration_runtime_info_dir / Config.ITERATION_METADATA_FILENAME,
         {"iteration": iteration},
     )
-
 
 def initialize_current_iteration_state(config: Config, started_at: float) -> None:
     _write_json(
@@ -201,10 +197,7 @@ def initialize_current_iteration_state(config: Config, started_at: float) -> Non
         },
     )
 
-def update_current_iteration_state(
-    config: Config,
-    **changes: object,
-) -> None:
+def update_current_iteration_state(config: Config, **changes: object) -> None:
     iteration_state_path = config.current_iteration_runtime_info_dir / Config.ITERATION_STATE_FILENAME
     iteration_state = _load_json_object(iteration_state_path)
     iteration_state.update(changes)
