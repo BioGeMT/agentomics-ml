@@ -39,8 +39,6 @@ declare -A metric_map
       metric_map["$dataset"]="$metric"
   done
 
-"$REPO_DIR/scripts/download_example_datasets.sh"
-
 for repetition in $(seq 1 $REPETITIONS); do
     for dataset in "${GENOMIC_DATASETS[@]}"; do
         for model in "${MODELS[@]}"; do

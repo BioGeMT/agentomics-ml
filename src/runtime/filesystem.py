@@ -51,20 +51,3 @@ def chown_tree_to_root(path: Path) -> None:
     """
     subprocess.run(["chown", "-R", "root:root", str(path)], check=True)
     subprocess.run(["chmod", "-R", "u=rwX,go=rX", str(path)], check=True)
-
-def make_tree_writable(path: Path) -> None:
-    if not path.exists():
-        return
-
-    write_bits = stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
-    for root, dirs, files in os.walk(path):
-        root_path = Path(root)
-        root_path.chmod(root_path.stat().st_mode | write_bits)
-        for directory_name in dirs:
-            directory_path = root_path / directory_name
-            if not directory_path.is_symlink():
-                directory_path.chmod(directory_path.stat().st_mode | write_bits)
-        for file_name in files:
-            file_path = root_path / file_name
-            if not file_path.is_symlink():
-                file_path.chmod(file_path.stat().st_mode | write_bits)

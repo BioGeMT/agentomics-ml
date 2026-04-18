@@ -16,13 +16,11 @@ from runtime.read_write_utils import (
     load_best_run_iteration,
     load_current_iteration_index,
     load_iteration_duration,
-    load_iteration_metadata,
     load_iteration_state,
 )
 from runtime.step_outputs import load_step_output, load_step_outputs
 from runtime.system_resources import get_resources_summary
 from tools.tool_registry import get_tool_names
-from utils.config import Config
 from utils.foundation_models_utils import build_foundation_model_catalog, format_foundation_model_catalog
 from utils.printing_utils import truncate_float
 
