@@ -6,7 +6,6 @@ from pathlib import Path
 import dotenv
 from rich.console import Console
 
-from agents.prompt_builder import DEFAULT_USER_PROMPT
 from run_agent import run_experiment
 from utils.config import Config
 from datasets.dataset_utils import get_all_prepared_datasets_info, get_task_type_from_prepared_dataset
@@ -74,7 +73,7 @@ def parse_args():
     parser.add_argument(
         "--user-prompt",
         type=str,
-        default=DEFAULT_USER_PROMPT,
+        default=Config.DEFAULT_USER_PROMPT,
         help="Text to overwrite the default user prompt",
     )
     parser.add_argument("--tags", nargs="*", default=[], help="Tags to associate with the run")

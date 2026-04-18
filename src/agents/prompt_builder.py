@@ -3,9 +3,6 @@ import json
 from runtime.system_resources import check_gpu_availability, get_resources_summary
 from utils.config import Config
 
-DEFAULT_USER_PROMPT = "Develop a machine learning model that generalizes well to new unseen data."
-
-
 def get_system_prompt(config):
     train_csv_path = config.agent_dataset_dir / "train.csv"
     validation_csv_path = config.agent_dataset_dir / "validation.csv"
