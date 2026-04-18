@@ -11,13 +11,13 @@ class TestAgentPermissions(BaseAgentTest):
     def test_current_working_directory(self):
         """Test that the agent's current working directory is its own workspace."""
         result = self.bash_tool.function("pwd")
-        expected_dir = f"{self.config.runs_dir}/{self.agent_id}"
+        expected_dir = str(self.config.current_step_dir)
         self.assertIn(expected_dir, result.strip(), f"Agent's working directory should be {expected_dir}, got: {result.strip()}")
 
     def test_agent_directory_access(self):
         """Test that agent can read its run directory and write inside current_step_dir."""
 
-        result = self.bash_tool.function(f"ls -la {self.config.runs_dir}/{self.agent_id}/")
+        result = self.bash_tool.function(f"ls -la {self.config.run_dir}/")
         self.assertNotIn("Permission denied", result, "Agent should be able to list its run directory")
         self.assertNotIn("Command failed", result, "ls command should succeed")
 
@@ -26,14 +26,14 @@ class TestAgentPermissions(BaseAgentTest):
         self.assertNotIn("Command failed", result, "touch command should succeed")
     
     def test_cross_agent_isolation(self):
-        """Test that workspace contains only the current agent's directory."""
+        """Test that workspace contains the refactored shared layout, not per-agent run directories."""
         
-        result = self.bash_tool.function(f"ls -1 {self.config.runs_dir}/")
-        self.assertNotIn("Command failed", result, "Should be able to list runs directory")
+        result = self.bash_tool.function("ls -1 /workspace/")
+        self.assertNotIn("Command failed", result, "Should be able to list workspace root")
         directories = [d.strip() for d in result.strip().split('\n') if d.strip() and not d.strip().startswith('[Tool call')]
 
-        self.assertEqual(len(directories), 1, f"Expected exactly 1 directory, found {len(directories)}: {directories}")
-        self.assertEqual(directories[0], self.agent_id, f"Expected only {self.agent_id} directory, found: {directories}")
+        self.assertIn("run", directories, f"Expected workspace to contain run/, found: {directories}")
+        self.assertNotIn(self.agent_id, directories, f"Did not expect legacy per-agent run directory in workspace root: {directories}")
 
     def test_protection_test_dataset(self):
         """Test that agent cannot access test datasets."""
@@ -133,21 +133,19 @@ class TestAgentPermissions(BaseAgentTest):
         disruptive_code = f"""
 import os
 try:
-    # Check that workspace contains only current agent directory
-    run_dirs = os.listdir("{self.config.runs_dir}")
-    print(f"Found directories: {{run_dirs}}")
-    
-    if len(run_dirs) == 1 and run_dirs[0] == "{self.agent_id}":
-        print("Good: Workspace properly isolated - only current agent directory exists")
+    workspace_entries = sorted(os.listdir("/workspace"))
+    print(f"Found workspace entries: {{workspace_entries}}")
+
+    if "run" in workspace_entries and "{self.agent_id}" not in workspace_entries:
+        print("Good: Workspace uses shared run layout without legacy per-agent run directories")
     else:
-        print(f"SECURITY_ISSUE: Expected only [{self.agent_id}], found: {{run_dirs}}")
-    
-    # Test that agent can access its own directory
-    agent_dir = "{self.config.runs_dir}/{self.agent_id}"
-    if os.path.exists(agent_dir) and os.access(agent_dir, os.R_OK | os.W_OK):
-        print("Good: Agent can access its own directory")
+        print(f"SECURITY_ISSUE: Unexpected workspace layout: {{workspace_entries}}")
+
+    run_dir = "{self.config.run_dir}"
+    if os.path.exists(run_dir) and os.access(run_dir, os.R_OK):
+        print("Good: Agent can access the shared run directory")
     else:
-        print("ISSUE: Agent cannot access its own directory")
+        print("ISSUE: Agent cannot access the shared run directory")
 except Exception as e:
     print(f"Error during security test: {{e}}")
     """
