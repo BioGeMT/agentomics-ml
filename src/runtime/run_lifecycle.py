@@ -6,7 +6,7 @@ import weave
 
 from agents.prompt_builder import build_iteration_base_prompt, get_system_prompt
 from run_logging.logging_helpers import log_files, log_iteration_duration
-from runtime.best_run_snapshot import update_best_run_snapshot
+from runtime.best_iteration_snapshot import update_best_iteration_snapshot
 from runtime.git_checkpoints import commit_iteration_end
 from runtime.read_write_utils import (
     archive_current_iteration,
@@ -73,7 +73,7 @@ async def _run_iteration(config: Config, iteration: int, default_model: Model, i
 
     archive_current_iteration(config, iteration)
     if iteration_state["status"] == "success":
-        update_best_run_snapshot(config=config, iteration=iteration)
+        update_best_iteration_snapshot(config=config, iteration=iteration)
 
     commit_iteration_end(config, iteration=iteration)
     _enforce_time_deadline(config)

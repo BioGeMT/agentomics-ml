@@ -14,10 +14,12 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from agents.steps.validation_evaluation import ValidationEvaluationStep
 from runtime.evaluate_result import get_metrics
+from runtime.step_outputs import load_step_output
 from utils.config import Config
 from runtime.iteration_reports import write_iteration_report
-from runtime.read_write_utils import load_config_from_run_dir
+from runtime.read_write_utils import get_archived_iterations, load_best_iteration_snapshot_iteration, load_config_from_run_dir_and_reroot
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -193,12 +195,17 @@ def safe_read_csv(path: Optional[Path]) -> Optional[pd.DataFrame]:
     except Exception:
         return None
 
-def load_validation_metrics(iter_dir: Path) -> Dict[str, float]:
-    output_path = iter_dir / "validation_evaluation" / "output.json"
-    if not output_path.exists():
+def load_validation_metrics(config: Config, iter_dir: Path) -> Dict[str, float]:
+    validation_output = load_step_output(
+        config=config,
+        step_id=ValidationEvaluationStep.step_id,
+        iteration_dir=iter_dir,
+    )
+    if validation_output is None:
         return {}
-
-    metrics = json.loads(output_path.read_text(encoding="utf-8"))["payload"]["metrics"]
+    metrics = getattr(validation_output, "metrics", None)
+    if not isinstance(metrics, dict):
+        return {}
     return {str(key): float(value) for key, value in metrics.items()}
 
 def get_split_metrics(metrics: Dict[str, float], split_name: str) -> Dict[str, float]:
@@ -270,70 +277,46 @@ def load_prepared_dataset_meta(prepared_datasets_dir: Path, dataset_name: str) -
     )
 
 # Iteration discovery / inputs
-def discover_iterations(agent_dir: Path) -> List[int]:
-    run_files = agent_dir / "run_files"
-    iters: List[int] = []
-    if run_files.exists():
-        for p in run_files.iterdir():
-            if p.is_dir() and p.name.startswith("iteration_"):
-                try:
-                    iters.append(int(p.name.split("_", 1)[1]))
-                except Exception:
-                    pass
-    return sorted(set(iters))
-
-def get_best_iter_number(agent_dir: Path) -> int:
-    best_run_dir = agent_dir / "best_run_files"
-    metadata_path = best_run_dir / Config.RUNTIME_INFO_DIRNAME / "iteration_metadata.json"
-    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-    iteration = metadata.get("iteration")
-    if not isinstance(iteration, int):
-        raise ValueError(f"Best run metadata at {metadata_path} is missing integer field 'iteration'.")
-    return iteration
-
-def _find_split_csv(run_files: Path, split_name: str, fallback_dir: Path, dataset_name: str) -> Optional[Path]:
-    splits_dir = run_files / "shared" / "splits"
-    if splits_dir.exists():
-        for split_dir in sorted(splits_dir.iterdir()):
+def _find_split_csv(config: Config, split_name: str, fallback_dir: Path) -> Optional[Path]:
+    if config.splits_dir.exists():
+        for split_dir in sorted(config.splits_dir.iterdir()):
             candidate = split_dir / f"{split_name}.csv"
             if candidate.exists():
                 return candidate
-    p = fallback_dir / dataset_name / f"{split_name}.csv"
+    p = fallback_dir / config.dataset / f"{split_name}.csv"
     return p if p.exists() else None
 
 def gather_iteration_inputs(
-    agent_dir: Path,
-    dataset_name: str,
+    config: Config,
     prepared_datasets: Path,
     prepared_tests: Path,
     dataset_meta: DatasetMeta,
     iteration: int,
 ) -> IterationInputs:
-    reports_dir = agent_dir / "reports"
-    run_files = agent_dir / "run_files"
-    best_run_files = agent_dir / "best_run_files"
-    iter_dir = run_files / f"iteration_{iteration}"
-    validation_metrics = load_validation_metrics(iter_dir)
+    iter_dir = config.iteration_dir(iteration)
+    validation_metrics = load_validation_metrics(config, iter_dir)
 
-    report_md = reports_dir / f"run_report_iter_{iteration}.md"
+    report_md = config.markdown_reports_dir / f"run_report_iter_{iteration}.md"
     if not report_md.exists():
         report_md = None
 
-    train_csv = _find_split_csv(run_files, "train", prepared_datasets, dataset_name)
-    val_csv = _find_split_csv(run_files, "validation", prepared_datasets, dataset_name)
-    test_csv = _find_split_csv(run_files, "test", prepared_tests, dataset_name)
+    train_csv = _find_split_csv(config, "train", prepared_datasets)
+    val_csv = _find_split_csv(config, "validation", prepared_datasets)
+    test_csv = _find_split_csv(config, "test", prepared_tests)
 
-    train_preds = iter_dir / "validation_evaluation" / "eval_predictions_train.csv"
-    val_preds = iter_dir / "validation_evaluation" / "eval_predictions_validation.csv"
-    test_preds = best_run_files / "eval_predictions_test.csv"
+    validation_evaluation_dir = iter_dir / ValidationEvaluationStep.step_id
+    train_preds = validation_evaluation_dir / "eval_predictions_train.csv"
+    val_preds = validation_evaluation_dir / "eval_predictions_validation.csv"
+    test_preds = config.best_iteration_snapshot_dir / "eval_predictions_test.csv"
 
     splits: List[SplitArtifacts] = [
         SplitArtifacts("train", train_csv, train_preds, get_split_metrics(validation_metrics, "train")),
         SplitArtifacts("validation", val_csv, val_preds, get_split_metrics(validation_metrics, "validation")),
     ]
 
-    if iteration == get_best_iter_number(agent_dir):
-        test_metrics = load_saved_metrics(best_run_files / "test_metrics.json") or load_test_metrics(
+    best_iter = load_best_iteration_snapshot_iteration(config)
+    if best_iter is not None and iteration == best_iter:
+        test_metrics = load_saved_metrics(config.best_iteration_snapshot_dir / "test_metrics.json") or load_test_metrics(
             test_csv,
             test_preds,
             dataset_meta,
@@ -756,7 +739,7 @@ def step_body_to_flowables(text: str, styles):
             flush_paragraph()
             flows.append(Paragraph(_esc(s), styles["MiniHeader"]))
             continue
-        if re.match(r"^(\/workspace\/|run_files\/|Path To |Train Path:|Val Path:|Test Path:)", line):
+        if re.match(r"^(\/workspace\/|run\/|Path To |Train Path:|Val Path:|Test Path:)", line):
             flush_paragraph()
             flows.append(Paragraph(_esc(line), styles["CodeBlock"]))
             continue
@@ -883,27 +866,26 @@ def main() -> None:
     prepared_datasets: Path = args.prepared_datasets.resolve()
     prepared_tests: Path = args.prepared_tests.resolve()
 
-    config = load_config_from_run_dir(agent_dir / "run_files")
+    config = load_config_from_run_dir_and_reroot(agent_dir / "run")
     run_meta = load_run_meta(config)
     dataset_meta = load_prepared_dataset_meta(prepared_datasets, config.dataset)
 
     if run_meta.task_type in ("classification", "regression") and run_meta.task_type != dataset_meta.task_type:
         print(f"[WARN] task_type mismatch: config={run_meta.task_type} metadata={dataset_meta.task_type}")
 
-    iterations = discover_iterations(agent_dir)
+    iterations = get_archived_iterations(config)
     if not iterations:
-        raise SystemExit("No iteration folders found under run_files/iteration_*")
+        raise SystemExit("No iteration folders found.")
 
-    out_dir = agent_dir / "pdf_reports"
+    out_dir = config.pdf_reports_dir
     plots_dir = out_dir / "plots"
-    reports_dir = agent_dir / "reports"
     ensure_dir(out_dir)
     ensure_dir(plots_dir)
-    ensure_dir(reports_dir)
+    config.markdown_reports_dir.mkdir(parents=True, exist_ok=True)
     split_order = ["train", "validation", "test"]
 
     for it in iterations:
-        inp = gather_iteration_inputs(agent_dir, config.dataset, prepared_datasets, prepared_tests, dataset_meta, it)
+        inp = gather_iteration_inputs(config, prepared_datasets, prepared_tests, dataset_meta, it)
         report_path = inp.report_md
         if report_path is None:
             report_metrics = {
@@ -916,8 +898,8 @@ def main() -> None:
             report_path = write_iteration_report(
                 config,
                 iteration=it,
-                iteration_dir=agent_dir / "run_files" / f"iteration_{it}",
-                report_path=reports_dir / f"run_report_iter_{it}.md",
+                iteration_dir=config.iteration_dir(it),
+                report_path=config.markdown_reports_dir / f"run_report_iter_{it}.md",
                 metrics=report_metrics,
                 test_metrics=test_metrics,
             )

@@ -82,12 +82,9 @@ class Config:
     agent_user: str | None = None
 
     @property
-    def runs_dir(self) -> Path:
-        return Path(self.workspace_dir) / "runs"
+    def run_dir(self) -> Path:
+        return Path(self.workspace_dir) / "run"
 
-    @property
-    def snapshots_dir(self) -> Path:
-        return Path(self.workspace_dir) / "snapshots"
 
     @property
     def fallbacks_dir(self) -> Path:
@@ -98,8 +95,12 @@ class Config:
         return Path(self.workspace_dir) / "reports"
 
     @property
-    def agent_reports_dir(self) -> Path:
-        return self.reports_dir / self.agent_id
+    def markdown_reports_dir(self) -> Path:
+        return self.reports_dir / "markdown"
+
+    @property
+    def pdf_reports_dir(self) -> Path:
+        return self.reports_dir / "pdf"
 
     @property
     def extras_dir(self) -> Path:
@@ -112,10 +113,6 @@ class Config:
     @property
     def agent_dataset_dir(self) -> Path:
         return self.shared_dir / "datasets" / self.dataset
-
-    @property
-    def run_dir(self) -> Path:
-        return self.runs_dir / self.agent_id
 
     @property
     def shared_dir(self) -> Path:
@@ -142,8 +139,8 @@ class Config:
         return self.shared_dir / "splits"
 
     @property
-    def snapshot_dir(self) -> Path:
-        return self.snapshots_dir / self.agent_id
+    def best_iteration_snapshot_dir(self) -> Path:
+        return Path(self.workspace_dir) / "best_iteration_snapshot"
 
     def archived_step_dir(self, step_id: str) -> Path:
         return self.current_iteration_dir / step_id

@@ -89,7 +89,7 @@ fi
 [[ -d "$AGENT_DIR" ]] || die "--agent-dir does not exist: $AGENT_DIR"
 
 AGENT_NAME=$(basename "$AGENT_DIR")
-CODE_ROOT="${AGENT_DIR}/best_run_files"
+CODE_ROOT="${AGENT_DIR}/best_iteration_snapshot"
 ENV_PATH="${CODE_ROOT}/.conda/envs/${AGENT_NAME}_env"
 TRAIN_PATH="${CODE_ROOT}/model_training/train.py"
 TRAIN_WORKDIR="$(dirname "$TRAIN_PATH")"
@@ -157,14 +157,14 @@ if [[ "$DOCKER_MODE" == true ]]; then
         echo "Conda environment not found at: $ENV_PATH"
         echo "Creating conda environment inside Docker..."
         docker run --rm \
-            -v "${AGENT_DIR_ABS}/best_run_files:${CODE_ROOT_IN_CONTAINER}" \
+            -v "${AGENT_DIR_ABS}/best_iteration_snapshot:${CODE_ROOT_IN_CONTAINER}" \
             --entrypoint "" \
             -w "${CODE_ROOT_IN_CONTAINER}" \
             agentomics_img \
             bash -c "conda install -n base mamba -c conda-forge -y && mamba env create -f \"${DESCRIPTOR_PATH_IN_CONTAINER}\" -p \"${CODE_ROOT_IN_CONTAINER}/.conda/envs/${AGENT_NAME}_env\""
     fi
     docker run --rm \
-        -v "${AGENT_DIR_ABS}/best_run_files:${CODE_ROOT_IN_CONTAINER}" \
+        -v "${AGENT_DIR_ABS}/best_iteration_snapshot:${CODE_ROOT_IN_CONTAINER}" \
         -v "$(dirname "$TRAIN_DATA_PATH_ABS"):/train_data_dir" \
         -v "$(dirname "$VALIDATION_DATA_PATH_ABS"):/validation_data_dir" \
         -v "$(dirname "$ARTIFACTS_DIR_ABS"):/artifacts_parent_dir" \

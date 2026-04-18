@@ -19,7 +19,7 @@ from runtime.conda_utils import (
 )
 from runtime.filesystem import remove_path
 from runtime.inference_runner import run_inference_script
-from runtime.read_write_utils import get_archived_iterations, load_config_from_run_dir, load_dataset_metadata
+from runtime.read_write_utils import get_archived_iterations, load_config_from_run_dir_and_reroot, load_dataset_metadata
 from utils.config import Config
 
 ITERATION_TEST_ENVS_DIRNAME = "_iteration_test_envs"
@@ -28,7 +28,7 @@ STEALTH_TEST_METRIC_PREFIX = "stealth_test"
 STEALTH_TEST_STEP_METRIC = "stealth_test/iteration"
 
 def evaluate_stealth_test_history(agent_dir: Path, prepared_test_sets_dir: Path) -> None:
-    config = load_config_from_run_dir(agent_dir / "run_files")
+    config = load_config_from_run_dir_and_reroot(agent_dir / "run")
     metadata = load_dataset_metadata(config)
     prepared_test_set_dir = prepared_test_sets_dir / config.dataset
     test_input_path = prepared_test_set_dir / "test.no_label.csv"
@@ -38,7 +38,7 @@ def evaluate_stealth_test_history(agent_dir: Path, prepared_test_sets_dir: Path)
             f"Expected both test.no_label.csv and test.csv in {prepared_test_set_dir} for iteration test evaluation."
         )
 
-    run = resume_wandb_run(config, dir=agent_dir / "extras" / "iteration_test_logs")
+    run = resume_wandb_run(config, dir=config.extras_dir / "iteration_test_logs")
     define_serial_metrics(STEALTH_TEST_METRIC_PREFIX, config.task_type, step_metric=STEALTH_TEST_STEP_METRIC)
     try:
         results = _evaluate_iterations(
@@ -54,7 +54,7 @@ def evaluate_stealth_test_history(agent_dir: Path, prepared_test_sets_dir: Path)
 
     remove_path(agent_dir / ITERATION_TEST_ENVS_DIRNAME)
 
-    results_path = agent_dir / "extras" / STEALTH_TEST_METRICS_FILENAME
+    results_path = config.extras_dir / STEALTH_TEST_METRICS_FILENAME
     results_path.parent.mkdir(parents=True, exist_ok=True)
     results_path.write_text(json.dumps(results, indent=2), encoding="utf-8")
 
@@ -65,14 +65,9 @@ def _evaluate_iterations(
     test_input_path: Path,
     labeled_test_path: Path,
 ) -> list[dict]:
-    run_files_dir = agent_dir / "run_files"
     iteration_dirs = [
-        (iteration, run_files_dir / f"iteration_{iteration}")
-        for iteration in get_archived_iterations(
-            config,
-            search_root_dir=run_files_dir,
-            only_successful=True,
-        )
+        (iteration, config.iteration_dir(iteration))
+        for iteration in get_archived_iterations(config, only_successful=True)
     ]
     results = []
 

@@ -80,7 +80,7 @@ def log_files(config, files=None, iteration=None):
     if iteration is not None:
         directory_path = config.current_iteration_dir
     else:
-        directory_path = config.snapshot_dir
+        directory_path = config.best_iteration_snapshot_dir
 
     files_to_log = (
         [f for f in Path(directory_path).iterdir() if f.is_file() and f.suffix == ".py"]

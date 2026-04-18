@@ -131,7 +131,7 @@ The iteration-planning step uses the same LLM as the main agent.
 Iteration-plan guidance is included in iteration reports:
 
 ```
-reports/run_report_iter_N.md
+reports/markdown/run_report_iter_N.md
 ```
 
 Each report shows:

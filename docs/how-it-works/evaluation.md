@@ -147,7 +147,7 @@ Iteration 5: Validation ACC = 0.847 (Best: 0.852 at iter 3)
 ### In Reports
 
 ```
-outputs/<agent_id>/reports/run_report_iter_N.md
+outputs/<agent_id>/reports/pdf/iteration_N.pdf
 ```
 
 Contains:

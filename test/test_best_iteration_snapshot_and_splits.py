@@ -13,7 +13,7 @@ if str(SRC_PATH) not in sys.path:
 
 from agents.steps.data_split import DataSplitOutput, DataSplitStep
 from agents.steps.validation_evaluation import ValidationEvaluationOutput, ValidationEvaluationStep
-from runtime.best_run_snapshot import update_best_run_snapshot
+from runtime.best_iteration_snapshot import update_best_iteration_snapshot
 from runtime.read_write_utils import (
     initialize_current_iteration_metadata,
     initialize_current_iteration_state,
@@ -40,14 +40,14 @@ def _write_step_output(iteration_dir: Path, step_id: str, output) -> None:
     )
 
 
-class TestBestRunSnapshot(unittest.TestCase):
-    """update_best_run_snapshot must publish, clear, or skip based on is_new_best and split_changed."""
+class TestBestIterationSnapshot(unittest.TestCase):
+    """update_best_iteration_snapshot must publish, clear, or skip based on is_new_best and split_changed."""
 
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.root = Path(self.temp_dir.name)
         (self.root / "workspace").mkdir()
-        self.config = self._make_config("snapshot_agent")
+        self.config = self._make_config("best_iteration_snapshot_agent")
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -94,46 +94,46 @@ class TestBestRunSnapshot(unittest.TestCase):
             status="success",
         ))
 
-    def _seed_snapshot(self) -> None:
-        snapshot_dir = self.config.snapshot_dir
-        snapshot_dir.mkdir(parents=True, exist_ok=True)
-        (snapshot_dir / Config.RUNTIME_INFO_DIRNAME).mkdir()
-        (snapshot_dir / Config.RUNTIME_INFO_DIRNAME / Config.ITERATION_METADATA_FILENAME).write_text(
+    def _seed_best_iteration_snapshot(self) -> None:
+        best_iteration_snapshot_dir = self.config.best_iteration_snapshot_dir
+        best_iteration_snapshot_dir.mkdir(parents=True, exist_ok=True)
+        (best_iteration_snapshot_dir / Config.RUNTIME_INFO_DIRNAME).mkdir()
+        (best_iteration_snapshot_dir / Config.RUNTIME_INFO_DIRNAME / Config.ITERATION_METADATA_FILENAME).write_text(
             json.dumps({"iteration": 0}), encoding="utf-8",
         )
-        (snapshot_dir / "old_model.bin").write_text("old", encoding="utf-8")
+        (best_iteration_snapshot_dir / "old_model.bin").write_text("old", encoding="utf-8")
 
-    def test_new_best_publishes_snapshot(self):
+    def test_new_best_publishes(self):
         self._create_iteration_with_validation(iteration=1, is_new_best=True, split_changed=False)
         iteration_dir = self.config.iteration_dir(1)
         (iteration_dir / "inference.py").write_text("print('ok')", encoding="utf-8")
         conda_env = self.config.shared_dir / ".conda" / "envs" / f"{self.config.agent_id}_env"
         conda_env.mkdir(parents=True, exist_ok=True)
 
-        with patch("runtime.best_run_snapshot.export_environment_descriptor_to_path"):
-            update_best_run_snapshot(self.config, iteration=1)
+        with patch("runtime.best_iteration_snapshot.export_environment_descriptor_to_path"):
+            update_best_iteration_snapshot(self.config, iteration=1)
 
-        self.assertTrue((self.config.snapshot_dir / "inference.py").exists())
+        self.assertTrue((self.config.best_iteration_snapshot_dir / "inference.py").exists())
 
-    def test_split_changed_without_new_best_clears_snapshot(self):
-        self._seed_snapshot()
+    def test_split_changed_without_new_best_clears_best_iteration_snapshot(self):
+        self._seed_best_iteration_snapshot()
         self._create_iteration_with_validation(
             iteration=1, is_new_best=False, split_changed=True, split_version=1,
         )
 
-        update_best_run_snapshot(self.config, iteration=1)
+        update_best_iteration_snapshot(self.config, iteration=1)
 
-        self.assertFalse(self.config.snapshot_dir.exists())
+        self.assertFalse(self.config.best_iteration_snapshot_dir.exists())
 
-    def test_no_change_leaves_snapshot_untouched(self):
-        self._seed_snapshot()
+    def test_no_change_leaves_best_iteration_snapshot_untouched(self):
+        self._seed_best_iteration_snapshot()
         self._create_iteration_with_validation(
             iteration=1, is_new_best=False, split_changed=False,
         )
 
-        update_best_run_snapshot(self.config, iteration=1)
+        update_best_iteration_snapshot(self.config, iteration=1)
 
-        self.assertTrue((self.config.snapshot_dir / "old_model.bin").exists())
+        self.assertTrue((self.config.best_iteration_snapshot_dir / "old_model.bin").exists())
 
 
 class TestIsNewBest(unittest.TestCase):
@@ -169,7 +169,7 @@ class TestIsNewBest(unittest.TestCase):
         return config
 
     def _setup_best_iteration(self, best_metrics: dict, split_version: int = 0) -> None:
-        """Create a snapshot and archived best iteration with given metrics and split version."""
+        """Create a best-iteration snapshot and an archived winning iteration with the given metrics and split version."""
         best_dir = self.config.iteration_dir(0)
         best_dir.mkdir(parents=True, exist_ok=True)
         _write_step_output(best_dir, "data_split", DataSplitOutput(
@@ -180,10 +180,10 @@ class TestIsNewBest(unittest.TestCase):
         _write_step_output(best_dir, "validation_evaluation", ValidationEvaluationOutput(
             metrics=best_metrics, is_new_best=True, status="success",
         ))
-        snapshot_dir = self.config.snapshot_dir
-        snapshot_dir.mkdir(parents=True, exist_ok=True)
-        (snapshot_dir / Config.RUNTIME_INFO_DIRNAME).mkdir(exist_ok=True)
-        (snapshot_dir / Config.RUNTIME_INFO_DIRNAME / Config.ITERATION_METADATA_FILENAME).write_text(
+        best_iteration_snapshot_dir = self.config.best_iteration_snapshot_dir
+        best_iteration_snapshot_dir.mkdir(parents=True, exist_ok=True)
+        (best_iteration_snapshot_dir / Config.RUNTIME_INFO_DIRNAME).mkdir(exist_ok=True)
+        (best_iteration_snapshot_dir / Config.RUNTIME_INFO_DIRNAME / Config.ITERATION_METADATA_FILENAME).write_text(
             json.dumps({"iteration": 0}), encoding="utf-8",
         )
 
@@ -217,7 +217,7 @@ class TestIsNewBest(unittest.TestCase):
         # Even a much worse score is "new best" when splits differ (metrics aren't comparable)
         self.assertTrue(step._is_new_best({"validation/ACC": 0.5}))
 
-    def test_no_existing_snapshot_is_always_new_best(self):
+    def test_no_existing_best_iteration_is_always_new_best(self):
         self._set_current_split_version(0)
         step = ValidationEvaluationStep(self.config, Mock(), Mock(), Mock(), [])
 

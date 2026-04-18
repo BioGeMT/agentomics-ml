@@ -79,10 +79,10 @@ GPU is used automatically if available:
 ./scripts/inference.sh --cpu-only --agent-dir outputs/my_agent ...
 ```
 
-## What's in best_run_files
+## What's in best_iteration_snapshot
 
 ```
-outputs/<agent_id>/best_run_files/
+outputs/<agent_id>/best_iteration_snapshot/
 ├── model_inference/
 │   └── inference.py       # Inference script
 ├── model_training/
@@ -107,7 +107,7 @@ Ensure your input CSV has the same feature columns as the training data (minus t
 
 ### "Model file not found"
 
-Check that `best_run_files/` contains the model artifacts. If the agent run failed, there may be no trained model.
+Check that `best_iteration_snapshot/` contains the model artifacts. If the agent run failed, there may be no trained model.
 
 ### GPU out of memory
 
@@ -115,7 +115,7 @@ Use `--cpu-only` flag or reduce batch size in the inference script.
 
 ## Batch Inference
 
-For large datasets, the inference script handles batching automatically. If you need custom batch sizes, modify `best_run_files/model_inference/inference.py`.
+For large datasets, the inference script handles batching automatically. If you need custom batch sizes, modify `best_iteration_snapshot/model_inference/inference.py`.
 
 ## Next Steps
 

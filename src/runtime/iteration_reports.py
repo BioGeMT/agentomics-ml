@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from runtime.read_write_utils import get_archived_iterations, load_config_from_run_dir
+from runtime.read_write_utils import get_archived_iterations, load_best_iteration_snapshot_iteration, load_config_from_run_dir_and_reroot
 from runtime.step_outputs import load_step_output
 from utils.config import Config
 
@@ -20,7 +20,7 @@ def write_iteration_report(
     test_metrics: dict[str, float] | None = None,
 ) -> Path:
     source_dir = iteration_dir or config.current_iteration_dir
-    target_path = report_path or config.agent_reports_dir / f"run_report_iter_{iteration}.md"
+    target_path = report_path or config.markdown_reports_dir / f"run_report_iter_{iteration}.md"
     target_path.parent.mkdir(parents=True, exist_ok=True)
     target_path.write_text(
         render_iteration_report(
@@ -36,27 +36,21 @@ def write_iteration_report(
 
 
 def write_exported_run_reports(agent_dir: Path) -> list[Path]:
-    config = load_config_from_run_dir(agent_dir / "run_files")
-    reports_dir = agent_dir / "reports"
-    reports_dir.mkdir(parents=True, exist_ok=True)
-    best_iteration = _load_exported_best_iteration(agent_dir)
-    saved_test_metrics = _load_metrics_file(agent_dir / "best_run_files" / "test_metrics.json")
+    config = load_config_from_run_dir_and_reroot(agent_dir / "run")
+    config.markdown_reports_dir.mkdir(parents=True, exist_ok=True)
+    best_iteration = load_best_iteration_snapshot_iteration(config)
+    saved_test_metrics = _load_metrics_file(config.best_iteration_snapshot_dir / "test_metrics.json")
 
     report_paths: list[Path] = []
-    for iteration in get_archived_iterations(
-        config,
-        search_root_dir=agent_dir / "run_files",
-    ):
+    for iteration in get_archived_iterations(config):
+        iteration_dir = config.iteration_dir(iteration)
         report_paths.append(
             write_iteration_report(
                 config=config,
                 iteration=iteration,
-                iteration_dir=agent_dir / "run_files" / f"{Config.ITERATION_DIR_PREFIX}{iteration}",
-                report_path=reports_dir / f"run_report_iter_{iteration}.md",
-                metrics=_load_validation_metrics(
-                    config,
-                    agent_dir / "run_files" / f"{Config.ITERATION_DIR_PREFIX}{iteration}",
-                ),
+                iteration_dir=iteration_dir,
+                report_path=config.markdown_reports_dir / f"run_report_iter_{iteration}.md",
+                metrics=_load_validation_metrics(config, iteration_dir),
                 test_metrics=saved_test_metrics if iteration == best_iteration else None,
             )
         )
@@ -199,15 +193,6 @@ def _load_validation_metrics(config: Config, iteration_dir: Path) -> dict[str, f
     if not isinstance(metrics, dict):
         return {}
     return {str(metric_name): float(metric_value) for metric_name, metric_value in metrics.items()}
-
-
-def _load_exported_best_iteration(agent_dir: Path) -> int | None:
-    metadata_path = agent_dir / "best_run_files" / Config.RUNTIME_INFO_DIRNAME / Config.ITERATION_METADATA_FILENAME
-    if not metadata_path.exists():
-        return None
-    payload = json.loads(metadata_path.read_text(encoding="utf-8"))
-    iteration = payload.get("iteration")
-    return iteration if isinstance(iteration, int) else None
 
 
 def _load_metrics_file(metrics_path: Path) -> dict[str, float]:

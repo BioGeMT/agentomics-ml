@@ -14,7 +14,7 @@ def create_write_python_tool(config):
         Examples:
         code: "import numpy as np
         x = np.linspace(0, 10, 100)"
-        file_path: "/workspace/runs/myname/numpy_test.py"
+        file_path: "/workspace/run/current_iteration/current_step/numpy_test.py"
 
         Args:
             code: A valid python code.

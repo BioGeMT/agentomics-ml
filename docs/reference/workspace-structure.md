@@ -10,8 +10,8 @@ agentomics-ml/
 ├── prepared_datasets/        # Prepared training data
 ├── prepared_test_sets/       # Prepared test data (hidden)
 ├── workspace/                # Active execution workspace
-│   ├── runs/                 # Current run files
-│   ├── snapshots/            # Best iteration snapshots
+│   ├── run/                  # Current run files
+│   ├── best_iteration_snapshot/ # Best iteration snapshot
 │   ├── reports/              # Iteration reports
 │   ├── extras/               # Logs and extra artifacts
 │   └── fallbacks/            # Backup for recovery
@@ -58,12 +58,12 @@ The agent never sees files in this directory during training.
 
 Active execution area:
 
-### workspace/runs/
+### workspace/run/
 
 Current run working directory:
 
 ```
-workspace/runs/<agent_id>/
+workspace/run/
 ├── shared/
 │   ├── .conda/                  # Shared Conda environment
 │   ├── config.json
@@ -72,17 +72,17 @@ workspace/runs/<agent_id>/
 ├── current_iteration/
 │   ├── current_step/            # Active step workspace
 │   └── runtime_info/
-├── iteration_0/                 # Archived iteration snapshot
+├── iteration_0/                 # Archived iteration
 ├── iteration_1/
 └── ...
 ```
 
-### workspace/snapshots/
+### workspace/best_iteration_snapshot/
 
-Best iteration backup:
+Best iteration snapshot:
 
 ```
-workspace/snapshots/<agent_id>/
+workspace/best_iteration_snapshot/
 ├── model_training/
 │   ├── train.py
 │   └── training_artifacts/
@@ -124,7 +124,7 @@ Final results after run completion:
 
 ```
 outputs/<agent_id>/
-├── best_run_files/           # Best iteration artifacts
+├── best_iteration_snapshot/           # Best iteration artifacts
 │   ├── model_training/
 │   │   ├── train.py
 │   │   └── training_artifacts/
@@ -133,20 +133,25 @@ outputs/<agent_id>/
 │   ├── runtime_info/
 │   ├── environment.yml
 │   └── .conda/
-├── run_files/                # All iterations + data splits
-│   ├── train.csv
-│   ├── validation.csv
+├── run/                      # All iterations + data splits
+│   ├── shared/
+│   │   ├── config.json
+│   │   └── splits/
+│   │       └── split_0/
+│   │           ├── train.csv
+│   │           └── validation.csv
 │   ├── iteration_0/
 │   ├── iteration_1/
 │   └── ...
-├── reports/                  # Run reports
-│   ├── run_report_iter_0.md
-│   ├── run_report_iter_1.md
-│   └── ...
-├── pdf_reports/              # PDF versions + plots
-│   ├── iteration_0.pdf
-│   ├── iteration_1.pdf
-│   └── plots/
+├── reports/
+│   ├── markdown/
+│   │   ├── run_report_iter_0.md
+│   │   ├── run_report_iter_1.md
+│   │   └── ...
+│   └── pdf/
+│       ├── iteration_0.pdf
+│       ├── iteration_1.pdf
+│       └── plots/
 ├── extras/                   # Additional files and logs
 └── README.md                 # Run summary
 ```
@@ -154,7 +159,7 @@ outputs/<agent_id>/
 ## File Notes
 
 Iteration contents and artifact names can vary by run. Use `<step_id>/output.json`
-inside each archived iteration or best-run snapshot as the structured source of
+inside each archived iteration or best iteration snapshot as the structured source of
 truth for step outputs. Use `outputs/<agent_id>/README.md` for the most accurate
 per-run details.
 
@@ -169,8 +174,8 @@ rm -rf outputs/<agent_id>
 ### Clean Workspace
 
 ```bash
-rm -rf workspace/runs/*
-rm -rf workspace/snapshots/*
+rm -rf workspace/run/*
+rm -rf workspace/best_iteration_snapshot/*
 rm -rf workspace/fallbacks/*
 ```
 

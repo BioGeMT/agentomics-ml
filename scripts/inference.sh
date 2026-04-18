@@ -15,7 +15,7 @@ show_help() {
     echo "  --agent-dir   Path to agent folder (required)"
     echo "  --input       Path to input file (required)"
     echo "  --output      Path to output file (required)"
-    echo "  --code-path   Path to code files, points to best iteration files by default, must be relative to --agent-dir and a child of --agent-dir (optional)"
+    echo "  --code-path   Path to code files, points to best_iteration_snapshot by default, must be relative to --agent-dir and a child of --agent-dir (optional)"
     echo "  --remove-conda-env   Remove the conda environment after inference (optional)"
     echo "  --cpu-only    Run without GPU (optional)"
     echo "  --local       Run locally without Docker (optional)"
@@ -93,7 +93,7 @@ fi
 [[ -d "$(dirname "$OUTPUT_PATH")" ]] || die "--output directory does not exist: $(dirname "$OUTPUT_PATH")"
 
 AGENT_NAME=$(basename "$AGENT_DIR")
-CODE_PATH=${CODE_PATH:-"best_run_files"}
+CODE_PATH=${CODE_PATH:-"best_iteration_snapshot"}
 CODE_ROOT="${AGENT_DIR}/${CODE_PATH}"
 echo "Using code path: $CODE_PATH"
 ENV_PATH="${CODE_ROOT}/.conda/envs/${AGENT_NAME}_env"

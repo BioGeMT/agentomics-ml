@@ -13,7 +13,7 @@ from run_logging.logging_helpers import log_iteration_metrics, log_new_best
 from runtime.conda_utils import get_shared_environment_path
 from runtime.inference_runner import compute_metrics, run_inference_on_labeled_data
 from runtime.read_write_utils import (
-    load_best_run_iteration,
+    load_best_iteration_snapshot_iteration,
     load_dataset_metadata,
 )
 from runtime.step_outputs import load_step_output, require_step_output
@@ -108,7 +108,7 @@ class ValidationEvaluationStep(RuntimeStep):
         if validation_metric_key not in new_metrics:
             return False
 
-        if load_best_run_iteration(self.config) is None:
+        if load_best_iteration_snapshot_iteration(self.config) is None:
             return True
 
         if self._current_split_differs_from_best_iteration():
@@ -121,7 +121,7 @@ class ValidationEvaluationStep(RuntimeStep):
         return new_value > best_value if higher_is_better else new_value < best_value
 
     def _current_split_differs_from_best_iteration(self) -> bool:
-        best_iteration = load_best_run_iteration(self.config)
+        best_iteration = load_best_iteration_snapshot_iteration(self.config)
         if best_iteration is None:
             return False
         current_split_version = require_step_output(self.config, DataSplitStep.step_id, self.config.current_iteration_dir).split_version
@@ -131,7 +131,7 @@ class ValidationEvaluationStep(RuntimeStep):
         return current_split_version != best_split_version
 
     def _get_best_metrics(self) -> dict[str, float]:
-        best_iteration = load_best_run_iteration(self.config)
+        best_iteration = load_best_iteration_snapshot_iteration(self.config)
         if best_iteration is None:
             return {}
         validation_output = load_step_output(

@@ -95,7 +95,7 @@ def parse_args():
         "--workspace-dir",
         type=Path,
         required=True,
-        help="Path to a directory for agent runs, snapshots, and reports.",
+        help="Path to a directory for agent run, best iteration snapshot, and reports.",
     )
     parser.add_argument(
         "--prepared-datasets-dir",

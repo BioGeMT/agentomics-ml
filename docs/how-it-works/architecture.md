@@ -121,9 +121,9 @@ Runs the final validation pass for the iteration:
 
 - Executes the generated inference pipeline on train and validation splits
 - Computes metrics used for model selection
-- Decides whether the iteration becomes the new best run
+- Decides whether the iteration becomes the new best iteration
 
-**Output:** Validation metrics and best-run status
+**Output:** Validation metrics and best-iteration status
 
 ## Agent Tools
 

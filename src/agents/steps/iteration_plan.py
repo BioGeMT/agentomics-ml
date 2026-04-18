@@ -13,7 +13,7 @@ from agents.steps.validation_evaluation import ValidationEvaluationStep
 from runtime.read_write_utils import (
     get_archived_iterations,
     get_last_successful_iteration,
-    load_best_run_iteration,
+    load_best_iteration_snapshot_iteration,
     load_current_iteration_index,
     load_iteration_duration,
     load_iteration_state,
@@ -238,7 +238,7 @@ class IterationPlanStep(AgenticStep):
 
     def _build_splitting_info(self) -> str:
         iteration = load_current_iteration_index(self.config)
-        best_metric_iteration = load_best_run_iteration(self.config)
+        best_metric_iteration = load_best_iteration_snapshot_iteration(self.config)
         latest_split_version = self._get_latest_split_version()
 
         if not load_iteration_state(self.config.current_iteration_dir)["split_allowed_at_start"]:
@@ -328,7 +328,7 @@ class IterationPlanStep(AgenticStep):
         return "\n".join(extra_info_parts)
 
     def _build_iteration_standing_info(self, iteration: int, was_new_best: bool) -> str:
-        best_metric_iteration = load_best_run_iteration(self.config)
+        best_metric_iteration = load_best_iteration_snapshot_iteration(self.config)
         if best_metric_iteration is None:
             #TODO can this happen?
             return ""
@@ -339,7 +339,7 @@ class IterationPlanStep(AgenticStep):
         return "This iteration is not the best iteration"
 
     def _build_best_iteration_model_info(self) -> str:
-        best_metric_iteration = load_best_run_iteration(self.config)
+        best_metric_iteration = load_best_iteration_snapshot_iteration(self.config)
         latest_split_version = self._get_latest_split_version()
         if best_metric_iteration is None:
             return "No best iteration model exists yet. Only models using the latest split are candidates for the future best iteration model."

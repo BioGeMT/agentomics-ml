@@ -4,7 +4,7 @@ import datetime
 import json
 import re
 import shutil
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Any
 
@@ -16,14 +16,13 @@ from runtime.filesystem import (
 from utils.config import Config
 
 def initialize_run_directories(config: Config) -> None:
-    config.snapshots_dir.mkdir(parents=False, exist_ok=True)
-    config.reports_dir.mkdir(parents=False, exist_ok=True)
-    config.runs_dir.mkdir(parents=False, exist_ok=True)
-    config.fallbacks_dir.mkdir(parents=False, exist_ok=True)
-    config.extras_dir.mkdir(parents=False, exist_ok=True)
+    config.markdown_reports_dir.mkdir(parents=True, exist_ok=True)
+    config.pdf_reports_dir.mkdir(parents=True, exist_ok=True)
+    config.fallbacks_dir.mkdir(parents=True, exist_ok=True)
+    config.extras_dir.mkdir(parents=True, exist_ok=True)
     config.run_dir.mkdir(parents=True, exist_ok=True)
     config.shared_dir.mkdir(parents=True, exist_ok=True)
-    config.snapshot_dir.mkdir(parents=True, exist_ok=True)
+    config.best_iteration_snapshot_dir.mkdir(parents=True, exist_ok=True)
     config.splits_dir.mkdir(parents=True, exist_ok=True)
 
 def save_config(config: Config) -> None:
@@ -38,6 +37,10 @@ def load_config(config_path: Path | str) -> Config:
 
 def load_config_from_run_dir(run_dir: Path | str) -> Config:
     return load_config(Path(run_dir) / Config.SHARED_DIRNAME / Config.CONFIG_FILENAME)
+
+def load_config_from_run_dir_and_reroot(run_dir: Path) -> Config:
+    config = load_config_from_run_dir(run_dir)
+    return replace(config, workspace_dir=str(run_dir.parent))
 
 def initialize_current_iteration_workspace(config: Config) -> None:
     current_iteration_dir = config.current_iteration_dir
@@ -64,12 +67,10 @@ def archive_current_iteration(config: Config, iteration: int) -> None:
 
 def get_archived_iterations(
     config: Config,
-    search_root_dir: Path | None = None,
     only_successful: bool = False,
 ) -> list[int]:
     archived_iterations: list[int] = []
-    root_dir = search_root_dir or config.run_dir
-    for child in root_dir.iterdir():
+    for child in config.run_dir.iterdir():
         if not child.is_dir() or not child.name.startswith(Config.ITERATION_DIR_PREFIX):
             continue
         suffix = child.name.removeprefix(Config.ITERATION_DIR_PREFIX)
@@ -153,8 +154,8 @@ def does_file_contain_iteration_pattern(file_path) -> bool:
 def load_iteration_metadata(iteration_dir: Path) -> dict[str, Any]:
     return _load_json_object(iteration_dir / Config.RUNTIME_INFO_DIRNAME / Config.ITERATION_METADATA_FILENAME)
 
-def load_best_run_iteration(config: Config) -> int | None:
-    iteration = load_iteration_metadata(config.snapshot_dir).get("iteration")
+def load_best_iteration_snapshot_iteration(config: Config) -> int | None:
+    iteration = load_iteration_metadata(config.best_iteration_snapshot_dir).get("iteration")
     if isinstance(iteration, int):
         return iteration
     return None

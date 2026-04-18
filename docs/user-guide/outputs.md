@@ -6,7 +6,7 @@ After a run completes, results are saved to `outputs/<agent_id>/`.
 
 ```
 outputs/<agent_id>/
-├── best_run_files/           # Best iteration artifacts
+├── best_iteration_snapshot/           # Best iteration snapshot
 │   ├── model_training/
 │   │   ├── train.py          # Training script
 │   │   └── training_artifacts/
@@ -19,25 +19,27 @@ outputs/<agent_id>/
 │   │   └── iteration_metadata.json
 │   ├── environment.yml
 │   └── .conda/
-├── run_files/                # All iterations + data splits
-│   ├── train.csv
-│   ├── validation.csv
+├── run/                      # All iterations + shared run state
+│   ├── shared/
+│   │   ├── config.json
+│   │   └── splits/
 │   ├── iteration_0/
 │   ├── iteration_1/
 │   └── ...
-├── reports/                  # Run reports
-│   ├── run_report_iter_0.md
-│   ├── run_report_iter_1.md
-│   └── ...
-├── pdf_reports/              # PDF versions + plots
-│   ├── iteration_0.pdf
-│   ├── iteration_1.pdf
-│   └── plots/
+├── reports/
+│   ├── markdown/
+│   │   ├── run_report_iter_0.md
+│   │   ├── run_report_iter_1.md
+│   │   └── ...
+│   └── pdf/
+│       ├── iteration_0.pdf
+│       ├── iteration_1.pdf
+│       └── plots/
 ├── extras/                   # Additional files
 └── README.md                 # Run summary
 ```
 
-## best_run_files
+## best_iteration_snapshot
 
 The most important directory - contains the best-performing iteration's artifacts.
 
@@ -58,10 +60,10 @@ The most important directory - contains the best-performing iteration's artifact
 
 ## Iteration Directories
 
-Each iteration's files are preserved under `run_files/iteration_N/`:
+Each iteration's files are preserved under `run/iteration_N/`:
 
 ```
-run_files/iteration_N/
+run/iteration_N/
 ├── model_training/
 │   ├── train.py
 │   └── training_artifacts/
@@ -78,7 +80,7 @@ run_files/iteration_N/
 
 ### Iteration Reports
 
-`reports/run_report_iter_N.md` - Summary of each iteration:
+`reports/markdown/run_report_iter_N.md` - Summary of each iteration:
 
 - Data exploration findings
 - Model architecture chosen
@@ -87,7 +89,7 @@ run_files/iteration_N/
 
 ### PDF Reports
 
-`pdf_reports/iteration_N.pdf` - PDF report per iteration, plus plots in `pdf_reports/plots/`.
+`reports/pdf/iteration_N.pdf` - PDF report per iteration, plus plots in `reports/pdf/plots/`.
 
 ## Metrics
 
@@ -102,11 +104,11 @@ During execution, the agent uses a workspace:
 
 ```
 workspace/
-├── runs/<agent_id>/         # Active run directory
-├── snapshots/<agent_id>/    # Best iteration snapshot
+├── run/                     # Active run directory
+├── best_iteration_snapshot/    # Best iteration snapshot
 ├── reports/                 # Iteration reports
 ├── extras/                  # Logs and metrics
-└── fallbacks/<agent_id>/    # Backup for recovery
+└── fallbacks/               # Backup for recovery
 ```
 
 After completion, everything is copied to `outputs/`.
@@ -148,8 +150,8 @@ In Docker mode, the temporary workspace volume is removed after a run. In local
 mode, you can manually clean:
 
 ```bash
-rm -rf workspace/runs/*
-rm -rf workspace/snapshots/*
+rm -rf workspace/run/*
+rm -rf workspace/best_iteration_snapshot/*
 ```
 
 ## Next Steps
