@@ -522,6 +522,7 @@ else
             ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
             -e AGENT_ID=${AGENT_ID} \
             -e PYTHONWARNINGS=ignore \
+            ${FOUNDATION_MODELS_TYPE:+-e FOUNDATION_MODELS_TYPE=${FOUNDATION_MODELS_TYPE}} \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
             ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \

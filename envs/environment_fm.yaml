@@ -6,6 +6,6 @@ dependencies:
   - pip
   - pip:
     - torch==2.9.0
-    - transformers==4.47.1
+    - transformers==5.5.4
     - einops==0.8.1
-    - multimolecule==0.0.8
+    - multimolecule==0.0.9

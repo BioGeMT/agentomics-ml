@@ -33,6 +33,9 @@ def get_shared_test_resources():
     agent_user = os.getenv('AGENT_USER')
 
     if _shared_test_resources is None:
+        foundation_models_type = os.getenv('FOUNDATION_MODELS_TYPE') or None
+        foundation_models_yaml = '/foundation_models/models.yaml' if foundation_models_type else None
+
         config = Config(
             agent_id=agent_id,
             model_name="openai/gpt-3.5-turbo",
@@ -46,6 +49,8 @@ def get_shared_test_resources():
             iterations=5,
             user_prompt="Create the best possible machine learning model that will generalize to new unseen data.",
             agent_user=agent_user,
+            foundation_models_type=foundation_models_type,
+            foundation_models_yaml=foundation_models_yaml,
         )
 
         initialize_run_directories(config)

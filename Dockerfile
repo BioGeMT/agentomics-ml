@@ -23,6 +23,8 @@ RUN if [ -n "$FOUNDATION_MODEL_TYPE" ]; then \
     && mamba clean -afy \
     && rm -rf /tmp/conda-pkgs \
     && /opt/conda/envs/fm-download-env/bin/python /repository/src/utils/download_foundation_models.py \
+        --foundation-models-type "$FOUNDATION_MODEL_TYPE" \
+        --models-yaml /foundation_models/models.yaml \
     && conda env remove -n fm-download-env; \
     else \
       echo "Skipping foundation model download (FOUNDATION_MODEL_TYPE not set)"; \
@@ -42,7 +44,13 @@ RUN conda init bash \
 # Setup agent start environment
 ENV START_ENV_PKG=/opt/agent_start_env.tar.gz
 COPY envs/environment_agent.yaml .
+# Preload libgomp on env activation so it claims a static TLS slot before
+# torch's shared libs consume them all. Without this, sklearn (imported via
+# transformers) fails with "cannot allocate memory in static TLS block".
 RUN mamba env create -f environment_agent.yaml \
+    && mkdir -p /opt/conda/envs/agent_start_env/etc/conda/activate.d \
+    && echo 'export LD_PRELOAD=$CONDA_PREFIX/lib/libgomp.so.1' \
+       > /opt/conda/envs/agent_start_env/etc/conda/activate.d/preload_libgomp.sh \
     && mamba clean -afy \
     && rm -rf /tmp/conda-pkgs \
     && conda run -n agent_start_env conda-pack -o ${START_ENV_PKG} \
