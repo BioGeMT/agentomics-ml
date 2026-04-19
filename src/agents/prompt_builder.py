@@ -44,7 +44,6 @@ def get_system_prompt(config: Config):
     Dataset knowledge:
     {dataset_knowledge}
     """
-    # return load_prompts(config["prompt"])["system_prompt"]
 
 def get_dataset_knowledge(config: Config):
     dataset_knowledge_path = config.agent_dataset_dir / "dataset_description.md"
