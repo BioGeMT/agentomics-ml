@@ -1,15 +1,16 @@
-import pprint
-import textwrap
 import json
 import os
+import pprint
+import textwrap
 
-from pydantic_ai.messages import SystemPromptPart, UserPromptPart, TextPart, ToolCallPart, ToolReturnPart, RetryPromptPart ,ThinkingPart
 from pydantic_ai import CallToolsNode, ModelRequestNode, UserPromptNode
+from pydantic_ai.messages import SystemPromptPart, UserPromptPart, TextPart, ToolCallPart, ToolReturnPart, RetryPromptPart, ThinkingPart
 from pydantic_graph.nodes import End
 from pygments import highlight
-from pygments.lexers import PythonLexer
-from pygments.formatters import TerminalTrueColorFormatter as TF
 from pygments.formatters import TerminalFormatter as TF
+from pygments.lexers import PythonLexer
+
+from utils.config import Config
 
 
 class bcolors:
@@ -231,3 +232,45 @@ def truncate_float(f, decimals=3):
 
 def print_phase(title: str):
     print(f"\n{bcolors.BOLD}{bcolors.PRETTY_BLUE}■ {title}{bcolors.ENDC}\n")
+
+
+def print_best_iteration_metrics(config: Config) -> None:
+    # Lazy imports: agents.agent_utils imports printing_utils, so top-level imports here would be circular.
+    from agents.steps.validation_evaluation import ValidationEvaluationStep
+    from runtime.step_outputs import load_step_output
+
+    metric_name = config.val_metric
+    snapshot_dir = config.best_iteration_snapshot_dir
+
+    train_val: float | None = None
+    val_val: float | None = None
+    test_val: float | None = None
+
+    validation_output = load_step_output(config, ValidationEvaluationStep.step_id, iteration_dir=snapshot_dir)
+    if validation_output is not None:
+        metrics: dict = getattr(validation_output, "metrics", {}) or {}
+        train_val = metrics.get(f"train/{metric_name}")
+        val_val = metrics.get(f"validation/{metric_name}")
+
+    test_metrics_path = snapshot_dir / "test_metrics.json"
+    if test_metrics_path.exists():
+        try:
+            test_val = json.loads(test_metrics_path.read_text()).get(metric_name)
+        except Exception:
+            pass
+
+    if train_val is None and val_val is None and test_val is None:
+        return
+
+    col_w = max(len(metric_name), 6)
+    header = f"  {'Metric':<{col_w}}  {'Train':>10}  {'Validation':>10}  {'Test':>10}"
+    sep = f"  {'-' * col_w}  {'-' * 10}  {'-' * 10}  {'-' * 10}"
+
+    print_phase("Best iteration metrics summary")
+    print(header)
+    print(sep)
+    train_str = f"{train_val:.4f}" if train_val is not None else "—"
+    val_str = f"{val_val:.4f}" if val_val is not None else "—"
+    test_str = f"{test_val:.4f}" if test_val is not None else "—"
+    print(f"  {metric_name:<{col_w}}  {train_str:>10}  {val_str:>10}  {test_str:>10}")
+    print()

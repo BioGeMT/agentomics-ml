@@ -13,6 +13,7 @@ from runtime.inference_runner import compute_metrics, run_inference_script
 from runtime.read_write_utils import load_config_from_run_dir, load_dataset_metadata
 from utils.exceptions import AgentScriptFailed
 from utils.metrics import get_task_to_metrics_names
+from utils.printing_utils import print_best_iteration_metrics
 
 
 def _get_test_metrics_path(best_iteration_snapshot_dir: Path) -> Path:
@@ -75,6 +76,8 @@ def run_test_evaluation(workspace_dir, prepared_test_sets_dir: Path):
                 }
             )
     log_test_inference_duration(time.time() - start)
+    if config is not None:
+        print_best_iteration_metrics(config)
 
 def main():
     parser = argparse.ArgumentParser()
