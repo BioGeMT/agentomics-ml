@@ -19,6 +19,7 @@ class Config:
     ITERATION_METADATA_FILENAME: ClassVar[str] = "iteration_metadata.json"
     ITERATION_STATE_FILENAME: ClassVar[str] = "iteration_state.json"
     STEP_OUTPUT_FILENAME: ClassVar[str] = "output.json"
+
     DEFAULT_ITERATIONS: ClassVar[int] = 5
     DEFAULT_SPLIT_ALLOWED_ITERATIONS: ClassVar[int] = 1
     DEFAULT_EXPLORATION_ITERATIONS: ClassVar[int] = 4
@@ -50,26 +51,35 @@ class Config:
     DEFAULT_RUN_PYTHON_TOOL_TIMEOUT: ClassVar[int] = 60 * 60 * 6
     DEFAULT_USER_PROMPT: ClassVar[str] = "Develop a machine learning model that generalizes well to new unseen data."
 
-    agent_id: str
+    # Required, settable through the CLI (run_agent_interactive.py)
     model_name: str
-    iteration_plan_model_name: str
     dataset: str
     tags: list[str]
     val_metric: str
     workspace_dir: str
     prepared_datasets_dir: str
-    user_prompt: str = DEFAULT_USER_PROMPT
+
+    # Required, not settable through the CLI
+    agent_id: str
+    iteration_plan_model_name: str
     task_type: str
+
+    # Optional, default values can be overwritten through the CLI
+    user_prompt: str = DEFAULT_USER_PROMPT
     iterations: int = DEFAULT_ITERATIONS
     provider_name: str | None = None
-    max_steps: int = DEFAULT_MAX_STEPS
     split_allowed_iterations: int = DEFAULT_SPLIT_ALLOWED_ITERATIONS
     exploration_iterations: int = DEFAULT_EXPLORATION_ITERATIONS
-    step_sequence: list[str] = field(default_factory=lambda: Config.DEFAULT_STEP_SEQUENCE.copy())
-    tool_ids: list[str] = field(default_factory=lambda: Config.DEFAULT_TOOL_IDS.copy())
     time_deadline: int | None = None
     split_time_deadline: int | None = None
     run_python_tool_timeout: int = DEFAULT_RUN_PYTHON_TOOL_TIMEOUT
+    foundation_models_type: str | None = None
+    foundation_models_yaml: str | None = None
+
+    # Optional, default values can not be overwritten through the CLI
+    max_steps: int = DEFAULT_MAX_STEPS
+    step_sequence: list[str] = field(default_factory=lambda: Config.DEFAULT_STEP_SEQUENCE.copy())
+    tool_ids: list[str] = field(default_factory=lambda: Config.DEFAULT_TOOL_IDS.copy())
     temperature: float = DEFAULT_TEMPERATURE
     max_validation_retries: int = DEFAULT_MAX_VALIDATION_RETRIES
     use_proxy: bool = DEFAULT_USE_PROXY
@@ -77,8 +87,6 @@ class Config:
     bash_tool_timeout: int = DEFAULT_BASH_TOOL_TIMEOUT
     max_tool_retries: int = DEFAULT_MAX_TOOL_RETRIES
     wandb_run_id: str | None = None
-    foundation_models_type: str | None = None
-    foundation_models_yaml: str | None = None
     agent_user: str | None = None
 
     @property
