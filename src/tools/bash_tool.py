@@ -7,11 +7,12 @@ import time
 
 from pydantic_ai import Tool
 from runtime.conda_utils import get_shared_environment_path
+from utils.config import Config
 from utils.text_processing_utils import collapse_repeated_lines, concise_output
 
 
 class BashProcess:
-    def __init__(self, config, autoconda=True, timeout=60):
+    def __init__(self, config: Config, autoconda=True, timeout=60):
         self.locked = threading.Lock()
         self.config = config
         self.autoconda = autoconda
@@ -105,7 +106,7 @@ class BashProcess:
             output = output[:5000]+"\n ... (output truncated, too long)"
         return output.strip()
 
-def create_bash_tool(config):
+def create_bash_tool(config: Config):
         bash = BashProcess(
             config=config,
             autoconda=True,

@@ -5,6 +5,7 @@ import wandb
 from wandb.errors import AuthenticationError, UsageError
 
 from utils.metrics import get_task_to_metrics_names
+from utils.config import Config
 
 
 def login_to_wandb(api_key):
@@ -73,7 +74,7 @@ def log_test_inference_duration(duration):
         return
     wandb.log({'test_inference_duration':duration})
 
-def log_files(config, files=None, iteration=None):
+def log_files(config: Config, files=None, iteration=None):
     if not is_wandb_active():
         return
 

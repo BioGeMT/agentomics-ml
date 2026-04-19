@@ -4,6 +4,7 @@ import traceback
 from pydantic import BaseModel, Field
 from pydantic_ai import Tool
 from pathlib import Path
+from utils.config import Config
 
 
 class Edit(BaseModel):
@@ -11,7 +12,7 @@ class Edit(BaseModel):
     new: str = Field(description="The new string to replace with. Can be multi-line.")
     replace_all: bool = Field(description="Whether to replace all occurrences. If False, replaces only the first occurrence.", default=False)
 
-def create_replace_tool(config):
+def create_replace_tool(config: Config):
     def _replace(file_path: str, old:str, new:str, replace_all:bool):
         """
         A tool used to replace specific text in a file

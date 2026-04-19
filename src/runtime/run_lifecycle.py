@@ -78,7 +78,7 @@ async def _run_iteration(config: Config, iteration: int, default_model: Model, i
     commit_iteration_end(config, iteration=iteration)
     _enforce_time_deadline(config)
 
-def _prepare_iteration_workspace(config, iteration: int) -> None:
+def _prepare_iteration_workspace(config: Config, iteration: int) -> None:
     started_at = time.time()
     initialize_current_iteration_workspace(config)
     initialize_current_iteration_metadata(config, iteration=iteration)
@@ -86,7 +86,7 @@ def _prepare_iteration_workspace(config, iteration: int) -> None:
     write_current_iteration_system_prompt(config, get_system_prompt(config))
     write_current_iteration_base_prompt(config, build_iteration_base_prompt(config, iteration))
 
-def _enforce_time_deadline(config) -> None:
+def _enforce_time_deadline(config: Config) -> None:
     time_deadline = config.time_deadline
     if time_deadline is not None and time.time() >= time_deadline:
         print("Internal timeout reached, stopping the run.")

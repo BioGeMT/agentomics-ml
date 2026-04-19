@@ -17,8 +17,9 @@ from runtime.filesystem import (
     remove_path,
 )
 from runtime.step_outputs import load_step_output
+from utils.config import Config
 
-def update_best_iteration_snapshot(config, iteration: int) -> None:
+def update_best_iteration_snapshot(config: Config, iteration: int) -> None:
     iteration_dir = config.iteration_dir(iteration)
 
     data_split = load_step_output(
@@ -48,7 +49,7 @@ def update_best_iteration_snapshot(config, iteration: int) -> None:
     if split_changed:
         remove_path(config.best_iteration_snapshot_dir)
 
-def _publish_best_iteration_snapshot(config, source_dir: Path) -> None:
+def _publish_best_iteration_snapshot(config: Config, source_dir: Path) -> None:
     best_iteration_snapshot_dir = config.best_iteration_snapshot_dir
     conda_source = get_shared_conda_root(config)
     conda_env = get_shared_environment_path(config)

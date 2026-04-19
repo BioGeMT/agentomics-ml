@@ -4,17 +4,18 @@ import subprocess
 from pathlib import Path
 
 from runtime.filesystem import remove_path
+from utils.config import Config
 
 
-def get_shared_conda_root(config) -> Path:
+def get_shared_conda_root(config: Config) -> Path:
     return config.shared_dir / ".conda"
 
 
-def get_shared_environment_path(config) -> Path:
+def get_shared_environment_path(config: Config) -> Path:
     return get_shared_conda_root(config) / "envs" / f"{config.agent_id}_env"
 
 
-def get_best_iteration_snapshot_environment_path(config) -> Path:
+def get_best_iteration_snapshot_environment_path(config: Config) -> Path:
     return config.best_iteration_snapshot_dir / ".conda" / "envs" / f"{config.agent_id}_env"
 
 
@@ -41,7 +42,7 @@ def create_environment_from_descriptor(descriptor_path: Path, env_path: Path) ->
         check=True,
     )
 
-def export_shared_environment_descriptor(config) -> None:
+def export_shared_environment_descriptor(config: Config) -> None:
     conda_env = get_shared_environment_path(config)
     export_environment_descriptor_to_path(
         env_path=conda_env,

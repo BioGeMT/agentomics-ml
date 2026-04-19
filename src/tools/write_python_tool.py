@@ -2,9 +2,10 @@ import traceback
 import time
 from pydantic_ai import Tool
 from pathlib import Path
+from utils.config import Config
 
 
-def create_write_python_tool(config):
+def create_write_python_tool(config: Config):
     def _write_python(code: str, file_path: str):
         """
         A tool to write python code into a single file.

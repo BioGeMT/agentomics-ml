@@ -9,6 +9,7 @@ import subprocess
 from rich.console import Console
 from rich.table import Table
 from rich import box
+from utils.config import Config
 
 def count_csv_rows(csv_file: str) -> int:
     """
@@ -209,7 +210,7 @@ def get_numeric_label_col_from_prepared_dataset(prepared_dataset_dir: Path) -> s
     metadata = json.loads(metadata_path.read_text())
     return metadata["numeric_label_col"]
 
-def get_classes_integers(config):
+def get_classes_integers(config: Config):
     """Get classes integers from the prepared dataset metadata."""
     if config.task_type != "classification":
         return None

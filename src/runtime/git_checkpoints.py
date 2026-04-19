@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import subprocess
 
+from utils.config import Config
 
-def initialize_repo_if_needed(config) -> None:
+
+def initialize_repo_if_needed(config: Config) -> None:
     run_dir = config.run_dir
     git_dir = run_dir / ".git"
     if not git_dir.exists():
@@ -12,13 +14,13 @@ def initialize_repo_if_needed(config) -> None:
     _configure_repo(config)
     _write_gitignore(config)
 
-def commit_run_start_if_needed(config) -> None:
+def commit_run_start_if_needed(config: Config) -> None:
     _commit_all(config, build_run_start_commit_message(config.agent_id))
 
-def commit_step_checkpoint(config, iteration: int, step_id: str) -> None:
+def commit_step_checkpoint(config: Config, iteration: int, step_id: str) -> None:
     _commit_all(config, build_step_commit_message(config.agent_id, iteration, step_id))
 
-def commit_iteration_end(config, iteration: int) -> None:
+def commit_iteration_end(config: Config, iteration: int) -> None:
     _commit_all(config, build_iteration_end_commit_message(config.agent_id, iteration))
 
 def build_step_commit_message(run_id: str, iteration: int, step_id: str) -> str:
@@ -30,11 +32,11 @@ def build_iteration_end_commit_message(run_id: str, iteration: int) -> str:
 def build_run_start_commit_message(run_id: str) -> str:
     return f"agentomics: run={run_id} start"
 
-def _configure_repo(config) -> None:
+def _configure_repo(config: Config) -> None:
     _git(config, ["config", "user.name", "Agentomics Runtime"], check=False)
     _git(config, ["config", "user.email", "agentomics@local"], check=False)
 
-def _write_gitignore(config) -> None:
+def _write_gitignore(config: Config) -> None:
     gitignore_path = config.run_dir / ".gitignore"
     gitignore_lines = [
         "shared/.conda/",
@@ -44,7 +46,7 @@ def _write_gitignore(config) -> None:
     ]
     gitignore_path.write_text("\n".join(gitignore_lines) + "\n", encoding="utf-8")
 
-def _commit_all(config, message: str) -> None:
+def _commit_all(config: Config, message: str) -> None:
     _git(config, ["add", "-A"])
     status = _git(config, ["status", "--porcelain"], capture_output=True)
     if not status.stdout.strip():
@@ -52,7 +54,7 @@ def _commit_all(config, message: str) -> None:
     _git(config, ["commit", "-m", message])
 
 def _git(
-    config,
+    config: Config,
     args: list[str],
     capture_output: bool = False,
     check: bool = True,

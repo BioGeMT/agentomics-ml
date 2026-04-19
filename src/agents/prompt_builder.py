@@ -3,7 +3,7 @@ import json
 from runtime.system_resources import check_gpu_availability, get_resources_summary
 from utils.config import Config
 
-def get_system_prompt(config):
+def get_system_prompt(config: Config):
     train_csv_path = config.agent_dataset_dir / "train.csv"
     validation_csv_path = config.agent_dataset_dir / "validation.csv"
     dataset_knowledge = get_dataset_knowledge(config)
@@ -46,7 +46,7 @@ def get_system_prompt(config):
     """
     # return load_prompts(config["prompt"])["system_prompt"]
 
-def get_dataset_knowledge(config):
+def get_dataset_knowledge(config: Config):
     dataset_knowledge_path = config.agent_dataset_dir / "dataset_description.md"
     with open(dataset_knowledge_path) as f:
         dataset_knowledge = f.read()

@@ -1,8 +1,9 @@
 from utils.foundation_models_utils import build_foundation_model_catalog, format_foundation_model_catalog, get_foundation_model_family_info
 from pydantic_ai import Tool
+from utils.config import Config
 
 
-def create_foundation_models_info_tool(config):
+def create_foundation_models_info_tool(config: Config):
     def _get_foundation_models_info(family: str):
         """
         This tool lists foundation models available in this system and ready to be used.

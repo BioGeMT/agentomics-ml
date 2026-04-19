@@ -4,9 +4,10 @@ from pydantic_ai import Tool
 from pathlib import Path
 from runtime.conda_utils import get_shared_environment_path
 from .bash_tool import BashProcess
+from utils.config import Config
 
 
-def create_run_python_tool(config):
+def create_run_python_tool(config: Config):
     bash = BashProcess(
         config=config,
         autoconda=False,
