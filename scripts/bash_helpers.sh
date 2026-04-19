@@ -92,24 +92,30 @@ It includes: (1) the **best model chosen across iterations**, (2) per-iteration 
 **Note:** Iterations are **0-indexed** (first iteration is \`0\`).
 
 What to use:
-- **Best model + code:** \`best_iteration_snapshot/\`
+- **Best model + code:** \`best_iteration_snapshot/\` (train script: \`model_training/train.py\`, artifacts: \`model_training/training_artifacts/\`)
 - **Best report:** \`reports/markdown/run_report_iter_${best_iter}.md\`
 
 ---
 \`\`\`
 outputs/${agent_id}/
 ├── best_iteration_snapshot/                 # Snapshot exported from the selected best iteration
-│   ├── train.py                    # Training script used to produce the best model
-│   ├── inference.py                # Inference script for predictions on new data
-│   ├── training_artifacts/         # Serialized artifacts (e.g. \`model.joblib\`)
-│   │   └── model.joblib
-│   │   └── ...
-│   ├── validation_metrics.txt
-│   ├── train_metrics.txt
-│   ├── eval_predictions_train.csv  # Predictions on training set
-│   ├── eval_predictions_validation.csv
+│   ├── model_training/
+│   │   ├── train.py                # Training script used to produce the best model
+│   │   └── training_artifacts/     # Serialized artifacts (e.g. \`model.joblib\`)
+│   │       └── model.joblib
+│   │       └── ...
+│   ├── model_inference/
+│   │   └── inference.py            # Inference script for predictions on new data
+│   ├── validation_evaluation/
+│   │   ├── output.json             # Contains train/validation metrics
+│   │   ├── eval_predictions_train.csv
+│   │   └── eval_predictions_validation.csv
+│   ├── <other_step_dirs>/          # output.json + step scripts per step
+│   ├── runtime_info/
+│   │   └── iteration_metadata.json
 │   ├── environment.yml
-│   └── runtime_info/iteration_metadata.json
+│   ├── eval_predictions_test.csv   # Predictions on held-out test set
+│   └── test_metrics.json           # Metrics on held-out test set
 │
 ├── run/                            # Run working directory
 │   ├── shared/splits/              # Train/validation split CSVs
@@ -130,8 +136,7 @@ outputs/${agent_id}/
 │           └── iter_<i>_<split>_*.png
 │
 ├── extras/                         # Logs and debugging information
-│   ├── run_logs/
-│   └── test_logs/
+│   └── run_logs/
 │
 └── README.md                       # This file
 \`\`\`
@@ -144,8 +149,8 @@ outputs/${agent_id}/
 \`\`\`
 
 Inference relies on:
-- \`best_iteration_snapshot/inference.py\`
-- \`best_iteration_snapshot/training_artifacts/\`
+- \`best_iteration_snapshot/model_inference/inference.py\`
+- \`best_iteration_snapshot/model_training/training_artifacts/\`
 
 EOF
 }
