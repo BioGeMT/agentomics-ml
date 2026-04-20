@@ -2,6 +2,9 @@
 .git
 .gitignore
 *.md
+!README.md
+!foundation_models/*.md
+!src/agentomics/resources/foundation_models/*.md
 *.cast
 .env
 .env.*

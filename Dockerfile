@@ -17,6 +17,11 @@ RUN mamba env create -f environment.yaml \
     && mamba clean -afy \
     && rm -rf /tmp/conda-pkgs
 
+WORKDIR /repository
+COPY pyproject.toml README.md ./
+COPY src/agentomics ./src/agentomics
+RUN conda run -n agentomics-env python -m pip install --no-deps /repository
+
 # Initialize conda for bash and set up auto-activation
 RUN conda init bash \
     && echo "conda activate agentomics-env" >> /root/.bashrc
@@ -27,8 +32,6 @@ ENV HF_HOME=/cache/foundation_models
 ARG FOUNDATION_MODEL_TYPE=
 ENV FOUNDATION_MODEL_TYPE=${FOUNDATION_MODEL_TYPE}
 COPY foundation_models/ /foundation_models/
-COPY src/agentomics/utils/foundation_models_utils.py /repository/src/agentomics/utils/foundation_models_utils.py
-COPY src/agentomics/utils/download_foundation_models.py /repository/src/agentomics/utils/download_foundation_models.py
 RUN if [ -n "$FOUNDATION_MODEL_TYPE" ]; then \
       /opt/conda/envs/agentomics-env/bin/python -m agentomics.utils.download_foundation_models; \
     else \
@@ -42,7 +45,5 @@ RUN mamba env create -f environment_agent.yaml \
     && mamba clean -afy \
     && rm -rf /tmp/conda-pkgs
 RUN conda run -n agent_start_env conda-pack -o ${START_ENV_PKG}
-
-WORKDIR /repository
 
 ENTRYPOINT ["/opt/conda/envs/agentomics-env/bin/python", "-m", "agentomics.run_agent_interactive"]

@@ -10,6 +10,9 @@ RUN conda init bash
 
 # Set working directory
 WORKDIR /repository
+COPY pyproject.toml README.md ./
+COPY src/agentomics ./src/agentomics
+RUN conda run -n agentomics-prepare-env python -m pip install --no-deps /repository
 
 # Set the default command to run preparation directly
-ENTRYPOINT ["/opt/conda/envs/agentomics-prepare-env/bin/python", "/repository/src/prepare_datasets.py", "--prepare-all"] 
+ENTRYPOINT ["/opt/conda/envs/agentomics-prepare-env/bin/python", "-m", "agentomics.prepare_datasets", "--prepare-all"]

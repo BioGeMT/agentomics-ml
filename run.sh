@@ -77,6 +77,11 @@ Output:
 EOF
 }
 
+install_agentomics_package_in_env() {
+    local env_name="$1"
+    conda run -n "$env_name" python -m pip install --quiet --no-deps "$AGENTOMICS_DIR"
+}
+
 while [[ $# -gt 0 ]]; do
     case $1 in
         -h|--help)
@@ -268,6 +273,7 @@ if [ "$LOCAL_MODE" = true ]; then
     else
         conda env update -n agentomics-env -f environment.yaml -q
     fi
+    install_agentomics_package_in_env agentomics-env
 
     eval "$(conda shell.bash hook)"
     conda activate agentomics-env
@@ -296,6 +302,7 @@ if [ "$LOCAL_MODE" = true ]; then
     if ! conda env list | grep -q "agentomics-prepare-env"; then
         conda env create -f environment_prepare.yaml -q
     fi
+    install_agentomics_package_in_env agentomics-prepare-env
 
     mkdir -p prepared_datasets
     conda run -n agentomics-prepare-env python -m agentomics.prepare_datasets --prepare-all
