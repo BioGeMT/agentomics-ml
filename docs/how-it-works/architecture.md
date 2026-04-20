@@ -162,7 +162,7 @@ The agent tracks the best-performing iteration:
 
 ## Configuration
 
-Key architecture parameters in `src/utils/config.py`:
+Key architecture parameters in `src/agentomics/utils/config.py`:
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|

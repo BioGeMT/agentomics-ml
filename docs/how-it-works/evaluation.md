@@ -169,7 +169,7 @@ If configured, metrics are logged to Weights & Biases:
 For advanced use, modify metric definitions in:
 
 ```
-src/utils/metrics.py
+src/agentomics/utils/metrics.py
 ```
 
 ## Next Steps
