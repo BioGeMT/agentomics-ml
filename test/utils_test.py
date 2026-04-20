@@ -8,11 +8,11 @@ SRC_PATH = REPO_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-from src.tools.setup_tools import create_tools
-from src.utils.create_user import create_run_and_snapshot_dirs
-from src.utils.config import Config
-from src.utils.workspace_setup import ensure_workspace_folders
-from src.utils.dataset_utils import setup_nonsensitive_dataset_files_for_agent
+from agentomics.tools.setup_tools import create_tools
+from agentomics.utils.create_user import create_run_and_snapshot_dirs
+from agentomics.utils.config import Config
+from agentomics.utils.workspace_setup import ensure_workspace_folders
+from agentomics.utils.dataset_utils import setup_nonsensitive_dataset_files_for_agent
 
 _shared_test_resources = None
 
