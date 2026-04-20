@@ -3,7 +3,21 @@ import dotenv
 import os
 from pathlib import Path
 
-dotenv.load_dotenv(Path(__file__).parents[2] / ".env") # load env in the root of the project
+from agentomics.utils.path_defaults import find_repo_root
+
+
+def get_repo_env_path() -> Path | None:
+    repo_root = find_repo_root(Path(__file__))
+    if repo_root is None:
+        return None
+    return repo_root / ".env"
+
+
+repo_env_path = get_repo_env_path()
+if repo_env_path is not None and repo_env_path.exists():
+    dotenv.load_dotenv(repo_env_path)
+else:
+    dotenv.load_dotenv()
 
 PROVISIONING_API_KEY = os.getenv("PROVISIONING_OPENROUTER_API_KEY")
 BASE_URL = "https://openrouter.ai/api/v1/keys"
