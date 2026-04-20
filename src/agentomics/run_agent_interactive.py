@@ -65,9 +65,6 @@ def main():
     model = args.model
     val_metric = args.val_metric
     iterations = args.iterations
-    if not os.environ.get("AGENT_ID"):
-        os.environ["AGENT_ID"] = create_user()
-        console.print(f"[yellow]AGENT_ID not set. Generated: {os.environ['AGENT_ID']}[/yellow]")
 
     paths = resolve_agentomics_paths(
         workspace_dir=args.workspace_dir,
@@ -75,9 +72,6 @@ def main():
         prepared_test_sets_dir=args.prepared_test_sets_dir,
         agent_datasets_dir=args.agent_datasets_dir,
     )
-
-    api_key, provider_name = get_provider_and_api_key(preferred_provider=args.provider)
-    provider = Provider.create_provider(provider_name, api_key)
 
     # Handle list-only modes (these don't require interactivity)
     if args.list_datasets:
@@ -95,6 +89,13 @@ def main():
         console.print("Available Validation Metrics", style="cyan")
         display_metrics_table()  # Show all metrics when listing
         return 0
+
+    api_key, provider_name = get_provider_and_api_key(preferred_provider=args.provider)
+    provider = Provider.create_provider(provider_name, api_key)
+
+    if not os.environ.get("AGENT_ID"):
+        os.environ["AGENT_ID"] = create_user()
+        console.print(f"[yellow]AGENT_ID not set. Generated: {os.environ['AGENT_ID']}[/yellow]")
     
     # For interactive mode (when dataset/model missing), require interactive terminal
     if (not dataset or not model) and not check_tty_available():
