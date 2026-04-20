@@ -1,0 +1,47 @@
+name: Package Checks
+
+on:
+  push:
+    paths:
+      - ".github/workflows/package-checks.yml"
+      - "pyproject.toml"
+      - "src/agentomics/**"
+      - "test/test_path_defaults.py"
+      - "test/test_run_agent_interactive.py"
+      - "test/test_package_path_regressions.py"
+  pull_request:
+    paths:
+      - ".github/workflows/package-checks.yml"
+      - "pyproject.toml"
+      - "src/agentomics/**"
+      - "test/test_path_defaults.py"
+      - "test/test_run_agent_interactive.py"
+      - "test/test_package_path_regressions.py"
+
+jobs:
+  package-checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ".[reports]"
+
+      - name: Run Targeted Package Tests
+        run: |
+          python -m unittest \
+            test.test_path_defaults \
+            test.test_run_agent_interactive \
+            test.test_package_path_regressions
+
+      - name: Verify Package Compiles
+        run: python -m compileall src/agentomics
