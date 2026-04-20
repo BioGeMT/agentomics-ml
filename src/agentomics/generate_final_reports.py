@@ -232,15 +232,36 @@ def load_run_meta(agent_dir: Path) -> RunMeta:
         exploration_iterations=cfg.get("exploration_iterations"),
     )
 
-def load_prepared_dataset_meta(agent_dir: Path) -> DatasetMeta:
+def load_prepared_dataset_meta(agent_dir: Path, prepared_datasets: Path) -> DatasetMeta:
     cfg = load_config_json(agent_dir)
     dataset = cfg.get("dataset")
     if not dataset:
         raise SystemExit("config.json missing required key: 'dataset'")
-    repo_root = Path(__file__).resolve().parents[1]
-    meta_path = repo_root / "prepared_datasets" / str(dataset) / "metadata.json"
-    if not meta_path.exists():
-        raise SystemExit(f"prepared dataset metadata not found: {meta_path}")
+
+    candidate_dirs = []
+    seen_dirs = set()
+    for candidate in (prepared_datasets, cfg.get("prepared_datasets_dir")):
+        if not candidate:
+            continue
+        candidate_path = Path(candidate).expanduser().resolve()
+        candidate_key = str(candidate_path)
+        if candidate_key in seen_dirs:
+            continue
+        seen_dirs.add(candidate_key)
+        candidate_dirs.append(candidate_path)
+
+    meta_path = None
+    searched_paths = []
+    for base_dir in candidate_dirs:
+        candidate_meta_path = base_dir / str(dataset) / "metadata.json"
+        searched_paths.append(str(candidate_meta_path))
+        if candidate_meta_path.exists():
+            meta_path = candidate_meta_path
+            break
+
+    if meta_path is None:
+        searched = ", ".join(searched_paths) if searched_paths else "<none>"
+        raise SystemExit(f"prepared dataset metadata not found. Searched: {searched}")
     try:
         d = json.loads(meta_path.read_text(encoding="utf-8"))
     except Exception as e:
@@ -868,7 +889,7 @@ def main() -> None:
     prepared_tests: Path = args.prepared_tests.resolve()
 
     run_meta = load_run_meta(agent_dir)
-    dataset_meta = load_prepared_dataset_meta(agent_dir)
+    dataset_meta = load_prepared_dataset_meta(agent_dir, prepared_datasets)
 
     if run_meta.task_type in ("classification", "regression") and run_meta.task_type != dataset_meta.task_type:
         print(f"[WARN] task_type mismatch: config={run_meta.task_type} metadata={dataset_meta.task_type}")
