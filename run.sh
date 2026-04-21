@@ -595,6 +595,9 @@ else
             -v "$(pwd)/prepared_test_sets":/repository/prepared_test_sets:ro \
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
             ${RUN_EXEC[@]+"${RUN_EXEC[@]}"}
+        
+        RUN_EXIT_CODE=$?
+        set -e
 
         if [ "$LIST_MODE" = true ]; then
             exit "$RUN_EXIT_CODE"
