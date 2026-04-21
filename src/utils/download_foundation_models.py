@@ -7,17 +7,14 @@ import multimolecule  # noqa: F401  # Required for loading specific HF models wi
 
 
 def download_model(model_name, model_class):
-    try:
-        AutoTokenizer.from_pretrained(
-            model_name,
-            trust_remote_code=True
-        )
-        model_class.from_pretrained(
-            model_name,
-            trust_remote_code=True
-        )
-    except Exception as e:
-        print(f"Error: {str(e)}")
+    AutoTokenizer.from_pretrained(
+        model_name,
+        trust_remote_code=True
+    )
+    model_class.from_pretrained(
+        model_name,
+        trust_remote_code=True
+    )
 
 def main():
     parser = argparse.ArgumentParser(description="Download foundation models")
