@@ -51,8 +51,8 @@ Choose the setup that works best for you:
 | Script | Purpose |
 |--------|---------|
 | `run.sh` | Run the full agent workflow |
-| `train.sh` | Re-train a model with new data |
-| `inference.sh` | Run predictions on new data |
+| `scripts/train.sh` | Re-train a model with new data |
+| `scripts/inference.sh` | Run predictions on new data |
 
 ## Quick Example
 

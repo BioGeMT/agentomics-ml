@@ -9,6 +9,7 @@ from rich.panel import Panel
 from utils.config import Config
 from .provider import Provider
 
+
 class AnthropicProvider(Provider):
     def __init__(self, api_key: str, base_url: str, list_models_endpoint: str):
         super().__init__(name="Anthropic", api_key=api_key, base_url=base_url, list_models_endpoint=list_models_endpoint)

@@ -1,6 +1,0 @@
-Dataset / Model,FinDNA (finetuned),ConvNova,OmniDNA,MxDNA,HyenaDNA,MSAMamba (model using MSA),Janus,DNABERT-2 (as reported in FinDNA),CARMANIA,KAN,SwanDNA,Zurgham (best reported),mirbench
-human_enhancers_cohn,74.2,74.3,73.8,74.67,74.2,72.7,73.4,73.1,72.5,74.0,73.97,71.8,
-human_enhancers_ensembl,93.3,90.0,91.9,93.13,89.2,90.1,86.8,92.8,89.5,80.2,90.32,82.1,
-human_ocr_ensembl,81.19,79.3,79.1,81.05,80.9,82.5,79.9,79.5,77.8,78.4,77.52,,
-drosophila_enhancers_stark,,,,,,,,,,58.4,,68.6,
-AGO2_CLASH_Hejret2023,,,,,,,,,,,,,86.0

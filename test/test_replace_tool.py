@@ -1,11 +1,11 @@
-from test.utils_test import BaseAgentTest
+from test.test_utils import BaseAgentTest
 
 class TestReplaceTool(BaseAgentTest):
     """Test suite for the replace tool functionality."""
 
     def test_single_replacement_python(self):
         """Test replacing a single occurrence in a Python file."""
-        test_file = self.config.runs_dir / self.agent_id / "test_single_replace.py"
+        test_file = self.config.current_step_dir / "test_single_replace.py"
 
         # Create test file using write_python_tool
         code = """def hello():
@@ -32,7 +32,7 @@ class TestReplaceTool(BaseAgentTest):
 
     def test_replace_all_occurrences(self):
         """Test replacing all occurrences of a string."""
-        test_file = self.config.runs_dir / self.agent_id / "test_replace_all.py"
+        test_file = self.config.current_step_dir / "test_replace_all.py"
 
         code = """x = 5
 y = x + 10
@@ -60,7 +60,7 @@ print(x)
 
     def test_multiline_replacement(self):
         """Test replacing multi-line strings."""
-        test_file = self.config.runs_dir / self.agent_id / "test_multiline.py"
+        test_file = self.config.current_step_dir / "test_multiline.py"
 
         code = """def process():
     x = 1
@@ -95,7 +95,7 @@ def other():
 
     def test_text_file_replacement(self):
         """Test replacement in non-Python text files."""
-        test_file = self.config.runs_dir / self.agent_id / "test_text.txt"
+        test_file = self.config.current_step_dir / "test_text.txt"
 
         # Create text file using bash
         bash_result = self.bash_tool.function(f"echo 'Hello World\nThis is a test\nHello again' > {test_file}")
@@ -116,7 +116,7 @@ def other():
 
     def test_error_text_not_found(self):
         """Test error handling when text to replace is not found."""
-        test_file = self.config.runs_dir / self.agent_id / "test_not_found.py"
+        test_file = self.config.current_step_dir / "test_not_found.py"
 
         code = "def foo():\n    pass"
         self.write_python_tool.function(code=code, file_path=str(test_file))
@@ -139,7 +139,7 @@ def other():
 
     def test_error_invalid_python_syntax(self):
         """Test that invalid Python syntax is rejected."""
-        test_file = self.config.runs_dir / self.agent_id / "test_invalid_syntax.py"
+        test_file = self.config.current_step_dir / "test_invalid_syntax.py"
 
         code = """def valid_function():
     return 42
@@ -174,7 +174,7 @@ def other():
 
     def test_error_file_does_not_exist(self):
         """Test error when file doesn't exist."""
-        nonexistent_file = self.config.runs_dir / self.agent_id / "nonexistent_file.py"
+        nonexistent_file = self.config.current_step_dir / "nonexistent_file.py"
 
         result = self.replace_tool.function(
             file_path=str(nonexistent_file),
@@ -187,7 +187,7 @@ def other():
 
     def test_replacement_preserves_indentation(self):
         """Test that replacements preserve exact indentation."""
-        test_file = self.config.runs_dir / self.agent_id / "test_indentation.py"
+        test_file = self.config.current_step_dir / "test_indentation.py"
 
         code = """def outer():
     def inner():

@@ -1,10 +1,10 @@
-from pydantic import BaseModel, Field
-from pydantic.json_schema import SkipJsonSchema
-from pydantic_ai import Agent, RunContext
+from __future__ import annotations
 
-from agents.agent_utils import get_new_rundir_files
+from pydantic import Field
+from agents.steps.base import AgenticStep, AgenticStepOutput
 
-class ModelArchitecture(BaseModel):
+
+class ModelArchitectureOutput(AgenticStepOutput):
     architecture: str = Field(
         description="""
         The machine learning model type and architecture for your task.
@@ -15,30 +15,12 @@ class ModelArchitecture(BaseModel):
         The hyperparameters you have chosen for your model.
         """
     )
-    files_created: SkipJsonSchema[list[str]] = Field(
-        default_factory=list,
-        description="""
-        List of files created during model architecture step. Populated programmatically.
+
+class ModelArchitectureStep(AgenticStep):
+    step_id = "model_architecture"
+    display_name = "ARCHITECTURE"
+    output_type = ModelArchitectureOutput
+
+    def step_prompt(self) -> str:
+        return """Your next task: choose the model architecture and hyperparameters.
         """
-    )
-
-def get_model_architecture_prompt():
-    return """Your next task: choose the model architecture and hyperparameters.
-    """
-
-def create_model_architecture_agent(config, model, tools):
-    model_architecture_agent = Agent(
-        model=model,
-        tools=tools,
-        model_settings={'temperature': config.temperature},
-        output_type=ModelArchitecture,
-        retries=config.max_validation_retries,
-        deps_type=dict,
-    )
-
-    @model_architecture_agent.output_validator
-    async def validate_model_architecture(ctx: RunContext[dict], result):
-        result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
-        return result
-    
-    return model_architecture_agent

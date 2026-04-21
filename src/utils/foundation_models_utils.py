@@ -1,13 +1,11 @@
-import os
 import yaml
 from pathlib import Path
 
-BASE_DIR = os.environ.get('HF_HOME', '/cache/foundation_models')
-MODELS_YAML = os.environ.get('FOUNDATION_MODELS_YAML', os.path.join('/foundation_models', 'models.yaml'))
-FOUNDATION_MODEL_TYPE_ENV = "FOUNDATION_MODEL_TYPE"
 
-def load_models_config():
-    models_path = Path(MODELS_YAML)
+def load_models_config(models_yaml: str | None):
+    if not models_yaml:
+        return None
+    models_path = Path(models_yaml)
     if not models_path.exists():
         return None
     with open(models_path, 'r') as f:
@@ -21,17 +19,16 @@ def load_models_config():
             meta["path_to_info"] = str(base_dir / path_to_info)
     return config
 
-def build_foundation_model_catalog():
+def build_foundation_model_catalog(models_yaml: str, enabled_type: str | None):
     """
     Returns a catalog of foundation models with their summaries, model names, parameters, and documentation paths.
     """
-    enabled_type = os.environ.get(FOUNDATION_MODEL_TYPE_ENV)
     if not enabled_type:
         return {}
 
-    models_config = load_models_config()
+    models_config = load_models_config(models_yaml)
     catalog = {}
-    if(models_config is None):
+    if models_config is None:
         return catalog
 
     for family_name, meta in models_config.items():
@@ -46,17 +43,16 @@ def build_foundation_model_catalog():
                     "params": model_cfg.get("params"),
                 }
                 for model_cfg in meta.get("models", [])
-            ],        
+            ],
         }
-                                                                                                                    
+
     return catalog
 
-def get_foundation_model_family_info(family):
-    enabled_type = os.environ.get(FOUNDATION_MODEL_TYPE_ENV)
+def get_foundation_model_family_info(family: str, models_yaml: str, enabled_type: str | None):
     if not enabled_type:
         return f"Family {family} not found. Available options: []."
 
-    models_config = load_models_config()
+    models_config = load_models_config(models_yaml)
     if models_config is None:
         return f"Family {family} not found. Available options: []."
 
@@ -69,7 +65,7 @@ def get_foundation_model_family_info(family):
         return f"Family {family} not found. Use 'All' for an overview or one of the available options: {allowed_families}."
 
     meta = models_config[family]
-    if(not Path(meta['path_to_info']).exists()):
+    if not Path(meta['path_to_info']).exists():
         print(f'{family} README is missing')
     with open(meta['path_to_info'], 'r') as file:
         readme_content = file.read()
@@ -87,7 +83,7 @@ def get_foundation_model_family_info(family):
 
 def format_foundation_model_catalog(catalog):
     """
-    Formats the foundation model catalog into a string for feedback agent and get_foundation_models_info tool description.
+    Formats the foundation model catalog into a string for the iteration-planning agent and get_foundation_models_info tool description.
     """
     sections = []
     for family, meta in catalog.items():
@@ -103,7 +99,7 @@ def format_foundation_model_catalog(catalog):
             params = model.get("params")
             label = f"{name} ({params} params)" if params else name
             lines.append(f"- {label}")
-        
+
         sections.append("\n".join(lines))
-    
+
     return "\n\n".join(sections)

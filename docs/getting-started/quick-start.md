@@ -60,7 +60,7 @@ See [Preparing Datasets](../user-guide/datasets.md) for details.
 Download example datasets to try:
 
 ```bash
-./download_example_datasets.sh
+./scripts/download_example_datasets.sh
 ```
 
 ## What Happens Next
@@ -71,7 +71,7 @@ The agent will:
 2. Run iterative ML development cycles
 3. Save the best model to `outputs/<agent_id>/`
 
-Results include trained models, inference scripts, and detailed reports in `outputs/<agent_id>/reports/`, plus PDF reports in `outputs/<agent_id>/pdf_reports/`.
+Results include trained models, inference scripts, markdown reports in `outputs/<agent_id>/reports/markdown/`, and PDF reports in `outputs/<agent_id>/reports/pdf/`.
 
 ## Next Steps
 

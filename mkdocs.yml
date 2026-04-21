@@ -50,7 +50,7 @@ nav:
     - Custom Prompts: configuration/custom-prompts.md
   - How It Works:
     - Agent Architecture: how-it-works/architecture.md
-    - Feedback Loop: how-it-works/feedback-loop.md
+    - Iteration Planning: how-it-works/iteration-planning.md
     - Evaluation: how-it-works/evaluation.md
   - Reference:
     - Metrics: reference/metrics.md

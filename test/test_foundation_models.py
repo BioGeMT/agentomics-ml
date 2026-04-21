@@ -1,6 +1,6 @@
 import unittest
 
-from test.utils_test import BaseAgentTest, check_foundation_model_gpu_usage
+from test.test_utils import BaseAgentTest, check_foundation_model_gpu_usage
 
 class TestFoundationModels(BaseAgentTest):
     """Test suite for foundation model usage in agents"""
@@ -8,7 +8,7 @@ class TestFoundationModels(BaseAgentTest):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        if not cls.config.foundation_model_to_desc:
+        if not cls.config.foundation_models_type:
             raise unittest.SkipTest("Foundation model catalog is not available in config for testing.")
 
     def test_agent_access_docs(self):
@@ -19,7 +19,6 @@ class TestFoundationModels(BaseAgentTest):
             "HyenaDNA.md",
             "rinalmo.md",
             "NucleotideTransformer.md",
-            "MolFormerXL.md",
             "ChemBERTa.md",
         ]
 
@@ -41,13 +40,23 @@ class TestFoundationModels(BaseAgentTest):
 
         result = self.bash_tool.function("ls /cache/foundation_models/hub 2>&1")
         self.assertNotIn("Permission denied" or "No such file", result, "Agent should list foundation models directory")
-        self.assertIn("esm2", result.lower(), "ESM-2 directory should exist in foundation models")
-        self.assertIn("hyenadna", result.lower(), "HyenaDNA directory should exist in foundation models")
-        self.assertIn("nucleotide-transformer", result.lower(), "NucleotideTransformer directory should exist in foundation models")
+
+        fm_type = self.config.foundation_models_type
+        if fm_type in ("protein", "all"):
+            self.assertIn("esm2", result.lower(), "ESM-2 directory should exist in foundation models")
+        if fm_type in ("dna", "all"):
+            self.assertIn("hyenadna", result.lower(), "HyenaDNA directory should exist in foundation models")
+            self.assertIn("nucleotide-transformer", result.lower(), "NucleotideTransformer directory should exist in foundation models")
+        if fm_type in ("rna", "all"):
+            self.assertIn("rinalmo", result.lower(), "RiNALMo directory should exist in foundation models")
+        if fm_type in ("molecule", "all"):
+            self.assertIn("chemberta", result.lower(), "ChemBERTa directory should exist in foundation models")
 
     def test_agent_esm2_usage(self):
         """Test that agent can use ESM-2 model for protein embeddings."""
-                                                                                                                       
+        if self.config.foundation_models_type not in ("protein", "all"):
+            self.skipTest("ESM-2 is a protein model; skipping for non-protein foundation_models_type")
+
         esm2_code = """                                                                                                  
 import torch                                                                                                         
 from transformers import AutoTokenizer, AutoModel                                                                    
@@ -73,7 +82,7 @@ hidden_states = outputs.last_hidden_state
 
 print(f"Success! Output shape: {hidden_states.shape}")
   """
-        test_file_path = self.config.runs_dir / self.config.agent_id / "esm2_test.py"
+        test_file_path = self.config.current_step_dir / "esm2_test.py"
         self.write_python_tool.function(file_path=test_file_path, code=esm2_code)
 
         run_result = self.run_python_tool.function(python_file_path=test_file_path)
@@ -84,7 +93,9 @@ print(f"Success! Output shape: {hidden_states.shape}")
 
     def test_agent_hyena_dna_usage(self):
         """Test that agent can use HyenaDNA model for DNA sequence modeling."""
-                                                                                                                       
+        if self.config.foundation_models_type not in ("dna", "all"):
+            self.skipTest("HyenaDNA is a DNA model; skipping for non-dna foundation_models_type")
+
         hyena_dna_code = """
 import torch
 from transformers import AutoTokenizer, AutoModel
@@ -111,7 +122,7 @@ hidden_states = outputs.last_hidden_state
 print(f"Success! Output shape: {hidden_states.shape}")
 """
 
-        test_file_path = self.config.runs_dir / self.config.agent_id / "hyena_dna_test.py"
+        test_file_path = self.config.current_step_dir / "hyena_dna_test.py"
         self.write_python_tool.function(file_path=test_file_path, code=hyena_dna_code)
 
         run_result = self.run_python_tool.function(python_file_path=test_file_path)
@@ -122,6 +133,8 @@ print(f"Success! Output shape: {hidden_states.shape}")
 
     def test_agent_nucleotide_transformer_usage(self):
         """Test that agent can use NucleotideTransformer model for genomic sequences."""
+        if self.config.foundation_models_type not in ("dna", "all"):
+            self.skipTest("NucleotideTransformer is a DNA model; skipping for non-dna foundation_models_type")
 
         nt_code = """
 import torch
@@ -135,8 +148,8 @@ if torch.cuda.is_available():
 else:
     print("No GPU available, using CPU.")
 
-# Load NucleotideTransformer model (using 50M model for faster testing)
-model_name = "InstaDeepAI/nucleotide-transformer-v2-50m-multi-species"
+# Load NucleotideTransformer model (using 500m model for faster testing)
+model_name = "InstaDeepAI/nucleotide-transformer-500m-1000g"
 tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, local_files_only=True)
 model = AutoModelForMaskedLM.from_pretrained(model_name, trust_remote_code=True, local_files_only=True).to(device)
 
@@ -144,7 +157,7 @@ model = AutoModelForMaskedLM.from_pretrained(model_name, trust_remote_code=True,
 sequences = ["ATTCCGATTCCGATTCCG", "ATTTCTCTCTCTCTCTGAGATCGATCGATCGAT"]
 max_length = min(tokenizer.model_max_length, 512)  # Use smaller length for testing
 
-tokens_ids = tokenizer.batch_encode_plus(
+tokens_ids = tokenizer(
     sequences, return_tensors="pt", padding="max_length", max_length=max_length
 )["input_ids"].to(device)
 
@@ -156,11 +169,11 @@ torch_outs = model(
     output_hidden_states=True
 )
 
-embeddings = torch_outs['hidden_states'][-1]
+embeddings = torch_outs.hidden_states[-1]
 
 print(f"Success! Embeddings shape: {embeddings.shape}")
 """
-        test_file_path = self.config.runs_dir / self.config.agent_id / "nucleotide_transformer_test.py"
+        test_file_path = self.config.current_step_dir / "nucleotide_transformer_test.py"
         self.write_python_tool.function(file_path=test_file_path, code=nt_code)
 
         run_result = self.run_python_tool.function(python_file_path=test_file_path)
@@ -171,6 +184,8 @@ print(f"Success! Embeddings shape: {embeddings.shape}")
 
     def test_agent_rinalmo_usage(self):
         """Test that agent can use RiNALMo model for RNA sequence modeling."""
+        if self.config.foundation_models_type not in ("rna", "all"):
+            self.skipTest("RiNALMo is an RNA model; skipping for non-rna foundation_models_type")
 
         rinalmo_code = """
 import torch
@@ -199,7 +214,7 @@ embeddings = outputs.last_hidden_state
 
 print(f"Success! Embeddings shape: {embeddings.shape}")
 """
-        test_file_path = self.config.runs_dir / self.config.agent_id / "rinalmo_test.py"
+        test_file_path = self.config.current_step_dir / "rinalmo_test.py"
         self.write_python_tool.function(file_path=test_file_path, code=rinalmo_code)
 
         run_result = self.run_python_tool.function(python_file_path=test_file_path)
@@ -209,6 +224,9 @@ print(f"Success! Embeddings shape: {embeddings.shape}")
 
     def test_agent_chemberta_usage(self):
         """Test that agent can use ChemBERTa model for SMILES / chemical tokenization."""
+        if self.config.foundation_models_type not in ("molecule", "all"):
+            self.skipTest("ChemBERTa is a molecule model; skipping for non-molecule foundation_models_type")
+
         # First: MLM-style ChemBERTa usage (Masked Language Model)
         chemberta_mlm_code = """
 import torch
@@ -236,7 +254,7 @@ logits = outputs.logits
 print(f"Success! MLM Output shape: {logits.shape}")
 """
 
-        test_file_path = self.config.runs_dir / self.config.agent_id / "chemberta_mlm_test.py"
+        test_file_path = self.config.current_step_dir / "chemberta_mlm_test.py"
         self.write_python_tool.function(file_path=test_file_path, code=chemberta_mlm_code)
 
         run_result_mlm = self.run_python_tool.function(python_file_path=test_file_path)
@@ -272,7 +290,7 @@ outputs = model(**inputs)
 print(f"Success! MTR Output: {type(outputs)}")
 """
 
-        test_file_path_mtr = self.config.runs_dir / self.config.agent_id / "chemberta_mtr_test.py"
+        test_file_path_mtr = self.config.current_step_dir / "chemberta_mtr_test.py"
         self.write_python_tool.function(file_path=test_file_path_mtr, code=chemberta_mtr_code)
 
         run_result_mtr = self.run_python_tool.function(python_file_path=test_file_path_mtr)
@@ -281,48 +299,16 @@ print(f"Success! MTR Output: {type(outputs)}")
 
         check_foundation_model_gpu_usage(run_result_mtr, model="ChemBERTa-MTR")
 
-    def test_agent_molformer_usage(self):
-        """Test that agent can use MoLFormer model for SMILES / chemical embeddings."""
-        molformer_code = """
-import torch
-from transformers import AutoTokenizer, AutoModel
-
-# Check GPU availability
-device = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"Using device: {device}")
-if torch.cuda.is_available():
-    print(f"GPU Name: {torch.cuda.get_device_name(0)}")
-else:
-    print("No GPU available, using CPU.")
-
-# Load MoLFormer model (small/XL variant as catalogued)
-model_name = "ibm-research/MoLFormer-XL-both-10pct"
-tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, local_files_only=True)
-model = AutoModel.from_pretrained(model_name, trust_remote_code=True, local_files_only=True).to(device)
-
-# Example SMILES and forward pass
-smiles = ["Cn1c(=O)c2c(ncn2C)n(C)c1=O"]
-inputs = tokenizer(smiles, padding=True, return_tensors='pt').to(device)
-with torch.no_grad():
-    outputs = model(**inputs)
-
-print(f"Success! Output shape: {outputs.pooler_output.shape}")
-"""
-
-        test_file_path = self.config.runs_dir / self.config.agent_id / "molformer_test.py"
-        self.write_python_tool.function(file_path=test_file_path, code=molformer_code)
-
-        run_result = self.run_python_tool.function(python_file_path=test_file_path)
-        self.assertNotIn("error", run_result.lower(), "MoLFormer script should run without errors")
-        self.assertIn("Success!", run_result, "MoLFormer should produce output")
-
-        print(run_result)
-        check_foundation_model_gpu_usage(run_result, model="MoLFormer-XL")
-
     def test_foundation_models_info_tool(self):
         """The foundation-model info tool should return the catalog string."""
         output = self.foundation_models_info_tool.function("all")
 
-        self.assertIn("Family: ESM-2", output)
-        self.assertIn("LongSafari/hyenadna-tiny-1k-seqlen-hf", output)
-        self.assertIn("multimolecule/rinalmo-micro", output.lower())
+        fm_type = self.config.foundation_models_type
+        if fm_type in ("protein", "all"):
+            self.assertIn("Family: ESM-2", output)
+        if fm_type in ("dna", "all"):
+            self.assertIn("LongSafari/hyenadna-tiny-1k-seqlen-hf", output)
+        if fm_type in ("rna", "all"):
+            self.assertIn("multimolecule/rinalmo-micro", output.lower())
+        if fm_type in ("molecule", "all"):
+            self.assertIn("DeepChem/ChemBERTa-5M-MLM", output)

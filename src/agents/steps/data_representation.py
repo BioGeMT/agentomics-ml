@@ -1,38 +1,20 @@
-from pydantic import BaseModel, Field
-from pydantic.json_schema import SkipJsonSchema
-from pydantic_ai import Agent, RunContext
+from __future__ import annotations
 
-from agents.agent_utils import get_new_rundir_files
+from pydantic import Field
+from agents.steps.base import AgenticStep, AgenticStepOutput
 
-class DataRepresentation(BaseModel):
+
+class DataRepresentationOutput(AgenticStepOutput):
     representation: str = Field(
         description="""
         How will the data be represented, including any transformations, encodings, normalizations, features, and label transformations.
         """
     )
-    files_created: SkipJsonSchema[list[str]] = Field(
-        default_factory=list,
-        description="""
-        List of files created during data representation step. Populated programmatically.
-        """
-    )
 
-def get_data_representation_prompt():
-    return "Your next task: define the data representation."
+class DataRepresentationStep(AgenticStep):
+    step_id = "data_representation"
+    display_name = "REPRESENTATION"
+    output_type = DataRepresentationOutput
 
-def create_data_representation_agent(config, model, tools):
-    data_representation_agent = Agent(
-        model=model,
-        tools=tools,
-        model_settings={'temperature': config.temperature},
-        output_type=DataRepresentation,
-        retries=config.max_validation_retries,
-        deps_type=dict,
-    )
-
-    @data_representation_agent.output_validator
-    async def validate_data_representation(ctx: RunContext[dict], result):
-        result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
-        return result
-
-    return data_representation_agent
+    def step_prompt(self) -> str:
+        return "Your next task: define the data representation."

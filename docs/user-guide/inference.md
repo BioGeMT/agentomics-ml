@@ -1,11 +1,11 @@
 # Running Inference
 
-Use trained models to make predictions on new data with `inference.sh`.
+Use trained models to make predictions on new data with `scripts/inference.sh`.
 
 ## Basic Usage
 
 ```bash
-./inference.sh \
+./scripts/inference.sh \
   --agent-dir outputs/<agent_id> \
   --input /path/to/new_data.csv \
   --output /path/to/predictions.csv
@@ -30,7 +30,7 @@ Use trained models to make predictions on new data with `inference.sh`.
 ## Example
 
 ```bash
-./inference.sh \
+./scripts/inference.sh \
   --agent-dir outputs/enchanted_fixing_reigned \
   --input new_samples.csv \
   --output predictions.csv
@@ -61,10 +61,10 @@ scores in `[0, 1]`, but you should treat the exact schema as run-specific.
 
 ```bash
 # Docker mode (default, recommended)
-./inference.sh --agent-dir outputs/my_agent ...
+./scripts/inference.sh --agent-dir outputs/my_agent ...
 
 # Local mode
-./inference.sh --local --agent-dir outputs/my_agent ...
+./scripts/inference.sh --local --agent-dir outputs/my_agent ...
 ```
 
 ## GPU Support
@@ -73,33 +73,24 @@ GPU is used automatically if available:
 
 ```bash
 # Use GPU (default)
-./inference.sh --agent-dir outputs/my_agent ...
+./scripts/inference.sh --agent-dir outputs/my_agent ...
 
 # CPU only
-./inference.sh --cpu-only --agent-dir outputs/my_agent ...
+./scripts/inference.sh --cpu-only --agent-dir outputs/my_agent ...
 ```
 
-## Using the Inference Script Directly
-
-For more control, use the agent's inference script directly:
-
-```bash
-# Navigate to agent's best run
-cd outputs/<agent_id>/best_run_files
-
-# Run inference using the saved environment
-conda run -p outputs/<agent_id>/best_run_files/.conda/envs/<agent_id>_env \
-  python outputs/<agent_id>/best_run_files/inference.py \
-  --input /path/to/data.csv --output /path/to/predictions.csv
-```
-
-## What's in best_run_files
+## What's in best_iteration_snapshot
 
 ```
-outputs/<agent_id>/best_run_files/
-├── inference.py           # Inference script
-├── train.py               # Training script
-├── training_artifacts/    # Model files (format varies)
+outputs/<agent_id>/best_iteration_snapshot/
+├── model_inference/
+│   └── inference.py       # Inference script
+├── model_training/
+│   ├── train.py           # Training script
+│   └── training_artifacts/ # Model files (format varies)
+├── runtime_info/
+│   └── iteration_metadata.json
+├── environment.yml
 ├── .conda/                # Conda environment
 └── ...                    # Other artifacts (tokenizers, etc.)
 ```
@@ -116,7 +107,7 @@ Ensure your input CSV has the same feature columns as the training data (minus t
 
 ### "Model file not found"
 
-Check that `best_run_files/` contains the model artifacts. If the agent run failed, there may be no trained model.
+Check that `best_iteration_snapshot/` contains the model artifacts. If the agent run failed, there may be no trained model.
 
 ### GPU out of memory
 
@@ -124,7 +115,7 @@ Use `--cpu-only` flag or reduce batch size in the inference script.
 
 ## Batch Inference
 
-For large datasets, the inference script handles batching automatically. If you need custom batch sizes, modify the `inference.py` script in `best_run_files/`.
+For large datasets, the inference script handles batching automatically. If you need custom batch sizes, modify `best_iteration_snapshot/model_inference/inference.py`.
 
 ## Next Steps
 

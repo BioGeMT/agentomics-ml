@@ -1,7 +1,7 @@
 FROM condaforge/mambaforge:24.9.2-0
 
 # Create preparation environment
-COPY environment_prepare.yaml .
+COPY envs/environment_prepare.yaml .
 RUN mamba env create -f environment_prepare.yaml \
     && mamba clean -afy
 

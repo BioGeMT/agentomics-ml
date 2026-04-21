@@ -4,13 +4,15 @@ import traceback
 from pydantic import BaseModel, Field
 from pydantic_ai import Tool
 from pathlib import Path
+from utils.config import Config
+
 
 class Edit(BaseModel):
     old: str = Field(description="The old string to replace. Can be multi-line.")
     new: str = Field(description="The new string to replace with. Can be multi-line.")
     replace_all: bool = Field(description="Whether to replace all occurrences. If False, replaces only the first occurrence.", default=False)
 
-def create_replace_tool(agent_id, runs_dir, max_retries):
+def create_replace_tool(config: Config):
     def _replace(file_path: str, old:str, new:str, replace_all:bool):
         """
         A tool used to replace specific text in a file
@@ -29,7 +31,7 @@ def create_replace_tool(agent_id, runs_dir, max_retries):
         if not Path(file_path).is_file():
             return f"File path {file_path} is not valid"
 
-        necessary_prefix = str(runs_dir / agent_id)
+        necessary_prefix = str(config.current_step_dir.resolve())
         if not str(Path(file_path).resolve()).startswith(necessary_prefix):
             return f"Error: file_path must start with {necessary_prefix}. Provided: {file_path}"
         
@@ -68,7 +70,7 @@ def create_replace_tool(agent_id, runs_dir, max_retries):
     replace_tool = Tool(
         function=_replace, 
         takes_ctx=False, 
-        max_retries=max_retries,
+        max_retries=config.max_tool_retries,
         require_parameter_descriptions=True,
         name="replace",
         sequential=True,

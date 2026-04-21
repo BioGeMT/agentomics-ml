@@ -200,7 +200,7 @@ AGENTS.md
 .miRBench
 prepared_datasets
 prepared_test_sets
-datasets
+/datasets
 workspace/runs
 workspace
 outputs
@@ -211,3 +211,6 @@ wandb/
 competitors/cache/
 competitors/results/
 competitors/wandb/
+
+# Misc
+*playground*.ipynb

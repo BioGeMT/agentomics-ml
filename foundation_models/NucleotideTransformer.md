@@ -1,12 +1,10 @@
-# Nucleotide Transformer v2
+# Nucleotide Transformer
 
 ## Overview
 
-**Nucleotide Transformer v2** is a large-scale foundation language model developed by **InstaDeep**, **NVIDIA**, and **TUM** for genomic sequence understanding. It is part of the *Nucleotide Transformer* collection, pre-trained on over **850 genomes** from diverse species — both model and non-model organisms — encompassing **174 billion nucleotides (~29B tokens)**.
+**Nucleotide Transformer** is a large-scale foundation language model developed by **InstaDeep**, **NVIDIA**, and **TUM** for genomic sequence understanding. It is part of the *Nucleotide Transformer* collection, pre-trained on over **850 genomes** from diverse species — both model and non-model organisms — encompassing **174 billion nucleotides (~29B tokens)**.
 
 Part of this collection is the nucleotide-transformer-500m-human-ref, a 500M parameters transformer pre-trained on the human reference genome. 
-
-Part of this collection is the nucleotide-transformer-v2-50m-3mer-multi-species, a 50M parameters transformer pre-trained on a collection of 850 genomes from a wide range of species, including model and non-model organisms.
 
 Unlike previous models trained on single reference genomes, this collection integrates information across thousands of genomes, providing highly accurate molecular phenotype predictions.
 
@@ -18,11 +16,6 @@ Unlike previous models trained on single reference genomes, this collection inte
 | **InstaDeepAI/nucleotide-transformer-2.5b-1000g**                | Fill-Mask | Jul 22, 2024 | 2.5B       | 184       | 8     |
 | **InstaDeepAI/nucleotide-transformer-500m-human-ref**            | Fill-Mask | Jul 22, 2024 | 500M       | 869k      | 14    |
 | **InstaDeepAI/nucleotide-transformer-500m-1000g**                | Fill-Mask | Jul 22, 2024 | 500M       | 1.63k     | 7     |
-| **InstaDeepAI/nucleotide-transformer-v2-50m-multi-species**      | Fill-Mask | Sep 16, 2024 | 55.9M      | 21k       | 5     |
-| **InstaDeepAI/nucleotide-transformer-v2-50m-3mer-multi-species** | Fill-Mask | Jun 4, 2024  | —          | 676       | 3     |
-| **InstaDeepAI/nucleotide-transformer-v2-100m-multi-species**     | Fill-Mask | Sep 16, 2024 | 97.9M      | 2.31k     | 1     |
-| **InstaDeepAI/nucleotide-transformer-v2-250m-multi-species**     | Fill-Mask | Sep 16, 2024 | 250M       | 6.68k     | 3     |
-| **InstaDeepAI/nucleotide-transformer-v2-500m-multi-species**     | Fill-Mask | Oct 2024     | 0.5B       | 50.9k     | 27    |
 
 ## Example Usage
 
@@ -51,7 +44,7 @@ sequences = [
     "ATTTCTCTCTCTCTCTGAGATCGATCGATCGAT"
 ]
 
-tokens_ids = tokenizer.batch_encode_plus(
+tokens_ids = tokenizer(
     sequences, return_tensors="pt", padding="max_length", max_length=max_length
 )["input_ids"].to(device)
 
@@ -64,7 +57,7 @@ torch_outs = model(
     output_hidden_states=True
 )
 
-embeddings = torch_outs['hidden_states'][-1]
+embeddings = torch_outs.hidden_states[-1]
 print(f"Embeddings shape: {embeddings.shape}")
 print(f"Embeddings per token: {embeddings}")
 

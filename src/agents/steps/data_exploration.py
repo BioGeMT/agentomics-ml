@@ -1,11 +1,11 @@
-from pydantic import BaseModel, Field
-from pydantic.json_schema import SkipJsonSchema
-from pydantic_ai import Agent, RunContext
+from __future__ import annotations
 
-from agents.prompts.prompts_utils import get_system_prompt
-from agents.agent_utils import get_new_rundir_files
+from pydantic import Field
+from agents.steps.base import AgenticStep, AgenticStepOutput
+from runtime.read_write_utils import load_current_iteration_index
 
-class DataExploration(BaseModel):
+
+class DataExplorationOutput(AgenticStepOutput):
     data_description: str = Field(
         description="""
         The description of the data, including descriptional statistics and insights you gathered from exploring the data. Include domain-specific features that are relevant to your task.
@@ -21,43 +21,24 @@ class DataExploration(BaseModel):
         Domain-specific insights you gathered from exploring the data.
 
         Include:
-        - Data type characteristics: properties unique to this type of data 
+        - Data type characteristics: properties unique to this type of data
         - Domain context: insights from the dataset description that inform modeling choices
         - Domain-specific challenges or opportunities present in the data
         """
     )
-    files_created: SkipJsonSchema[list[str]] = Field(
-        default_factory=list,
-        description="""
-        List of files created during data exploration step. Populated programmatically.
+
+class DataExplorationStep(AgenticStep):
+    step_id = "data_exploration"
+    display_name = "DATA EXPLORATION"
+    output_type = DataExplorationOutput
+
+    def step_prompt(self) -> str:
+        iteration = load_current_iteration_index(self.config)
+        if(iteration != 0):
+            extra_info = "Note: If you gathered enough information from your previous exploration and don't need to explore the data further, return 'Exploration skipped' in all the json fields (data_description, feature_analysis, domain_insights)."
+        else:
+            extra_info = ""
+        return f"""
+        Your next task: explore the dataset. Be thorough, understanding the data deeply will inform subsequent steps for model development.
+        {extra_info}
         """
-    )
-
-
-def get_data_exploration_prompt(iteration):
-    if(iteration != 0):
-        extra_info = "Note: If you gathered enough information from your previous exploration and don't need to explore the data further, return 'Exploration skipped' in all the json fields (data_description, feature_analysis, domain_insights)."
-    else:
-        extra_info = ""
-    return f"""
-    Your first task: explore the dataset. Be thorough, understanding the data deeply will inform subsequent steps for model development.
-    {extra_info}
-    """
-
-def create_data_exploration_agent(config, model, tools):
-    data_exploration_agent = Agent(
-        model=model,
-        system_prompt=get_system_prompt(config), # Passed only to first step when message history empty
-        tools=tools,
-        model_settings={'temperature': config.temperature},
-        output_type=DataExploration,
-        retries=config.max_validation_retries,
-        deps_type=dict,
-    )
-
-    @data_exploration_agent.output_validator
-    async def validate_data_exploration(ctx: RunContext[dict], result):
-        result.files_created = get_new_rundir_files(config, since_timestamp=ctx.deps['start_time'])
-        return result
-    
-    return data_exploration_agent

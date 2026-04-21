@@ -1,5 +1,0 @@
-agentomics-ml:
-  start: agentomics-ml/start.sh
-  dockerfile: agentomics-ml/Dockerfile
-  env_vars:
-    NVIDIA_VISIBLE_DEVICES: all
