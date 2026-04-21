@@ -19,7 +19,6 @@ class TestFoundationModels(BaseAgentTest):
             "HyenaDNA.md",
             "rinalmo.md",
             "NucleotideTransformer.md",
-            "MolFormerXL.md",
             "ChemBERTa.md",
         ]
 
@@ -149,8 +148,8 @@ if torch.cuda.is_available():
 else:
     print("No GPU available, using CPU.")
 
-# Load NucleotideTransformer model (using 50M model for faster testing)
-model_name = "InstaDeepAI/nucleotide-transformer-v2-50m-multi-species"
+# Load NucleotideTransformer model (using 500m model for faster testing)
+model_name = "InstaDeepAI/nucleotide-transformer-500m-1000g"
 tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, local_files_only=True)
 model = AutoModelForMaskedLM.from_pretrained(model_name, trust_remote_code=True, local_files_only=True).to(device)
 
@@ -158,7 +157,7 @@ model = AutoModelForMaskedLM.from_pretrained(model_name, trust_remote_code=True,
 sequences = ["ATTCCGATTCCGATTCCG", "ATTTCTCTCTCTCTCTGAGATCGATCGATCGAT"]
 max_length = min(tokenizer.model_max_length, 512)  # Use smaller length for testing
 
-tokens_ids = tokenizer.batch_encode_plus(
+tokens_ids = tokenizer(
     sequences, return_tensors="pt", padding="max_length", max_length=max_length
 )["input_ids"].to(device)
 
@@ -170,7 +169,7 @@ torch_outs = model(
     output_hidden_states=True
 )
 
-embeddings = torch_outs['hidden_states'][-1]
+embeddings = torch_outs.hidden_states[-1]
 
 print(f"Success! Embeddings shape: {embeddings.shape}")
 """
@@ -299,47 +298,6 @@ print(f"Success! MTR Output: {type(outputs)}")
         self.assertIn("Success! MTR", run_result_mtr, "ChemBERTa MTR should produce output")
 
         check_foundation_model_gpu_usage(run_result_mtr, model="ChemBERTa-MTR")
-
-    def test_agent_molformer_usage(self):
-        """Test that agent can use MoLFormer model for SMILES / chemical embeddings."""
-        if self.config.foundation_models_type not in ("molecule", "all"):
-            self.skipTest("MoLFormer is a molecule model; skipping for non-molecule foundation_models_type")
-
-        molformer_code = """
-import torch
-from transformers import AutoTokenizer, AutoModel
-
-# Check GPU availability
-device = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"Using device: {device}")
-if torch.cuda.is_available():
-    print(f"GPU Name: {torch.cuda.get_device_name(0)}")
-else:
-    print("No GPU available, using CPU.")
-
-# Load MoLFormer model (small/XL variant as catalogued)
-model_name = "ibm-research/MoLFormer-XL-both-10pct"
-tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, local_files_only=True)
-model = AutoModel.from_pretrained(model_name, trust_remote_code=True, local_files_only=True).to(device)
-
-# Example SMILES and forward pass
-smiles = ["Cn1c(=O)c2c(ncn2C)n(C)c1=O"]
-inputs = tokenizer(smiles, padding=True, return_tensors='pt').to(device)
-with torch.no_grad():
-    outputs = model(**inputs)
-
-print(f"Success! Output shape: {outputs.pooler_output.shape}")
-"""
-
-        test_file_path = self.config.current_step_dir / "molformer_test.py"
-        self.write_python_tool.function(file_path=test_file_path, code=molformer_code)
-
-        run_result = self.run_python_tool.function(python_file_path=test_file_path)
-        self.assertNotIn("error", run_result.lower(), "MoLFormer script should run without errors")
-        self.assertIn("Success!", run_result, "MoLFormer should produce output")
-
-        print(run_result)
-        check_foundation_model_gpu_usage(run_result, model="MoLFormer-XL")
 
     def test_foundation_models_info_tool(self):
         """The foundation-model info tool should return the catalog string."""

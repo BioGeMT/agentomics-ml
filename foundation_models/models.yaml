@@ -38,16 +38,6 @@ NucleotideTransformer:
   models:
     - name: InstaDeepAI/nucleotide-transformer-500m-human-ref
       params: 500M
-    - name: InstaDeepAI/nucleotide-transformer-v2-50m-3mer-multi-species
-      params: 50M
-    - name: InstaDeepAI/nucleotide-transformer-v2-50m-multi-species
-      params: 50M
-    - name: InstaDeepAI/nucleotide-transformer-v2-100m-multi-species
-      params: 100M
-    - name: InstaDeepAI/nucleotide-transformer-v2-250m-multi-species
-      params: 250M
-    - name: InstaDeepAI/nucleotide-transformer-v2-500m-multi-species
-      params: 500M
     - name: InstaDeepAI/nucleotide-transformer-500m-1000g
       params: 500M
     - name: InstaDeepAI/nucleotide-transformer-2.5b-multi-species
@@ -91,12 +81,3 @@ ChemBERTa:
   summary: ChemBERTa family are models for chemical molecular analysis and property prediction that processes SMILES representations using transformer architectures.
   path_to_info: ChemBERTa.md
   can_load_with_hf_automodel: false
-
-MolFormerXL:
-  type: molecule
-  models:
-    - name: ibm-research/MoLFormer-XL-both-10pct
-      params: 47M
-  summary: MoLFormer is a class of models pretrained on SMILES string representations of up to 1.1B molecules from ZINC and PubChem. It is mainly intended to be used as a feature extractor or to be fine-tuned for a prediction task.
-  path_to_info: MolFormerXL.md
-  can_load_with_hf_automodel: true
