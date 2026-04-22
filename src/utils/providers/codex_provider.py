@@ -63,7 +63,7 @@ class CodexResponsesModel(OpenAIResponsesModel):
                 replace(
                     message,
                     parts=[part for part in message.parts if not isinstance(part, SystemPromptPart)],
-                    instructions=instructions,
+                    instructions=instructions or "You are an helpful assistant", #TODO remove this dummy prompt once actual sys prompt defined for iteration plan
                 )
             )
 
