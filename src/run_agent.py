@@ -6,7 +6,7 @@ import wandb
 from timeout_function_decorator import timeout as timeout_decorator
 
 from run_logging.wandb_setup import setup_logging
-from runtime.git_checkpoints import commit_run_start_if_needed, initialize_repo_if_needed
+from runtime.git_checkpoints import initialize_repo_if_needed
 from runtime.read_write_utils import initialize_run_directories, save_config
 from runtime.run_lifecycle import run_agentomics
 from utils.config import Config
@@ -75,7 +75,6 @@ async def run_experiment(
     config.wandb_run_id = setup_logging(config) if are_wandb_vars_available() else None
     save_config(config)
     initialize_repo_if_needed(config)
-    commit_run_start_if_needed(config)
 
     config.print_summary()
 

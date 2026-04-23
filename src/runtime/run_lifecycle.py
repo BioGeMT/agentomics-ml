@@ -72,10 +72,10 @@ async def _run_iteration(config: Config, iteration: int, default_model: Model, i
     log_files(config, iteration=iteration)
 
     archive_current_iteration(config, iteration)
+    commit_iteration_end(config, iteration=iteration)
     if iteration_state["status"] == "success":
         update_best_iteration_snapshot(config=config, iteration=iteration)
 
-    commit_iteration_end(config, iteration=iteration)
     _enforce_time_deadline(config)
 
 def _prepare_iteration_workspace(config: Config, iteration: int) -> None:
