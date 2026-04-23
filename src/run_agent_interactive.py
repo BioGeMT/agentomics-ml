@@ -7,6 +7,7 @@ import dotenv
 from rich.console import Console
 
 from run_agent import run_experiment
+from runtime.read_write_utils import get_next_iteration_index, load_config_from_run_dir
 from utils.config import Config
 from datasets.dataset_utils import get_all_prepared_datasets_info, get_task_type_from_prepared_dataset
 from datasets.datasets_interactive import interactive_dataset_selection, print_datasets_table
@@ -31,63 +32,67 @@ def parse_args():
     parser.add_argument("--list-metrics", action="store_true", help="List available validation metrics and exit")
 
     # Run configuration
-    parser.add_argument("--dataset", help="Dataset name")
-    parser.add_argument("--model", help="Model name. Should be compatible with the selected provider")
-    parser.add_argument("--provider", help="API provider to use. Auto-detected from env if not provided")
+    parser.add_argument("--dataset", help="Dataset name. If not provided, can be interactively selected. Cannot be changed for forked runs — always inherited from the source run config.")
+    parser.add_argument("--model", help="Model name compatible with the selected provider. If not provided, can be interactively selected. For forked runs, inherits from the source run config.")
+    parser.add_argument("--provider", help="API provider. If not provided, auto-detected from environment. For forked runs, inherits from the source run config.")
     parser.add_argument(
         "--val-metric",
-        help="Validation metric (defaults to AUROC for classification, MAE for regression)",
+        help="Validation metric. If not provided, defaults to AUROC for classification or MAE for regression. Cannot be changed for forked runs — always inherited from the source run config.",
         choices=get_classification_metrics_names() + get_regression_metrics_names(),
     )
     parser.add_argument(
         "--iterations",
         type=int,
         default=None,
-        help="Number of iterations to run (default: None, prompted interactively)",
+        help="Number of iterations to run. If not provided, can be interactively selected. For forked runs, omitting it keeps the source run's total iteration limit; providing it means that many additional iterations from the fork point.",
     )
     parser.add_argument(
         "--split-allowed-iterations",
         type=int,
-        default=Config.DEFAULT_SPLIT_ALLOWED_ITERATIONS,
-        help="Number of initial iterations that allow the agent to split the data into training and validation sets (default: %(default)s)",
+        default=None,
+        help=f"Number of initial iterations that allow the agent to split the data into training and validation sets. If not provided, defaults to {Config.DEFAULT_SPLIT_ALLOWED_ITERATIONS}. For forked runs, omitting it keeps the source run's split-allowed limit; providing it means that many more split-allowed iterations from the fork point.",
     )
     parser.add_argument(
         "--exploration-iterations",
         type=int,
-        default=Config.DEFAULT_EXPLORATION_ITERATIONS,
-        help="Number of initial iterations that should focus on baseline/exploration models (default: %(default)s)",
+        default=None,
+        help=f"Number of initial iterations that should focus on baseline/exploration models. If not provided, defaults to {Config.DEFAULT_EXPLORATION_ITERATIONS}. For forked runs, omitting it keeps the source run's exploration limit; providing it means that many more exploration iterations from the fork point.",
     )
     parser.add_argument("--timeout", type=int, help="Timeout before the run is shut down in seconds")
     parser.add_argument(
         "--split-timeout",
         type=int,
-        help="Timeout before the data splitting is no longer allowed in seconds. "
-        "If not provided, split iterations are used as the limit.",
+        help="Timeout before the data splitting is no longer allowed in seconds. If not provided, split iterations are used as the limit.",
     )
     parser.add_argument(
         "--run-python-timeout",
         type=int,
-        default=Config.DEFAULT_RUN_PYTHON_TOOL_TIMEOUT,
-        help="Timeout in seconds for each run_python tool execution (default: %(default)s)",
+        default=None,
+        help=f"Timeout in seconds for each run_python tool execution. If not provided, defaults to {Config.DEFAULT_RUN_PYTHON_TOOL_TIMEOUT}. For forked runs, inherits from the source run config.",
     )
     parser.add_argument(
         "--user-prompt",
         type=str,
-        default=Config.DEFAULT_USER_PROMPT,
-        help="Text to overwrite the default user prompt",
+        default=None,
+        help="Main goal for the agent. If not provided, defaults to the built-in default prompt. For forked runs, inherits from the source run config.",
     )
-    parser.add_argument("--tags", nargs="*", default=[], help="Tags to associate with the run")
+    parser.add_argument(
+        "--tags",
+        nargs="*",
+        default=None,
+        help="Tags to associate with the run. If not provided, defaults to no tags. For forked runs, inherits from the source run config.",
+    )
     parser.add_argument(
         "--foundation-models-type",
         type=str,
         default=None,
-        help="Foundation model type to enable (dna, rna, molecule, protein, all)",
+        help="Foundation model type to enable (dna, rna, molecule, protein, all). If not provided, no foundation models are used. For forked runs, inherits from the source run config.",
     )
     parser.add_argument(
         "--foundation-models-yaml",
         type=str,
         default=None,
-        help="Path to the foundation models YAML config file",
+        help="Path to the foundation models YAML config file. For forked runs, inherits from the source run config.",
     )
 
     # Paths
@@ -113,6 +118,44 @@ def parse_args():
     args = parser.parse_args()
     args.workspace_dir = args.workspace_dir.resolve()
     args.prepared_datasets_dir = args.prepared_datasets_dir.resolve()
+
+    # When parsing inside a forked workspace, merge CLI overrides with the source run config.
+    existing_config = load_config_from_run_dir(args.workspace_dir / Config.RUN_DIRNAME, missing_ok=True)
+    if existing_config is not None:
+        next_iteration_index = get_next_iteration_index(existing_config)
+        if args.dataset is not None and args.dataset != existing_config.dataset:
+            console.print(f"Warning: --dataset is ignored for forked runs. Using '{existing_config.dataset}' from the source run config.", style="red")
+        if args.val_metric is not None and args.val_metric != existing_config.val_metric:
+            console.print(f"Warning: --val-metric is ignored for forked runs. Using '{existing_config.val_metric}' from the source run config.", style="red")
+        args.dataset = existing_config.dataset
+        args.val_metric = existing_config.val_metric
+        if args.model is None:                     args.model = existing_config.model_name
+        if args.provider is None:                  args.provider = existing_config.provider_name
+        # For forked runs, explicit iteration-limit flags mean "N more from the fork point".
+        args.iterations = existing_config.iterations if args.iterations is None else next_iteration_index + args.iterations
+        if args.tags is None:                      args.tags = existing_config.tags
+        args.split_allowed_iterations = (
+            existing_config.split_allowed_iterations
+            if args.split_allowed_iterations is None
+            else next_iteration_index + args.split_allowed_iterations
+        )
+        args.exploration_iterations = (
+            existing_config.exploration_iterations
+            if args.exploration_iterations is None
+            else next_iteration_index + args.exploration_iterations
+        )
+        if args.run_python_timeout is None:        args.run_python_timeout = existing_config.run_python_tool_timeout
+        if args.user_prompt is None:               args.user_prompt = existing_config.user_prompt
+        if args.foundation_models_type is None:    args.foundation_models_type = existing_config.foundation_models_type
+        if args.foundation_models_yaml is None:    args.foundation_models_yaml = existing_config.foundation_models_yaml
+
+    # Apply built-in defaults only for still-unset optional args on fresh runs.
+    if args.tags is None:                      args.tags = []
+    if args.split_allowed_iterations is None:  args.split_allowed_iterations = Config.DEFAULT_SPLIT_ALLOWED_ITERATIONS
+    if args.exploration_iterations is None:    args.exploration_iterations = Config.DEFAULT_EXPLORATION_ITERATIONS
+    if args.run_python_timeout is None:        args.run_python_timeout = Config.DEFAULT_RUN_PYTHON_TOOL_TIMEOUT
+    if args.user_prompt is None:               args.user_prompt = Config.DEFAULT_USER_PROMPT
+
     return args
 
 
