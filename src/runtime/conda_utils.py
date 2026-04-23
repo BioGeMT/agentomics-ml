@@ -47,7 +47,7 @@ def update_environment_from_descriptor(descriptor_path: Path, env_path: Path) ->
         raise FileNotFoundError(f"Missing environment descriptor at {descriptor_path}.")
 
     subprocess.run(
-        ["conda", "env", "update", "-p", str(env_path), "-f", str(descriptor_path), "-q"],
+        ["conda", "env", "update", "-p", str(env_path), "-f", str(descriptor_path), "-q", "--prune"],
         check=True,
     )
 
