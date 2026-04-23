@@ -264,7 +264,16 @@ if ! is_valid_foundation_models_type "$FOUNDATION_MODELS_TYPE"; then
     die "Invalid --foundation-models-type '$FOUNDATION_MODELS_TYPE'. Allowed: dna, rna, molecule, protein, all."
 fi
 
-EFFECTIVE_FOUNDATION_MODELS_TYPE="$(resolve_effective_foundation_models_type "$FOUNDATION_MODELS_TYPE" "$FORK_FROM_RUN")"
+EFFECTIVE_FOUNDATION_MODELS_TYPE="$(resolve_effective_string_field "$FOUNDATION_MODELS_TYPE" "$FORK_FROM_RUN" "foundation_models_type")"
+EFFECTIVE_DATASET_NAME="$(resolve_effective_string_field "$DATASET_NAME" "$FORK_FROM_RUN" "dataset" true)"
+
+if ! is_valid_foundation_models_type "$EFFECTIVE_FOUNDATION_MODELS_TYPE"; then
+    die "Invalid foundation model type '$EFFECTIVE_FOUNDATION_MODELS_TYPE' in the effective run configuration. Allowed: dna, rna, molecule, protein, all."
+fi
+
+if [[ -n "$FORK_FROM_RUN" && -n "$DATASET_NAME" && "$DATASET_NAME" != "$EFFECTIVE_DATASET_NAME" ]]; then
+    warn "--dataset '$DATASET_NAME' is ignored for forked runs. Using '$EFFECTIVE_DATASET_NAME' from the source run config."
+fi
 
 
 if [ "$LOCAL_MODE" = true ]; then
@@ -319,9 +328,9 @@ if [ "$LOCAL_MODE" = true ]; then
     fi
 
     mkdir -p prepared_datasets
-    if [ -n "$DATASET_NAME" ]; then
+    if [ -n "$EFFECTIVE_DATASET_NAME" ]; then
         conda run -n agentomics-prepare-env python src/prepare_datasets.py \
-            --dataset-dir "./datasets/${DATASET_NAME}" \
+            --dataset-dir "./datasets/${EFFECTIVE_DATASET_NAME}" \
             --prepared-datasets-dir "$(pwd)/prepared_datasets" \
             --prepared-test-sets-dir "$(pwd)/prepared_test_sets"
     else
@@ -498,8 +507,8 @@ else
                /opt/conda/envs/agentomics-env/bin/python "$AGENTOMICS_IMAGE" /repository/src/utils/agent_id.py)
 
     PREPARE_ARGS=()
-    if [ -n "$DATASET_NAME" ]; then
-        PREPARE_ARGS=(--dataset-dir "./datasets/${DATASET_NAME}")
+    if [ -n "$EFFECTIVE_DATASET_NAME" ]; then
+        PREPARE_ARGS=(--dataset-dir "./datasets/${EFFECTIVE_DATASET_NAME}")
     else
         PREPARE_ARGS=(--prepare-all)
     fi

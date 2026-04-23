@@ -80,43 +80,43 @@ is_valid_foundation_models_type() {
     esac
 }
 
-load_foundation_models_type_from_run_config() {
+load_string_field_from_run_config() {
     local source_workspace="$1"
+    local field_name="$2"
     local config_path="$source_workspace/run/shared/config.json"
     local field_line=""
     local field_value=""
 
     [[ -f "$config_path" ]] || die "Fork source config not found at $config_path"
 
-    field_line="$(grep -m1 -E '^[[:space:]]*"foundation_models_type"[[:space:]]*:' "$config_path" || true)"
-    [[ -n "$field_line" ]] || die "foundation_models_type is missing from $config_path"
+    field_line="$(grep -m1 -E "^[[:space:]]*\"${field_name}\"[[:space:]]*:" "$config_path" || true)"
+    [[ -n "$field_line" ]] || die "${field_name} is missing from $config_path"
 
-    if [[ "$field_line" =~ :[[:space:]]*null ]]; then
+    if [[ "$field_line" =~ :[[:space:]]*null([[:space:]]*,?[[:space:]]*)$ ]]; then
         return 0
     fi
 
-    field_value="$(printf '%s\n' "$field_line" | sed -nE 's/^[[:space:]]*"foundation_models_type"[[:space:]]*:[[:space:]]*"([^"]*)"[[:space:]]*,?[[:space:]]*$/\1/p')"
-    [[ -n "$field_value" ]] || die "Could not parse foundation_models_type from $config_path"
+    field_value="$(printf '%s\n' "$field_line" | sed -nE "s/^[[:space:]]*\"${field_name}\"[[:space:]]*:[[:space:]]*\"([^\"]*)\"[[:space:]]*,?[[:space:]]*$/\\1/p")"
+    [[ -n "$field_value" ]] || die "Could not parse ${field_name} from $config_path"
     printf '%s\n' "$field_value"
 }
 
-resolve_effective_foundation_models_type() {
-    local explicit_type="${1:-}"
+resolve_effective_string_field() {
+    local explicit_value="${1:-}"
     local fork_from_run="${2:-}"
-    local resolved_type=""
+    local field_name="$3"
+    local prefer_fork_value="${4:-false}"
 
-    if [[ -n "$explicit_type" ]]; then
-        resolved_type="$explicit_type"
-    elif [[ -n "$fork_from_run" ]]; then
-        resolved_type="$(load_foundation_models_type_from_run_config "$fork_from_run")"
+    if [[ "$prefer_fork_value" = true && -n "$fork_from_run" ]]; then
+        load_string_field_from_run_config "$fork_from_run" "$field_name"
+        return 0
     fi
-
-    if ! is_valid_foundation_models_type "$resolved_type"; then
-        die "Invalid foundation model type '$resolved_type' in the effective run configuration. Allowed: dna, rna, molecule, protein, all."
+    if [[ -n "$explicit_value" ]]; then
+        printf '%s\n' "$explicit_value"
+        return 0
     fi
-
-    if [[ -n "$resolved_type" ]]; then
-        printf '%s\n' "$resolved_type"
+    if [[ -n "$fork_from_run" ]]; then
+        load_string_field_from_run_config "$fork_from_run" "$field_name"
         return 0
     fi
 }
