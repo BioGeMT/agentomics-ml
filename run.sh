@@ -404,30 +404,27 @@ if [ "$LOCAL_MODE" = true ]; then
         exit 0
     fi
 
-    mkdir -p outputs/${AGENT_ID}/best_iteration_snapshot outputs/${AGENT_ID}/reports outputs/${AGENT_ID}/run outputs/${AGENT_ID}/extras
-    cp -r "${WORKSPACE_DIR}/run/." outputs/${AGENT_ID}/run/
-    if [[ -d "${WORKSPACE_DIR}/reports" ]]; then
-        cp -r "${WORKSPACE_DIR}/reports/." outputs/${AGENT_ID}/reports/
-    fi
-    if [[ -d "${WORKSPACE_DIR}/extras" ]]; then
-        cp -r "${WORKSPACE_DIR}/extras/." outputs/${AGENT_ID}/extras/
-    fi
-
     RUN_SUCCEEDED=true
     if [[ -f "${WORKSPACE_DIR}/best_iteration_snapshot/runtime_info/iteration_metadata.json" ]]; then
         CONFIG_PATH="${WORKSPACE_DIR}/run/shared/config.json"
         if [[ ! -f "${CONFIG_PATH}" ]]; then
             die "Config not found: ${CONFIG_PATH}"
         fi
-
         export PYTHONPATH=./src
         python src/run_logging/test_evaluation.py --workspace-dir "$WORKSPACE_DIR" --prepared-test-sets-dir "$(pwd)/prepared_test_sets"
-        cp -r "${WORKSPACE_DIR}/best_iteration_snapshot/." outputs/${AGENT_ID}/best_iteration_snapshot/
+    else
+        RUN_SUCCEEDED=false
+    fi
+
+    mkdir -p "outputs/${AGENT_ID}"
+    cp -r "${WORKSPACE_DIR}/." "outputs/${AGENT_ID}/"
+
+    if [[ "$RUN_SUCCEEDED" = true ]]; then
         PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python -m runtime.iteration_reports --agent-dir "outputs/${AGENT_ID}"
 
         if [ "$USE_PROVISIONING_KEY" = true ]; then
             echo "Logging costs and cleaning up temporary API key"
-            PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys.py cleanup-and-log --config-path "$CONFIG_PATH" --api-key-hash "$TEMP_API_KEY_HASH"
+            PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys.py cleanup-and-log --config-path "outputs/${AGENT_ID}/run/shared/config.json" --api-key-hash "$TEMP_API_KEY_HASH"
         fi
 
         write_outputs_readme "${AGENT_ID}"
@@ -448,7 +445,6 @@ if [ "$LOCAL_MODE" = true ]; then
         echo -e "${GREEN}Run finished. Report and files can be found in outputs/${AGENT_ID}${NOCOLOR}"
         echo -e "${GREEN}To run inference on new data, use ./inference.sh --agent-dir outputs/${AGENT_ID} --input <path_to_input_csv> --output <path_to_output_csv>${NOCOLOR}"
     else
-        RUN_SUCCEEDED=false
         PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python -m runtime.iteration_reports --agent-dir "outputs/${AGENT_ID}"
         warn "Agent didn't produce any valid best iteration snapshot. Exported run artifacts to outputs/${AGENT_ID}."
         write_outputs_readme "${AGENT_ID}"
@@ -679,14 +675,6 @@ else
         if [[ "$RUN_EXIT_CODE" -ne 0 ]]; then
             warn "Run container exited with code ${RUN_EXIT_CODE}. Exporting available run state before exiting."
         fi
-        mkdir -p outputs/${AGENT_ID}/best_iteration_snapshot outputs/${AGENT_ID}/run outputs/${AGENT_ID}/reports outputs/${AGENT_ID}/extras
-
-        docker run --rm -v temp_agentomics_volume_${AGENT_ID}:/workspace busybox chmod -R a+rX /workspace/run/ || true
-
-        docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox cp -r /source/run/. /dest/run/
-        docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox sh -c 'if [ -d /source/reports ]; then cp -r /source/reports/. /dest/reports/; fi'
-        docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox sh -c 'if [ -d /source/extras ]; then cp -r /source/extras/. /dest/extras/; fi'
-
         RUN_SUCCEEDED=true
         if docker run --rm -v temp_agentomics_volume_${AGENT_ID}:/workspace busybox test -f "/workspace/best_iteration_snapshot/runtime_info/iteration_metadata.json"; then
             echo "Running final evaluation on test set"
@@ -703,9 +691,15 @@ else
                 -v temp_agentomics_volume_${AGENT_ID}:/workspace \
                 --entrypoint /opt/conda/envs/agentomics-env/bin/python \
                 "$AGENTOMICS_IMAGE" src/run_logging/test_evaluation.py --prepared-test-sets-dir /repository/prepared_test_sets
+        else
+            RUN_SUCCEEDED=false
+        fi
 
-            docker run --rm -v temp_agentomics_volume_${AGENT_ID}:/workspace busybox chmod -R a+rX /workspace/best_iteration_snapshot/
-            docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox cp -r /source/best_iteration_snapshot/. /dest/best_iteration_snapshot/
+        mkdir -p "outputs/${AGENT_ID}"
+        docker run --rm -v temp_agentomics_volume_${AGENT_ID}:/workspace busybox chmod -R a+rX /workspace/ || true
+        docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox cp -r /source/. /dest/
+
+        if [[ "$RUN_SUCCEEDED" = true ]]; then
             PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python -m runtime.iteration_reports --agent-dir "outputs/${AGENT_ID}"
 
             MPLCONFIGDIR_IN_CONTAINER="/tmp/mplconfig"
@@ -724,8 +718,7 @@ else
 
             if [ "$USE_PROVISIONING_KEY" = true ]; then
                 echo "Logging costs and cleaning up temporary API key"
-                CONFIG_PATH="outputs/${AGENT_ID}/run/shared/config.json"
-                PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys.py cleanup-and-log --config-path "$CONFIG_PATH" --api-key-hash "$TEMP_API_KEY_HASH"
+                PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys.py cleanup-and-log --config-path "outputs/${AGENT_ID}/run/shared/config.json" --api-key-hash "$TEMP_API_KEY_HASH"
             fi
 
             if [ "$ALL_ITERATIONS_TEST" = true ]; then
@@ -750,7 +743,6 @@ else
             echo -e "${GREEN}Run finished. Report and files can be found in outputs/${AGENT_ID}${NOCOLOR}"
             echo -e "${GREEN}To run inference on new data, use ./inference.sh --agent-dir outputs/${AGENT_ID} --input <path_to_input_csv> --output <path_to_output_csv>${NOCOLOR}"
         else
-            RUN_SUCCEEDED=false
             PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python -m runtime.iteration_reports --agent-dir "outputs/${AGENT_ID}"
             warn "Agent didn't produce any valid best iteration snapshot. Exported run files for later continuation to outputs/${AGENT_ID}."
             write_outputs_readme "${AGENT_ID}"
