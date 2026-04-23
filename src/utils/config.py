@@ -11,6 +11,7 @@ from runtime.system_resources import get_resources_summary
 @dataclass(kw_only=True)
 class Config:
     CONFIG_FILENAME: ClassVar[str] = "config.json"
+    RUN_DIRNAME: ClassVar[str] = "run"
     SHARED_DIRNAME: ClassVar[str] = "shared"
     RUNTIME_INFO_DIRNAME: ClassVar[str] = "runtime_info"
     ITERATION_DIR_PREFIX: ClassVar[str] = "iteration_"
@@ -91,7 +92,7 @@ class Config:
 
     @property
     def run_dir(self) -> Path:
-        return Path(self.workspace_dir) / "run"
+        return Path(self.workspace_dir) / self.RUN_DIRNAME
 
 
     @property
