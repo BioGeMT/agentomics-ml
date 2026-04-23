@@ -6,7 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_PATH = REPO_ROOT / "src"
@@ -169,7 +169,7 @@ class TestForkRun(unittest.TestCase):
         _setup_git_repo(self.source_workspace)
         run_dir = source_config.run_dir
         (self.source_workspace / ".gitignore").write_text(
-            "run/shared/.conda/\nbest_iteration_snapshot/.conda/\n__pycache__/\n.cache/\n*.pyc\n",
+            f"run/shared/.conda/\n{Config.BEST_ITERATION_SNAPSHOT_DIRNAME}/.conda/\n__pycache__/\n.cache/\n*.pyc\n",
             encoding="utf-8",
         )
 
@@ -194,10 +194,13 @@ class TestForkRun(unittest.TestCase):
 
         archived_iteration_dir = run_dir / "iteration_0"
         shutil.move(run_dir / "current_iteration", archived_iteration_dir)
-        best_snapshot_runtime_info = self.source_workspace / "best_iteration_snapshot" / Config.RUNTIME_INFO_DIRNAME
+        best_snapshot_runtime_info = self.source_workspace / Config.BEST_ITERATION_SNAPSHOT_DIRNAME / Config.RUNTIME_INFO_DIRNAME
         best_snapshot_runtime_info.mkdir(parents=True, exist_ok=True)
         (best_snapshot_runtime_info / Config.ITERATION_METADATA_FILENAME).write_text('{"iteration": 0}', encoding="utf-8")
-        (self.source_workspace / "best_iteration_snapshot" / "snapshot_marker.txt").write_text("best", encoding="utf-8")
+        (best_snapshot_runtime_info / "environment.yml").write_text("name: fork-test\n", encoding="utf-8")
+        (self.source_workspace / Config.BEST_ITERATION_SNAPSHOT_DIRNAME / "snapshot_marker.txt").write_text("best", encoding="utf-8")
+        (self.source_workspace / Config.BEST_ITERATION_SNAPSHOT_DIRNAME / "environment.yml").write_text("name: fork-test\n", encoding="utf-8")
+        (self.source_workspace / Config.BEST_ITERATION_SNAPSHOT_DIRNAME / ".conda" / "envs" / f"{run_id}_env").mkdir(parents=True)
         (self.source_workspace / "reports" / "markdown").mkdir(parents=True, exist_ok=True)
         (self.source_workspace / "reports" / "markdown" / "run_report_iter_0.md").write_text("report", encoding="utf-8")
         (self.source_workspace / "extras" / "run_logs").mkdir(parents=True, exist_ok=True)
@@ -206,14 +209,14 @@ class TestForkRun(unittest.TestCase):
 
     def _fork(self, source_run_id: str, target_run_id: str, **kwargs):
         self._build_source_run(source_run_id)
-        with patch("runtime.setup_fork.update_environment_from_descriptor") as update_environment:
+        with patch("runtime.setup_fork.ensure_environment_from_descriptor") as ensure_environment:
             fork_run(
                 source_workspace_dir=self.source_workspace,
                 target_agent_id=target_run_id,
                 target_workspace_dir=self.target_workspace,
                 **kwargs,
             )
-        return update_environment
+        return ensure_environment
 
     def test_checks_out_correct_state(self):
         self._fork("src_run", "tgt_run", fork_from_step="data_split", fork_from_iteration=0)
@@ -228,7 +231,7 @@ class TestForkRun(unittest.TestCase):
         self.assertTrue((self.target_workspace / "iteration_end_marker.txt").exists())
         self.assertTrue((target_run_dir / "iteration_0" / "model_training" / "output.json").exists())
         self.assertFalse((target_run_dir / "current_iteration").exists())
-        self.assertTrue((self.target_workspace / "best_iteration_snapshot" / "snapshot_marker.txt").exists())
+        self.assertTrue((self.target_workspace / Config.BEST_ITERATION_SNAPSHOT_DIRNAME / "snapshot_marker.txt").exists())
         self.assertTrue((self.target_workspace / "reports" / "markdown" / "run_report_iter_0.md").exists())
         self.assertTrue((self.target_workspace / "extras" / "run_logs" / "latest.log").exists())
 
@@ -239,22 +242,34 @@ class TestForkRun(unittest.TestCase):
         self.assertNotIn(str(self.source_workspace), content)
 
     def test_rewinds_workspace_artifacts_with_checkpoint(self):
-        self._fork("src_run", "tgt_run", fork_from_step="data_split", fork_from_iteration=0)
+        ensure_environment = self._fork("src_run", "tgt_run", fork_from_step="data_split", fork_from_iteration=0)
 
-        self.assertFalse((self.target_workspace / "best_iteration_snapshot").exists())
+        self.assertFalse((self.target_workspace / Config.BEST_ITERATION_SNAPSHOT_DIRNAME).exists())
         self.assertFalse((self.target_workspace / "reports").exists())
         self.assertFalse((self.target_workspace / "extras").exists())
-
-    def test_updates_renamed_shared_environment(self):
-        target_run_id = "tgt_run"
-        update_environment = self._fork("src_run", target_run_id, fork_from_step=None, fork_from_iteration=None)
-        target_run_dir = self.target_workspace / Config.RUN_DIRNAME
-        self.assertFalse((target_run_dir / "shared" / ".conda" / "envs" / "src_run_env").exists())
-        self.assertTrue((target_run_dir / "shared" / ".conda" / "envs" / f"{target_run_id}_env").exists())
-        update_environment.assert_called_once_with(
-            target_run_dir / "shared" / "environment.yml",
-            target_run_dir / "shared" / ".conda" / "envs" / f"{target_run_id}_env",
+        ensure_environment.assert_called_once_with(
+            self.target_workspace / Config.RUN_DIRNAME / "shared" / "environment.yml",
+            self.target_workspace / Config.RUN_DIRNAME / "shared" / ".conda" / "envs" / "tgt_run_env",
         )
+
+    def test_syncs_shared_and_snapshot_environments_from_descriptors(self):
+        target_run_id = "tgt_run"
+        ensure_environment = self._fork("src_run", target_run_id, fork_from_step=None, fork_from_iteration=None)
+        target_run_dir = self.target_workspace / Config.RUN_DIRNAME
+        target_snapshot_dir = self.target_workspace / Config.BEST_ITERATION_SNAPSHOT_DIRNAME
+        self.assertFalse((target_run_dir / "shared" / ".conda").exists())
+        self.assertFalse((target_snapshot_dir / ".conda").exists())
+        ensure_environment.assert_has_calls([
+            call(
+                target_run_dir / "shared" / "environment.yml",
+                target_run_dir / "shared" / ".conda" / "envs" / f"{target_run_id}_env",
+            ),
+            call(
+                target_snapshot_dir / "environment.yml",
+                target_snapshot_dir / ".conda" / "envs" / f"{target_run_id}_env",
+            ),
+        ])
+        self.assertEqual(ensure_environment.call_count, 2)
 
     def test_raises_when_target_workspace_not_empty(self):
         self._build_source_run("src_run")
@@ -262,7 +277,7 @@ class TestForkRun(unittest.TestCase):
         (self.target_workspace / "stale.txt").write_text("stale", encoding="utf-8")
 
         with self.assertRaises(FileExistsError):
-            with patch("runtime.setup_fork.update_environment_from_descriptor"):
+            with patch("runtime.setup_fork.ensure_environment_from_descriptor"):
                 fork_run(
                     source_workspace_dir=self.source_workspace,
                     target_agent_id="tgt_run",

@@ -14,6 +14,7 @@ class Config:
     RUN_DIRNAME: ClassVar[str] = "run"
     SHARED_DIRNAME: ClassVar[str] = "shared"
     RUNTIME_INFO_DIRNAME: ClassVar[str] = "runtime_info"
+    BEST_ITERATION_SNAPSHOT_DIRNAME: ClassVar[str] = "best_iteration_snapshot"
     ITERATION_DIR_PREFIX: ClassVar[str] = "iteration_"
     BASE_PROMPT_FILENAME: ClassVar[str] = "base_prompt.txt"
     SYSTEM_PROMPT_FILENAME: ClassVar[str] = "system_prompt.txt"
@@ -149,7 +150,7 @@ class Config:
 
     @property
     def best_iteration_snapshot_dir(self) -> Path:
-        return Path(self.workspace_dir) / "best_iteration_snapshot"
+        return Path(self.workspace_dir) / self.BEST_ITERATION_SNAPSHOT_DIRNAME
 
     def archived_step_dir(self, step_id: str) -> Path:
         return self.current_iteration_dir / step_id

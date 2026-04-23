@@ -51,6 +51,12 @@ def update_environment_from_descriptor(descriptor_path: Path, env_path: Path) ->
         check=True,
     )
 
+def ensure_environment_from_descriptor(descriptor_path: Path, env_path: Path) -> None:
+    if env_path.exists():
+        update_environment_from_descriptor(descriptor_path, env_path)
+        return
+    create_environment_from_descriptor(descriptor_path, env_path)
+
 def export_shared_environment_descriptor(config: Config) -> None:
     conda_env = get_shared_environment_path(config)
     export_environment_descriptor_to_path(
