@@ -166,6 +166,7 @@ class TestForkRun(unittest.TestCase):
 
         run_dir = source_config.run_dir
         _setup_git_repo(run_dir)
+        (run_dir / ".gitignore").write_text("shared/.conda/\n__pycache__/\n.cache/\n*.pyc\n", encoding="utf-8")
 
         script = run_dir / "shared" / "train.py"
         script.write_text(f'data = "{self.source_workspace}/{Config.RUN_DIRNAME}/shared/data.csv"', encoding="utf-8")

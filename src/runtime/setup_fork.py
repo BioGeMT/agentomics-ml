@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import shutil
+import subprocess
 from pathlib import Path
 
 from runtime.conda_utils import update_environment_from_descriptor
@@ -39,6 +40,9 @@ def fork_run(
         step_id=fork_from_step,
         iteration=fork_from_iteration,
     )
+    # Remove any untracked files left by a step that crashed before its checkpoint commit.
+    # -fd removes files and directories; omitting -x preserves gitignored paths (e.g. .conda/).
+    subprocess.run(["git", "clean", "-fd"], cwd=target_run_dir, check=True, text=True, capture_output=True)
 
     # 3. Fix absolute paths in stored step outputs that still point at the source workspace
     replace_string_in_tree_files(target_workspace_dir, str(source_workspace_dir), str(target_workspace_dir), skip_dirs={".conda"})
