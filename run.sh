@@ -663,7 +663,6 @@ else
             ${CODEX_DOCKER_FLAGS[@]+"${CODEX_DOCKER_FLAGS[@]}"} \
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
-            -v "$(pwd)/prepared_test_sets":/repository/prepared_test_sets:ro \
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
             ${RUN_EXEC[@]+"${RUN_EXEC[@]}"}
         RUN_EXIT_CODE=$?
