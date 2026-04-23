@@ -45,7 +45,7 @@ def fork_run(
     subprocess.run(["git", "clean", "-fd"], cwd=target_run_dir, check=True, text=True, capture_output=True)
 
     # 3. Fix absolute paths in stored step outputs that still point at the source workspace
-    replace_string_in_tree_files(target_workspace_dir, str(source_workspace_dir), str(target_workspace_dir), skip_dirs={".conda"})
+    replace_string_in_tree_files(target_workspace_dir, str(source_workspace_dir), str(target_workspace_dir), skip_dirs={".conda", ".git"})
 
     # 4. Rename conda envs: the env directory is named after the agent ID, which changes on fork
     for conda_envs_dir in target_workspace_dir.rglob(".conda/envs"):
