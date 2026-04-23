@@ -48,17 +48,22 @@ class RuntimeStep(ABC):
 
     async def run(self) -> None:
         if not self.should_run():
-            self.on_step_success(self.build_skipped_output())
+            return
+        if self.should_be_simulated():
+            self.on_step_success(self.build_simulated_output())
             return
         self.on_step_start()
         output = await self._execute()
         self.on_step_success(output)
 
     def should_run(self) -> bool:
-        return True
+        return not (self.config.current_iteration_dir / self.step_id / Config.STEP_OUTPUT_FILENAME).exists()
 
-    def build_skipped_output(self) -> Any:
-        raise RuntimeError(f"Step '{self.step_id}' does not support being skipped.")
+    def should_be_simulated(self) -> bool:
+        return False
+
+    def build_simulated_output(self) -> Any:
+        raise RuntimeError(f"Step '{self.step_id}' does not support being simulated.")
 
     @abstractmethod
     async def _execute(self) -> Any:

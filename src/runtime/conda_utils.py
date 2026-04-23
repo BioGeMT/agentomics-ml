@@ -42,6 +42,15 @@ def create_environment_from_descriptor(descriptor_path: Path, env_path: Path) ->
         check=True,
     )
 
+def update_environment_from_descriptor(descriptor_path: Path, env_path: Path) -> None:
+    if not descriptor_path.exists():
+        raise FileNotFoundError(f"Missing environment descriptor at {descriptor_path}.")
+
+    subprocess.run(
+        ["conda", "env", "update", "-p", str(env_path), "-f", str(descriptor_path), "-q"],
+        check=True,
+    )
+
 def export_shared_environment_descriptor(config: Config) -> None:
     conda_env = get_shared_environment_path(config)
     export_environment_descriptor_to_path(

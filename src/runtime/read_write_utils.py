@@ -29,27 +29,27 @@ def save_config(config: Config) -> None:
     config.config_path.parent.mkdir(parents=True, exist_ok=True)
     config.config_path.write_text(json.dumps(asdict(config), indent=2), encoding="utf-8")
 
-def load_config(config_path: Path | str) -> Config:
-    payload = json.loads(Path(config_path).read_text(encoding="utf-8"))
+def load_config(config_path: Path | str, missing_ok: bool = False) -> Config | None:
+    config_path = Path(config_path)
+    if not config_path.exists():
+        if missing_ok:
+            return None
+        raise FileNotFoundError(f"Config not found at {config_path}")
+    payload = json.loads(config_path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise ValueError(f"Expected a JSON object at {config_path}.")
     return Config(**payload)
 
-def load_config_from_run_dir(run_dir: Path | str) -> Config:
-    return load_config(Path(run_dir) / Config.SHARED_DIRNAME / Config.CONFIG_FILENAME)
+def load_config_from_run_dir(run_dir: Path | str, missing_ok: bool = False) -> Config | None:
+    return load_config(Path(run_dir) / Config.SHARED_DIRNAME / Config.CONFIG_FILENAME, missing_ok=missing_ok)
 
 def load_config_from_run_dir_and_reroot(run_dir: Path) -> Config:
     config = load_config_from_run_dir(run_dir)
     return replace(config, workspace_dir=str(run_dir.parent))
 
 def initialize_current_iteration_workspace(config: Config) -> None:
-    current_iteration_dir = config.current_iteration_dir
-    if current_iteration_dir.exists():
-        raise FileExistsError(
-            f"Cannot initialize current iteration workspace because it already exists at {current_iteration_dir}."
-        )
-    current_iteration_dir.mkdir(parents=True, exist_ok=False)
-    config.current_iteration_runtime_info_dir.mkdir()
+    config.current_iteration_dir.mkdir(parents=True, exist_ok=True)
+    config.current_iteration_runtime_info_dir.mkdir(exist_ok=True)
 
 def archive_current_iteration(config: Config, iteration: int) -> None:
     export_shared_environment_descriptor(config)
@@ -205,6 +205,19 @@ def update_current_iteration_state(config: Config, **changes: object) -> None:
 
 def load_dataset_metadata(config: Config) -> dict[str, str]:
     return json.loads((config.prepared_dataset_dir / "metadata.json").read_text(encoding="utf-8"))
+
+def replace_string_in_tree_files(root_dir: Path, old: str, new: str, skip_dirs: set[str] | None = None) -> None:
+    for file_path in root_dir.rglob("*"):
+        if not file_path.is_file():
+            continue
+        if skip_dirs and any(part in skip_dirs for part in file_path.parts):
+            continue
+        try:
+            content = file_path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, PermissionError):
+            continue
+        if old in content:
+            file_path.write_text(content.replace(old, new), encoding="utf-8")
 
 def _file_matches_quoted_pattern(file_path, pattern: str) -> bool:
     content = Path(file_path).read_text(encoding="utf-8")
