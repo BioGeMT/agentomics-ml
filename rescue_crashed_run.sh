@@ -113,7 +113,7 @@ docker run --rm \
 
 # ── Best iteration snapshot (only present if at least one iteration completed) ─
 HAS_SNAPSHOT=false
-if docker run --rm -v "${VOLUME_NAME}:/workspace" busybox test -d /workspace/best_iteration_snapshot 2>/dev/null; then
+if docker run --rm -v "${VOLUME_NAME}:/workspace" busybox test -f "/workspace/best_iteration_snapshot/runtime_info/iteration_metadata.json" 2>/dev/null; then
     echo "Found best iteration snapshot — copying..."
     docker run --rm -v "${VOLUME_NAME}:/workspace" busybox chmod -R a+rX /workspace/best_iteration_snapshot/ || true
     docker run --rm \
