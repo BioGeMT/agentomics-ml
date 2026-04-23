@@ -34,6 +34,10 @@ class BashProcess:
 
     def create_preloaded_conda(self):
         conda_env_path = get_shared_environment_path(self.config)
+        # Forked runs may already carry a fully initialized shared env.
+        # In that case, preserve it instead of unpacking the base start env over it.
+        if (conda_env_path / "bin" / "activate").exists():
+            return
         start_env_pkg = os.getenv('START_ENV_PKG')
         shared_dir = str(self.config.shared_dir)
         for cmd in [

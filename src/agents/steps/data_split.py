@@ -146,10 +146,10 @@ class DataSplitStep(AgenticStep):
                 split_allowed = time.time() < self.config.split_time_deadline
         update_current_iteration_state(self.config, split_allowed_at_start=split_allowed)
 
-    def should_run(self) -> bool:
-        return bool(load_iteration_state(self.config.current_iteration_dir)["split_allowed_at_start"])
+    def should_be_simulated(self) -> bool:
+        return not bool(load_iteration_state(self.config.current_iteration_dir)["split_allowed_at_start"])
 
-    def build_skipped_output(self) -> DataSplitOutput:
+    def build_simulated_output(self) -> DataSplitOutput:
         latest_split_dir = self._get_latest_split_dir()
         if latest_split_dir is None:
             if not (self.config.agent_dataset_dir / "validation.csv").exists(): #check for explicit validation files
