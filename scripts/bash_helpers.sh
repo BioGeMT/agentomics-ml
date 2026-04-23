@@ -135,6 +135,7 @@ build_setup_fork_args() {
     )
     [ -n "$fork_from_step" ] && SETUP_FORK_ARGS+=(--fork-from-step "$fork_from_step")
     [ -n "$fork_from_iteration" ] && SETUP_FORK_ARGS+=(--fork-from-iteration "$fork_from_iteration")
+    return 0
 }
 
 write_outputs_readme() {
