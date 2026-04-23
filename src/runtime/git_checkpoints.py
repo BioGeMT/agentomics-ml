@@ -33,6 +33,12 @@ def create_and_checkout_branch_at_checkpoint(
     iteration: int | None = None,
 ) -> None:
     commit_hash = _find_checkpoint_commit(workspace_dir, run_id, step_id, iteration)
+    # The copied workspace may have files written after the last git commit (e.g. wandb
+    # binary logs). Reset to HEAD so the working tree is clean before switching branches.
+    subprocess.run(
+        ["git", "reset", "--hard", "HEAD"],
+        cwd=workspace_dir, check=True, text=True, capture_output=True,
+    )
     subprocess.run(
         ["git", "checkout", "-b", branch_name, commit_hash],
         cwd=workspace_dir, check=True, text=True, capture_output=True,
