@@ -404,9 +404,8 @@ if [ "$LOCAL_MODE" = true ]; then
         cp -r "${WORKSPACE_DIR}/extras/." outputs/${AGENT_ID}/extras/
     fi
 
-    ARTIFACT_PATH="${WORKSPACE_DIR}/best_iteration_snapshot"
     RUN_SUCCEEDED=true
-    if [[ -d "$ARTIFACT_PATH" ]]; then
+    if [[ -f "${WORKSPACE_DIR}/best_iteration_snapshot/runtime_info/iteration_metadata.json" ]]; then
         CONFIG_PATH="${WORKSPACE_DIR}/run/shared/config.json"
         if [[ ! -f "${CONFIG_PATH}" ]]; then
             die "Config not found: ${CONFIG_PATH}"
@@ -679,9 +678,8 @@ else
         docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox sh -c 'if [ -d /source/reports ]; then cp -r /source/reports/. /dest/reports/; fi'
         docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox sh -c 'if [ -d /source/extras ]; then cp -r /source/extras/. /dest/extras/; fi'
 
-        ARTIFACT_PATH="/workspace/best_iteration_snapshot"
         RUN_SUCCEEDED=true
-        if docker run --rm -v temp_agentomics_volume_${AGENT_ID}:/workspace busybox test -d ${ARTIFACT_PATH}; then
+        if docker run --rm -v temp_agentomics_volume_${AGENT_ID}:/workspace busybox test -f "/workspace/best_iteration_snapshot/runtime_info/iteration_metadata.json"; then
             echo "Running final evaluation on test set"
             docker run \
                 --rm \
