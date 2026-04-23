@@ -24,6 +24,9 @@ FOUNDATION_MODELS_TYPE=""
 ALL_ITERATIONS_TEST=false
 BUILD_IMAGES=false
 DOCKERHUB_USERNAME="biogemt"
+FORK_FROM_RUN=""
+FORK_FROM_STEP=""
+FORK_FROM_ITERATION=""
 
 show_help() {
     cat <<'EOF'
@@ -37,14 +40,34 @@ Required Arguments (for non-interactive runs):
   --provider <name>   When multiple api keys provided, optional provider override (e.g., 'openai', 'openrouter').
   --dataset <name>    The short identifier for the prepared dataset (e.g., 'breast_cancer').
   --iterations <N>    Number of iterations to run the agent (recommended more than 5).
+                      For forked runs, omitting it keeps the source run's total iteration limit.
+                      Providing it means N additional iterations from the fork point.
   --timeout <int>   Amount of seconds the agent is allowed to run for. This or --iterations will dictate the duration, whichever will expire first. (recommended
   ~480s)
   --run-python-timeout <int>  Timeout in seconds for each run_python tool execution - this will determine the maximum training time (default: 21600, i.e. 6 hours).
   --split-allowed-iterations <N>    Number of initial iterations that are allowed to (re)split the data into train/validation (e.g., 1).
+                      For forked runs, omitting it keeps the source run's split-allowed limit.
+                      Providing it means N more split-allowed iterations from the fork point.
   --exploration-iterations <N>     Number of initial iterations that should focus on baseline/exploration models (e.g., 4).
+                      For forked runs, omitting it keeps the source run's exploration limit.
+                      Providing it means N more exploration iterations from the fork point.
   --val-metric <name> Optional metric to optimize. Defaults: AUROC (classification), MAE (regression).
   --user-prompt <str> The main prompt/goal for the agent.
                       (Default: "Create the best possible machine learning model that will generalize to new unseen data.")
+
+Forking:
+  --fork-from-run <path>  Path to the source run workspace directory (the 'outputs/<run_id>' folder).
+                          Creates a new independent run branching off from the given checkpoint.
+                          When forking, most run arguments (--model, --iterations, --user-prompt, etc.)
+                          are optional — omitting them reuses the values from the source run's config.
+                          Two arguments are always inherited and cannot be overridden:
+                            --dataset    (tied to the data the source run was trained on)
+                            --val-metric (must stay consistent to compare iterations across the fork)
+  --fork-from-step <step> Only used with --fork-from-run. Step ID to fork from (e.g. 'model_training').
+                          Defaults to the latest completed step or iteraiton end checkpoint in the source run.
+  --fork-from-iteration <N>
+                          Only used with --fork-from-run. Iteration to fork from.
+                          Defaults to the latest iteration containing the specified step or iteration end checkpoint.
 
 Operational Flags:
   --local             Run the project using local Conda environments instead of Docker.
@@ -56,7 +79,9 @@ Operational Flags:
   --ollama            Enable support for an Ollama server running on the host machine.
   --build-images      Build Docker images locally instead of pulling prebuilt biogemt images from Docker Hub.
   --foundation-models-type <dna|rna|molecule|protein|all>
-                      Enable foundation models of a specific type. Use 'all' to download all types. When omitted, no foundation models are used or pre-downloaded.
+                      Enable foundation models of a specific type. Use 'all' to download all types.
+                      When omitted on a fresh run, no foundation models are used.
+                      When omitted on a forked run, the source run's foundation model type is reused.
   --use-provisioning-key  Use OpenRouter provisioning key to create temporary API key and log costs.
   --spend-limit <N>   Only applies when --use-provisioning-key is passed. Spend limit for a temporary key (default: 10).
   --tags              (Optional) Space separated tags for Weights and Biases logging.
@@ -170,6 +195,21 @@ while [[ $# -gt 0 ]]; do
                 shift
             done
             ;;
+        --fork-from-run)
+            require_opt_value "$1" "${2:-}"
+            FORK_FROM_RUN="$2"
+            shift 2
+            ;;
+        --fork-from-step)
+            require_opt_value "$1" "${2:-}"
+            FORK_FROM_STEP="$2"
+            shift 2
+            ;;
+        --fork-from-iteration)
+            require_opt_value "$1" "${2:-}"
+            FORK_FROM_ITERATION="$2"
+            shift 2
+            ;;
         --local)
             LOCAL_MODE=true
             shift
@@ -220,10 +260,11 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-if [ -n "$FOUNDATION_MODELS_TYPE" ] && [[ "$FOUNDATION_MODELS_TYPE" != "dna" && "$FOUNDATION_MODELS_TYPE" != "rna" && "$FOUNDATION_MODELS_TYPE" != "molecule" && "$FOUNDATION_MODELS_TYPE" != "protein" && "$FOUNDATION_MODELS_TYPE" != "all" ]]; then
+if ! is_valid_foundation_models_type "$FOUNDATION_MODELS_TYPE"; then
     die "Invalid --foundation-models-type '$FOUNDATION_MODELS_TYPE'. Allowed: dna, rna, molecule, protein, all."
-    exit 1
 fi
+
+EFFECTIVE_FOUNDATION_MODELS_TYPE="$(resolve_effective_foundation_models_type "$FOUNDATION_MODELS_TYPE" "$FORK_FROM_RUN")"
 
 
 if [ "$LOCAL_MODE" = true ]; then
@@ -233,8 +274,8 @@ if [ "$LOCAL_MODE" = true ]; then
         die "--test is only supported in Docker mode (remove --test or remove --local)"
     fi
     if [[ "$LIST_MODE" = false ]] && ! has_tty; then
-        if [[ -z "$MODEL_NAME" || -z "$DATASET_NAME" ]]; then
-            die "Non-interactive runs require --model and --dataset (or run in an interactive terminal)"
+        if [[ -z "$FORK_FROM_RUN" && ( -z "$MODEL_NAME" || -z "$DATASET_NAME" ) ]]; then
+            die "Non-interactive runs require --model and --dataset (or --fork-from-run) (or run in an interactive terminal)"
         fi
     fi
 
@@ -250,18 +291,24 @@ if [ "$LOCAL_MODE" = true ]; then
     AGENT_ID=$(python src/utils/agent_id.py)
     export AGENT_ID
 
-    WORKSPACE_DIR="$(dirname "$AGENTOMICS_DIR")/workspace"
+    WORKSPACE_ROOT="$(dirname "$AGENTOMICS_DIR")/workspace"
+    WORKSPACE_CACHE_DIR="$WORKSPACE_ROOT/cache"
+    WORKSPACE_DIR="$WORKSPACE_ROOT/runs/$AGENT_ID"
+    mkdir -p "$WORKSPACE_CACHE_DIR" "$(dirname "$WORKSPACE_DIR")"
+    rm -rf "$WORKSPACE_DIR"
     mkdir -p "$WORKSPACE_DIR"
 
     if [ "$CPU_ONLY" = true ]; then
         export CUDA_VISIBLE_DEVICES=""
     fi
 
-    if [ -n "$FOUNDATION_MODELS_TYPE" ]; then
-        export HF_HOME="$WORKSPACE_DIR/foundation_models"
+    if [ -n "$EFFECTIVE_FOUNDATION_MODELS_TYPE" ]; then
+        FOUNDATION_MODELS_YAML_PATH="$(pwd)/foundation_models/models.yaml"
+        [[ -f "$FOUNDATION_MODELS_YAML_PATH" ]] || die "Foundation models YAML not found: $FOUNDATION_MODELS_YAML_PATH"
+        export HF_HOME="$WORKSPACE_CACHE_DIR/foundation_models"
         mkdir -p "$HF_HOME"
-        AGENTOMICS_ARGS+=(--foundation-models-type "$FOUNDATION_MODELS_TYPE")
-        AGENTOMICS_ARGS+=(--foundation-models-yaml "$(pwd)/foundation_models/models.yaml")
+        AGENTOMICS_ARGS+=(--foundation-models-type "$EFFECTIVE_FOUNDATION_MODELS_TYPE")
+        AGENTOMICS_ARGS+=(--foundation-models-yaml "$FOUNDATION_MODELS_YAML_PATH")
     fi
 
     echo -e "${RED}Running in local mode - this is only recommended if you run in a non-vulnerable environment!${NOCOLOR}"
@@ -287,19 +334,19 @@ if [ "$LOCAL_MODE" = true ]; then
     if ! conda env list | grep -q "^agent_start_env "; then
         conda env create -f envs/environment_agent.yaml -q
     fi
-    START_ENV_PKG_PATH="$WORKSPACE_DIR/agent_start_env.tar"
+    START_ENV_PKG_PATH="$WORKSPACE_CACHE_DIR/agent_start_env.tar"
     if [[ ! -f "$START_ENV_PKG_PATH" ]]; then
         echo "Packing agent start environment to ${START_ENV_PKG_PATH}"
         conda run -n agent_start_env conda-pack --format tar -o "$START_ENV_PKG_PATH"
     fi
     export START_ENV_PKG="$START_ENV_PKG_PATH"
 
-    if [ -n "$FOUNDATION_MODELS_TYPE" ]; then
-        FOUNDATION_MODELS_MARKER="$HF_HOME/.downloaded_${FOUNDATION_MODELS_TYPE}"
+    if [ -n "$EFFECTIVE_FOUNDATION_MODELS_TYPE" ]; then
+        FOUNDATION_MODELS_MARKER="$HF_HOME/.downloaded_${EFFECTIVE_FOUNDATION_MODELS_TYPE}"
         if [[ ! -f "$FOUNDATION_MODELS_MARKER" ]]; then
             conda run -n agentomics-env python src/utils/download_foundation_models.py \
-                --foundation-models-type "$FOUNDATION_MODELS_TYPE" \
-                --models-yaml "$(pwd)/foundation_models/models.yaml"
+                --foundation-models-type "$EFFECTIVE_FOUNDATION_MODELS_TYPE" \
+                --models-yaml "$FOUNDATION_MODELS_YAML_PATH"
             touch "$FOUNDATION_MODELS_MARKER"
         fi
     fi
@@ -314,6 +361,12 @@ if [ "$LOCAL_MODE" = true ]; then
     fi
 
     AGENTOMICS_ARGS+=(--workspace-dir "$WORKSPACE_DIR" --prepared-datasets-dir "$(pwd)/prepared_datasets")
+
+    if [ -n "$FORK_FROM_RUN" ]; then
+        FORK_FROM_RUN_ABS="$(cd "$FORK_FROM_RUN" && pwd)"
+        build_setup_fork_args "$FORK_FROM_RUN_ABS" "$WORKSPACE_DIR" "$AGENT_ID" "$FORK_FROM_STEP" "$FORK_FROM_ITERATION"
+        PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/runtime/setup_fork.py "${SETUP_FORK_ARGS[@]}"
+    fi
 
     RUN_EXIT_CODE=0
     if [[ -n "$TIMEOUT_SECS" ]]; then
@@ -405,16 +458,17 @@ else
         die "Docker is not running or not accessible (start Docker and retry). Alternatively, run with --local argument(./run.sh --local), if you are running in a non-vulnerable environment."
     fi
     if [[ "$LIST_MODE" = false ]] && ! has_tty; then
-        if [[ -z "$MODEL_NAME" || ( -z "$DATASET_NAME" && -z "$FORK_FROM_RUN" ) ]]; then
-            die "Non-interactive runs require --model and --dataset (or run in an interactive terminal)"
+        if [[ -z "$FORK_FROM_RUN" && ( -z "$MODEL_NAME" || -z "$DATASET_NAME" ) ]]; then
+            die "Non-interactive runs require --model and --dataset (or --fork-from-run) (or run in an interactive terminal)"
         fi
     fi
 
 
     DOCKER_BUILD_ARGS=()
-    if [ -n "$FOUNDATION_MODELS_TYPE" ]; then
-        DOCKER_BUILD_ARGS+=(--build-arg "FOUNDATION_MODEL_TYPE=$FOUNDATION_MODELS_TYPE")
-        AGENTOMICS_ARGS+=(--foundation-models-type "$FOUNDATION_MODELS_TYPE")
+    if [ -n "$EFFECTIVE_FOUNDATION_MODELS_TYPE" ]; then
+        DOCKER_BUILD_ARGS+=(--build-arg "FOUNDATION_MODEL_TYPE=$EFFECTIVE_FOUNDATION_MODELS_TYPE")
+        AGENTOMICS_ARGS+=(--foundation-models-type "$EFFECTIVE_FOUNDATION_MODELS_TYPE")
+        AGENTOMICS_ARGS+=(--foundation-models-yaml /foundation_models/models.yaml)
     fi
 
     AGENTOMICS_IMAGE="agentomics_img"
@@ -430,8 +484,8 @@ else
         echo "Build done"
     else
         FM_TAG="NONE"
-        if [ -n "$FOUNDATION_MODELS_TYPE" ]; then
-            FM_TAG="$(echo "$FOUNDATION_MODELS_TYPE" | tr '[:lower:]' '[:upper:]')"
+        if [ -n "$EFFECTIVE_FOUNDATION_MODELS_TYPE" ]; then
+            FM_TAG="$(echo "$EFFECTIVE_FOUNDATION_MODELS_TYPE" | tr '[:lower:]' '[:upper:]')"
         fi
         AGENTOMICS_IMAGE="${DOCKERHUB_USERNAME}/agentomics:FM-${FM_TAG}-latest"
         PREPARE_IMAGE="${DOCKERHUB_USERNAME}/agentomics-prepare:latest"
@@ -564,7 +618,7 @@ else
             ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
             -e AGENT_ID=${AGENT_ID} \
             -e PYTHONWARNINGS=ignore \
-            ${FOUNDATION_MODELS_TYPE:+-e FOUNDATION_MODELS_TYPE=${FOUNDATION_MODELS_TYPE}} \
+            ${EFFECTIVE_FOUNDATION_MODELS_TYPE:+-e FOUNDATION_MODELS_TYPE=${EFFECTIVE_FOUNDATION_MODELS_TYPE}} \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
             ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
@@ -575,6 +629,22 @@ else
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
             ${TEST_EXEC[@]+"${TEST_EXEC[@]}"}
     else
+        AGENTOMICS_ARGS+=(--workspace-dir /workspace --prepared-datasets-dir /repository/prepared_datasets)
+
+        if [ -n "$FORK_FROM_RUN" ]; then
+            FORK_FROM_RUN_ABS="$(cd "$FORK_FROM_RUN" && pwd)"
+            FORK_MOUNT_FLAGS=(-v "${FORK_FROM_RUN_ABS}:/fork_source:ro")
+
+            build_setup_fork_args /fork_source /workspace "$AGENT_ID" "$FORK_FROM_STEP" "$FORK_FROM_ITERATION"
+            docker run --rm \
+                -e PYTHONPATH=/repository/src \
+                ${FORK_MOUNT_FLAGS[@]+"${FORK_MOUNT_FLAGS[@]}"} \
+                -v "$(pwd)/src":/repository/src:ro \
+                -v temp_agentomics_volume_${AGENT_ID}:/workspace \
+                --entrypoint /opt/conda/envs/agentomics-env/bin/python \
+                "$AGENTOMICS_IMAGE" /repository/src/runtime/setup_fork.py "${SETUP_FORK_ARGS[@]}"
+        fi
+
         set +e
         docker run \
             --rm \

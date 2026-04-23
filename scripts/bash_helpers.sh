@@ -69,6 +69,74 @@ docker_has_gpu() {
     return 1
 }
 
+is_valid_foundation_models_type() {
+    case "${1:-}" in
+        ""|dna|rna|molecule|protein|all)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+load_foundation_models_type_from_run_config() {
+    local source_workspace="$1"
+    local config_path="$source_workspace/run/shared/config.json"
+    local field_line=""
+    local field_value=""
+
+    [[ -f "$config_path" ]] || die "Fork source config not found at $config_path"
+
+    field_line="$(grep -m1 -E '^[[:space:]]*"foundation_models_type"[[:space:]]*:' "$config_path" || true)"
+    [[ -n "$field_line" ]] || die "foundation_models_type is missing from $config_path"
+
+    if [[ "$field_line" =~ :[[:space:]]*null ]]; then
+        return 0
+    fi
+
+    field_value="$(printf '%s\n' "$field_line" | sed -nE 's/^[[:space:]]*"foundation_models_type"[[:space:]]*:[[:space:]]*"([^"]*)"[[:space:]]*,?[[:space:]]*$/\1/p')"
+    [[ -n "$field_value" ]] || die "Could not parse foundation_models_type from $config_path"
+    printf '%s\n' "$field_value"
+}
+
+resolve_effective_foundation_models_type() {
+    local explicit_type="${1:-}"
+    local fork_from_run="${2:-}"
+    local resolved_type=""
+
+    if [[ -n "$explicit_type" ]]; then
+        resolved_type="$explicit_type"
+    elif [[ -n "$fork_from_run" ]]; then
+        resolved_type="$(load_foundation_models_type_from_run_config "$fork_from_run")"
+    fi
+
+    if ! is_valid_foundation_models_type "$resolved_type"; then
+        die "Invalid foundation model type '$resolved_type' in the effective run configuration. Allowed: dna, rna, molecule, protein, all."
+    fi
+
+    if [[ -n "$resolved_type" ]]; then
+        printf '%s\n' "$resolved_type"
+        return 0
+    fi
+}
+
+build_setup_fork_args() {
+    local source_workspace="$1"
+    local target_workspace="$2"
+    local agent_id="$3"
+    local fork_from_step="${4:-}"
+    local fork_from_iteration="${5:-}"
+
+    SETUP_FORK_ARGS=(
+        --source-workspace "$source_workspace"
+        --target-workspace "$target_workspace"
+        --agent-id "$agent_id"
+    )
+    [ -n "$fork_from_step" ] && SETUP_FORK_ARGS+=(--fork-from-step "$fork_from_step")
+    [ -n "$fork_from_iteration" ] && SETUP_FORK_ARGS+=(--fork-from-iteration "$fork_from_iteration")
+}
+
 write_outputs_readme() {
     local agent_id="$1"
     local best_iter="No best iteration found"
