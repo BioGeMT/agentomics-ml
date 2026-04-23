@@ -83,44 +83,19 @@ fi
 echo "Rescuing run '${AGENT_ID}' from volume '${VOLUME_NAME}'..."
 
 # ── Extract workspace from volume ─────────────────────────────────────────────
-mkdir -p "${OUTPUT_DIR}/best_iteration_snapshot" \
-         "${OUTPUT_DIR}/run" \
-         "${OUTPUT_DIR}/reports" \
-         "${OUTPUT_DIR}/extras"
+mkdir -p "${OUTPUT_DIR}"
 
-echo "Copying run directory..."
-docker run --rm \
-    -v "${VOLUME_NAME}:/workspace" \
-    busybox chmod -R a+rX /workspace/run/ || true
-
+echo "Copying workspace..."
+docker run --rm -v "${VOLUME_NAME}:/workspace" busybox chmod -R a+rX /workspace/ || true
 docker run --rm \
     -u "$(id -u):$(id -g)" \
     -v "${VOLUME_NAME}:/source" \
     -v "$(pwd)/${OUTPUT_DIR}:/dest" \
-    busybox cp -r /source/run/. /dest/run/
-
-docker run --rm \
-    -u "$(id -u):$(id -g)" \
-    -v "${VOLUME_NAME}:/source" \
-    -v "$(pwd)/${OUTPUT_DIR}:/dest" \
-    busybox sh -c 'if [ -d /source/reports ]; then cp -r /source/reports/. /dest/reports/; fi'
-
-docker run --rm \
-    -u "$(id -u):$(id -g)" \
-    -v "${VOLUME_NAME}:/source" \
-    -v "$(pwd)/${OUTPUT_DIR}:/dest" \
-    busybox sh -c 'if [ -d /source/extras ]; then cp -r /source/extras/. /dest/extras/; fi'
+    busybox cp -r /source/. /dest/
 
 # ── Best iteration snapshot (only present if at least one iteration completed) ─
 HAS_SNAPSHOT=false
-if docker run --rm -v "${VOLUME_NAME}:/workspace" busybox test -f "/workspace/best_iteration_snapshot/runtime_info/iteration_metadata.json" 2>/dev/null; then
-    echo "Found best iteration snapshot — copying..."
-    docker run --rm -v "${VOLUME_NAME}:/workspace" busybox chmod -R a+rX /workspace/best_iteration_snapshot/ || true
-    docker run --rm \
-        -u "$(id -u):$(id -g)" \
-        -v "${VOLUME_NAME}:/source" \
-        -v "$(pwd)/${OUTPUT_DIR}:/dest" \
-        busybox cp -r /source/best_iteration_snapshot/. /dest/best_iteration_snapshot/
+if [[ -f "${OUTPUT_DIR}/best_iteration_snapshot/runtime_info/iteration_metadata.json" ]]; then
     HAS_SNAPSHOT=true
 fi
 
