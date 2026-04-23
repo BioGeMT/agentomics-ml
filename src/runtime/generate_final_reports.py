@@ -866,7 +866,7 @@ def main() -> None:
     prepared_datasets: Path = args.prepared_datasets.resolve()
     prepared_tests: Path = args.prepared_tests.resolve()
 
-    config = load_config_from_run_dir_and_reroot(agent_dir / "run")
+    config = load_config_from_run_dir_and_reroot(agent_dir / Config.RUN_DIRNAME)
     run_meta = load_run_meta(config)
     dataset_meta = load_prepared_dataset_meta(prepared_datasets, config.dataset)
 

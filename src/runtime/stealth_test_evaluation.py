@@ -28,7 +28,7 @@ STEALTH_TEST_METRIC_PREFIX = "stealth_test"
 STEALTH_TEST_STEP_METRIC = "stealth_test/iteration"
 
 def evaluate_stealth_test_history(agent_dir: Path, prepared_test_sets_dir: Path) -> None:
-    config = load_config_from_run_dir_and_reroot(agent_dir / "run")
+    config = load_config_from_run_dir_and_reroot(agent_dir / Config.RUN_DIRNAME)
     metadata = load_dataset_metadata(config)
     prepared_test_set_dir = prepared_test_sets_dir / config.dataset
     test_input_path = prepared_test_set_dir / "test.no_label.csv"

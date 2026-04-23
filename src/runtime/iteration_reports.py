@@ -36,7 +36,7 @@ def write_iteration_report(
 
 
 def write_exported_run_reports(agent_dir: Path) -> list[Path]:
-    config = load_config_from_run_dir_and_reroot(agent_dir / "run")
+    config = load_config_from_run_dir_and_reroot(agent_dir / Config.RUN_DIRNAME)
     config.markdown_reports_dir.mkdir(parents=True, exist_ok=True)
     best_iteration = load_best_iteration_snapshot_iteration(config)
     saved_test_metrics = _load_metrics_file(config.best_iteration_snapshot_dir / "test_metrics.json")

@@ -11,6 +11,7 @@ from runtime.conda_utils import get_best_iteration_snapshot_environment_path
 from runtime.filesystem import remove_path
 from runtime.inference_runner import compute_metrics, run_inference_script
 from runtime.read_write_utils import load_config_from_run_dir, load_dataset_metadata
+from utils.config import Config
 from utils.exceptions import AgentScriptFailed
 from utils.metrics import get_task_to_metrics_names
 from utils.printing_utils import print_best_iteration_metrics
@@ -29,7 +30,7 @@ def run_test_evaluation(workspace_dir, prepared_test_sets_dir: Path):
     print("\nRunning final test evaluation...")
     config = None
     try:
-        config = load_config_from_run_dir(Path(workspace_dir) / "run")
+        config = load_config_from_run_dir(Path(workspace_dir) / Config.RUN_DIRNAME)
         resume_wandb_run(config)
         dataset_metadata = load_dataset_metadata(config)
         best_iteration_snapshot_dir = config.best_iteration_snapshot_dir

@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from test.test_utils import BaseAgentTest
+from utils.config import Config
 
 class TestAgentPermissions(BaseAgentTest):
     """Test suite for agent isolation and security."""
@@ -32,7 +33,7 @@ class TestAgentPermissions(BaseAgentTest):
         self.assertNotIn("Command failed", result, "Should be able to list workspace root")
         directories = [d.strip() for d in result.strip().split('\n') if d.strip() and not d.strip().startswith('[Tool call')]
 
-        self.assertIn("run", directories, f"Expected workspace to contain run/, found: {directories}")
+        self.assertIn(Config.RUN_DIRNAME, directories, f"Expected workspace to contain {Config.RUN_DIRNAME}/, found: {directories}")
         self.assertNotIn(self.agent_id, directories, f"Did not expect legacy per-agent run directory in workspace root: {directories}")
 
     def test_protection_test_dataset(self):
@@ -136,7 +137,7 @@ try:
     workspace_entries = sorted(os.listdir("/workspace"))
     print(f"Found workspace entries: {{workspace_entries}}")
 
-    if "run" in workspace_entries and "{self.agent_id}" not in workspace_entries:
+    if "{Config.RUN_DIRNAME}" in workspace_entries and "{self.agent_id}" not in workspace_entries:
         print("Good: Workspace uses shared run layout without legacy per-agent run directories")
     else:
         print(f"SECURITY_ISSUE: Unexpected workspace layout: {{workspace_entries}}")
