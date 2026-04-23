@@ -32,9 +32,9 @@ def fork_run(
     # 1. Copy entire workspace so the forked run inherits the best iteration snapshot and all outputs
     shutil.copytree(source_workspace_dir, target_workspace_dir, symlinks=False, copy_function=shutil.copy2, dirs_exist_ok=True)
 
-    # 2. Roll the run directory back to the requested checkpoint commit on a new branch
+    # 2. Roll the workspace back to the requested checkpoint commit on a new branch
     create_and_checkout_branch_at_checkpoint(
-        run_dir=target_run_dir,
+        workspace_dir=target_workspace_dir,
         run_id=source_config.agent_id,
         branch_name=f"agentomics-run-{target_agent_id}",
         step_id=fork_from_step,
@@ -42,7 +42,7 @@ def fork_run(
     )
     # Remove any untracked files left by a step that crashed before its checkpoint commit.
     # -fd removes files and directories; omitting -x preserves gitignored paths (e.g. .conda/).
-    subprocess.run(["git", "clean", "-fd"], cwd=target_run_dir, check=True, text=True, capture_output=True)
+    subprocess.run(["git", "clean", "-fd"], cwd=target_workspace_dir, check=True, text=True, capture_output=True)
 
     # 3. Fix absolute paths in stored step outputs that still point at the source workspace
     replace_string_in_tree_files(target_workspace_dir, str(source_workspace_dir), str(target_workspace_dir), skip_dirs={".conda", ".git"})
@@ -68,9 +68,9 @@ def _validate_fork_args(fork_from_run: Path) -> None:
         raise FileNotFoundError(
             f"No '{Config.RUN_DIRNAME}/' subdirectory found under {fork_from_run}."
         )
-    if not (source_run_dir / ".git").is_dir():
+    if not (fork_from_run / ".git").is_dir():
         raise FileNotFoundError(
-            f"Source run at {source_run_dir} has no git repository (.git missing).\n"
+            f"Source run workspace at {fork_from_run} has no git repository (.git missing).\n"
             "Only runs with git checkpointing enabled can be forked."
         )
 
