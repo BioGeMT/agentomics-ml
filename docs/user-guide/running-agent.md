@@ -114,6 +114,20 @@ Override the default optimization goal:
 
 See [Custom Prompts](../configuration/custom-prompts.md) for more details.
 
+## Forking a Run
+
+You can branch off from a checkpoint in an existing run and continue as an independent new run:
+
+```bash
+./run.sh \
+  --fork-from-run outputs/my_source_run \
+  --iterations 3
+```
+
+Most options (`--model`, `--user-prompt`, etc.) are optional when forking — they are inherited from the source run if omitted. `--iterations` means *N more from the fork point*, not a total. Dataset and validation metric are always inherited and cannot be changed.
+
+See [Forking a Run](forking.md) for the full guide.
+
 ## Full Help
 
 ```bash

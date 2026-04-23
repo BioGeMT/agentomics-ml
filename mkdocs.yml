@@ -39,6 +39,7 @@ nav:
     - Installation: getting-started/installation.md
   - User Guide:
     - Running the Agent: user-guide/running-agent.md
+    - Forking a Run: user-guide/forking.md
     - Preparing Datasets: user-guide/datasets.md
     - Re-training Models: user-guide/training.md
     - Running Inference: user-guide/inference.md

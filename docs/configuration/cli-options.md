@@ -45,6 +45,18 @@ The run stops when either the iteration count is reached or the timeout expires.
 | `--exploration-iterations <n>` | Baseline exploration iterations (default 4) |
 | `--run-python-timeout <seconds>` | Per-training timeout for `run_python` tool (default 21600) |
 
+## Forking
+
+| Option | Description |
+|--------|-------------|
+| `--fork-from-run <path>` | Path to a source `outputs/<run_id>` directory. Creates a new run branching off from a checkpoint in that run. Most other options are optional when forking — omitting them inherits from the source run config. |
+| `--fork-from-iteration <n>` | Iteration number to fork from (default: latest). Only used with `--fork-from-run`. |
+| `--fork-from-step <step>` | Step ID to fork from, e.g. `data_split` or `model_training` (default: latest checkpoint). Only used with `--fork-from-run`. |
+
+When `--iterations`, `--split-allowed-iterations`, or `--exploration-iterations` are provided alongside `--fork-from-run`, they are interpreted as *additional* iterations from the fork point rather than absolute totals.
+
+See [Forking a Run](../user-guide/forking.md) for a full guide and examples.
+
 ## Examples
 
 ### Basic Run
