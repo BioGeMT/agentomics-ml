@@ -90,7 +90,7 @@ def _configure_repo(config: Config) -> None:
 def _write_gitignore(config: Config) -> None:
     gitignore_lines = [
         "run/shared/.conda/",
-        "best_iteration_snapshot/.conda/",
+        f"{Config.BEST_ITERATION_SNAPSHOT_DIRNAME}/.conda/",
         "__pycache__/",
         ".cache/",
         "*.pyc",

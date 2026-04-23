@@ -5,7 +5,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from runtime.conda_utils import update_environment_from_descriptor
+from runtime.conda_utils import ensure_environment_from_descriptor
 from runtime.git_checkpoints import create_and_checkout_branch_at_checkpoint
 from runtime.read_write_utils import load_config_from_run_dir, replace_string_in_tree_files
 from utils.config import Config
@@ -29,8 +29,16 @@ def fork_run(
     target_run_dir = target_workspace_dir / Config.RUN_DIRNAME
     source_config = load_config_from_run_dir(source_run_dir)
 
-    # 1. Copy entire workspace so the forked run inherits the best iteration snapshot and all outputs
-    shutil.copytree(source_workspace_dir, target_workspace_dir, symlinks=False, copy_function=shutil.copy2, dirs_exist_ok=True)
+    # 1. Copy the workspace contents so the fork inherits snapshots and derived outputs,
+    #    but skip .conda because envs are rebuilt from descriptors after checkout.
+    shutil.copytree(
+        source_workspace_dir,
+        target_workspace_dir,
+        symlinks=False,
+        copy_function=shutil.copy2,
+        ignore=shutil.ignore_patterns(".conda"),
+        dirs_exist_ok=True,
+    )
 
     # 2. Roll the workspace back to the requested checkpoint commit on a new branch
     create_and_checkout_branch_at_checkpoint(
@@ -44,18 +52,19 @@ def fork_run(
     # -fd removes files and directories; omitting -x preserves gitignored paths (e.g. .conda/).
     subprocess.run(["git", "clean", "-fd"], cwd=target_workspace_dir, check=True, text=True, capture_output=True)
 
-    # 3. Fix absolute paths in stored step outputs that still point at the source workspace
+    # 3. Fix absolute paths in stored step outputs that still point at the source workspace.
     replace_string_in_tree_files(target_workspace_dir, str(source_workspace_dir), str(target_workspace_dir), skip_dirs={".conda", ".git"})
 
-    # 4. Rename conda envs: the env directory is named after the agent ID, which changes on fork
-    for conda_envs_dir in target_workspace_dir.rglob(".conda/envs"):
-        (conda_envs_dir / f"{source_config.agent_id}_env").rename(conda_envs_dir / f"{target_agent_id}_env")
-
-    # 5. Since the conda env is not tracked by git, update the shared env using environment.yml
-    update_environment_from_descriptor(
+    # 4. Rebuild the untracked Conda envs from the checked-out descriptors.
+    ensure_environment_from_descriptor(
         target_run_dir / "shared" / "environment.yml",
         target_run_dir / "shared" / ".conda" / "envs" / f"{target_agent_id}_env",
     )
+    if (target_workspace_dir / Config.BEST_ITERATION_SNAPSHOT_DIRNAME / Config.RUNTIME_INFO_DIRNAME / Config.ITERATION_METADATA_FILENAME).exists():
+        ensure_environment_from_descriptor(
+            target_workspace_dir / Config.BEST_ITERATION_SNAPSHOT_DIRNAME / "environment.yml",
+            target_workspace_dir / Config.BEST_ITERATION_SNAPSHOT_DIRNAME / ".conda" / "envs" / f"{target_agent_id}_env",
+        )
 
 def _validate_fork_args(fork_from_run: Path) -> None:
     if not fork_from_run.is_dir():
