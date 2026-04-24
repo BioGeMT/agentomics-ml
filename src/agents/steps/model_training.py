@@ -4,6 +4,7 @@ import os
 import shutil
 import subprocess
 import traceback
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -74,7 +75,7 @@ class ModelTrainingStep(AgenticStep):
                 raise ModelRetry(f"The artifacts folder produced by training must be called 'training_artifacts', currently is named {Path(result.path_to_artifacts_dir).name.strip()}")
             if (Path(result.path_to_train_file).resolve().parent / "training_artifacts").resolve() != Path(result.path_to_artifacts_dir).resolve():
                 raise ModelRetry("The artifacts folder produced by training must be a sibling to train.py.")
-            if Path(result.path_to_artifacts_dir).resolve() not in Path(result.path_to_model_file).parents:
+            if Path(result.path_to_artifacts_dir).resolve() not in Path(result.path_to_model_file).resolve().parents:
                 raise ModelRetry(f"Model file ({result.path_to_model_file}) must be inside the artifacts folder ({result.path_to_artifacts_dir})")
             if does_file_contain_iteration_pattern(result.path_to_train_file):
                 raise ModelRetry(f"Train file ({result.path_to_train_file}) contains path containing a forbidden string 'iteration_' or references an iteration folder, which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
@@ -131,7 +132,7 @@ class ModelTrainingStep(AgenticStep):
         The script must not accept any other parameters.
         """
 
-    def build_deps(self, step_started_at) -> dict[str, object]:
+    def build_deps(self, step_started_at: datetime) -> dict[str, object]:
         data_split = require_step_output(self.config, DataSplitStep.step_id, self.config.current_iteration_dir)
         return {
             "start_time": step_started_at,
