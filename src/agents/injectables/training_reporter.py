@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import sys
 
 
@@ -9,8 +8,9 @@ class TrainingReporter:
 
     Use `report_epoch()` when the trainer naturally produces epoch summaries,
     use `report_batch()` only when the chosen training API already exposes a
-    true batch loop or batch callback, and call `report_unavailable()` once
-    when the chosen training API exposes no real epoch or batch progress hooks.
+    true batch loop or batch callback, and call `report_unavailable()` when
+    the chosen training API exposes no real epoch or batch progress hooks.
+    If you use report_unavailable you must call `report_epoch()` at the end of training to report final metrics.
     """
 
     def __init__(self) -> None:
@@ -23,6 +23,8 @@ class TrainingReporter:
     def report_unavailable(self, reason: str) -> None:
         """Emit that no meaningful intermediate progress is available.
 
+        If you use this function you must call report_epoch() at the end of training to report final metrics.
+
         Args:
             reason: Short concrete reason, ideally one sentence.
         """
@@ -32,7 +34,7 @@ class TrainingReporter:
         """Accumulate batch losses and periodically emit a recent-batch summary.
 
         Args:
-            epoch: Current epoch number. Be consistent about 0-based vs 1-based.
+            epoch: Current epoch number.
             batch: Current batch index within the epoch.
             train_loss: Mean loss for this batch.
         """
@@ -61,45 +63,35 @@ class TrainingReporter:
         self,
         epoch: int,
         train_loss: float | None = None,
-        validation_loss: float | None = None,
-        validation_metric_name: str | None = None,
-        validation_metric: float | None = None,
+        val_loss: float | None = None,
+        val_metric_name: str | None = None,
+        val_metric: float | None = None,
         early_stopping_patience_remaining: int | None = None,
     ) -> None:
         """Emit an epoch summary.
 
         Args:
             epoch: Current epoch number for the summary being reported.
-            train_loss: Optional epoch training loss. Supply it when you
-                can compute it.
-            validation_loss: Optional epoch validation loss. Supply it when you
-                can compute it.
-            validation_metric_name: Optional metric label for the run's main
-                validation metric, such as `"AUROC"` or `"MAE"`. Supply it when you 
-                can compute it and only together with `validation_metric`.
-            validation_metric: Optional value for `validation_metric_name`.
-                Supply it only together with `validation_metric_name`.
-            early_stopping_patience_remaining: Optional number of epochs
-                remaining before early stopping would trigger. Supply it only
-                when the training code knows this value.
+            train_loss: Optional epoch training loss.
+            val_loss: Optional epoch validation loss.
+            val_metric_name: Optional label for the run's main validation
+                metric, such as "AUROC" or "MAE". Supply together with val_metric.
+            val_metric: Optional value for val_metric_name.
+                Supply together with val_metric_name.
+            early_stopping_patience_remaining: Optional not-improving epochs remaining before
+                early stopping triggers.
         """
         self._emit(
             "epoch",
             epoch=epoch,
             train_loss=train_loss,
-            validation_loss=validation_loss,
-            validation_metric_name=validation_metric_name,
-            validation_metric=validation_metric,
+            val_loss=val_loss,
+            val_metric_name=val_metric_name,
+            val_metric=val_metric,
             early_stopping_patience_remaining=early_stopping_patience_remaining,
         )
 
     def _emit(self, event: str, **fields: object) -> None:
-        payload: dict[str, object] = {"event": event}
-        for field_name, value in fields.items():
-            if value is None:
-                continue
-            if isinstance(value, float):
-                value = round(value, 6)
-            payload[field_name] = value
-        print(f"TRAINING_REPORT: {json.dumps(payload)}")
+        parts = [f"{k}={f'{v:.4f}' if isinstance(v, float) else v}" for k, v in fields.items() if v is not None]
+        print(f"\nTRAINING_REPORT ({event}): \033[1m{'  '.join(parts)}\033[0m")
         sys.stdout.flush()
