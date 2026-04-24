@@ -96,8 +96,7 @@ class BashProcess:
     
     def process_output(self, output: str, command: str) -> str:
         """
-        Uses regex to remove the command from the output.
-        Return only first 5000 output characters.
+        Remove the echoed command and return a concise version of the output.
 
         Args:
             output: a process' output string
@@ -105,10 +104,8 @@ class BashProcess:
         """
         pattern = re.escape(command) + r"\s*\n"
         output = re.sub(pattern, "", output, count=1)
-        output = collapse_repeated_lines(output)
-        if(len(output) > 5000):
-            output = output[:5000]+"\n ... (output truncated, too long)"
-        return output.strip()
+        output = collapse_repeated_lines(output).strip()
+        return concise_output(output)
 
 def create_bash_tool(config: Config):
         bash = BashProcess(
