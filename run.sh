@@ -629,6 +629,7 @@ else
             ${CODEX_DOCKER_FLAGS[@]+"${CODEX_DOCKER_FLAGS[@]}"} \
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/test":/repository/test:ro \
+            -v "$(pwd)/scripts":/repository/scripts:ro \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
             ${TEST_EXEC[@]+"${TEST_EXEC[@]}"}

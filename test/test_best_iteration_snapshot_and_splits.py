@@ -297,14 +297,14 @@ class TestDataSplitSkipReuse(unittest.TestCase):
         step = self._make_step_for_iteration(iteration=0)
         step.on_iteration_start(iteration=0)
 
-        self.assertTrue(step.should_run())
+        self.assertFalse(step.should_be_simulated())
 
     def test_split_blocked_after_budget_exhausted(self):
         self._create_split_dir(0)
         step = self._make_step_for_iteration(iteration=1)
         step.on_iteration_start(iteration=1)
 
-        self.assertFalse(step.should_run())
+        self.assertTrue(step.should_be_simulated())
 
     def test_split_blocked_when_explicit_validation_exists(self):
         (self.config.agent_dataset_dir / "validation.csv").write_text(
@@ -313,9 +313,9 @@ class TestDataSplitSkipReuse(unittest.TestCase):
         step = self._make_step_for_iteration(iteration=0)
         step.on_iteration_start(iteration=0)
 
-        self.assertFalse(step.should_run())
+        self.assertTrue(step.should_be_simulated())
 
-    def test_skipped_output_copies_latest_split(self):
+    def test_simulated_output_copies_latest_split(self):
         self._create_split_dir(0)
         self._archive_iteration_with_split(iteration=0, split_version=0)
         initialize_current_iteration_workspace(self.config)
@@ -323,7 +323,7 @@ class TestDataSplitSkipReuse(unittest.TestCase):
         initialize_current_iteration_state(self.config, started_at=100.0)
         step = DataSplitStep(self.config, Mock(), Mock(), Mock(), [])
 
-        output = step.build_skipped_output()
+        output = step.build_simulated_output()
 
         self.assertFalse(output.split_changed)
         self.assertIn("split_0", output.train_path)
