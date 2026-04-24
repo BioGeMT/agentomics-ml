@@ -10,6 +10,7 @@ import pandas as pd
 from pydantic import Field
 from pydantic_ai import Agent, ModelRetry, RunContext
 
+import agents.injectables.training_reporter as _training_reporter_module
 from agents.steps.base import AgenticStep, AgenticStepOutput
 from agents.steps.data_split import DataSplitStep
 from runtime.conda_utils import get_shared_environment_path
@@ -46,6 +47,11 @@ class ModelTrainingStep(AgenticStep):
     display_name = "TRAINING"
     output_type = ModelTrainingOutput
 
+    def injected_scripts(self) -> list[Path]:
+        if self.config.disable_training_reporting:
+            return []
+        return [Path(_training_reporter_module.__file__)]
+
     def attach_output_validator(self, agent: Agent[dict, AgenticStepOutput]) -> None:
         @agent.output_validator
         async def validate_training(ctx: RunContext[dict], result: ModelTrainingOutput) -> ModelTrainingOutput:
@@ -59,6 +65,8 @@ class ModelTrainingStep(AgenticStep):
                 raise ModelRetry(f"Model file does not exist at {result.path_to_model_file}")
             workspace_dir = self.config.current_step_dir
             workspace_root = workspace_dir.resolve(strict=False)
+            if Path(result.path_to_train_file).resolve().parent != workspace_root:
+                raise ModelRetry(f"Train file must be created directly in {workspace_dir} as train.py.")
             for candidate_path in [result.path_to_train_file, result.path_to_artifacts_dir, result.path_to_model_file]:
                 if not Path(candidate_path).expanduser().resolve(strict=False).is_relative_to(workspace_root):
                     raise ModelRetry(f"{candidate_path} must stay inside {workspace_dir}.")
@@ -96,14 +104,26 @@ class ModelTrainingStep(AgenticStep):
             return result
 
     def step_prompt(self) -> str:
+        reporting_requirement = "" if self.config.disable_training_reporting else f"""
+        - Always report training status using the helpers package:
+          from helpers.training_reporter import TrainingReporter
+          reporter = TrainingReporter()
+        - Use reporter.report_epoch(...) whenever your chosen training API naturally exposes epoch summaries or epoch callbacks.
+        - You may also use reporter.report_batch(...) for long epochs when your chosen training API already exposes a true batch loop or batch callback and the extra reporting is cheap. Do not invent pseudo-batches or rewrite the training approach just to force batch-level reporting.
+        - When you report a validation metric, report the run's main validation metric: {self.config.val_metric}.
+        - If your chosen library exposes useful callbacks for progress reporting, prefer using those callbacks instead of ad-hoc print statements.
+        - If the chosen training API exposes no real epoch or batch progress hooks, call reporter.report_unavailable("...") once with a concrete reason instead of inventing fake progress.
+        - If you implement early stopping and know how many epochs remain before stopping, include early_stopping_patience_remaining in reporter.report_epoch(...).
+"""
         return f"""
         Your next task: implement training code and train your model.
         Training guidelines:
         - Train until validation performance stops improving, and output the best checkpoint.
         - Save all artifacts needed for inference (model file, tokenizers, etc...).
         - If you failed to implement your intended model, when you call the final_result tool, put into unresolved issues what went wrong.
-        {"If your model can be accelerated by GPU, implement the code to use GPU." if check_gpu_availability() else ""}
-
+        {"- If your model can be accelerated by GPU, implement the code to use GPU." if check_gpu_availability() else ""}
+        {reporting_requirement}
+        - Save the training script directly as train.py in the current step directory, not inside a nested folder.
         The train script should take the following parameters
         --train-data (a path to the training data csv)
         --validation-data (a path to the validation data csv. For example for the purposes of early-stopping. If the training script doesn't need validation data, still include the argument for compatibility and don't use it.)
@@ -158,6 +178,25 @@ class ModelTrainingStep(AgenticStep):
                 raise ModelRetry(
                     self._build_training_retry_message(
                         f"Training script validation failed: model file '{model_file_name}' was not created in the specified artifacts folder.",
+                        returncode=training_out.returncode,
+                        stdout=training_out.stdout,
+                        stderr=training_out.stderr,
+                    )
+                )
+            training_outputs = (
+                training_out.stdout.decode("utf-8", errors="replace"),
+                training_out.stderr.decode("utf-8", errors="replace"),
+            )
+            emitted_training_report = any(
+                line.startswith("TRAINING_REPORT:")
+                for output in training_outputs
+                for line in output.splitlines()
+            )
+            if not self.config.disable_training_reporting and not emitted_training_report:
+                raise ModelRetry(
+                    self._build_training_retry_message(
+                        "Training script validation failed: training script did not emit any TRAINING_REPORT lines during validation. "
+                        "Use TrainingReporter to emit at least one report event, or call reporter.report_unavailable(...) when no intermediate progress is available.",
                         returncode=training_out.returncode,
                         stdout=training_out.stdout,
                         stderr=training_out.stderr,

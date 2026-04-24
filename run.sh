@@ -95,6 +95,8 @@ Operational Flags:
                       When omitted on a forked run, the source run's foundation model type is reused.
   --use-provisioning-key  Use OpenRouter provisioning key to create temporary API key and log costs.
   --spend-limit <N>   Only applies when --use-provisioning-key is passed. Spend limit for a temporary key (default: 10).
+  --disable-training-reporting
+                      Disable the TrainingReporter helper that emits structured best-effort training updates (enabled by default).
   --verbosity <summary|full>
                       Control how much agent interaction detail is printed during the run (default: full).
   --tags              (Optional) Space separated tags for Weights and Biases logging.
@@ -265,6 +267,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --all-iterations-test)
             ALL_ITERATIONS_TEST=true
+            shift
+            ;;
+        --disable-training-reporting)
+            AGENTOMICS_ARGS+=(--disable-training-reporting)
             shift
             ;;
         --cpu-only)
