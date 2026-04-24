@@ -55,6 +55,7 @@ class Config:
 
     # Required, settable through the CLI (run_agent_interactive.py)
     model_name: str
+    iteration_plan_model_name: str
     dataset: str
     tags: list[str]
     val_metric: str
@@ -63,7 +64,6 @@ class Config:
 
     # Required, not settable through the CLI
     agent_id: str
-    iteration_plan_model_name: str
     task_type: str
 
     # Optional, default values can be overwritten through the CLI

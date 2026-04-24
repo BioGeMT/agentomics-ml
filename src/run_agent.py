@@ -18,6 +18,7 @@ from utils.providers.provider import get_provider_from_string
 
 async def run_experiment(
     model: str,
+    iteration_plan_model: str,
     dataset_name: str,
     task_type: str,
     val_metric: str,
@@ -46,7 +47,7 @@ async def run_experiment(
     config = Config(
         agent_id=agent_id,
         model_name=model,
-        iteration_plan_model_name=model,
+        iteration_plan_model_name=iteration_plan_model,
         provider_name=provider,
         dataset=dataset_name,
         tags=tags,
