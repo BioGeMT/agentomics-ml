@@ -109,6 +109,12 @@ def parse_args():
         required=True,
         help="Path to a directory containing prepared datasets.",
     )
+    parser.add_argument(
+        "--disable-training-reporting",
+        action="store_true",
+        help="Disable the TrainingReporter helper that emits structured best-effort training updates (enabled by default).",
+    )
+
     # Misc
     parser.add_argument(
         "--root-privileges",
@@ -275,6 +281,7 @@ def main():
             run_python_timeout=args.run_python_timeout,
             foundation_models_type=args.foundation_models_type,
             foundation_models_yaml=args.foundation_models_yaml,
+            disable_training_reporting=args.disable_training_reporting,
         )
     )
     return 0

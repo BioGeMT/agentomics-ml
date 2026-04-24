@@ -77,6 +77,7 @@ class Config:
     run_python_tool_timeout: int = DEFAULT_RUN_PYTHON_TOOL_TIMEOUT
     foundation_models_type: str | None = None
     foundation_models_yaml: str | None = None
+    disable_training_reporting: bool = False
 
     # Optional, default values can not be overwritten through the CLI
     max_steps: int = DEFAULT_MAX_STEPS

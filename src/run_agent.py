@@ -35,6 +35,7 @@ async def run_experiment(
     exploration_iterations: int,
     foundation_models_type: str | None = None,
     foundation_models_yaml: str | None = None,
+    disable_training_reporting: bool = False,
 ):
     workspace_dir = Path(workspace_dir)
     prepared_datasets_dir = Path(prepared_datasets_dir)
@@ -65,6 +66,7 @@ async def run_experiment(
         foundation_models_type=foundation_models_type,
         foundation_models_yaml=foundation_models_yaml,
         agent_user=agent_user,
+        disable_training_reporting=disable_training_reporting,
     )
     print_phase("Agentomics run started")
     initialize_run_directories(config)
