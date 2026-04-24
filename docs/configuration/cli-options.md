@@ -38,6 +38,7 @@ The run stops when either the iteration count is reached or the timeout expires.
 | Option | Description |
 |--------|-------------|
 | `--user-prompt <text>` | Custom prompt for the agent |
+| `--iteration-plan-model <name>` | LLM model used for generating the iteration plan (defaults to `--model`) |
 | `--foundation-model-type <type>` | Pre-download foundation models (`dna`, `rna`, `protein`, `molecule`, `all`) |
 | `--use-provisioning-key` | Use OpenRouter temporary API key |
 | `--spend-limit <n>` | Spend limit for provisioning key (requires `--use-provisioning-key`) |
