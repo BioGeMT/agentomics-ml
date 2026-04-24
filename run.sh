@@ -37,23 +37,31 @@ Use --local to run with a local Conda environment.
 
 Required Arguments (for non-interactive runs):
   --model <name>      The LLM model name (e.g., 'openai/gpt-4').
-  --iteration-plan-model <name> The LLM model name used for generating the iteration plan (e.g., 'openai/gpt-5.4'). 
-                                If not provided, defaults to the same model as --model.
-  --provider <name>   When multiple api keys provided, optional provider override (e.g., 'openai', 'openrouter').
   --dataset <name>    The short identifier for the prepared dataset (e.g., 'breast_cancer').
+                      Can be replaced by --fork-from-run, which inherits the dataset from the source run.
+
+Optional Arguments:
+  --iteration-plan-model <name>
+                      The LLM model used for generating the iteration plan (e.g., 'openai/gpt-5.4').
+                      If not provided, defaults to the same model as --model.
+  --provider <name>   When multiple api keys are provided, provider override (e.g., 'openai', 'openrouter').
   --iterations <N>    Number of iterations to run the agent (recommended more than 5).
                       For forked runs, omitting it keeps the source run's total iteration limit.
                       Providing it means N additional iterations from the fork point.
-  --timeout <int>   Amount of seconds the agent is allowed to run for. This or --iterations will dictate the duration, whichever will expire first. (recommended
-  ~480s)
-  --run-python-timeout <int>  Timeout in seconds for each run_python tool execution - this will determine the maximum training time (default: 21600, i.e. 6 hours).
-  --split-allowed-iterations <N>    Number of initial iterations that are allowed to (re)split the data into train/validation (e.g., 1).
+  --timeout <int>     Amount of seconds the agent is allowed to run for. This or --iterations will dictate the duration,
+                      whichever expires first (recommended ~480s).
+  --run-python-timeout <int>
+                      Timeout in seconds for each run_python tool execution — this determines the maximum training time
+                      (default: 21600, i.e. 6 hours).
+  --split-allowed-iterations <N>
+                      Number of initial iterations that are allowed to (re)split the data into train/validation (e.g., 1).
                       For forked runs, omitting it keeps the source run's split-allowed limit.
                       Providing it means N more split-allowed iterations from the fork point.
-  --exploration-iterations <N>     Number of initial iterations that should focus on baseline/exploration models (e.g., 4).
+  --exploration-iterations <N>
+                      Number of initial iterations that should focus on baseline/exploration models (e.g., 4).
                       For forked runs, omitting it keeps the source run's exploration limit.
                       Providing it means N more exploration iterations from the fork point.
-  --val-metric <name> Optional metric to optimize. Defaults: AUROC (classification), MAE (regression).
+  --val-metric <name> Metric to optimize. Defaults: AUROC (classification), MAE (regression).
   --user-prompt <str> The main prompt/goal for the agent.
                       (Default: "Create the best possible machine learning model that will generalize to new unseen data.")
 
