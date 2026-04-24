@@ -133,6 +133,12 @@ class AgenticStep(RuntimeStep):
 
     def _attach_common_validators(self, agent: Agent[dict, AgenticStepOutput]) -> None:
         @agent.output_validator
+        async def _no_reserved_runtime_files(ctx: RunContext[dict], result: AgenticStepOutput) -> AgenticStepOutput:
+            if (self.config.current_step_dir / Config.STEP_OUTPUT_FILENAME).exists():
+                raise ModelRetry(f"The current step directory contains a forbidden file '{Config.STEP_OUTPUT_FILENAME}' likely copied from another step. Rename or delete it and retry.")
+            return result
+
+        @agent.output_validator
         async def _no_symlinks(ctx: RunContext[dict], result: AgenticStepOutput) -> AgenticStepOutput:
             new_files = get_new_rundir_files(self.config, ctx.deps["start_time"])
             symlinks = [f for f in new_files if (self.config.current_iteration_dir / f).is_symlink()]
