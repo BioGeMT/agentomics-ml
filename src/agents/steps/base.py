@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 import subprocess
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -117,6 +118,28 @@ class AgenticStepOutput(BaseModel):
 class AgenticStep(RuntimeStep):
     output_type: type[AgenticStepOutput]
 
+    def on_step_start(self) -> None:
+        super().on_step_start()
+        self._setup_injected_scripts()
+
+    def injected_scripts(self) -> list[Path]:
+        return []
+
+    def _setup_injected_scripts(self) -> None:
+        scripts = self.injected_scripts()
+        if not scripts:
+            return
+        helpers_dir = self.config.current_step_dir / "helpers"
+        helpers_dir.mkdir(exist_ok=True)
+        (helpers_dir / "__init__.py").touch()
+        # In the Docker/agent_user setup, the step directory itself is handed to
+        # the agent user, but injected helpers are created here by the runtime
+        # afterward and are never chowned to that agent user. That leaves
+        # helpers/ importable but non-modifiable for the isolated agent process,
+        # so steps can safely depend on helper behavior.
+        for source_path in scripts:
+            shutil.copy2(source_path, helpers_dir / source_path.name)
+
     def create_agent(self) -> Agent[dict, AgenticStepOutput]:
         agent = Agent(
             model=self.model,
@@ -159,8 +182,11 @@ class AgenticStep(RuntimeStep):
         raise NotImplementedError(f"{type(self).__name__} must define step_prompt() or override build_user_prompt().")
 
     def build_user_prompt(self) -> str:
-        user_prompt = self.step_prompt()
-        return f"{user_prompt}\nSummarized outputs from your previous steps are in previous messages."
+        prompt = self.step_prompt()
+        if self.injected_scripts():
+            prompt += "\nYour current working directory contains a helpers/ package of read-only modules you can import."
+        prompt += "\nSummarized outputs from your previous steps are in previous messages."
+        return prompt
 
     def build_deps(self, step_started_at: datetime) -> dict[str, Any]:
         return {"start_time": step_started_at}
