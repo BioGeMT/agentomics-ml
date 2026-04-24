@@ -111,9 +111,9 @@ class ModelTrainingStep(AgenticStep):
           reporter = TrainingReporter()
         - Use reporter.report_epoch(...) whenever your chosen training API naturally exposes epoch summaries or epoch callbacks.
         - You may also use reporter.report_batch(...) for long epochs when your chosen training API already exposes a true batch loop or batch callback and the extra reporting is cheap. Do not invent pseudo-batches or rewrite the training approach just to force batch-level reporting.
-        - When you report a validation metric, report the run's main validation metric: {self.config.val_metric}.
+        - When you report a validation metric, pass val_metric_name="{self.config.val_metric}" and val_metric=<value> to reporter.report_epoch(...).
         - If your chosen library exposes useful callbacks for progress reporting, prefer using those callbacks instead of ad-hoc print statements.
-        - If the chosen training API exposes no real epoch or batch progress hooks, call reporter.report_unavailable("...") once with a concrete reason instead of inventing fake progress.
+        - If the chosen training API exposes no real epoch or batch progress hooks, call reporter.report_unavailable("...") once with a concrete reason, you must then call report_epoch(...) at the end of training to report final metrics.
         - If you implement early stopping and know how many epochs remain before stopping, include early_stopping_patience_remaining in reporter.report_epoch(...).
 """
         return f"""
@@ -189,7 +189,7 @@ class ModelTrainingStep(AgenticStep):
                 training_out.stderr.decode("utf-8", errors="replace"),
             )
             emitted_training_report = any(
-                line.startswith("TRAINING_REPORT:")
+                line.startswith("TRAINING_REPORT")
                 for output in training_outputs
                 for line in output.splitlines()
             )
