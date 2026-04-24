@@ -30,7 +30,7 @@ def pretty_print(content, width=120, color=None):
     if color:
         content = f"{color}{content}{bcolors.ENDC}"
     if isinstance(content, str):
-        print(textwrap.fill(content, width=width))
+        print("\n".join(textwrap.fill(line, width=width) for line in content.splitlines()))
     else:
         pprint.pprint(content, width=width)
 
