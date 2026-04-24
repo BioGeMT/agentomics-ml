@@ -292,6 +292,72 @@ class TestForkRun(unittest.TestCase):
         branch = _git(self.target_workspace, ["branch", "--show-current"]).stdout.strip()
         self.assertEqual(branch, f"agentomics-run-{target_run_id}")
 
+    def test_handles_dangling_symlink_in_source(self):
+        # Regression: wandb creates debug-core.log as a symlink to a path inside the container
+        # (/root/.cache/wandb/...) which is dangling on the host. copytree must not raise.
+        self._build_source_run("src_run")
+        dangling = self.source_workspace / "extras" / "run_logs" / "debug-core.log"
+        dangling.parent.mkdir(parents=True, exist_ok=True)
+        dangling.symlink_to("/nonexistent/container/path/debug.log")
+
+        with patch("runtime.setup_fork.ensure_environment_from_descriptor"):
+            fork_run(
+                source_workspace_dir=self.source_workspace,
+                target_agent_id="tgt_run",
+                target_workspace_dir=self.target_workspace,
+                fork_from_step=None,
+                fork_from_iteration=None,
+            )
+
+    def test_handles_tracked_file_modified_after_last_commit(self):
+        # Regression: wandb appends to its .wandb binary log after the last git commit.
+        # The copied workspace therefore has modified tracked files, which made
+        # `git checkout -b` fail. The fix is `git reset --hard HEAD` before checkout.
+        self._build_source_run("src_run")
+        tracked_file = self.source_workspace / "model_training_marker.txt"
+        tracked_file.write_text("modified after commit", encoding="utf-8")
+
+        with patch("runtime.setup_fork.ensure_environment_from_descriptor"):
+            fork_run(
+                source_workspace_dir=self.source_workspace,
+                target_agent_id="tgt_run",
+                target_workspace_dir=self.target_workspace,
+                fork_from_step="data_split",
+                fork_from_iteration=0,
+            )
+
+
+class TestBashHelpers(unittest.TestCase):
+    def _run_bash(self, snippet: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["bash", "-c", f"set -euo pipefail; source scripts/bash_helpers.sh; {snippet}"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+        )
+
+    def test_build_setup_fork_args_includes_optional_args_when_provided(self):
+        result = self._run_bash(
+            "build_setup_fork_args /src /tgt agent123 data_split 2; "
+            'printf "%s\\n" "${SETUP_FORK_ARGS[@]}"'
+        )
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        args = result.stdout.splitlines()
+        self.assertIn("--fork-from-step", args)
+        self.assertIn("data_split", args)
+        self.assertIn("--fork-from-iteration", args)
+        self.assertIn("2", args)
+
+    def test_build_setup_fork_args_omits_optional_args_when_empty(self):
+        result = self._run_bash(
+            "build_setup_fork_args /src /tgt agent123; "
+            'printf "%s\\n" "${SETUP_FORK_ARGS[@]}"'
+        )
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        args = result.stdout.splitlines()
+        self.assertNotIn("--fork-from-step", args)
+        self.assertNotIn("--fork-from-iteration", args)
+
 
 if __name__ == "__main__":
     unittest.main()

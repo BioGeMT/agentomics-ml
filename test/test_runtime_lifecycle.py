@@ -214,12 +214,11 @@ class TestIterationArchival(unittest.TestCase):
 
         self.assertIsNone(get_last_successful_iteration(config))
 
-    def test_init_workspace_rejects_existing_current_iteration(self):
+    def test_init_workspace_succeeds_if_already_exists(self):
         config = self._make_config("reject_agent")
         initialize_current_iteration_workspace(config)
-
-        with self.assertRaises(FileExistsError):
-            initialize_current_iteration_workspace(config)
+        initialize_current_iteration_workspace(config)
+        self.assertTrue(config.current_iteration_dir.is_dir())
 
     def test_iteration_state_preserves_fields_across_partial_updates(self):
         config = self._make_config("state_agent")
