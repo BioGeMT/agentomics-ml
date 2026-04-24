@@ -42,6 +42,8 @@ The run stops when either the iteration count is reached or the timeout expires.
 | `--foundation-model-type <type>` | Pre-download foundation models (`dna`, `rna`, `protein`, `molecule`, `all`) |
 | `--use-provisioning-key` | Use OpenRouter temporary API key |
 | `--spend-limit <n>` | Spend limit for provisioning key (requires `--use-provisioning-key`) |
+| `--verbosity <summary\|full>` | How much agent interaction detail is printed during the run (default: `full`) |
+| `--disable-training-reporting` | Disable the TrainingReporter helper that emits structured training progress updates from the agent's training script |
 | `--split-allowed-iterations <n>` | Iterations that can modify train/val split (default 1) |
 | `--exploration-iterations <n>` | Baseline exploration iterations (default 4) |
 | `--run-python-timeout <seconds>` | Per-training timeout for `run_python` tool (default 21600) |
