@@ -34,6 +34,7 @@ def parse_args():
     # Run configuration
     parser.add_argument("--dataset", help="Dataset name. If not provided, can be interactively selected. Cannot be changed for forked runs — always inherited from the source run config.")
     parser.add_argument("--model", help="Model name compatible with the selected provider. If not provided, can be interactively selected. For forked runs, inherits from the source run config.")
+    parser.add_argument("--iteration-plan-model", help="Iteration-plan model name compatible with the selected provider. If not provided, it defaults to --model. For forked runs, inherits from the source run config.")
     parser.add_argument("--provider", help="API provider. If not provided, auto-detected from environment. For forked runs, inherits from the source run config.")
     parser.add_argument(
         "--val-metric",
@@ -130,6 +131,7 @@ def parse_args():
         args.dataset = existing_config.dataset
         args.val_metric = existing_config.val_metric
         if args.model is None:                     args.model = existing_config.model_name
+        if args.iteration_plan_model is None:      args.iteration_plan_model = existing_config.iteration_plan_model_name
         if args.provider is None:                  args.provider = existing_config.provider_name
         # For forked runs, explicit iteration-limit flags mean "N more from the fork point".
         args.iterations = existing_config.iterations if args.iterations is None else next_iteration_index + args.iterations
@@ -244,6 +246,7 @@ def main():
         )
 
     dataset, model, iterations = resolve_interactive_params(args, provider)
+    iteration_plan_model = args.iteration_plan_model or model
 
     task_type = get_task_type_from_prepared_dataset(args.prepared_datasets_dir / dataset)
     val_metric = resolve_val_metric(task_type, args.val_metric)
@@ -255,6 +258,7 @@ def main():
     asyncio.run(
         run_experiment(
             model=model,
+            iteration_plan_model=iteration_plan_model,
             dataset_name=dataset,
             task_type=task_type,
             val_metric=val_metric,

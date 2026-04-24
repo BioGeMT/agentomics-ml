@@ -37,6 +37,8 @@ Use --local to run with a local Conda environment.
 
 Required Arguments (for non-interactive runs):
   --model <name>      The LLM model name (e.g., 'openai/gpt-4').
+  --iteration-plan-model <name> The LLM model name used for generating the iteration plan (e.g., 'openai/gpt-5.4'). 
+                                If not provided, defaults to the same model as --model.
   --provider <name>   When multiple api keys provided, optional provider override (e.g., 'openai', 'openrouter').
   --dataset <name>    The short identifier for the prepared dataset (e.g., 'breast_cancer').
   --iterations <N>    Number of iterations to run the agent (recommended more than 5).
@@ -133,6 +135,11 @@ while [[ $# -gt 0 ]]; do
             require_opt_value "$1" "${2:-}"
             AGENTOMICS_ARGS+=(--model "$2")
             MODEL_NAME="$2"
+            shift 2
+            ;;
+        --iteration-plan-model)
+            require_opt_value "$1" "${2:-}"
+            AGENTOMICS_ARGS+=(--iteration-plan-model "$2")
             shift 2
             ;;
         --provider)
