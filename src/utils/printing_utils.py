@@ -77,8 +77,8 @@ def pretty_print_code(code):
 
     print(footer)
 
-def _print_mode() -> str:
-    mode = os.getenv("AGENTOMICS_PRINT_MODE", "summary").strip().lower()
+def _verbosity() -> str:
+    mode = os.getenv("AGENTOMICS_VERBOSITY", "summary").strip().lower()
     return mode if mode in {"summary", "full"} else "summary"
 
 def _args_dict(tool_call_part: ToolCallPart) -> dict:
@@ -136,7 +136,7 @@ def _tool_return_summary(part: ToolReturnPart) -> tuple[str, bool]:
     return "", False
 
 def pretty_print_node(node):
-    mode = _print_mode()
+    mode = _verbosity()
     if mode == "summary":
         if isinstance(node, CallToolsNode):
             for part in node.model_response.parts:

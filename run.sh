@@ -21,6 +21,7 @@ DATASET_NAME=""
 VAL_METRIC=""
 LIST_MODE=false
 FOUNDATION_MODELS_TYPE=""
+VERBOSITY="full"
 ALL_ITERATIONS_TEST=false
 BUILD_IMAGES=false
 DOCKERHUB_USERNAME="biogemt"
@@ -94,6 +95,8 @@ Operational Flags:
                       When omitted on a forked run, the source run's foundation model type is reused.
   --use-provisioning-key  Use OpenRouter provisioning key to create temporary API key and log costs.
   --spend-limit <N>   Only applies when --use-provisioning-key is passed. Spend limit for a temporary key (default: 10).
+  --verbosity <summary|full>
+                      Control how much agent interaction detail is printed during the run (default: full).
   --tags              (Optional) Space separated tags for Weights and Biases logging.
   -h, --help          Show this help message and exit.
 
@@ -202,6 +205,11 @@ while [[ $# -gt 0 ]]; do
             AGENTOMICS_ARGS+=(--user-prompt "$2")
             shift 2
             ;;
+        --verbosity)
+            require_opt_value "$1" "${2:-}"
+            VERBOSITY="$2"
+            shift 2
+            ;;
         --tags)
             AGENTOMICS_ARGS+=(--tags)
             shift
@@ -278,6 +286,9 @@ done
 if ! is_valid_foundation_models_type "$FOUNDATION_MODELS_TYPE"; then
     die "Invalid --foundation-models-type '$FOUNDATION_MODELS_TYPE'. Allowed: dna, rna, molecule, protein, all."
 fi
+if [[ "$VERBOSITY" != "summary" && "$VERBOSITY" != "full" ]]; then
+    die "Invalid --verbosity '$VERBOSITY'. Allowed: summary, full."
+fi
 
 EFFECTIVE_FOUNDATION_MODELS_TYPE="$(resolve_effective_string_field "$FOUNDATION_MODELS_TYPE" "$FORK_FROM_RUN" "foundation_models_type")"
 EFFECTIVE_DATASET_NAME="$(resolve_effective_string_field "$DATASET_NAME" "$FORK_FROM_RUN" "dataset" true)"
@@ -314,6 +325,7 @@ if [ "$LOCAL_MODE" = true ]; then
 
     AGENT_ID=$(python src/utils/agent_id.py)
     export AGENT_ID
+    export AGENTOMICS_VERBOSITY="$VERBOSITY"
 
     WORKSPACE_ROOT="$(dirname "$AGENTOMICS_DIR")/workspace"
     WORKSPACE_CACHE_DIR="$WORKSPACE_ROOT/cache"
@@ -636,6 +648,7 @@ else
             --name agentomics_test_cont_${AGENT_ID} \
             ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
             -e AGENT_ID=${AGENT_ID} \
+            -e AGENTOMICS_VERBOSITY=${VERBOSITY} \
             -e PYTHONWARNINGS=ignore \
             ${EFFECTIVE_FOUNDATION_MODELS_TYPE:+-e FOUNDATION_MODELS_TYPE=${EFFECTIVE_FOUNDATION_MODELS_TYPE}} \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
@@ -672,6 +685,7 @@ else
             --name agentomics_cont_${AGENT_ID} \
             ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
             -e AGENT_ID=${AGENT_ID} \
+            -e AGENTOMICS_VERBOSITY=${VERBOSITY} \
             -e PYTHONWARNINGS=ignore \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
