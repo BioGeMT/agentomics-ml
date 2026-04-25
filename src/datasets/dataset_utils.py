@@ -11,6 +11,7 @@ from rich.console import Console
 from rich.table import Table
 from rich import box
 from utils.config import Config
+from utils.task_types import TaskTypes
 
 
 def count_csv_rows(csv_file: str) -> int:
@@ -214,7 +215,7 @@ def get_numeric_label_col_from_prepared_dataset(prepared_dataset_dir: Path) -> s
 
 def get_classes_integers(config: Config):
     """Get classes integers from the prepared dataset metadata."""
-    if config.task_type != "classification":
+    if config.task_type != TaskTypes.CLASSIFICATION:
         return None
 
     metadata_path = config.prepared_dataset_dir / "metadata.json"
@@ -236,11 +237,11 @@ def select_task_type(train_df, target_col, interactive=False):
 
     while True:
         choice = input("Select task type ([c]lassification/[r]egression): ").strip().lower()
-        if choice in ("c", "class", "classification"):
-            return "classification"
-        if choice in ("r", "reg", "regression"):
-            return "regression"
-        print("Please enter 'classification' or 'regression'.")
+        if choice in ("c", "class", TaskTypes.CLASSIFICATION):
+            return TaskTypes.CLASSIFICATION
+        if choice in ("r", "reg", TaskTypes.REGRESSION):
+            return TaskTypes.REGRESSION
+        print(f"Please enter '{TaskTypes.CLASSIFICATION}' or '{TaskTypes.REGRESSION}'.")
 
 def print_target_column_summary(train_df, target_col):
     target_values = train_df[target_col]
@@ -415,7 +416,7 @@ def prepare_dataset(dataset_dir, target_col,
     if task_type is None:
         task_type = select_task_type(train_df, target_col, interactive=interactive)
 
-    if task_type == 'classification':
+    if task_type == TaskTypes.CLASSIFICATION:
         validate_single_label_classification(train_df, target_col)
         label_map = get_label_to_number_map(
             train_df=train_df,
@@ -440,7 +441,7 @@ def prepare_dataset(dataset_dir, target_col,
     # Generate prepared split CSV files with numeric labels, plus a labelless held-out test file.
     for split_name, df in dataframes:
         try:
-            if task_type == 'classification':
+            if task_type == TaskTypes.CLASSIFICATION:
                 df['numeric_label'] = df[target_col].map(label_map)
             else:
                 df['numeric_label'] = df[target_col]
@@ -472,7 +473,7 @@ def prepare_dataset(dataset_dir, target_col,
             'test_rows': len(test_df) if test_df is not None else 0,
         }
     }
-    if task_type == 'classification':
+    if task_type == TaskTypes.CLASSIFICATION:
         json_safe_label_map = {str(k): int(v) for k, v in label_map.items()}
         meta['label_to_scalar'] = json_safe_label_map
 

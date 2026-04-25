@@ -2,6 +2,7 @@ import json
 
 from runtime.system_resources import check_gpu_availability, get_resources_summary
 from utils.config import Config
+from utils.task_types import TaskTypes
 
 def get_system_prompt(config: Config):
     train_csv_path = config.agent_dataset_dir / "train.csv"
@@ -49,7 +50,7 @@ def get_dataset_knowledge(config: Config):
     dataset_knowledge_path = config.agent_dataset_dir / "dataset_description.md"
     with open(dataset_knowledge_path) as f:
         dataset_knowledge = f.read()
-    if config.task_type == "classification":
+    if config.task_type == TaskTypes.CLASSIFICATION:
         metadata = json.loads((config.prepared_dataset_dir / "metadata.json").read_text())
         dataset_knowledge += f"\n\nLabel mapping: {metadata.get('label_to_scalar', {})}"
     return dataset_knowledge

@@ -5,6 +5,7 @@ from rich.console import Console
 
 from datasets.dataset_utils import prepare_dataset
 from datasets.datasets_interactive import prepare_all_datasets
+from utils.task_types import TaskTypes
 
 
 def parse_args():
@@ -12,7 +13,7 @@ def parse_args():
     parser.add_argument('--dataset-dir', type=Path, help='Single dataset directory to prepare')
     parser.add_argument('--prepare-all', action='store_true', help='Prepare all datasets in datasets-dir')
     parser.add_argument('--target-col', type=str, default=None, help='Target column name (auto-detected if not provided)')
-    parser.add_argument('--task-type', choices=['classification', 'regression'], default=None, help='Task type (prompted if not provided)')
+    parser.add_argument('--task-type', choices=sorted(TaskTypes), default=None, help='Task type (prompted if not provided)')
     parser.add_argument('--positive-class', help='Value used in the label column for a positive class (affects some binary classification metrics). If not provided, numeric labels are assigned based on the label appearance order in the train csv file.', default=None)
     parser.add_argument('--negative-class', help='Value used in the label column for a negative class (affects some binary classification metrics). If not provided, numeric labels are assigned based on the label appearance order in the train csv file.', default=None)
     parser.add_argument('--datasets-dir', default='./datasets', help='Directory containing raw datasets')

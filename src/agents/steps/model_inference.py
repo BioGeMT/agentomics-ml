@@ -20,6 +20,7 @@ from runtime.read_write_utils import (
 )
 from runtime.step_outputs import require_step_output
 from datasets.dataset_utils import get_classes_integers
+from utils.task_types import TaskTypes
 from utils.text_processing_utils import collapse_repeated_lines, concise_output
 
 
@@ -48,16 +49,16 @@ class ModelInferenceStep(AgenticStep):
 
     def step_prompt(self) -> str:
         model_training = require_step_output(self.config, ModelTrainingStep.step_id, self.config.current_iteration_dir)
-        if self.config.task_type == "classification":
+        if self.config.task_type == TaskTypes.CLASSIFICATION:
             probability_columns = "\n".join(
                 f"- 'probability_{class_id}': probability for class {class_id} (float)"
                 for class_id in get_classes_integers(self.config)
             )
             output_file_description = f"A csv with columns:\n- 'prediction': the predicted class (int)\n{probability_columns}"
-        elif self.config.task_type == "regression":
+        elif self.config.task_type == TaskTypes.REGRESSION:
             output_file_description = "A csv with a single column 'prediction' containing the predicted continuous values."
         else:
-            raise ValueError(f"Unknown task type: {self.config.task_type}. Supported types are 'classification' and 'regression'.")
+            raise ValueError(f"Unknown task type: {self.config.task_type}. Supported types are {TaskTypes}.")
 
         return f"""
         Your next task: create inference.py file.

@@ -3,6 +3,7 @@ from rich.columns import Columns
 from rich.console import Console
 
 from utils.metrics import get_classification_metrics_names, get_regression_metrics_names
+from utils.task_types import TaskTypes
 from utils.user_input import get_user_input_for_int
 
 
@@ -36,11 +37,11 @@ def display_metrics_table(task_type=None):
         console.print(Columns(boxes, padding=(0, 1), expand=False))
         return clf_metrics + reg_metrics
 
-    if task_type == "classification":
+    if task_type == TaskTypes.CLASSIFICATION:
         metrics_to_show = get_classification_metrics_names()
         title = "[bold]Metric for Classification[/bold]"
         border_style = "cyan"
-    elif task_type == "regression":
+    elif task_type == TaskTypes.REGRESSION:
         metrics_to_show = get_regression_metrics_names()
         title = "[bold]Metric for Regression[/bold]"
         border_style = "yellow"
