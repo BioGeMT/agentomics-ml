@@ -66,7 +66,7 @@ The agent auto-detects the target column from common names:
 
 If auto-detection fails, you'll be prompted to select the target column during preparation.
 
-For non-interactive preparation, pass `--target-col` to avoid prompts.
+For non-interactive preparation, prepare each dataset individually and pass both `--target-col` and `--task-type` to avoid prompts.
 
 ## Manual Dataset Preparation
 
@@ -92,7 +92,7 @@ Key options:
 | Option | Description |
 |--------|-------------|
 | `--dataset-dir` | Specific dataset to prepare |
-| `--task-type` | Force `classification` or `regression` |
+| `--task-type` | Specify `classification` or `regression` |
 | `--target-col` | Specify target column name |
 | `--positive-class` | Define positive class for binary classification |
 | `--negative-class` | Define negative class for binary classification |
@@ -133,7 +133,7 @@ Download example datasets:
 ### Regression
 
 - Target column should contain numeric values
-- The agent auto-detects regression when target is continuous
+- Select `regression` during preparation or pass `--task-type regression`
 
 ### Feature Columns
 
@@ -147,9 +147,10 @@ Download example datasets:
 
 Solution: Add `--target-col your_column_name` to preparation command, or rename your target column to `class`, `target`, `label`, or `y`.
 
-### "Task type unclear"
+### "Task type required"
 
-Solution: Add `--task-type classification` or `--task-type regression` to force the task type.
+Solution: Add `--task-type classification` or `--task-type regression`, or run
+dataset preparation interactively and select the task type when prompted.
 
 ## Next Steps
 

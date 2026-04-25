@@ -2,6 +2,7 @@
 import csv
 import json
 import shutil
+import sys
 import pandas as pd
 from pathlib import Path
 from typing import List, Dict
@@ -10,6 +11,7 @@ from rich.console import Console
 from rich.table import Table
 from rich import box
 from utils.config import Config
+
 
 def count_csv_rows(csv_file: str) -> int:
     """
@@ -179,7 +181,7 @@ def auto_detect_target_col(train_df, interactive=False):
             print(f'INFO: Auto-detected target column: {col}')
             return col
 
-    if interactive:
+    if interactive and sys.stdin.isatty():
         console = Console()
         print(f"\nCould not auto-detect target column. Expected one of {possible_target_cols}")
         cols = train_df.columns.tolist()
@@ -220,18 +222,53 @@ def get_classes_integers(config: Config):
     # Sort by numeric value to get consistent ordering
     return sorted(metadata["label_to_scalar"].values())
         
-def auto_detect_task_type(train_df, target_col) :
-    """Auto-detect task type based on target column values"""
-    target_values = train_df[target_col].dropna()
-    unique_values = target_values.nunique()
-    is_numeric = pd.api.types.is_numeric_dtype(target_values)
-    
-    if is_numeric and unique_values > 10:
-        print(f'INFO: Auto-detected regression task (numeric target with {unique_values} unique values)')
-        return 'regression'
-    
-    print(f'INFO: Auto-detected classification task ({unique_values} unique values)')
-    return 'classification'
+def select_task_type(train_df, target_col, interactive=False):
+    if not interactive or not sys.stdin.isatty():
+        if interactive:
+            print(
+                "Dataset preparation requires task type selection, but stdin is not interactive. "
+                "Prepare this dataset with --task-type classification or --task-type regression."
+            )
+        raise ValueError("Task type is required. Pass --task-type classification or --task-type regression.")
+
+    print_target_column_summary(train_df, target_col)
+    Console().print("[bold red]Action needed:[/bold red] Select the task type for this dataset.")
+
+    while True:
+        choice = input("Select task type ([c]lassification/[r]egression): ").strip().lower()
+        if choice in ("c", "class", "classification"):
+            return "classification"
+        if choice in ("r", "reg", "regression"):
+            return "regression"
+        print("Please enter 'classification' or 'regression'.")
+
+def print_target_column_summary(train_df, target_col):
+    target_values = train_df[target_col]
+    non_null_values = target_values.dropna()
+    unique_values = non_null_values.unique()
+    unique_preview = _format_unique_values_preview(unique_values)
+
+    console = Console()
+    console.print(
+        "\n[bold]Target column summary[/bold]\n"
+        f"- Column: [cyan]{target_col}[/cyan] ({target_values.dtype})\n"
+        f"- Unique non-missing values: {len(unique_values):,}\n"
+        f"- Unique labels: {unique_preview}"
+    )
+
+def _format_unique_values_preview(values, limit=20):
+    preview = _format_preview_values(values[:limit])
+    if len(values) > limit:
+        return f"{preview}, ..."
+    return preview
+
+def _format_preview_values(values):
+    formatted_values = []
+    for value in values:
+        if hasattr(value, "item"):
+            value = value.item()
+        formatted_values.append(repr(value))
+    return ", ".join(formatted_values)
 
 def smart_sort_labels(labels):
     """
@@ -341,7 +378,8 @@ def prepare_dataset(dataset_dir, target_col,
                    positive_class, negative_class, task_type, output_dir, test_sets_output_dir, interactive=False):
     """
     Preprocesses dataset files to a format digestable by the agent code. Stores test set files in a separate directory.
-    If target_col and/or task_type is None, it will be auto-detected and printed out
+    If target_col is None, it will be auto-detected or prompted for in interactive mode.
+    If task_type is None, it will be prompted for in interactive mode.
     If positive_class and negative_class are None, they will be auto-detected for binary classification and printed out
     """
     dataset_dir = Path(dataset_dir)
@@ -361,7 +399,7 @@ def prepare_dataset(dataset_dir, target_col,
     if target_col is None:
         target_col = auto_detect_target_col(train_df, interactive=interactive)
     if task_type is None:
-        task_type = auto_detect_task_type(train_df, target_col)
+        task_type = select_task_type(train_df, target_col, interactive=interactive)
 
     if task_type == 'classification':
         label_map = get_label_to_number_map(

@@ -2,7 +2,6 @@ import sys
 from typing import List, Dict, Optional
 from rich.console import Console
 from rich.table import Table
-from rich.progress import Progress, SpinnerColumn, TextColumn
 from utils.user_input import get_user_input_for_int
 from datasets.dataset_utils import prepare_dataset, get_all_datasets_info
 
@@ -100,40 +99,34 @@ def prepare_all_datasets(datasets_dir: str, prepared_datasets_dir: str, prepared
     failed_now = 0
 
     for dataset_info in need_preparation:
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console
-        ) as progress:
-        
-            task = progress.add_task(f"Preparing {dataset_info['name']}", total=None)
-            try:
-                prepare_dataset(
-                    dataset_dir=dataset_info['path'],
-                    target_col=None, #auto-detected inside
-                    positive_class=None, #auto-detected inside
-                    negative_class=None, #auto-detected inside
-                    task_type=None, #auto-detected inside
-                    output_dir=prepared_datasets_dir,
-                    interactive=True,
-                    test_sets_output_dir=prepared_test_sets_dir
-                )
-                success = True
-            except Exception as e:
-                console.print(f"[red]Error preparing dataset '{dataset_info['name']}': {e}[/red]")
-                success = False
-            
-            if success:
-                progress.update(task, description=f"{dataset_info['name']} prepared successfully")
-                prepared_now += 1
-                dataset_info["status"] = "Prepared"
-                dataset_info["is_prepared"] = True
-                dataset_info["can_prepare"] = False
-                dataset_info["should_prepare"] = False
-            else:
-                progress.update(task, description=f"{dataset_info['name']} preparation failed")
-                failed_now += 1
-                dataset_info["status"] = "Failed"
+        console.print(f"[cyan]Preparing {dataset_info['name']}[/cyan]")
+        try:
+            prepare_dataset(
+                dataset_dir=dataset_info['path'],
+                target_col=None, #auto-detected inside
+                positive_class=None, #auto-detected inside
+                negative_class=None, #auto-detected inside
+                task_type=None,
+                output_dir=prepared_datasets_dir,
+                interactive=True,
+                test_sets_output_dir=prepared_test_sets_dir
+            )
+            success = True
+        except Exception as e:
+            console.print(f"[red]Error preparing dataset '{dataset_info['name']}': {e}[/red]")
+            success = False
+
+        if success:
+            console.print(f"[green]{dataset_info['name']} prepared successfully[/green]")
+            prepared_now += 1
+            dataset_info["status"] = "Prepared"
+            dataset_info["is_prepared"] = True
+            dataset_info["can_prepare"] = False
+            dataset_info["should_prepare"] = False
+        else:
+            console.print(f"[red]{dataset_info['name']} preparation failed[/red]")
+            failed_now += 1
+            dataset_info["status"] = "Failed"
             
     console.print("")
     
