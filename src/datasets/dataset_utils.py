@@ -270,6 +270,20 @@ def _format_preview_values(values):
         formatted_values.append(repr(value))
     return ", ".join(formatted_values)
 
+def validate_single_label_classification(train_df, target_col):
+    target_values = train_df[target_col].dropna()
+    for value in target_values:
+        if isinstance(value, (list, set)):
+            raise ValueError(
+                f"Target column '{target_col}' contains multi-label values (e.g., {value!r}). "
+                "Only single-label classification is supported."
+            )
+        if isinstance(value, str) and value.startswith('[') and value.endswith(']'):
+            raise ValueError(
+                f"Target column '{target_col}' appears to contain multi-label values (e.g., {value!r}). "
+                "Only single-label classification is supported."
+            )
+
 def smart_sort_labels(labels):
     """
     Sort labels with semantic sense:
@@ -402,6 +416,7 @@ def prepare_dataset(dataset_dir, target_col,
         task_type = select_task_type(train_df, target_col, interactive=interactive)
 
     if task_type == 'classification':
+        validate_single_label_classification(train_df, target_col)
         label_map = get_label_to_number_map(
             train_df=train_df,
             test_df=test_df,
