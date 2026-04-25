@@ -15,6 +15,7 @@ import agents.injectables.training_reporter as _training_reporter_module
 from agents.steps.base import AgenticStep, AgenticStepOutput
 from agents.steps.data_split import DataSplitStep
 from runtime.conda_utils import get_shared_environment_path
+from utils.task_types import TaskTypes
 from runtime.read_write_utils import does_file_contain_iteration_pattern
 from runtime.step_outputs import require_step_output
 from runtime.system_resources import check_gpu_availability
@@ -218,16 +219,16 @@ class ModelTrainingStep(AgenticStep):
 
     def _get_dataset_subset(self, data_path: str, target_col: str) -> pd.DataFrame:
         dataframe = pd.read_csv(data_path)
-        if self.config.task_type == "classification":
+        if self.config.task_type == TaskTypes.CLASSIFICATION:
             samples_per_label = 100
             return dataframe.groupby(target_col, group_keys=False).apply(
                 lambda frame: frame.sample(n=min(len(frame), samples_per_label), random_state=42)
             ).reset_index(drop=True)
-        if self.config.task_type == "regression":
+        if self.config.task_type == TaskTypes.REGRESSION:
             total_samples = min(len(dataframe), 1000)
             return dataframe.sample(n=total_samples, random_state=42).reset_index(drop=True)
         raise ValueError(
-            f"Unknown task type: {self.config.task_type}. Supported types are 'classification' and 'regression'."
+            f"Unknown task type: {self.config.task_type}. Supported types are {TaskTypes}."
         )
 
     def _build_training_retry_message(self, prefix: str, returncode: int, stdout: bytes | str, stderr: bytes | str) -> str:

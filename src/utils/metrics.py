@@ -3,6 +3,8 @@ from scipy.stats import pearsonr, spearmanr
 import numpy as np
 from typing import Optional
 
+from utils.task_types import TaskTypes
+
 
 class Metric:
     """
@@ -130,8 +132,8 @@ def get_regression_metrics_names():
 
 def get_task_to_metrics_names():
     return {
-        "classification": get_classification_metrics_names(),
-        "regression": get_regression_metrics_names(),
+        TaskTypes.CLASSIFICATION: get_classification_metrics_names(),
+        TaskTypes.REGRESSION: get_regression_metrics_names(),
     }
 
 def get_higher_is_better_map():
@@ -143,11 +145,11 @@ def get_higher_is_better_map():
     return {name: metric.higher_is_better for name, metric in all_metrics.items()}
 
 def get_default_val_metric(task_type: str) -> str:
-    if task_type == "classification":
+    if task_type == TaskTypes.CLASSIFICATION:
         return "AUROC"
-    if task_type == "regression":
+    if task_type == TaskTypes.REGRESSION:
         return "MAE"
-    raise ValueError(f"Unknown task_type: {task_type}. Expected 'classification' or 'regression'.")
+    raise ValueError(f"Unknown task_type: {task_type}. Expected one of {TaskTypes}.")
 
 def resolve_val_metric(task_type: str, val_metric: Optional[str] = None) -> str:
     """Resolve a validation metric for a task, applying defaults when omitted."""
@@ -156,7 +158,7 @@ def resolve_val_metric(task_type: str, val_metric: Optional[str] = None) -> str:
 
     allowed = get_task_to_metrics_names().get(task_type)
     if not allowed:
-        raise ValueError(f"Unknown task_type: {task_type}. Expected 'classification' or 'regression'.")
+        raise ValueError(f"Unknown task_type: {task_type}. Expected one of {TaskTypes}.")
     if val_metric not in allowed:
         raise ValueError(
             f"Validation metric '{val_metric}' is invalid for task type '{task_type}'. "
