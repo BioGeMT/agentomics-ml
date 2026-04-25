@@ -389,6 +389,18 @@ def add_id_column(train_df, validation_df=None, test_df=None):
 
     return train_df, validation_df, test_df
 
+def load_dataset_config(dataset_dir: Path) -> dict:
+    config_path = dataset_dir / "dataset_config.json"
+    if not config_path.exists():
+        return {}
+    config = json.loads(config_path.read_text())
+    if "task_type" in config and config["task_type"] not in TaskTypes:
+        raise ValueError(
+            f"Invalid task_type '{config['task_type']}' in {config_path}. "
+            f"Must be one of: {TaskTypes}"
+        )
+    return config
+
 def prepare_dataset(dataset_dir, target_col,
                    positive_class, negative_class, task_type, output_dir, test_sets_output_dir, interactive=False):
     """
@@ -396,10 +408,21 @@ def prepare_dataset(dataset_dir, target_col,
     If target_col is None, it will be auto-detected or prompted for in interactive mode.
     If task_type is None, it will be prompted for in interactive mode.
     If positive_class and negative_class are None, they will be auto-detected for binary classification and printed out
+    CLI args take precedence over dataset_config.json, which takes precedence over auto-detection.
     """
     dataset_dir = Path(dataset_dir)
     output_dir = Path(output_dir)
     test_sets_output_dir = Path(test_sets_output_dir)
+
+    config = load_dataset_config(dataset_dir)
+    if target_col is None:
+        target_col = config.get("target_col")
+    if task_type is None:
+        task_type = config.get("task_type")
+    if positive_class is None:
+        positive_class = config.get("positive_class")
+    if negative_class is None:
+        negative_class = config.get("negative_class")
 
     train = dataset_dir / 'train.csv'
     test = dataset_dir / 'test.csv' if (dataset_dir / 'test.csv').exists() else None
