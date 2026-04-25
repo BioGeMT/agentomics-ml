@@ -11,7 +11,8 @@ datasets/my_dataset/
 ├── train.csv              # Required
 ├── validation.csv         # Optional
 ├── test.csv               # Optional
-└── dataset_description.md # Optional
+├── dataset_description.md # Optional
+└── dataset_config.json    # Optional — avoids interactive prompts during dataset preparation
 ```
 
 ## File Requirements
@@ -55,18 +56,32 @@ This dataset contains RNA-seq expression levels from tumor samples.
 - Consider using models that handle high-dimensional data
 ```
 
+## Dataset Config File (Optional)
+
+Add an optional `dataset_config.json` to your dataset folder to avoid interactive prompts during dataset preparation.
+
+**`task_type` is the most important field** — without it you'll be prompted every time you prepare the dataset.
+
+```jsonc
+{
+    "task_type": "classification",   // optional: "classification" or "regression", you will be prompted for this during dataset preparation if omitted
+    "target_col": "label",           // optional: column name to predict, auto-detected if omitted
+    "positive_class": 1,             // optional: value that counts as "positive", only applicable for some binary classification metrics, auto-detected if omitted
+    "negative_class": 0              // optional: value that counts as "negative", only applicable for some binary classification metrics, auto-detected if omitted
+}
+```
+
+Include only the fields you need — at minimum just `task_type`. Values from this file take precedence over auto-detection, but CLI flags (`--task-type`, `--target-col`, etc.) override the config file.
+
 ## Target Column Detection
 
-The agent auto-detects the target column from common names:
+The target column is resolved in this order:
+1. CLI flag (`--target-col`)
+2. `dataset_config.json` (`target_col` field)
+3. Auto-detection from common names: `class`, `target`, `label`, `y`
+4. Interactive prompt (if running interactively)
 
-- `class`
-- `target`
-- `label`
-- `y`
-
-If auto-detection fails, you'll be prompted to select the target column during preparation.
-
-For non-interactive preparation, prepare each dataset individually and pass both `--target-col` and `--task-type` to avoid prompts.
+If all of the above fail, preparation will raise an error.
 
 ## Manual Dataset Preparation
 
@@ -151,8 +166,9 @@ Solution: Add `--target-col your_column_name` to preparation command, or rename 
 
 ### "Task type required"
 
-Solution: Add `--task-type classification` or `--task-type regression`, or run
-dataset preparation interactively and select the task type when prompted.
+Solution (preferred): Add a `dataset_config.json` to your dataset folder with `{"task_type": "classification"}` or `{"task_type": "regression"}`.
+
+Alternative: Pass `--task-type classification` or `--task-type regression` to the preparation command, or run preparation interactively and select when prompted.
 
 ## Next Steps
 
