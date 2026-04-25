@@ -35,6 +35,9 @@ def generate_mirbench_files():
         with open(f"{local_dset_path}/dataset_description.md", "w") as f:
             f.write(dataset_desrciption[dataset_name])
 
+        with open(f"{local_dset_path}/dataset_config.json", "w") as f:
+            json.dump({"task_type": "classification"}, f, indent=4)
+
     for dataset_name, splits in dataset_names_splits.items():
         for split in splits:
             download_path = repo_path/".miRBench"
@@ -78,6 +81,9 @@ def generate_genomic_benchmarks_files():
 
         with open(f"{local_dset_path}/dataset_description.md", "w") as f:
             f.write(dataset_description[dataset_name])
+
+        with open(f"{local_dset_path}/dataset_config.json", "w") as f:
+            json.dump({"task_type": "classification"}, f, indent=4)
 
         for split in ["test","train"]:
             data = []
