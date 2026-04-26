@@ -450,9 +450,10 @@ else
         --rm \
         -it \
         -e PYTHONWARNINGS=ignore \
+        --entrypoint /opt/conda/envs/agentomics-prepare-env/bin/python \
         --name agentomics_prepare_cont_${AGENT_ID} \
         -v "$(pwd)":/repository \
-        "$PREPARE_IMAGE" ${PREPARE_ARGS[@]+"${PREPARE_ARGS[@]}"}
+        "$PREPARE_IMAGE" -m agentomics.prepare_datasets ${PREPARE_ARGS[@]+"${PREPARE_ARGS[@]}"}
 
     printless_command docker volume create temp_agentomics_volume_${AGENT_ID}
     cleanup_volume_on_finish
@@ -548,7 +549,8 @@ else
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
-            "$AGENTOMICS_IMAGE" ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
+            --entrypoint /opt/conda/envs/agentomics-env/bin/python \
+            "$AGENTOMICS_IMAGE" -m agentomics.run_agent_interactive ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
 
         if [ "$LIST_MODE" = true ]; then
             exit 0
