@@ -26,6 +26,25 @@ def is_proteingym_dataset(dataset_name):
             return True
     return False
 
+
+def _resolve_prepared_root(explicit_root, root_from_config, split_path_from_config, label):
+    candidates = []
+    if explicit_root is not None:
+        candidates.append(Path(explicit_root))
+    if root_from_config:
+        candidates.append(Path(root_from_config))
+    if split_path_from_config:
+        candidates.append(Path(split_path_from_config).parent)
+
+    for candidate in candidates:
+        resolved = candidate.expanduser().resolve()
+        if resolved.exists():
+            return resolved
+
+    if candidates:
+        return candidates[0].expanduser().resolve()
+    raise ValueError(f"Could not resolve {label} directory from explicit arguments or config.json")
+
 def evaluate_protein_cv_predictions(pred_file, train_file, task_type, numeric_label_col):
     """
     Evaluate protein CV predictions by comparing against ground truth.
@@ -112,15 +131,32 @@ def evaluate_protein_cv_predictions(pred_file, train_file, task_type, numeric_la
         # Single fold - return metrics as-is
         return all_metrics
 
-def evaluate_stealth_test(dataset, test_output_dir, experiment_folder):
+def evaluate_stealth_test(
+    dataset,
+    test_output_dir,
+    experiment_folder,
+    prepared_datasets_dir=None,
+    prepared_test_sets_dir=None,
+):
     test_output_dir = Path(test_output_dir)
     experiment_folder = Path(experiment_folder)
     config_file = experiment_folder / "extras" / "config.json"
     with open(config_file) as f:
         config_dict = json.load(f)
 
-    prepared_test_sets_dir = Path('/repository/prepared_test_sets')
-    prepared_datasets_dir = Path('/repository/prepared_datasets')
+    prepared_datasets_dir = _resolve_prepared_root(
+        prepared_datasets_dir,
+        config_dict.get("prepared_datasets_dir"),
+        config_dict.get("prepared_dataset_dir"),
+        "prepared datasets",
+    )
+    prepared_test_sets_dir = _resolve_prepared_root(
+        prepared_test_sets_dir,
+        config_dict.get("prepared_test_sets_dir"),
+        config_dict.get("prepared_test_set_dir"),
+        "prepared test sets",
+    )
+
     with open(prepared_datasets_dir / dataset / "metadata.json") as f:
         dataset_metadata = json.load(f)
 
@@ -190,11 +226,15 @@ def main():
     parser.add_argument('--dataset', required=True)
     parser.add_argument('--test-output-dir', required=True)
     parser.add_argument('--experiment-folder', required=True)
+    parser.add_argument('--prepared-datasets-dir', type=Path, help='Optional override for the prepared_datasets root directory')
+    parser.add_argument('--prepared-test-sets-dir', type=Path, help='Optional override for the prepared_test_sets root directory')
     args = parser.parse_args()
     evaluate_stealth_test(
         args.dataset,
         args.test_output_dir,
-        args.experiment_folder
+        args.experiment_folder,
+        prepared_datasets_dir=args.prepared_datasets_dir,
+        prepared_test_sets_dir=args.prepared_test_sets_dir,
     )
 
 if __name__ == "__main__":

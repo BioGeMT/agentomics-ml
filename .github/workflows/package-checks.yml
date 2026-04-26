@@ -5,20 +5,40 @@ on:
     paths:
       - ".github/workflows/package-checks.yml"
       - "pyproject.toml"
+      - "run.sh"
+      - "bash_helpers.sh"
+      - "build.sh"
+      - "Dockerfile"
+      - "Dockerfile.prepare"
+      - "environment.yaml"
+      - "environment_fm.yaml"
+      - "environment_prepare.yaml"
+      - "environment_agent.yaml"
       - "src/agentomics/**"
       - "test/test_path_defaults.py"
       - "test/test_run_agent_interactive.py"
       - "test/test_package_path_regressions.py"
       - "test/test_prepare_datasets.py"
+      - "test/test_evaluate_stealth_test.py"
   pull_request:
     paths:
       - ".github/workflows/package-checks.yml"
       - "pyproject.toml"
+      - "run.sh"
+      - "bash_helpers.sh"
+      - "build.sh"
+      - "Dockerfile"
+      - "Dockerfile.prepare"
+      - "environment.yaml"
+      - "environment_fm.yaml"
+      - "environment_prepare.yaml"
+      - "environment_agent.yaml"
       - "src/agentomics/**"
       - "test/test_path_defaults.py"
       - "test/test_run_agent_interactive.py"
       - "test/test_package_path_regressions.py"
       - "test/test_prepare_datasets.py"
+      - "test/test_evaluate_stealth_test.py"
 
 jobs:
   package-checks:
@@ -55,7 +75,11 @@ jobs:
             test.test_path_defaults \
             test.test_run_agent_interactive \
             test.test_package_path_regressions \
-            test.test_prepare_datasets
+            test.test_prepare_datasets \
+            test.test_evaluate_stealth_test
+
+      - name: Verify Shell Script Syntax
+        run: bash -n run.sh bash_helpers.sh build.sh
 
       - name: Verify Package Compiles
         run: |

@@ -21,7 +21,7 @@ VAL_METRIC=""
 LIST_MODE=false
 FOUNDATION_MODEL_TYPE=""
 STEALTH_TEST=false
-PULL_IMAGES=false
+BUILD_IMAGES=false
 DOCKERHUB_USERNAME="biogemt"
 
 show_help() {
@@ -54,7 +54,7 @@ Operational Flags:
                       (Note: Only supported in Docker mode, not in local Conda mode.)
   --cpu-only          Force Docker/Conda to run using CPU only (skip GPU configuration).
   --ollama            Enable support for an Ollama server running on the host machine.
-  --pull-images       Pull prebuilt Docker images from Docker Hub instead of building locally (uses biogemt images).
+  --build-images      Build Docker images locally instead of pulling prebuilt biogemt images from Docker Hub.
   --foundation-model-type <dna|rna|molecule|protein|all>
                       Enable foundation models of a specific type. Use 'all' to download all types. When omitted, no foundation models are used or pre-downloaded.
   --use-provisioning-key  Use OpenRouter provisioning key to create temporary API key and log costs.
@@ -189,8 +189,8 @@ while [[ $# -gt 0 ]]; do
             SPEND_LIMIT="$2"
             shift 2
             ;;
-        --pull-images)
-            PULL_IMAGES=true
+        --build-images)
+            BUILD_IMAGES=true
             shift
             ;;
         --foundation-model-type)
@@ -304,7 +304,11 @@ if [ "$LOCAL_MODE" = true ]; then
     install_agentomics_package_in_env agentomics-prepare-env
 
     mkdir -p prepared_datasets
-    conda run -n agentomics-prepare-env python -m agentomics.prepare_datasets --prepare-all
+    if [ -n "$DATASET_NAME" ]; then
+        conda run -n agentomics-prepare-env python -m agentomics.prepare_datasets --dataset-dir "./datasets/${DATASET_NAME}"
+    else
+        conda run -n agentomics-prepare-env python -m agentomics.prepare_datasets --prepare-all
+    fi
 
     if ! conda env list | grep -q "^agent_start_env "; then
         conda env create -f environment_agent.yaml -q
@@ -319,7 +323,13 @@ if [ "$LOCAL_MODE" = true ]; then
     if [ -n "$FOUNDATION_MODEL_TYPE" ]; then
         FOUNDATION_MODELS_MARKER="$HF_HOME/.downloaded_${FOUNDATION_MODEL_TYPE}"
         if [[ ! -f "$FOUNDATION_MODELS_MARKER" ]]; then
-            conda run -n agentomics-env python -m agentomics.utils.download_foundation_models
+            if ! conda env list | grep -q "^fm-download-env "; then
+                conda env create -f environment_fm.yaml -q
+            else
+                conda env update -n fm-download-env -f environment_fm.yaml -q
+            fi
+            install_agentomics_package_in_env fm-download-env
+            conda run -n fm-download-env python -m agentomics.utils.download_foundation_models
             touch "$FOUNDATION_MODELS_MARKER"
         fi
     fi
@@ -395,22 +405,6 @@ else
         fi
     fi
 
-    if [[ "$IS_INTERACTIVE_RUN" = true && "$PULL_IMAGES" = false ]]; then
-        echo ""
-        echo "Docker images"
-        echo "Select how to obtain Docker images:"
-        echo "  1) build locally"
-        echo "  2) pull prebuilt (biogemt)"
-        echo ""
-        read -r -p "Enter choice [2]: " images_choice
-        images_choice="${images_choice:-2}"
-        case "$images_choice" in
-            1) PULL_IMAGES=false;;
-            2) PULL_IMAGES=true;;
-            *) die "Invalid choice.";;
-        esac
-    fi
-
     FOUNDATION_MODEL_FLAGS=()
     DOCKER_BUILD_ARGS=()
     if [ -n "$FOUNDATION_MODEL_TYPE" ]; then
@@ -421,7 +415,15 @@ else
     AGENTOMICS_IMAGE="agentomics_img"
     PREPARE_IMAGE="agentomics_prepare_img"
 
-    if [ "$PULL_IMAGES" = true ]; then
+    if [ "$BUILD_IMAGES" = true ]; then
+        echo "Building the run image"
+        docker build -t "$AGENTOMICS_IMAGE" -f Dockerfile ${DOCKER_BUILD_ARGS[@]+"${DOCKER_BUILD_ARGS[@]}"} .
+        echo "Build done"
+
+        echo "Building the data preparation image"
+        docker build -t "$PREPARE_IMAGE" -f Dockerfile.prepare .
+        echo "Build done"
+    else
         FM_TAG="NONE"
         if [ -n "$FOUNDATION_MODEL_TYPE" ]; then
             FM_TAG="$(echo "$FOUNDATION_MODEL_TYPE" | tr '[:lower:]' '[:upper:]')"
@@ -433,17 +435,16 @@ else
         docker pull "$AGENTOMICS_IMAGE"
         echo "Pulling the data preparation image"
         docker pull "$PREPARE_IMAGE"
-    else
-        echo "Building the run image"
-        docker build -t "$AGENTOMICS_IMAGE" -f Dockerfile ${DOCKER_BUILD_ARGS[@]+"${DOCKER_BUILD_ARGS[@]}"} .
-        echo "Build done"
-
-        echo "Building the data preparation image"
-        docker build -t "$PREPARE_IMAGE" -f Dockerfile.prepare .
-        echo "Build done"
     fi
     AGENT_ID=$(docker run --rm -u $(id -u):$(id -g) -v "$(pwd)":/repository:ro --entrypoint \
            /opt/conda/envs/agentomics-env/bin/python "$AGENTOMICS_IMAGE" -m agentomics.utils.create_user)
+
+    PREPARE_ARGS=()
+    if [ -n "$DATASET_NAME" ]; then
+        PREPARE_ARGS=(--dataset-dir "./datasets/${DATASET_NAME}")
+    else
+        PREPARE_ARGS=(--prepare-all)
+    fi
     docker run \
         -u $(id -u):$(id -g) \
         --rm \
@@ -451,13 +452,10 @@ else
         -e PYTHONWARNINGS=ignore \
         --name agentomics_prepare_cont_${AGENT_ID} \
         -v "$(pwd)":/repository \
-        "$PREPARE_IMAGE"
+        "$PREPARE_IMAGE" ${PREPARE_ARGS[@]+"${PREPARE_ARGS[@]}"}
 
-    docker volume create temp_agentomics_volume_${AGENT_ID}
-    cleanup() {
-        docker volume rm temp_agentomics_volume_${AGENT_ID} >/dev/null 2>&1 || true
-    }
-    trap cleanup EXIT
+    printless_command docker volume create temp_agentomics_volume_${AGENT_ID}
+    cleanup_volume_on_finish
 
     TEMP_API_KEY_HASH=""
     if [ "$USE_PROVISIONING_KEY" = true ]; then
@@ -473,23 +471,6 @@ else
         export OPENROUTER_API_KEY="$TEMP_API_KEY"
     fi
 
-    if [ "$CPU_ONLY" = false ]; then
-        if ! docker_has_gpu; then
-            warn "GPU not available (nvidia-smi not found or Docker lacks GPU support)"
-            warn "Automatically switching to CPU-only mode"
-            warn "To suppress this warning, use --cpu-only flag"
-            CPU_ONLY=true
-        fi
-    fi
-
-    GPU_FLAGS=()
-    if [ "$CPU_ONLY" = false ]; then
-        GPU_FLAGS+=(--gpus all)
-        GPU_FLAGS+=(--env NVIDIA_VISIBLE_DEVICES=all)
-        info "GPU mode enabled"
-    else
-        info "Running in CPU-only mode"
-    fi
     OLLAMA_FLAGS=()
     if [ "$OLLAMA" = true ]; then
         OLLAMA_FLAGS+=(--network="host")
@@ -512,6 +493,26 @@ else
 
     if [ "$USE_PROVISIONING_KEY" = true ]; then
         DOCKER_API_KEY_ENV_VARS+=(-e "OPENROUTER_API_KEY=${OPENROUTER_API_KEY}")
+    fi
+
+    GPU_FLAGS=()
+    if [ "$LIST_MODE" = false ]; then
+        if [ "$CPU_ONLY" = false ]; then
+            if ! docker_has_gpu; then
+                warn "GPU not available (nvidia-smi not found or Docker lacks GPU support)"
+                warn "Automatically switching to CPU-only mode"
+                warn "To suppress this warning, use --cpu-only flag"
+                CPU_ONLY=true
+            fi
+        fi
+
+        if [ "$CPU_ONLY" = false ]; then
+            GPU_FLAGS+=(--gpus all)
+            GPU_FLAGS+=(--env NVIDIA_VISIBLE_DEVICES=all)
+            info "GPU mode enabled"
+        else
+            info "Running in CPU-only mode"
+        fi
     fi
 
     if [ "$TEST_MODE" = true ]; then
@@ -600,7 +601,7 @@ else
           -v "$(pwd)":/repository \
           -v "$(pwd)/outputs/${AGENT_ID}":/agent_out \
           --entrypoint /opt/conda/envs/agentomics-env/bin/python \
-          agentomics_img -m agentomics.generate_final_reports \
+          "$AGENTOMICS_IMAGE" -m agentomics.generate_final_reports \
             --agent-dir /agent_out --prepared-datasets /repository/prepared_datasets \
             --prepared-tests /repository/prepared_test_sets
 

@@ -19,7 +19,7 @@ The run stops when either the iteration count is reached or the timeout expires.
 
 | Option | Description |
 |--------|-------------|
-| `--pull-images` | Pull pre-built Docker images from Docker Hub |
+| `--build-images` | Build Docker images locally |
 | `--local` | Run without Docker (uses conda) |
 | `--cpu-only` | Disable GPU acceleration |
 | `--ollama` | Use local Ollama for LLM |
@@ -56,7 +56,7 @@ The run stops when either the iteration count is reached or the timeout expires.
 ### Quick Start with Pre-built Images
 
 ```bash
-./run.sh --pull-images
+./run.sh
 ```
 
 ### Local Mode
@@ -93,6 +93,12 @@ The run stops when either the iteration count is reached or the timeout expires.
 
 ```bash
 ./run.sh --foundation-model-type protein --model openai/gpt-4
+```
+
+### Run with locally built Docker images
+
+```bash
+./run.sh --build-images
 ```
 
 ## Validation Metrics

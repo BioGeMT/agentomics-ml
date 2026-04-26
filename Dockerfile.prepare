@@ -1,4 +1,4 @@
-FROM condaforge/mambaforge:23.3.1-0
+FROM condaforge/mambaforge:24.9.2-0
 
 # Create preparation environment
 COPY environment_prepare.yaml .
@@ -15,4 +15,5 @@ COPY src/agentomics ./src/agentomics
 RUN conda run -n agentomics-prepare-env python -m pip install --no-deps /repository
 
 # Set the default command to run preparation directly
-ENTRYPOINT ["/opt/conda/envs/agentomics-prepare-env/bin/python", "-m", "agentomics.prepare_datasets", "--prepare-all"]
+ENTRYPOINT ["/opt/conda/envs/agentomics-prepare-env/bin/python", "-m", "agentomics.prepare_datasets"]
+CMD ["--prepare-all"]

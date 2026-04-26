@@ -1,4 +1,4 @@
-FROM condaforge/mambaforge:23.3.1-0
+FROM condaforge/mambaforge:24.9.2-0
 
 # Always set -y to conda install commands
 ENV CONDA_ALWAYS_YES=true 
@@ -8,8 +8,6 @@ ENV CONDA_PKGS_DIRS=/tmp/conda-pkgs
 ENV PIP_NO_CACHE_DIR=1
 # Suppress pip version warnings
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
-
-RUN apt-get update && rm -rf /var/lib/apt/lists/*
 
 # Copy & create your conda environment\ using environment.yaml (with mamba for speed and memory efficiency)
 COPY environment.yaml .
@@ -27,12 +25,18 @@ RUN conda init bash \
     && echo "conda activate agentomics-env" >> /root/.bashrc
 
 # Pre-download foundation models
+COPY environment_fm.yaml ./
 RUN mkdir -p /cache/foundation_models
 ENV HF_HOME=/cache/foundation_models
 ARG FOUNDATION_MODEL_TYPE=
 ENV FOUNDATION_MODEL_TYPE=${FOUNDATION_MODEL_TYPE}
 RUN if [ -n "$FOUNDATION_MODEL_TYPE" ]; then \
-      /opt/conda/envs/agentomics-env/bin/python -m agentomics.utils.download_foundation_models; \
+      mamba env create -f environment_fm.yaml \
+      && mamba clean -afy \
+      && rm -rf /tmp/conda-pkgs \
+      && conda run -n fm-download-env python -m pip install --no-deps /repository \
+      && /opt/conda/envs/fm-download-env/bin/python -m agentomics.utils.download_foundation_models \
+      && conda env remove -n fm-download-env; \
     else \
       echo "Skipping foundation model download (FOUNDATION_MODEL_TYPE not set)"; \
     fi
@@ -42,7 +46,8 @@ ENV START_ENV_PKG=/opt/agent_start_env.tar.gz
 COPY environment_agent.yaml .
 RUN mamba env create -f environment_agent.yaml \
     && mamba clean -afy \
-    && rm -rf /tmp/conda-pkgs
-RUN conda run -n agent_start_env conda-pack -o ${START_ENV_PKG}
+    && rm -rf /tmp/conda-pkgs \
+    && conda run -n agent_start_env conda-pack -o ${START_ENV_PKG} \
+    && conda env remove -n agent_start_env
 
 ENTRYPOINT ["/opt/conda/envs/agentomics-env/bin/python", "-m", "agentomics.run_agent_interactive"]

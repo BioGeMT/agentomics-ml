@@ -32,7 +32,7 @@ cp .env.example .env
 # Download example datasets
 ./download_example_datasets.sh
 
-./run.sh --pull-images
+./run.sh
 ```
 
 Recommended model: `gpt-5.1-codex-max`
@@ -79,5 +79,4 @@ bioRxiv (preprint) https://www.biorxiv.org/content/10.64898/2026.01.27.702049v1
 ## License
 
 MIT. See `LICENSE`.
-
 

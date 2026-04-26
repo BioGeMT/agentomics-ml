@@ -1,9 +1,43 @@
 #!/bin/bash
 
-# Simple multi-architecture Docker build and push script
-# Usage: ./build.sh <username> [version]
+# Multi-architecture (amd64, arm64) Docker build and push script for Agentomics
+# Builds all foundation model variants of the main image + the prepare image.
+#
+# Usage:
+#   ./build.sh <username>              # Builds and pushes with 'latest' tag
+#   ./build.sh <username> v1.0         # Builds and pushes with 'v1.0' tag
 
 set -e
+AGENTOMICS_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$AGENTOMICS_DIR/bash_helpers.sh"
+
+DRIVER_OPTS=()
+if [ -n "${HTTP_PROXY:-}" ]; then
+    DRIVER_OPTS+=(--driver-opt "env.HTTP_PROXY=$HTTP_PROXY")
+fi
+if [ -n "${HTTPS_PROXY:-}" ]; then
+    DRIVER_OPTS+=(--driver-opt "env.HTTPS_PROXY=$HTTPS_PROXY")
+fi
+if [ -n "${http_proxy:-}" ]; then
+    DRIVER_OPTS+=(--driver-opt "env.http_proxy=$http_proxy")
+fi
+if [ -n "${https_proxy:-}" ]; then
+    DRIVER_OPTS+=(--driver-opt "env.https_proxy=$https_proxy")
+fi
+
+PROXY_BUILD_ARGS=()
+if [ -n "${HTTP_PROXY:-}" ]; then
+    PROXY_BUILD_ARGS+=(--build-arg "HTTP_PROXY=$HTTP_PROXY")
+fi
+if [ -n "${HTTPS_PROXY:-}" ]; then
+    PROXY_BUILD_ARGS+=(--build-arg "HTTPS_PROXY=$HTTPS_PROXY")
+fi
+if [ -n "${http_proxy:-}" ]; then
+    PROXY_BUILD_ARGS+=(--build-arg "http_proxy=$http_proxy")
+fi
+if [ -n "${https_proxy:-}" ]; then
+    PROXY_BUILD_ARGS+=(--build-arg "https_proxy=$https_proxy")
+fi
 
 USERNAME=${1:-}
 VERSION=${2:-latest}
@@ -14,30 +48,66 @@ if [ -z "$USERNAME" ]; then
     exit 1
 fi
 
-MAIN_IMAGE="$USERNAME/agentomics:$VERSION"
-PREPARE_IMAGE="$USERNAME/agentomics-prepare:$VERSION"
+FM_VARIANTS=("NONE" "DNA" "RNA" "MOLECULE" "PROTEIN" "ALL")
 
-echo "Building and pushing multi-architecture images:"
-echo "  $MAIN_IMAGE"
-echo "  $PREPARE_IMAGE"
+declare -A FM_BUILD_ARG_MAP
+FM_BUILD_ARG_MAP["NONE"]=""
+FM_BUILD_ARG_MAP["DNA"]="dna"
+FM_BUILD_ARG_MAP["RNA"]="rna"
+FM_BUILD_ARG_MAP["MOLECULE"]="molecule"
+FM_BUILD_ARG_MAP["PROTEIN"]="protein"
+FM_BUILD_ARG_MAP["ALL"]="all"
 
-# Setup buildx
-docker buildx create --name multiplatform --driver docker-container --use 2>/dev/null || docker buildx use multiplatform
+PREPARE_IMAGE="${USERNAME}/agentomics-prepare:${VERSION}"
+
+need_cmd docker
+
+docker buildx rm multiplatform 2>/dev/null || true
+docker buildx create \
+    --name multiplatform \
+    --driver docker-container \
+    ${DRIVER_OPTS[@]+"${DRIVER_OPTS[@]}"} \
+    --use
 docker buildx inspect --bootstrap
 
-# Build and push main image
 docker buildx build \
-  --platform linux/amd64,linux/arm64 \
-  -t "$MAIN_IMAGE" \
-  --push .
+    --platform linux/amd64,linux/arm64 \
+    -f Dockerfile.prepare \
+    -t "$PREPARE_IMAGE" \
+    ${PROXY_BUILD_ARGS[@]+"${PROXY_BUILD_ARGS[@]}"} \
+    --push .
 
-# Build and push preparation image  
-docker buildx build \
-  --platform linux/amd64,linux/arm64 \
-  -f Dockerfile.prepare \
-  -t "$PREPARE_IMAGE" \
-  --push .
+for VARIANT in "${FM_VARIANTS[@]}"; do
+    IMAGE_TAG="${USERNAME}/agentomics:FM-${VARIANT}-${VERSION}"
+    BUILD_ARG_VALUE="${FM_BUILD_ARG_MAP[$VARIANT]}"
 
-echo "Complete! Images pushed:"
-echo "  $MAIN_IMAGE"
-echo "  $PREPARE_IMAGE"
+    echo ""
+    echo "============================================"
+    echo "Building: ${IMAGE_TAG}"
+    if [ -n "$BUILD_ARG_VALUE" ]; then
+        echo "Foundation model type: ${BUILD_ARG_VALUE}"
+    else
+        echo "Foundation model type: none"
+    fi
+    echo "============================================"
+
+    BUILD_CMD=(
+        docker buildx build
+        --platform linux/amd64,linux/arm64
+        -t "$IMAGE_TAG"
+        ${PROXY_BUILD_ARGS[@]+"${PROXY_BUILD_ARGS[@]}"}
+    )
+
+    if [ -n "$BUILD_ARG_VALUE" ]; then
+        BUILD_CMD+=(--build-arg "FOUNDATION_MODEL_TYPE=$BUILD_ARG_VALUE")
+    fi
+
+    BUILD_CMD+=(--push .)
+
+    if "${BUILD_CMD[@]}"; then
+        echo "Done: ${IMAGE_TAG}"
+    else
+        echo "FAILED: ${IMAGE_TAG}"
+        exit 1
+    fi
+done
