@@ -41,8 +41,12 @@ reports = [
   "reportlab>=4.2,<5",
   "seaborn>=0.13,<1",
 ]
+datasets = [
+  "genomic-benchmarks",
+  "miRBench",
+]
 all = [
-  "agentomics-ml[foundation-models,reports]",
+  "agentomics-ml[foundation-models,reports,datasets]",
 ]
 
 [project.scripts]
