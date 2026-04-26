@@ -36,11 +36,13 @@ def generate_mirbench_files():
             f.write(dataset_desrciption[dataset_name])
 
     for dataset_name, splits in dataset_names_splits.items():
+        local_dset_path = repo_path / "datasets" / dataset_name
+        download_path = repo_path / ".miRBench" / dataset_name
+        os.makedirs(download_path, exist_ok=True)
         for split in splits:
-            download_path = repo_path/".miRBench"
-            os.makedirs(download_path, exist_ok=True)
-            mirbench_download_dataset(dataset_name, download_path=download_path/'miRBench', split=split)
-            df = pd.read_csv(download_path/'miRBench', sep="\t")
+            split_path = download_path / f"{split}.tsv"
+            mirbench_download_dataset(dataset_name, download_path=split_path, split=split)
+            df = pd.read_csv(split_path, sep="\t")
             df = df.rename(columns={"label": class_col})
             # Keep original target column - 'numeric_label' will be created during preparation
             df.to_csv(f"{local_dset_path}/{split}.csv", index=False)
