@@ -283,7 +283,6 @@ if [ "$LOCAL_MODE" = true ]; then
 
     WORKSPACE_DIR="$(pwd)/workspace/${AGENT_ID}"
     export AGENTOMICS_WORKSPACE_DIR="$WORKSPACE_DIR"
-    export FOUNDATION_MODELS_YAML="$(pwd)/foundation_models/models.yaml"
     mkdir -p "$WORKSPACE_DIR"
 
     if [ "$CPU_ONLY" = true ]; then

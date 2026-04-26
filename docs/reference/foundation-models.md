@@ -100,11 +100,13 @@ Example datasets:
 
 ## Configuration
 
-Foundation model configurations are in:
+Foundation model configurations ship with the Python package under:
 
 ```
-foundation_models/
+src/agentomics/resources/foundation_models/
 ```
+
+The repository also keeps a mirrored `foundation_models/` directory for development and documentation, but packaged installs load the bundled resources directly.
 
 Each type has a configuration specifying:
 - Model names and sources
@@ -144,6 +146,8 @@ To add custom foundation models:
 1. Add configuration to `foundation_models/`
 2. Update the download script
 3. Add usage instructions for the agent
+
+For packaged support, add the same files under `src/agentomics/resources/foundation_models/` so they are included in installs and Docker images.
 
 ## Related
 

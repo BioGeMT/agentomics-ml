@@ -1,19 +1,37 @@
-import sys
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import patch, Mock
+import sys
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SRC_PATH = REPO_ROOT / "src"
-if str(SRC_PATH) not in sys.path:
-    sys.path.insert(0, str(SRC_PATH))
 
 import agentomics.run_agent_interactive as run_agent_interactive
 
 
 class RunAgentInteractiveListModesTest(unittest.TestCase):
+    def test_list_models_skips_agent_setup(self):
+        provider = Mock()
+
+        with (
+            patch.object(sys, "argv", ["agentomics", "--list-models", "--provider", "openai"]),
+            patch.object(run_agent_interactive, "resolve_agentomics_paths", return_value=SimpleNamespace()),
+            patch.object(run_agent_interactive, "get_provider_and_api_key", return_value=("test-key", "openai")) as get_provider_and_api_key,
+            patch.object(run_agent_interactive.Provider, "create_provider", return_value=provider) as create_provider,
+            patch.object(
+                run_agent_interactive,
+                "create_user",
+                side_effect=AssertionError("AGENT_ID generation should not run for --list-models"),
+            ),
+        ):
+            exit_code = run_agent_interactive.main()
+
+        self.assertEqual(exit_code, 0)
+        get_provider_and_api_key.assert_called_once_with(preferred_provider="openai")
+        create_provider.assert_called_once_with("openai", "test-key")
+        provider.display_models.assert_called_once_with()
+
     def test_list_metrics_skips_provider_and_agent_setup(self):
         with (
             patch.object(sys, "argv", ["agentomics", "--list-metrics"]),

@@ -9,6 +9,7 @@ on:
       - "test/test_path_defaults.py"
       - "test/test_run_agent_interactive.py"
       - "test/test_package_path_regressions.py"
+      - "test/test_prepare_datasets.py"
   pull_request:
     paths:
       - ".github/workflows/package-checks.yml"
@@ -17,6 +18,7 @@ on:
       - "test/test_path_defaults.py"
       - "test/test_run_agent_interactive.py"
       - "test/test_package_path_regressions.py"
+      - "test/test_prepare_datasets.py"
 
 jobs:
   package-checks:
@@ -36,12 +38,32 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install ".[reports]"
 
+      - name: Verify Installed Package Location
+        run: |
+          python - <<'PY'
+          import agentomics
+          from pathlib import Path
+
+          package_dir = Path(agentomics.__file__).resolve().parent
+          print(f"Loaded package from: {package_dir}")
+          assert "site-packages" in str(package_dir), package_dir
+          PY
+
       - name: Run Targeted Package Tests
         run: |
           python -m unittest \
             test.test_path_defaults \
             test.test_run_agent_interactive \
-            test.test_package_path_regressions
+            test.test_package_path_regressions \
+            test.test_prepare_datasets
 
       - name: Verify Package Compiles
-        run: python -m compileall src/agentomics
+        run: |
+          python - <<'PY'
+          import agentomics
+          import compileall
+          from pathlib import Path
+
+          package_dir = Path(agentomics.__file__).resolve().parent
+          raise SystemExit(0 if compileall.compile_dir(str(package_dir), quiet=1) else 1)
+          PY

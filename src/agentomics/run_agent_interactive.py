@@ -80,11 +80,6 @@ def main():
         print_datasets_table(datasets)
         return 0
     
-    if args.list_models:
-        console.print("Available Large Language Models", style="cyan")
-        provider.display_models()
-        return 0
-    
     if args.list_metrics:
         console.print("Available Validation Metrics", style="cyan")
         display_metrics_table()  # Show all metrics when listing
@@ -92,6 +87,11 @@ def main():
 
     api_key, provider_name = get_provider_and_api_key(preferred_provider=args.provider)
     provider = Provider.create_provider(provider_name, api_key)
+
+    if args.list_models:
+        console.print("Available Large Language Models", style="cyan")
+        provider.display_models()
+        return 0
 
     if not os.environ.get("AGENT_ID"):
         os.environ["AGENT_ID"] = create_user()

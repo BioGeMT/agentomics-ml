@@ -1,5 +1,4 @@
 import os
-import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -7,9 +6,6 @@ from unittest.mock import patch
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SRC_PATH = REPO_ROOT / "src"
-if str(SRC_PATH) not in sys.path:
-    sys.path.insert(0, str(SRC_PATH))
 
 from agentomics.utils.path_defaults import find_repo_root, resolve_agentomics_paths
 
