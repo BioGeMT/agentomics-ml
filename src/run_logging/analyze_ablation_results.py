@@ -20,6 +20,7 @@ def main():
     parser.add_argument("--tags", nargs="+", help="Filter by tags (optional)")
     parser.add_argument("--after", type=str, help="Filter runs after this date (YYYY-MM-DD HH:MM format, e.g., '2025-10-17 20:00')")
     parser.add_argument("--model", type=str, help="Filter by model name (e.g., 'gpt-oss:20b')")
+    parser.add_argument("--dataset", type=str, help="Filter by dataset name")
     parser.add_argument("--output", default="ablation_results.csv")
     args = parser.parse_args()
 
@@ -57,16 +58,25 @@ def main():
             if run_date <= after_date:
                 continue
 
+        # Parse config once for model/dataset extraction
+        try:
+            config_dict = run.config if isinstance(run.config, dict) else json.loads(run.config)
+        except:
+            config_dict = {}
+
+        model_val = config_dict.get("model_name", "")
+        model_name = model_val.get("value") if isinstance(model_val, dict) else model_val
+
+        dataset_val = config_dict.get("dataset", "")
+        dataset_name = dataset_val.get("value") if isinstance(dataset_val, dict) else dataset_val
+
         # Filter by model if specified
-        if args.model:
-            try:
-                config_dict = run.config if isinstance(run.config, dict) else json.loads(run.config)
-                val = config_dict.get("model_name", "")
-                model_name = val.get("value") if isinstance(val, dict) else val
-                if model_name != args.model:
-                    continue
-            except:
-                continue
+        if args.model and model_name != args.model:
+            continue
+
+        # Filter by dataset if specified
+        if args.dataset and dataset_name != args.dataset:
+            continue
 
         # Get ablation from tags
         ablation = "baseline"
@@ -88,6 +98,8 @@ def main():
         # Extract specific metrics
         result = {
             "run_name": run.name,
+            "model_name": model_name,
+            "dataset": dataset_name,
             "ablation": ablation,
             "success": success,
             "inference_stage": inference_stage,
@@ -108,9 +120,24 @@ def main():
         print("No runs found matching the filters")
         return
 
+    # Enforce ablation display order
+    ABLATION_ORDER = [
+        "baseline",
+        "no_data_exploration",
+        "no_data_split",
+        "no_data_representation",
+        "no_model_architecture",
+        "no_model_training",
+        "no_final_outcome",
+    ]
+    present = [a for a in ABLATION_ORDER if a in results_df["ablation"].unique()]
+    extras = [a for a in results_df["ablation"].unique() if a not in ABLATION_ORDER]
+    ordered = present + sorted(extras)
+    results_df["ablation"] = pd.Categorical(results_df["ablation"], categories=ordered, ordered=True)
+
     # Calculate success rates
     print("\nSuccess rates by ablation:")
-    summary = results_df.groupby("ablation")["success"].agg(
+    summary = results_df.groupby("ablation", observed=True)["success"].agg(
         successful="sum",
         total="count",
         success_rate=lambda x: round(x.sum() / len(x) * 100, 1)
@@ -122,7 +149,7 @@ def main():
     successful_runs = results_df[results_df["success"] == True]
 
     if len(successful_runs) > 0:
-        metrics_summary = successful_runs.groupby("ablation")[["test_ACC", "test_AUPRC", "test_F1"]].agg(["mean", "std"])
+        metrics_summary = successful_runs.groupby("ablation", observed=True)[["test_ACC", "test_AUPRC", "test_F1"]].agg(["mean", "std"])
         metrics_summary = metrics_summary.round(4)
         print(metrics_summary)
 
