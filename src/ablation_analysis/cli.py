@@ -15,6 +15,7 @@ from .plot_cost_vs_performance_bars import plot_bar_charts
 from .plot_cost_only import plot_cost_only
 from .extract_failed_runs import extract_failed_runs
 from .plot_failures import plot_failures
+from .knowledge_stats import knowledge_stats
 from . import config
 
 
@@ -23,6 +24,7 @@ def main():
     COMMANDS = [
         "count", "check", "list-runs", "extract-arch", "categorize",
         "plot-arch", "plot-failures", "plot", "plot-bars", "plot-cost", "log-cost", "failed",
+        "knowledge-stats",
     ]
     parser.add_argument("command", choices=COMMANDS, help="Command to run")
 
@@ -111,6 +113,8 @@ def main():
         log_cost(args.run, args.cost)
     elif args.command == "failed":
         extract_failed_runs(args.output)
+    elif args.command == "knowledge-stats":
+        knowledge_stats()
 
 
 if __name__ == "__main__":
