@@ -97,6 +97,8 @@ Key options:
 | `--positive-class` | Define positive class for binary classification |
 | `--negative-class` | Define negative class for binary classification |
 
+*Note: already-prepared datasets are skipped on re-runs (preserves `--positive-class`/`--negative-class`). To re-prepare, delete the folder under `prepared_datasets/` (and under `prepared_test_sets/` if a test set was provided) and rerun the preparation script.*
+
 ## Prepared Dataset Structure
 
 After preparation, datasets are stored in:

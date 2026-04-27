@@ -2,7 +2,7 @@ import argparse
 from pathlib import Path
 from rich.console import Console
 
-from datasets.dataset_utils import prepare_dataset
+from datasets.dataset_utils import prepare_dataset, check_dataset_prepared
 from datasets.datasets_interactive import prepare_all_datasets
 
 
@@ -24,19 +24,22 @@ def main():
     console = Console()
 
     datasets_dir = args.datasets_dir
+    dataset_dir = args.dataset_dir
     prepared_datasets_dir = args.prepared_datasets_dir
     prepared_test_sets_dir = args.prepared_test_sets_dir
     
     Path(prepared_datasets_dir).mkdir(parents=True, exist_ok=True)
     Path(prepared_test_sets_dir).mkdir(parents=True, exist_ok=True)
 
-    if args.prepare_all or not args.dataset_dir:
+    if args.prepare_all or not dataset_dir:
         prepare_all_datasets(datasets_dir, prepared_datasets_dir, prepared_test_sets_dir)
+    elif check_dataset_prepared(str(dataset_dir), str(prepared_datasets_dir)):
+        console.print(f'[blue]Dataset "{dataset_dir.name}" already prepared, skipping preparation[/blue]')
     else:
-        console.print(f'[blue]Preparing dataset "{args.dataset_dir.name}"')# for {task_type} task with target column "{target_col}"[/blue]')
+        console.print(f'[blue]Preparing dataset "{dataset_dir.name}"[/blue]')# for {task_type} task with target column "{target_col}"[/blue]')
         try:
             prepare_dataset(
-                dataset_dir=args.dataset_dir,
+                dataset_dir=dataset_dir,
                 target_col=args.target_col,
                 positive_class=args.positive_class, #is auto-detected inside - do the same for target/task ?
                 negative_class=args.negative_class,
@@ -44,9 +47,9 @@ def main():
                 output_dir=prepared_datasets_dir,
                 test_sets_output_dir=prepared_test_sets_dir
             )
-            console.print(f"[green]Dataset '{args.dataset_dir.name}' prepared successfully![/green]")
+            console.print(f"[green]Dataset '{dataset_dir.name}' prepared successfully![/green]")
         except Exception as e:
-            console.print(f"[red]Dataset '{args.dataset_dir.name}' preparation failed! {e}[/red]")
+            console.print(f"[red]Dataset '{dataset_dir.name}' preparation failed! {e}[/red]")
         
 if __name__ == "__main__":
     main()
