@@ -18,6 +18,7 @@ TIMEOUT_SECS=""
 MODEL_NAME=""
 PREFERRED_PROVIDER=""
 DATASET_NAME=""
+TASK_TYPE=""
 VAL_METRIC=""
 LIST_MODE=false
 FOUNDATION_MODELS_TYPE=""
@@ -46,6 +47,9 @@ Optional Arguments:
                       The LLM model used for generating the iteration plan (e.g., 'openai/gpt-5.4').
                       If not provided, defaults to the same model as --model.
   --provider <name>   When multiple api keys are provided, provider override (e.g., 'openai', 'openrouter').
+  --task-type <classification|regression>
+                      Task type used when preparing a raw dataset selected with --dataset.
+                      If omitted and the dataset config does not define it, preparation prompts in interactive mode.
   --iterations <N>    Number of iterations to run the agent (recommended more than 5).
                       For forked runs, omitting it keeps the source run's total iteration limit.
                       Providing it means N additional iterations from the fork point.
@@ -165,6 +169,11 @@ while [[ $# -gt 0 ]]; do
             require_opt_value "$1" "${2:-}"
             AGENTOMICS_ARGS+=(--dataset "$2")
             DATASET_NAME="$2"
+            shift 2
+            ;;
+        --task-type)
+            require_opt_value "$1" "${2:-}"
+            TASK_TYPE="$2"
             shift 2
             ;;
         --iterations)
@@ -362,10 +371,16 @@ if [ "$LOCAL_MODE" = true ]; then
 
     mkdir -p prepared_datasets
     if [ -n "$EFFECTIVE_DATASET_NAME" ]; then
-        conda run -n agentomics-prepare-env python src/prepare_datasets.py \
-            --dataset-dir "./datasets/${EFFECTIVE_DATASET_NAME}" \
-            --prepared-datasets-dir "$(pwd)/prepared_datasets" \
+        PREPARE_ARGS=(
+            --dataset-dir "./datasets/${EFFECTIVE_DATASET_NAME}"
+            --prepared-datasets-dir "$(pwd)/prepared_datasets"
             --prepared-test-sets-dir "$(pwd)/prepared_test_sets"
+        )
+        if [ -n "$TASK_TYPE" ]; then
+            PREPARE_ARGS+=(--task-type "$TASK_TYPE")
+        fi
+        conda run -n agentomics-prepare-env python src/prepare_datasets.py \
+            ${PREPARE_ARGS[@]+"${PREPARE_ARGS[@]}"}
     else
         conda run -n agentomics-prepare-env python src/prepare_datasets.py --prepare-all \
             --datasets-dir "$(pwd)/datasets" \
@@ -538,6 +553,9 @@ else
     PREPARE_ARGS=()
     if [ -n "$EFFECTIVE_DATASET_NAME" ]; then
         PREPARE_ARGS=(--dataset-dir "./datasets/${EFFECTIVE_DATASET_NAME}")
+        if [ -n "$TASK_TYPE" ]; then
+            PREPARE_ARGS+=(--task-type "$TASK_TYPE")
+        fi
     else
         PREPARE_ARGS=(--prepare-all)
     fi
