@@ -62,14 +62,21 @@ Add an optional `dataset_config.json` to your dataset folder to avoid interactiv
 
 **`task_type` is the most important field** — without it you'll be prompted every time you prepare the dataset.
 
-```jsonc
+```json
 {
-    "task_type": "classification",   // optional: "classification" or "regression", you will be prompted for this during dataset preparation if omitted
-    "target_col": "label",           // optional: column name to predict, auto-detected if omitted
-    "positive_class": 1,             // optional: value that counts as "positive", only applicable for some binary classification metrics, auto-detected if omitted
-    "negative_class": 0              // optional: value that counts as "negative", only applicable for some binary classification metrics, auto-detected if omitted
+    "task_type": "classification",
+    "target_col": "label",
+    "positive_class": 1,
+    "negative_class": 0
 }
 ```
+
+Fields:
+
+- `task_type` (optional): `"classification"` or `"regression"`; if omitted, you will be prompted during dataset preparation.
+- `target_col` (optional): column name to predict; auto-detected if omitted.
+- `positive_class` (optional): value that counts as "positive"; only applicable for some binary classification metrics, auto-detected if omitted.
+- `negative_class` (optional): value that counts as "negative"; only applicable for some binary classification metrics, auto-detected if omitted.
 
 Include only the fields you need — at minimum just `task_type`. Values from this file take precedence over auto-detection, but CLI flags (`--task-type`, `--target-col`, etc.) override the config file.
 
