@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import json
 import pandas as pd
 import argparse
 
@@ -38,6 +39,9 @@ def generate_mirbench_files(dataset: str | None = None):
         with open(f"{local_dset_path}/dataset_description.md", "w") as f:
             f.write(info["description"])
 
+        with open(f"{local_dset_path}/dataset_config.json", "w") as f:
+            json.dump({"task_type": "classification"}, f, indent=4)
+
         for split in info["splits"]:
             download_path = REPO_PATH / ".miRBench"
             os.makedirs(download_path, exist_ok=True)
@@ -65,7 +69,10 @@ def generate_genomic_benchmarks_files(dataset: str | None = None):
         with open(f"{local_dset_path}/dataset_description.md", "w") as f:
             f.write(GENOMIC_BENCHMARKS_DATASETS[dataset_name])
 
-        for split in ["test", "train"]:
+        with open(f"{local_dset_path}/dataset_config.json", "w") as f:
+            json.dump({"task_type": "classification"}, f, indent=4)
+
+        for split in ["test","train"]:
             data = []
             for label_path in (download_path / split).iterdir():
                 label = label_path.stem

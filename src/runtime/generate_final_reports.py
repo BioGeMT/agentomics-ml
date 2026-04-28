@@ -18,6 +18,7 @@ from agents.steps.validation_evaluation import ValidationEvaluationStep
 from runtime.evaluate_result import get_metrics
 from runtime.step_outputs import load_step_output
 from utils.config import Config
+from utils.task_types import TaskTypes
 from runtime.iteration_reports import write_iteration_report
 from runtime.read_write_utils import get_archived_iterations, load_best_iteration_snapshot_iteration, load_config_from_run_dir_and_reroot
 
@@ -260,13 +261,13 @@ def load_prepared_dataset_meta(prepared_datasets_dir: Path, dataset_name: str) -
         raise SystemExit(f"Failed to parse metadata.json: {meta_path} :: {e}")
 
     task_type = str(d.get("task_type", "")).strip().lower()
-    if task_type not in ("classification", "regression"):
+    if task_type not in TaskTypes:
         raise SystemExit(f"Invalid or missing task_type in metadata.json: {task_type!r}")
     numeric_label_col = d.get("numeric_label_col")
     if not numeric_label_col:
         raise SystemExit("metadata.json missing required key: 'numeric_label_col'")
     label_to_scalar = d.get("label_to_scalar")
-    if task_type == "classification":
+    if task_type == TaskTypes.CLASSIFICATION:
         if not isinstance(label_to_scalar, dict) or not label_to_scalar:
             raise SystemExit("classification metadata.json must include non-empty 'label_to_scalar'")
 
@@ -335,7 +336,7 @@ def merge_labels_and_preds(labeled: pd.DataFrame, preds: pd.DataFrame, meta: Dat
     if y_col not in labeled.columns:
         raise ValueError(f"Label column '{y_col}' not found in labeled CSV. Available: {list(labeled.columns)}")
 
-    if meta.task_type == "regression":
+    if meta.task_type == TaskTypes.REGRESSION:
         pred_col = "prediction"
         if pred_col not in preds.columns:
             raise ValueError(f"Expected regression prediction column '{pred_col}'. Available: {list(preds.columns)}")
@@ -506,7 +507,7 @@ def build_plots_for_split(
     prefix = plots_dir / f"iter_{iteration}_{split.split_name}"
     title_prefix = split.split_name.title()
 
-    if meta.task_type == "classification":
+    if meta.task_type == TaskTypes.CLASSIFICATION:
         return plot_classification(y_true, y_pred, prefix, title_prefix)
     return plot_regression(y_true, y_pred, prefix, title_prefix)
 
@@ -609,7 +610,7 @@ def plots_compare_splits_page_flowables(
         return []
 
     task_type = (task_type or "").strip().lower()
-    if task_type == "classification":
+    if task_type == TaskTypes.CLASSIFICATION:
         row_suffixes = ["_roc", "_pr"]
     else:
         row_suffixes = ["_pred_vs_actual", "_residuals_vs_pred", "_residuals_hist"]
@@ -870,7 +871,7 @@ def main() -> None:
     run_meta = load_run_meta(config)
     dataset_meta = load_prepared_dataset_meta(prepared_datasets, config.dataset)
 
-    if run_meta.task_type in ("classification", "regression") and run_meta.task_type != dataset_meta.task_type:
+    if run_meta.task_type in TaskTypes and run_meta.task_type != dataset_meta.task_type:
         print(f"[WARN] task_type mismatch: config={run_meta.task_type} metadata={dataset_meta.task_type}")
 
     iterations = get_archived_iterations(config)

@@ -5,6 +5,7 @@ import sys
 import pandas as pd
 
 from utils.metrics import get_classification_metrics_functions, get_regression_metrics_functions
+from utils.task_types import TaskTypes
 
 
 def get_metrics(
@@ -25,7 +26,7 @@ def get_metrics(
     if len(merged) != len(test):
         print('WARNING: PREDICTIONS LENGTH DOESNT MATCH TEST DATASET')
 
-    if task_type == "classification":
+    if task_type == TaskTypes.CLASSIFICATION:
         return _get_classification_metrics(
             results=results,
             merged=merged,
@@ -33,13 +34,13 @@ def get_metrics(
             pred_col=pred_col,
             prob_col_prefix=prob_col_prefix,
         )
-    if task_type == "regression":
+    if task_type == TaskTypes.REGRESSION:
         return _get_regression_metrics(
             merged=merged,
             numeric_label_col=numeric_label_col,
             pred_col=pred_col,
         )
-    raise ValueError(f"Unknown task_type: {task_type}. Expected 'classification' or 'regression'.")
+    raise ValueError(f"Unknown task_type: {task_type}. Expected one of {TaskTypes}.")
 
 
 def _get_classification_metrics(results, merged, numeric_label_col: str, pred_col: str, prob_col_prefix: str):
@@ -81,7 +82,7 @@ def main():
     parser.add_argument("-t", "--test", required=True, help="Path to the CSV file with labels.")
     parser.add_argument("--pred-col", default="prediction", help="Name of the prediction column in the results file.")
     parser.add_argument("--numeric-label-col", default="numeric_label", help="Name of the numeric label column in the file.")
-    parser.add_argument("--task-type", choices=["classification", "regression"], required=True, help="Type of task: classification or regression.")
+    parser.add_argument("--task-type", choices=sorted(TaskTypes), required=True, help="Type of task: classification or regression.")
 
     args = parser.parse_args()
 

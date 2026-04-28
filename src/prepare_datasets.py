@@ -1,17 +1,19 @@
 import argparse
+import sys
 from pathlib import Path
 from rich.console import Console
 
 from datasets.dataset_utils import prepare_dataset, check_dataset_prepared
 from datasets.datasets_interactive import prepare_all_datasets
+from utils.task_types import TaskTypes
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Dataset preparation with auto-detection")
+    parser = argparse.ArgumentParser(description="Dataset preparation")
     parser.add_argument('--dataset-dir', type=Path, help='Single dataset directory to prepare')
-    parser.add_argument('--prepare-all', action='store_true', help='Prepare all datasets in datasets-dir and auto-detect their targets and tasks')
+    parser.add_argument('--prepare-all', action='store_true', help='Prepare all datasets in datasets-dir')
     parser.add_argument('--target-col', type=str, default=None, help='Target column name (auto-detected if not provided)')
-    parser.add_argument('--task-type', choices=['classification', 'regression'], default=None, help='Task type (auto-detected if not provided)')
+    parser.add_argument('--task-type', choices=sorted(TaskTypes), default=None, help='Task type (prompted if not provided)')
     parser.add_argument('--positive-class', help='Value used in the label column for a positive class (affects some binary classification metrics). If not provided, numeric labels are assigned based on the label appearance order in the train csv file.', default=None)
     parser.add_argument('--negative-class', help='Value used in the label column for a negative class (affects some binary classification metrics). If not provided, numeric labels are assigned based on the label appearance order in the train csv file.', default=None)
     parser.add_argument('--datasets-dir', default='./datasets', help='Directory containing raw datasets')
@@ -41,15 +43,17 @@ def main():
             prepare_dataset(
                 dataset_dir=dataset_dir,
                 target_col=args.target_col,
-                positive_class=args.positive_class, #is auto-detected inside - do the same for target/task ?
+                positive_class=args.positive_class,
                 negative_class=args.negative_class,
                 task_type=args.task_type,
                 output_dir=prepared_datasets_dir,
-                test_sets_output_dir=prepared_test_sets_dir
+                test_sets_output_dir=prepared_test_sets_dir,
+                interactive=sys.stdin.isatty(),
             )
             console.print(f"[green]Dataset '{dataset_dir.name}' prepared successfully![/green]")
         except Exception as e:
             console.print(f"[red]Dataset '{dataset_dir.name}' preparation failed! {e}[/red]")
+            sys.exit(1)
         
 if __name__ == "__main__":
     main()

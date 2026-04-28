@@ -13,6 +13,7 @@ import pandas as pd
 
 from agents.steps.base import AgenticStep, AgenticStepOutput
 from runtime.filesystem import chown_tree_to_root
+from utils.task_types import TaskTypes
 from runtime.read_write_utils import get_last_successful_iteration, load_current_iteration_index, load_iteration_state, update_current_iteration_state
 from runtime.step_outputs import load_step_output
 from run_logging.logging_helpers import log_split_is_allowed
@@ -107,12 +108,12 @@ class DataSplitStep(AgenticStep):
         latest_split_dir = self._get_latest_split_dir()
         current_step_dir = self.config.current_step_dir
 
-        if self.config.task_type == 'classification':
+        if self.config.task_type == TaskTypes.CLASSIFICATION:
             extra_instructions = "Ensure that the validation split contains representative samples from ALL classes."
-        elif self.config.task_type == 'regression':
+        elif self.config.task_type == TaskTypes.REGRESSION:
             extra_instructions = ""
         else:
-            raise ValueError(f"Unknown task type: {self.config.task_type}. Supported types are 'classification' and 'regression'.")
+            raise ValueError(f"Unknown task type: {self.config.task_type}. Supported types are {TaskTypes}.")
 
         if iteration != 0 and latest_split_dir is not None:
             extra_info = f"""
