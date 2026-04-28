@@ -365,8 +365,10 @@ if [ "$LOCAL_MODE" = true ]; then
     echo -e "${RED}Running in local mode - this is only recommended if you run in a non-vulnerable environment!${NOCOLOR}"
     echo "For Docker mode (secure run), re-run without the --local flag."
     
-    if ! conda env list | grep -q "agentomics-prepare-env"; then
+    if ! conda env list | grep -q "^agentomics-prepare-env "; then
         conda env create -f envs/environment_prepare.yaml -q
+    else
+        conda env update -n agentomics-prepare-env -f envs/environment_prepare.yaml -q --prune
     fi
 
     mkdir -p prepared_datasets
