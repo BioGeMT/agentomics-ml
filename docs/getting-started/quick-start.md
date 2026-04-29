@@ -57,10 +57,10 @@ See [Preparing Datasets](../user-guide/datasets.md) for details.
 
 ## Example Datasets
 
-Download example datasets to try:
+Download example dataset to try:
 
 ```bash
-./scripts/download_example_datasets.sh
+./scripts/download_example_dataset.sh
 ```
 
 ## What Happens Next

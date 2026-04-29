@@ -50,6 +50,8 @@ def generate_mirbench_files(dataset: str | None = None):
             df = df.rename(columns={"label": CLASS_COL})
             df.to_csv(f"{local_dset_path}/{split}.csv", index=False)
 
+        print(f"Downloaded dataset to {local_dset_path}")
+
 
 def generate_genomic_benchmarks_files(dataset: str | None = None):
     from genomic_benchmarks.loc2seq import download_dataset
@@ -59,6 +61,7 @@ def generate_genomic_benchmarks_files(dataset: str | None = None):
     for dataset_name in names:
         download_path = download_dataset(
             dataset_name,
+            version=0,
             dest_path=REPO_PATH / ".genomic_benchmarks",
             cache_path=REPO_PATH / ".genomic_benchmarks",
         )
@@ -81,24 +84,19 @@ def generate_genomic_benchmarks_files(dataset: str | None = None):
                     data.append({"sequence": seq, CLASS_COL: label})
             df = pd.DataFrame(data)
             df.to_csv(f"{local_dset_path}/{split}.csv", index=False)
+        
+        print(f"Downloaded dataset to {local_dset_path}")
 
-def generate_dataset_files(dataset: str | None = None):
-    if dataset is None:
+def generate_dataset_files(download_all: bool = False):
+    if download_all:
         generate_genomic_benchmarks_files()
         generate_mirbench_files()
-        return
-
-    if dataset in GENOMIC_BENCHMARKS_DATASETS:
-        generate_genomic_benchmarks_files(dataset)
-    elif dataset in MIRBENCH_DATASETS:
-        generate_mirbench_files(dataset)
     else:
-        available = sorted(GENOMIC_BENCHMARKS_DATASETS.keys() | MIRBENCH_DATASETS.keys())
-        raise ValueError(f"Unknown dataset {dataset!r}. Available: {available}")
+        generate_mirbench_files("AGO2_CLASH_Hejret2023")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Dataset downloader helper script parser")
-    parser.add_argument("--dataset", help="Name of the dataset to download")
+    parser.add_argument("--all", action="store_true", help="Download all datasets from the miRBench and GenomicBenchmarks collections")
     args = parser.parse_args()
 
-    generate_dataset_files(args.dataset)
+    generate_dataset_files(args.all)
