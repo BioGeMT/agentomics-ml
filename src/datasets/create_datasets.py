@@ -87,16 +87,25 @@ def generate_genomic_benchmarks_files(dataset: str | None = None):
         
         print(f"Downloaded dataset to {local_dset_path}")
 
-def generate_dataset_files(download_all: bool = False):
+def generate_dataset_files(dataset: str, download_all: bool = False):
     if download_all:
         generate_genomic_benchmarks_files()
         generate_mirbench_files()
     else:
-        generate_mirbench_files("AGO2_CLASH_Hejret2023")
+        if dataset in GENOMIC_BENCHMARKS_DATASETS:
+            generate_genomic_benchmarks_files(dataset)
+        elif dataset in MIRBENCH_DATASETS:
+            generate_mirbench_files(dataset)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Dataset downloader helper script parser")
-    parser.add_argument("--all", action="store_true", help="Download all datasets from the miRBench and GenomicBenchmarks collections")
+    parser.add_argument("--all", action="store_true", help="Download all datasets from the miRBench and GenomicBenchmarks collections (overrides --dataset)")
+    parser.add_argument(
+        "--dataset", 
+        default="AGO2_CLASH_Hejret2023",
+        choices=GENOMIC_BENCHMARKS_DATASETS.keys() | MIRBENCH_DATASETS.keys(),
+        help="Specific single dataset to download. Defaults to AGO2_CLASH_Hejret2023"
+    )
     args = parser.parse_args()
 
-    generate_dataset_files(args.all)
+    generate_dataset_files(args.dataset, args.all)
