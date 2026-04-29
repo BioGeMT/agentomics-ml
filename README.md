@@ -27,8 +27,8 @@ cd agentomics-ml
 cp .env.example .env
 # Edit .env and set at least one API key (OPENROUTER_API_KEY or OPENAI_API_KEY)
 
-# Download example datasets
-./scripts/download_example_datasets.sh
+# Download example dataset
+./scripts/download_example_dataset.sh
 
 ./run.sh
 ```

@@ -142,7 +142,7 @@ prepared_test_sets/my_dataset/
 Download example datasets:
 
 ```bash
-./scripts/download_example_datasets.sh
+./scripts/download_example_dataset.sh --all
 ```
 
 ## Data Format Tips

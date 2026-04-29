@@ -2,7 +2,7 @@
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-"$REPO_DIR/scripts/download_example_datasets.sh"
+"$REPO_DIR/scripts/download_example_dataset.sh" --all
 
 REPOS_DIR="$(cd "$REPO_DIR/.." && pwd)"
 
