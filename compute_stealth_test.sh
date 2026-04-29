@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-source "./bash_helpers.sh"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/bash_helpers.sh"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -17,6 +18,15 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+AGENTOMICS_DIR="${AGENTOMICS_DIR:-$SCRIPT_DIR}"
+
+need_cmd docker
+ensure_agentomics_docker_image
+
+RUN_IMAGE_PYTHON="/opt/conda/envs/agentomics-env/bin/python"
+RUN_IMAGE_RUNTIME_FLAGS=()
+append_agentomics_runtime_flags_if_needed RUN_IMAGE_RUNTIME_FLAGS agentomics_img "$RUN_IMAGE_PYTHON" "$AGENTOMICS_DIR"
 
 CONFIG_FILE="$EXPERIMENT_FOLDER/extras/config.json"
 AGENT_ID=$(jq -r '.agent_id' "$CONFIG_FILE")
@@ -91,15 +101,17 @@ done < <(find "$EXPERIMENT_FOLDER" -maxdepth 3 -type d -name "iteration_*" | sor
 echo "Found ${#ITERATION_PATHS[@]} iterations"
 
 if [[ "$IS_BIOMLBENCH" == true ]]; then
+    mkdir -p prepared_datasets prepared_test_sets
     docker run --rm \
         --env-file $(pwd)/.env \
-        -e PYTHONPATH=/repository/src \
-        -v "$(pwd)":/repository \
+        ${RUN_IMAGE_RUNTIME_FLAGS[@]+"${RUN_IMAGE_RUNTIME_FLAGS[@]}"} \
+        -v "$(pwd)/datasets":/repository/datasets \
+        -v "$(pwd)/prepared_datasets":/repository/prepared_datasets \
+        -v "$(pwd)/prepared_test_sets":/repository/prepared_test_sets \
         -v "$HOME/.cache/bioml-bench":/root/.cache/bioml-bench \
-        -w /repository \
-        --entrypoint /opt/conda/envs/agentomics-env/bin/python \
+        --entrypoint "$RUN_IMAGE_PYTHON" \
         agentomics_img \
-        src/utils/biomlbench_custom_prepare.py \
+        -m agentomics.utils.biomlbench_custom_prepare \
         --agentomics-dir /repository \
         --dataset-name "$DATASET"
 fi
@@ -159,14 +171,13 @@ if [[ "$IS_PROTEINGYM" == true ]]; then
         docker run --rm \
             --gpus all \
             --env NVIDIA_VISIBLE_DEVICES=all \
-            -e PYTHONPATH=/repository/src \
+            ${RUN_IMAGE_RUNTIME_FLAGS[@]+"${RUN_IMAGE_RUNTIME_FLAGS[@]}"} \
             -e PATH="/experiment/$AGENT_DIR_REL/.conda/envs/${AGENT_ID}_env/bin:$PATH" \
-            -v "$(pwd)/src":/repository/src:ro \
             -v "$(dirname "$TRAIN_DATA_ABS"):/train_data_dir:ro" \
             -v "$EXPERIMENT_FOLDER_ABS:/experiment" \
             -v "$(dirname "$OUTPUT_FILE_ABS"):/output_dir" \
-            --entrypoint /opt/conda/envs/agentomics-env/bin/python \
-            agentomics_img src/utils/generate_protein_cv_preds.py \
+            --entrypoint "$RUN_IMAGE_PYTHON" \
+            agentomics_img -m agentomics.utils.generate_protein_cv_preds \
             --iteration-dir "/experiment/$ITERATION_DIR_REL" \
             --train-csv "/train_data_dir/$(basename "$TRAIN_DATA_ABS")" \
             --output-csv "/output_dir/$(basename "$OUTPUT_FILE_ABS")" \
@@ -192,16 +203,17 @@ EXPERIMENT_FOLDER_ABS="$(cd "$(dirname "$EXPERIMENT_FOLDER")" && pwd)/$(basename
 TEST_OUTPUT_DIR_ABS="$(cd "$(dirname "$TEST_OUTPUT_DIR")" && pwd)/$(basename "$TEST_OUTPUT_DIR")"
 docker run --rm \
     --env-file $(pwd)/.env \
-    -e PYTHONPATH=/repository/src \
-    -v "$(pwd)/src":/repository/src:ro \
+    ${RUN_IMAGE_RUNTIME_FLAGS[@]+"${RUN_IMAGE_RUNTIME_FLAGS[@]}"} \
     -v "$(pwd)/prepared_test_sets":/repository/prepared_test_sets:ro \
     -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
     -v "$EXPERIMENT_FOLDER_ABS":/experiment:ro \
     -v "$TEST_OUTPUT_DIR_ABS":/test_outputs:ro \
-    --entrypoint /opt/conda/envs/agentomics-env/bin/python \
-    agentomics_img src/run_logging/evaluate_stealth_test.py \
+    --entrypoint "$RUN_IMAGE_PYTHON" \
+    agentomics_img -m agentomics.run_logging.evaluate_stealth_test \
     --dataset "$DATASET" \
     --test-output-dir /test_outputs \
-    --experiment-folder /experiment
+    --experiment-folder /experiment \
+    --prepared-datasets-dir /repository/prepared_datasets \
+    --prepared-test-sets-dir /repository/prepared_test_sets
 
 echo "Stealth test evaluation complete"

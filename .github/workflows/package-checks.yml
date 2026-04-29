@@ -8,6 +8,8 @@ on:
       - "run.sh"
       - "bash_helpers.sh"
       - "build.sh"
+      - "download_example_datasets.sh"
+      - "environment_datasets.yaml"
       - "Dockerfile"
       - "Dockerfile.prepare"
       - "environment.yaml"
@@ -20,6 +22,7 @@ on:
       - "test/test_package_path_regressions.py"
       - "test/test_prepare_datasets.py"
       - "test/test_evaluate_stealth_test.py"
+      - "test/test_create_datasets.py"
   pull_request:
     paths:
       - ".github/workflows/package-checks.yml"
@@ -27,6 +30,8 @@ on:
       - "run.sh"
       - "bash_helpers.sh"
       - "build.sh"
+      - "download_example_datasets.sh"
+      - "environment_datasets.yaml"
       - "Dockerfile"
       - "Dockerfile.prepare"
       - "environment.yaml"
@@ -39,6 +44,7 @@ on:
       - "test/test_package_path_regressions.py"
       - "test/test_prepare_datasets.py"
       - "test/test_evaluate_stealth_test.py"
+      - "test/test_create_datasets.py"
 
 jobs:
   package-checks:
@@ -75,11 +81,12 @@ jobs:
             test.test_path_defaults \
             test.test_run_agent_interactive \
             test.test_package_path_regressions \
+            test.test_create_datasets \
             test.test_prepare_datasets \
             test.test_evaluate_stealth_test
 
       - name: Verify Shell Script Syntax
-        run: bash -n run.sh bash_helpers.sh build.sh
+        run: bash -n run.sh bash_helpers.sh build.sh download_example_datasets.sh
 
       - name: Verify Package Compiles
         run: |
@@ -90,4 +97,28 @@ jobs:
 
           package_dir = Path(agentomics.__file__).resolve().parent
           raise SystemExit(0 if compileall.compile_dir(str(package_dir), quiet=1) else 1)
+          PY
+
+      - name: Build Docker Images
+        run: |
+          docker build -t agentomics-ci -f Dockerfile .
+          docker build -t agentomics-prepare-ci -f Dockerfile.prepare .
+
+      - name: Verify Docker Package Location
+        run: |
+          docker run --rm --entrypoint /opt/conda/envs/agentomics-env/bin/python agentomics-ci - <<'PY'
+          import agentomics
+          from pathlib import Path
+
+          package_dir = Path(agentomics.__file__).resolve().parent
+          print(f"Loaded run image package from: {package_dir}")
+          assert "site-packages" in str(package_dir), package_dir
+          PY
+          docker run --rm --entrypoint /opt/conda/envs/agentomics-prepare-env/bin/python agentomics-prepare-ci - <<'PY'
+          import agentomics
+          from pathlib import Path
+
+          package_dir = Path(agentomics.__file__).resolve().parent
+          print(f"Loaded prepare image package from: {package_dir}")
+          assert "site-packages" in str(package_dir), package_dir
           PY

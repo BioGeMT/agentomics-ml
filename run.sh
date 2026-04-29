@@ -82,6 +82,29 @@ install_agentomics_package_in_env() {
     conda run -n "$env_name" python -m pip install --quiet --no-deps "$AGENTOMICS_DIR"
 }
 
+append_proxy_build_args() {
+    local -n build_args_ref=$1
+
+    if [ -n "${HTTP_PROXY:-}" ]; then
+        build_args_ref+=(--build-arg "HTTP_PROXY=$HTTP_PROXY")
+    fi
+    if [ -n "${HTTPS_PROXY:-}" ]; then
+        build_args_ref+=(--build-arg "HTTPS_PROXY=$HTTPS_PROXY")
+    fi
+    if [ -n "${NO_PROXY:-}" ]; then
+        build_args_ref+=(--build-arg "NO_PROXY=$NO_PROXY")
+    fi
+    if [ -n "${http_proxy:-}" ]; then
+        build_args_ref+=(--build-arg "http_proxy=$http_proxy")
+    fi
+    if [ -n "${https_proxy:-}" ]; then
+        build_args_ref+=(--build-arg "https_proxy=$https_proxy")
+    fi
+    if [ -n "${no_proxy:-}" ]; then
+        build_args_ref+=(--build-arg "no_proxy=$no_proxy")
+    fi
+}
+
 while [[ $# -gt 0 ]]; do
     case $1 in
         -h|--help)
@@ -407,10 +430,15 @@ else
 
     FOUNDATION_MODEL_FLAGS=()
     DOCKER_BUILD_ARGS=()
+    RUN_IMAGE_PYTHON="/opt/conda/envs/agentomics-env/bin/python"
+    PREPARE_IMAGE_PYTHON="/opt/conda/envs/agentomics-prepare-env/bin/python"
+    RUN_IMAGE_RUNTIME_FLAGS=()
+    PREPARE_IMAGE_RUNTIME_FLAGS=()
     if [ -n "$FOUNDATION_MODEL_TYPE" ]; then
         DOCKER_BUILD_ARGS+=(--build-arg "FOUNDATION_MODEL_TYPE=$FOUNDATION_MODEL_TYPE")
         FOUNDATION_MODEL_FLAGS+=(-e "FOUNDATION_MODEL_TYPE=$FOUNDATION_MODEL_TYPE")
     fi
+    append_proxy_build_args DOCKER_BUILD_ARGS
 
     AGENTOMICS_IMAGE="agentomics_img"
     PREPARE_IMAGE="agentomics_prepare_img"
@@ -421,56 +449,26 @@ else
         echo "Build done"
 
         echo "Building the data preparation image"
-        docker build -t "$PREPARE_IMAGE" -f Dockerfile.prepare .
+        docker build -t "$PREPARE_IMAGE" -f Dockerfile.prepare ${DOCKER_BUILD_ARGS[@]+"${DOCKER_BUILD_ARGS[@]}"} .
         echo "Build done"
     else
         FM_TAG="NONE"
         if [ -n "$FOUNDATION_MODEL_TYPE" ]; then
             FM_TAG="$(echo "$FOUNDATION_MODEL_TYPE" | tr '[:lower:]' '[:upper:]')"
         fi
-        AGENTOMICS_IMAGE="${DOCKERHUB_USERNAME}/agentomics:FM-${FM_TAG}-latest"
-        PREPARE_IMAGE="${DOCKERHUB_USERNAME}/agentomics-prepare:latest"
+        REMOTE_AGENTOMICS_IMAGE="${DOCKERHUB_USERNAME}/agentomics:FM-${FM_TAG}-latest"
+        REMOTE_PREPARE_IMAGE="${DOCKERHUB_USERNAME}/agentomics-prepare:latest"
 
         echo "Pulling the run image"
-        docker pull "$AGENTOMICS_IMAGE"
+        docker pull "$REMOTE_AGENTOMICS_IMAGE"
         echo "Pulling the data preparation image"
-        docker pull "$PREPARE_IMAGE"
+        docker pull "$REMOTE_PREPARE_IMAGE"
+        docker tag "$REMOTE_AGENTOMICS_IMAGE" "$AGENTOMICS_IMAGE"
+        docker tag "$REMOTE_PREPARE_IMAGE" "$PREPARE_IMAGE"
     fi
-    AGENT_ID=$(docker run --rm -u $(id -u):$(id -g) -v "$(pwd)":/repository:ro --entrypoint \
-           /opt/conda/envs/agentomics-env/bin/python "$AGENTOMICS_IMAGE" -m agentomics.utils.create_user)
 
-    PREPARE_ARGS=()
-    if [ -n "$DATASET_NAME" ]; then
-        PREPARE_ARGS=(--dataset-dir "./datasets/${DATASET_NAME}")
-    else
-        PREPARE_ARGS=(--prepare-all)
-    fi
-    docker run \
-        -u $(id -u):$(id -g) \
-        --rm \
-        -it \
-        -e PYTHONWARNINGS=ignore \
-        --entrypoint /opt/conda/envs/agentomics-prepare-env/bin/python \
-        --name agentomics_prepare_cont_${AGENT_ID} \
-        -v "$(pwd)":/repository \
-        "$PREPARE_IMAGE" -m agentomics.prepare_datasets ${PREPARE_ARGS[@]+"${PREPARE_ARGS[@]}"}
-
-    printless_command docker volume create temp_agentomics_volume_${AGENT_ID}
-    cleanup_volume_on_finish
-
-    TEMP_API_KEY_HASH=""
-    if [ "$USE_PROVISIONING_KEY" = true ]; then
-        need_cmd conda
-        if ! conda env list | grep -q "^agentomics-env "; then
-            echo "Creating agentomics-env conda environment"
-            conda env create -f environment.yaml -q
-        fi
-        echo "Creating temporary API key with spend limit: $SPEND_LIMIT"
-        API_KEY_OUTPUT=$(conda run -n agentomics-env python -m agentomics.utils.api_keys_utils create --name "agentomics_run_$(date +%s)" --limit "$SPEND_LIMIT")
-        TEMP_API_KEY=$(echo "$API_KEY_OUTPUT" | cut -d',' -f1)
-        TEMP_API_KEY_HASH=$(echo "$API_KEY_OUTPUT" | cut -d',' -f2)
-        export OPENROUTER_API_KEY="$TEMP_API_KEY"
-    fi
+    append_agentomics_runtime_flags_if_needed RUN_IMAGE_RUNTIME_FLAGS "$AGENTOMICS_IMAGE" "$RUN_IMAGE_PYTHON" "$AGENTOMICS_DIR"
+    append_agentomics_runtime_flags_if_needed PREPARE_IMAGE_RUNTIME_FLAGS "$PREPARE_IMAGE" "$PREPARE_IMAGE_PYTHON" "$AGENTOMICS_DIR"
 
     OLLAMA_FLAGS=()
     if [ "$OLLAMA" = true ]; then
@@ -494,6 +492,69 @@ else
 
     if [ "$USE_PROVISIONING_KEY" = true ]; then
         DOCKER_API_KEY_ENV_VARS+=(-e "OPENROUTER_API_KEY=${OPENROUTER_API_KEY}")
+    fi
+
+    if [ "$LIST_MODE" = true ]; then
+        mkdir -p prepared_datasets prepared_test_sets
+        docker run \
+            --rm \
+            -it \
+            ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
+            -e PYTHONWARNINGS=ignore \
+            ${FOUNDATION_MODEL_FLAGS[@]+"${FOUNDATION_MODEL_FLAGS[@]}"} \
+            ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
+            ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
+            ${RUN_IMAGE_RUNTIME_FLAGS[@]+"${RUN_IMAGE_RUNTIME_FLAGS[@]}"} \
+            -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
+            -v "$(pwd)/prepared_test_sets":/repository/prepared_test_sets:ro \
+            --entrypoint "$RUN_IMAGE_PYTHON" \
+            "$AGENTOMICS_IMAGE" -m agentomics.run_agent_interactive ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
+        exit 0
+    fi
+
+    AGENT_ID=$(docker run --rm -u $(id -u):$(id -g) --entrypoint \
+           "$RUN_IMAGE_PYTHON" \
+           ${RUN_IMAGE_RUNTIME_FLAGS[@]+"${RUN_IMAGE_RUNTIME_FLAGS[@]}"} \
+           "$AGENTOMICS_IMAGE" -m agentomics.utils.create_user)
+
+    PREPARE_ARGS=()
+    if [ -n "$DATASET_NAME" ]; then
+        PREPARE_ARGS=(--dataset-dir "/repository/datasets/${DATASET_NAME}")
+    else
+        PREPARE_ARGS=(--prepare-all --datasets-dir /repository/datasets)
+    fi
+    mkdir -p prepared_datasets prepared_test_sets
+    docker run \
+        -u $(id -u):$(id -g) \
+        --rm \
+        -it \
+        -e PYTHONWARNINGS=ignore \
+        ${PREPARE_IMAGE_RUNTIME_FLAGS[@]+"${PREPARE_IMAGE_RUNTIME_FLAGS[@]}"} \
+        --entrypoint "$PREPARE_IMAGE_PYTHON" \
+        --name agentomics_prepare_cont_${AGENT_ID} \
+        -v "$(pwd)/datasets":/repository/datasets \
+        -v "$(pwd)/prepared_datasets":/repository/prepared_datasets \
+        -v "$(pwd)/prepared_test_sets":/repository/prepared_test_sets \
+        "$PREPARE_IMAGE" -m agentomics.prepare_datasets \
+        --prepared-datasets-dir /repository/prepared_datasets \
+        --prepared-test-sets-dir /repository/prepared_test_sets \
+        ${PREPARE_ARGS[@]+"${PREPARE_ARGS[@]}"}
+
+    printless_command docker volume create temp_agentomics_volume_${AGENT_ID}
+    cleanup_volume_on_finish
+
+    TEMP_API_KEY_HASH=""
+    if [ "$USE_PROVISIONING_KEY" = true ]; then
+        need_cmd conda
+        if ! conda env list | grep -q "^agentomics-env "; then
+            echo "Creating agentomics-env conda environment"
+            conda env create -f environment.yaml -q
+        fi
+        echo "Creating temporary API key with spend limit: $SPEND_LIMIT"
+        API_KEY_OUTPUT=$(conda run -n agentomics-env python -m agentomics.utils.api_keys_utils create --name "agentomics_run_$(date +%s)" --limit "$SPEND_LIMIT")
+        TEMP_API_KEY=$(echo "$API_KEY_OUTPUT" | cut -d',' -f1)
+        TEMP_API_KEY_HASH=$(echo "$API_KEY_OUTPUT" | cut -d',' -f2)
+        export OPENROUTER_API_KEY="$TEMP_API_KEY"
     fi
 
     GPU_FLAGS=()
@@ -528,11 +589,11 @@ else
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
             ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
-            -v "$(pwd)/src":/repository/src:ro \
+            ${RUN_IMAGE_RUNTIME_FLAGS[@]+"${RUN_IMAGE_RUNTIME_FLAGS[@]}"} \
             -v "$(pwd)/test":/repository/test:ro \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
-            --entrypoint /opt/conda/envs/agentomics-env/bin/python \
+            --entrypoint "$RUN_IMAGE_PYTHON" \
             "$AGENTOMICS_IMAGE" -m test.run_all_tests
     else
         docker run \
@@ -546,10 +607,10 @@ else
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
             ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
-            -v "$(pwd)/src":/repository/src:ro \
+            ${RUN_IMAGE_RUNTIME_FLAGS[@]+"${RUN_IMAGE_RUNTIME_FLAGS[@]}"} \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
-            --entrypoint /opt/conda/envs/agentomics-env/bin/python \
+            --entrypoint "$RUN_IMAGE_PYTHON" \
             "$AGENTOMICS_IMAGE" -m agentomics.run_agent_interactive ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
 
         if [ "$LIST_MODE" = true ]; then
@@ -570,15 +631,14 @@ else
             --name agentomics_test_eval_cont_${AGENT_ID} \
             ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
             -e AGENT_ID=${AGENT_ID} \
-            -e PYTHONPATH=/repository/src \
             -e PYTHONWARNINGS=ignore \
             ${FOUNDATION_MODEL_FLAGS[@]+"${FOUNDATION_MODEL_FLAGS[@]}"} \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
-            -v "$(pwd)/src":/repository/src:ro \
+            ${RUN_IMAGE_RUNTIME_FLAGS[@]+"${RUN_IMAGE_RUNTIME_FLAGS[@]}"} \
             -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
             -v "$(pwd)/prepared_test_sets":/repository/prepared_test_sets:ro \
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
-            --entrypoint /opt/conda/envs/agentomics-env/bin/python \
+            --entrypoint "$RUN_IMAGE_PYTHON" \
             "$AGENTOMICS_IMAGE" -m agentomics.run_logging.evaluate_log_test --agent-id "${AGENT_ID}"
 
         mkdir -p outputs/${AGENT_ID}/best_run_files outputs/${AGENT_ID}/reports outputs/${AGENT_ID}/run_files outputs/${AGENT_ID}/extras
@@ -600,9 +660,11 @@ else
         docker run --rm \
           -u "$(id -u):$(id -g)" \
           -e MPLCONFIGDIR="$MPLCONFIGDIR_IN_CONTAINER" \
-          -v "$(pwd)":/repository \
+          ${RUN_IMAGE_RUNTIME_FLAGS[@]+"${RUN_IMAGE_RUNTIME_FLAGS[@]}"} \
+          -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
+          -v "$(pwd)/prepared_test_sets":/repository/prepared_test_sets:ro \
           -v "$(pwd)/outputs/${AGENT_ID}":/agent_out \
-          --entrypoint /opt/conda/envs/agentomics-env/bin/python \
+          --entrypoint "$RUN_IMAGE_PYTHON" \
           "$AGENTOMICS_IMAGE" -m agentomics.generate_final_reports \
             --agent-dir /agent_out --prepared-datasets /repository/prepared_datasets \
             --prepared-tests /repository/prepared_test_sets

@@ -65,6 +65,13 @@ Download example datasets to try:
 ./download_example_datasets.sh
 ```
 
+The same workflow is also available through the installed package:
+
+```bash
+python -m pip install ".[datasets]"
+agentomics-download-datasets
+```
+
 ## What Happens Next
 
 The agent will:

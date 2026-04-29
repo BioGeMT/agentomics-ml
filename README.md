@@ -32,6 +32,10 @@ cp .env.example .env
 # Download example datasets
 ./download_example_datasets.sh
 
+# Or install the package with dataset extras and use the CLI directly
+# python -m pip install ".[datasets]"
+# agentomics-download-datasets
+
 ./run.sh
 ```
 
@@ -79,4 +83,3 @@ bioRxiv (preprint) https://www.biorxiv.org/content/10.64898/2026.01.27.702049v1
 ## License
 
 MIT. See `LICENSE`.
-

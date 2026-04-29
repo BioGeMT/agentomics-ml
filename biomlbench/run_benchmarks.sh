@@ -95,13 +95,14 @@ ensure_agentomics_env() {
     echo "Creating agentomics-env conda environment"
     conda env create -f environment.yaml -q
   fi
+  conda run -n agentomics-env python -m pip install --quiet --no-deps "$REPOS_DIR/agentomics-ml"
 }
 
 update_config
 ensure_agentomics_env
 
 # Create API key
-API_KEY_OUTPUT=$(cd "$REPOS_DIR/agentomics-ml" && PYTHONPATH="$REPOS_DIR/agentomics-ml/src" conda run -n agentomics-env python src/utils/api_keys_utils.py create --name "agentomics_run_$(date +%s)" --limit "$SPEND_LIMIT")
+API_KEY_OUTPUT=$(cd "$REPOS_DIR/agentomics-ml" && conda run -n agentomics-env python -m agentomics.utils.api_keys_utils create --name "agentomics_run_$(date +%s)" --limit "$SPEND_LIMIT")
 API_KEY=$(echo "$API_KEY_OUTPUT" | cut -d',' -f1)
 API_KEY_HASH=$(echo "$API_KEY_OUTPUT" | cut -d',' -f2)
 echo "Created API key with the following spend limit: $SPEND_LIMIT"
@@ -150,11 +151,12 @@ cleanup
 
 # Setup files that need to be in the agentomics 'biomlbench agent' folder
 setup_support_files() {
-  cp -r "$REPOS_DIR"/agentomics-ml/foundation_models "$REPOS_DIR"/biomlbench/agents/agentomics-ml
+  cp "$REPOS_DIR"/agentomics-ml/pyproject.toml "$REPOS_DIR"/biomlbench/agents/agentomics-ml/pyproject.toml
+  cp "$REPOS_DIR"/agentomics-ml/README.md "$REPOS_DIR"/biomlbench/agents/agentomics-ml/README.md
   cp "$REPOS_DIR"/agentomics-ml/environment.yaml "$REPOS_DIR"/biomlbench/agents/agentomics-ml/environment.yaml
   cp "$REPOS_DIR"/agentomics-ml/environment_agent.yaml "$REPOS_DIR"/biomlbench/agents/agentomics-ml/environment_agent.yaml
-  cp "$REPOS_DIR"/agentomics-ml/src/utils/foundation_models_utils.py "$REPOS_DIR"/biomlbench/agents/agentomics-ml/foundation_models_utils.py
-  cp "$REPOS_DIR"/agentomics-ml/src/utils/download_foundation_models.py "$REPOS_DIR"/biomlbench/agents/agentomics-ml/download_foundation_models.py
+  mkdir -p "$REPOS_DIR"/biomlbench/agents/agentomics-ml/src
+  cp -r "$REPOS_DIR"/agentomics-ml/src/agentomics "$REPOS_DIR"/biomlbench/agents/agentomics-ml/src/agentomics
 }
 
 cd "$REPOS_DIR"/biomlbench
@@ -182,14 +184,12 @@ if ! conda env list | grep -q "^agentomics-env "; then
   conda env create -f "$REPOS_DIR/agentomics-ml/environment.yaml"
 fi
 
-PROJECT_ROOT="$REPOS_DIR/agentomics-ml/src"
-export PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH"
 cd "$REPOS_DIR"/agentomics-ml
-conda run -n agentomics-env python src/run_logging/biomlbench_test_eval.py --results-dir=$RESULTS_DIR --grade-json "$GRADE_JSON"
+conda run -n agentomics-env python -m agentomics.run_logging.biomlbench_test_eval --results-dir=$RESULTS_DIR --grade-json "$GRADE_JSON"
 
 # Get config path and log API usage, then delete key
 CONFIG_PATH="$code_path/extras/config.json"
-cd "$REPOS_DIR/agentomics-ml" && PYTHONPATH="$REPOS_DIR/agentomics-ml/src" conda run -n agentomics-env python src/utils/api_keys_utils.py cleanup-and-log --config-path "$CONFIG_PATH" --api-key-hash "$API_KEY_HASH"
+cd "$REPOS_DIR/agentomics-ml" && conda run -n agentomics-env python -m agentomics.utils.api_keys_utils cleanup-and-log --config-path "$CONFIG_PATH" --api-key-hash "$API_KEY_HASH"
 
 # Optional removal of conda (uses a lot of storage)
 # cd "$REPOS_DIR/biomlbench"

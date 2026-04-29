@@ -1,8 +1,5 @@
 #!/bin/bash
 set -euo pipefail
-git clone -b $PULL_BRANCH https://github.com/BioGeMT/agentomics-ml.git /home/agentomics-ml
-
-cp -r /home/agentomics-ml/src /home/agent/src
 
 format_time() {
   local time_in_sec=$1

@@ -78,13 +78,13 @@ conda env create -f environment_prepare.yaml
 conda activate agentomics-prepare-env
 
 # Prepare datasets
-python -m agentomics.prepare_datasets --prepare-all
+agentomics-prepare-datasets --prepare-all
 ```
 
 ### Preparation Options
 
 ```bash
-python -m agentomics.prepare_datasets --help
+agentomics-prepare-datasets --help
 ```
 
 Key options:
@@ -121,6 +121,13 @@ Download example datasets:
 
 ```bash
 ./download_example_datasets.sh
+```
+
+Or through the installed package:
+
+```bash
+python -m pip install ".[datasets]"
+agentomics-download-datasets
 ```
 
 ## Data Format Tips

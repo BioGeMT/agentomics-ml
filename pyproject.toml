@@ -30,12 +30,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-foundation-models = [
-  "torch>=2.9,<3",
-  "transformers>=4.47,<5",
-  "einops>=0.8,<1",
-  "multimolecule>=0.0.8,<1",
-]
 reports = [
   "matplotlib>=3.8,<4",
   "reportlab>=4.2,<5",
@@ -46,11 +40,13 @@ datasets = [
   "miRBench",
 ]
 all = [
-  "agentomics-ml[foundation-models,reports,datasets]",
+  "agentomics-ml[reports,datasets]",
 ]
 
 [project.scripts]
 agentomics = "agentomics.run_agent_interactive:main"
+agentomics-download-datasets = "agentomics.utils.create_datasets:main"
+agentomics-prepare-datasets = "agentomics.prepare_datasets:main"
 
 [tool.setuptools]
 include-package-data = true
@@ -60,4 +56,3 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "agentomics.utils.providers" = ["configured_providers.yaml"]
-"agentomics.resources.foundation_models" = ["*.yaml", "*.md"]

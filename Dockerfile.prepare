@@ -8,11 +8,15 @@ RUN mamba env create -f environment_prepare.yaml \
 # Initialize conda
 RUN conda init bash
 
-# Set working directory
-WORKDIR /repository
+# Build and install the package artifact used at runtime
+WORKDIR /tmp/agentomics-build
 COPY pyproject.toml README.md ./
 COPY src/agentomics ./src/agentomics
-RUN conda run -n agentomics-prepare-env python -m pip install --no-deps /repository
+RUN python -m pip wheel --no-deps --wheel-dir /tmp/agentomics-dist /tmp/agentomics-build \
+    && conda run -n agentomics-prepare-env python -m pip install --no-deps /tmp/agentomics-dist/*.whl
+
+# Set working directory
+WORKDIR /repository
 
 # Set the default command to run preparation directly
 ENTRYPOINT ["/opt/conda/envs/agentomics-prepare-env/bin/python", "-m", "agentomics.prepare_datasets"]

@@ -14,7 +14,7 @@ class OpenAiProvider(Provider):
         """Fetch and filter models from OpenAI API."""
         models = self.fetch_models()
         if not models:
-            return None
+            return []
         # non-exhaustive list of patterns to exclude
         exclude_patterns = ["whisper", "dall-e", "tts", "embedding", "vision", "image", "audio", "moderation", "sora", "transcribe", "realtime"]
         
@@ -51,11 +51,12 @@ class OpenAiProvider(Provider):
     def interactive_model_selection(self, limit: int = None) -> Optional[str]:
         """Ovveriding method in Provider class. Interactive OpenAI model selection."""
         models = self.filter_models()
+        if not models:
+            self.console.print("Could not fetch models from OpenAI", style="red")
+            return None
+
         # sort descending by first digit in model name
         models.sort(key=lambda m: int(''.join(filter(str.isdigit, m.get("id", "")))[:1]) if any(c.isdigit() for c in m.get("id", "")) else 0, reverse=True)
-
-        if not models:
-            return None
         
         if limit and limit < len(models): models = models[:limit]
         

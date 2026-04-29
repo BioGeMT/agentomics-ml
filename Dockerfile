@@ -15,10 +15,13 @@ RUN mamba env create -f environment.yaml \
     && mamba clean -afy \
     && rm -rf /tmp/conda-pkgs
 
-WORKDIR /repository
+WORKDIR /tmp/agentomics-build
 COPY pyproject.toml README.md ./
 COPY src/agentomics ./src/agentomics
-RUN conda run -n agentomics-env python -m pip install --no-deps /repository
+RUN python -m pip wheel --no-deps --wheel-dir /tmp/agentomics-dist /tmp/agentomics-build \
+    && conda run -n agentomics-env python -m pip install --no-deps /tmp/agentomics-dist/*.whl
+
+WORKDIR /repository
 
 # Initialize conda for bash and set up auto-activation
 RUN conda init bash \
@@ -34,7 +37,7 @@ RUN if [ -n "$FOUNDATION_MODEL_TYPE" ]; then \
       mamba env create -f environment_fm.yaml \
       && mamba clean -afy \
       && rm -rf /tmp/conda-pkgs \
-      && conda run -n fm-download-env python -m pip install --no-deps /repository \
+      && conda run -n fm-download-env python -m pip install --no-deps /tmp/agentomics-dist/*.whl \
       && /opt/conda/envs/fm-download-env/bin/python -m agentomics.utils.download_foundation_models \
       && conda env remove -n fm-download-env; \
     else \

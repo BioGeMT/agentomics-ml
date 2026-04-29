@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
-source "./bash_helpers.sh"
+AGENTOMICS_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$AGENTOMICS_DIR/bash_helpers.sh"
 
 DOCKER_MODE=true
 CPU_ONLY=false
@@ -143,6 +144,10 @@ if [[ "$DOCKER_MODE" == true ]]; then
     fi
     ensure_agentomics_docker_image
 
+    RUN_IMAGE_PYTHON="/opt/conda/envs/agentomics-env/bin/python"
+    RUN_IMAGE_RUNTIME_FLAGS=()
+    append_agentomics_runtime_flags_if_needed RUN_IMAGE_RUNTIME_FLAGS agentomics_img "$RUN_IMAGE_PYTHON" "$AGENTOMICS_DIR"
+
     AGENT_DIR_ABS="$(cd "$(dirname "$AGENT_DIR")" && pwd)/$(basename "$AGENT_DIR")"
     INPUT_PATH_ABS="$(cd "$(dirname "$INPUT_PATH")" && pwd)/$(basename "$INPUT_PATH")"
     OUTPUT_PATH_ABS="$(cd "$(dirname "$OUTPUT_PATH")" && pwd)/$(basename "$OUTPUT_PATH")"
@@ -162,13 +167,12 @@ if [[ "$DOCKER_MODE" == true ]]; then
             bash -c "conda install -n base mamba -c conda-forge -y && mamba env create -f /workspace/conda_environment.yml -p /workspace/.conda/envs/${AGENT_NAME}_env"
     fi
 
-    NORMALIZE_SCRIPT_ABS="$(cd "$(dirname "$0")" && pwd)/src/utils/normalize_dataset.py"
     NORMALIZED_FILENAME=$(docker run --rm \
+        ${RUN_IMAGE_RUNTIME_FLAGS[@]+"${RUN_IMAGE_RUNTIME_FLAGS[@]}"} \
         -v "$(dirname "$INPUT_PATH_ABS"):/input_dir" \
-        -v "$NORMALIZE_SCRIPT_ABS:/normalize_dataset.py:ro" \
         --entrypoint "" \
         agentomics_img \
-        python /normalize_dataset.py --input "/input_dir/$(basename "$INPUT_PATH_ABS")")
+        python -m agentomics.utils.normalize_dataset --input "/input_dir/$(basename "$INPUT_PATH_ABS")")
     if [[ -n "$NORMALIZED_FILENAME" ]]; then
         trap "rm -f \"$(dirname "$INPUT_PATH_ABS")/$NORMALIZED_FILENAME\"" EXIT
         INPUT_PATH_ABS="$(dirname "$INPUT_PATH_ABS")/$NORMALIZED_FILENAME"
@@ -191,8 +195,8 @@ if [[ "$DOCKER_MODE" == true ]]; then
     echo "Inference done"
 else
     need_cmd conda
-    NORMALIZE_SCRIPT_ABS="$(cd "$(dirname "$0")" && pwd)/src/utils/normalize_dataset.py"
-    NORMALIZED_FILENAME=$(python "$NORMALIZE_SCRIPT_ABS" --input "$INPUT_PATH")
+    NORMALIZED_FILENAME=$(PYTHONPATH="$AGENTOMICS_DIR/src${PYTHONPATH:+:$PYTHONPATH}" \
+        python -m agentomics.utils.normalize_dataset --input "$INPUT_PATH")
     if [[ -n "$NORMALIZED_FILENAME" ]]; then
         trap "rm -f \"$(dirname "$INPUT_PATH")/$NORMALIZED_FILENAME\"" EXIT
         INPUT_PATH="$(dirname "$INPUT_PATH")/$NORMALIZED_FILENAME"

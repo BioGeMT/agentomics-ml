@@ -23,6 +23,10 @@ RUN conda init bash \
     && echo "conda activate agentomics-env" >> /root/.bashrc
 
 WORKDIR /repository
+COPY pyproject.toml README.md ./
+COPY src/agentomics ./src/agentomics
+RUN python -m pip wheel --no-deps --wheel-dir /tmp/agentomics-dist /repository \
+    && conda run -n agentomics-env python -m pip install --no-deps /tmp/agentomics-dist/*.whl
 
 # where to put submission, will be extracted
 ARG SUBMISSION_DIR
@@ -52,12 +56,9 @@ RUN conda env create -f environment_agent.yaml \
 RUN conda run -n agent_start_env conda-pack -o ${START_ENV_PKG}
 
 # Pre-download foundation models
-RUN mkdir -p /foundation_models /home/cache/foundation_models
+RUN mkdir -p /home/cache/foundation_models
 ENV HF_HOME=/home/cache/foundation_models
-COPY foundation_models/ /foundation_models/
-COPY foundation_models_utils.py /repository/src/utils/foundation_models_utils.py
-COPY download_foundation_models.py /repository/src/utils/download_foundation_models.py
-RUN /opt/conda/envs/agentomics-env/bin/python /repository/src/utils/download_foundation_models.py
+RUN /opt/conda/envs/agentomics-env/bin/python -m agentomics.utils.download_foundation_models
 
 # put all the agent files in the expected location
 COPY . ${AGENT_DIR}

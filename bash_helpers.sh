@@ -159,7 +159,47 @@ ensure_agentomics_docker_image() {
         return
     fi
 
-    warn "Docker image 'agentomics_img' not found. Building it now..."
+    local prebuilt_image="${DOCKERHUB_USERNAME:-biogemt}/agentomics:FM-NONE-latest"
+    if docker image inspect "$prebuilt_image" >/dev/null 2>&1; then
+        warn "Docker image 'agentomics_img' not found. Reusing cached prebuilt image '$prebuilt_image'."
+        docker tag "$prebuilt_image" agentomics_img
+        return
+    fi
+
+    warn "Docker image 'agentomics_img' not found. Pulling prebuilt image '$prebuilt_image'..."
+    if docker pull "$prebuilt_image"; then
+        docker tag "$prebuilt_image" agentomics_img
+        return
+    fi
+
+    warn "Falling back to a local build because the prebuilt image could not be pulled."
     [[ -f "Dockerfile" ]] || die "Dockerfile not found in repository root; cannot build 'agentomics_img'."
     docker build -t agentomics_img -f Dockerfile .
+}
+
+docker_python_has_agentomics_package() {
+    local image_name="$1"
+    local python_exec="$2"
+
+    docker run --rm --entrypoint "$python_exec" "$image_name" \
+        -c "import importlib.util, sys; sys.exit(0 if importlib.util.find_spec('agentomics') else 1)" \
+        >/dev/null 2>&1
+}
+
+append_agentomics_runtime_flags_if_needed() {
+    local -n flags_ref=$1
+    local image_name="$2"
+    local python_exec="$3"
+    local repo_root="$4"
+
+    if docker_python_has_agentomics_package "$image_name" "$python_exec"; then
+        return
+    fi
+
+    warn "Docker image '$image_name' does not contain the installed agentomics package. Mounting local source tree for compatibility."
+    flags_ref+=(
+        -e "PYTHONPATH=/repository/src"
+        -v "${repo_root}/pyproject.toml:/repository/pyproject.toml:ro"
+        -v "${repo_root}/src:/repository/src:ro"
+    )
 }

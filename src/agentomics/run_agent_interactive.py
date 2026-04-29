@@ -119,6 +119,10 @@ def main():
     
     if not model:
         model = provider.interactive_model_selection(limit=50)
+        if not model:
+            console.print("No model selected.", style="red")
+            console.print("If model discovery is unavailable, pass --model explicitly.", style="cyan")
+            return 1
 
     if not iterations:
         iterations = get_user_input_for_int("Enter number of iterations to run (Recommended more than 5):", default=5)
