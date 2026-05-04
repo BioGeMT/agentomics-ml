@@ -55,6 +55,8 @@ Most run options are **optional** when forking — omitting them reuses the valu
 | `--split-allowed-iterations` | Relative increment if provided; inherited if omitted |
 | `--exploration-iterations` | Relative increment if provided; inherited if omitted |
 | `--run-python-timeout` | Inherited if omitted |
+| `--timeout` | Not inherited — no run timeout unless passed (applies only to the forked run's own runtime) |
+| `--split-timeout` | Not inherited — no split timeout unless passed (applies only to the forked run's own runtime) |
 | `--user-prompt` | Inherited if omitted |
 | `--foundation-models-type` | Inherited if omitted |
 | `--tags` | Inherited if omitted |
