@@ -755,7 +755,13 @@ else
         docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox cp -r /source/. /dest/
 
         if [[ "$RUN_SUCCEEDED" = true ]]; then
-            PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python -m runtime.iteration_reports --agent-dir "outputs/${AGENT_ID}"
+            docker run --rm \
+              -u "$(id -u):$(id -g)" \
+              -e PYTHONPATH=/repository/src \
+              -v "$(pwd)/src":/repository/src:ro \
+              -v "$(pwd)/outputs/${AGENT_ID}":/agent_out \
+              --entrypoint /opt/conda/envs/agentomics-env/bin/python \
+              "$AGENTOMICS_IMAGE" -m runtime.iteration_reports --agent-dir /agent_out
 
             MPLCONFIGDIR_IN_CONTAINER="/tmp/mplconfig"
             docker run --rm \
@@ -773,7 +779,17 @@ else
 
             if [ "$USE_PROVISIONING_KEY" = true ]; then
                 echo "Logging costs and cleaning up temporary API key"
-                PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys.py cleanup-and-log --config-path "outputs/${AGENT_ID}/run/shared/config.json" --api-key-hash "$TEMP_API_KEY_HASH"
+                docker run --rm \
+                  -u "$(id -u):$(id -g)" \
+                  ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
+                  ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
+                  -e PYTHONPATH=/repository/src \
+                  -v "$(pwd)/src":/repository/src:ro \
+                  -v "$(pwd)/outputs/${AGENT_ID}":/agent_out \
+                  --entrypoint /opt/conda/envs/agentomics-env/bin/python \
+                  "$AGENTOMICS_IMAGE" /repository/src/utils/api_keys.py cleanup-and-log \
+                    --config-path /agent_out/run/shared/config.json \
+                    --api-key-hash "$TEMP_API_KEY_HASH"
             fi
 
             if [ "$ALL_ITERATIONS_TEST" = true ]; then
@@ -798,7 +814,13 @@ else
             echo -e "${GREEN}Run finished. Report and files can be found in outputs/${AGENT_ID}${NOCOLOR}"
             echo -e "${GREEN}To run inference on new data, use ./inference.sh --agent-dir outputs/${AGENT_ID} --input <path_to_input_csv> --output <path_to_output_csv>${NOCOLOR}"
         else
-            PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python -m runtime.iteration_reports --agent-dir "outputs/${AGENT_ID}"
+            docker run --rm \
+              -u "$(id -u):$(id -g)" \
+              -e PYTHONPATH=/repository/src \
+              -v "$(pwd)/src":/repository/src:ro \
+              -v "$(pwd)/outputs/${AGENT_ID}":/agent_out \
+              --entrypoint /opt/conda/envs/agentomics-env/bin/python \
+              "$AGENTOMICS_IMAGE" -m runtime.iteration_reports --agent-dir /agent_out
             warn "Agent didn't produce any valid best iteration snapshot. Exported run files for later continuation to outputs/${AGENT_ID}."
             write_outputs_readme "${AGENT_ID}"
         fi
