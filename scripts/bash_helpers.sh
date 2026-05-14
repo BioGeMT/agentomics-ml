@@ -87,7 +87,7 @@ load_string_field_from_run_config() {
     local field_line=""
     local field_value=""
 
-    [[ -f "$config_path" ]] || die "Fork source config not found at $config_path"
+    [[ -f "$config_path" ]] || die "Source config not found at $config_path"
 
     field_line="$(grep -m1 -E "^[[:space:]]*\"${field_name}\"[[:space:]]*:" "$config_path" || true)"
     [[ -n "$field_line" ]] || die "${field_name} is missing from $config_path"
@@ -225,11 +225,28 @@ EOF
 }
 
 ensure_agentomics_docker_image() {
+    # Check the existence of the agentomics docker image. Prioritize locally built images, then dockerhub ones
+    local fm_type="$1"
+    local dockerhub_username="$2"
+    local UPPERCASE_FM_TAG
+    UPPERCASE_FM_TAG="$(echo "${fm_type:-NONE}" | tr '[:lower:]' '[:upper:]')"
+    local dockerhub_img="${dockerhub_username}/agentomics:FM-${UPPERCASE_FM_TAG}-latest"
+
     if docker image inspect agentomics_img >/dev/null 2>&1; then
+        AGENTOMICS_IMAGE="agentomics_img"
+        return
+    fi
+    if docker image inspect "$dockerhub_img" >/dev/null 2>&1; then
+        AGENTOMICS_IMAGE="$dockerhub_img"
+        return
+    fi
+    if docker pull "$dockerhub_img" >/dev/null 2>&1; then
+        AGENTOMICS_IMAGE="$dockerhub_img"
         return
     fi
 
-    warn "Docker image 'agentomics_img' not found. Building it now..."
+    warn "Docker image not found locally or on Dockerhub. Building 'agentomics_img'..."
     [[ -f "Dockerfile" ]] || die "Dockerfile not found in repository root; cannot build 'agentomics_img'."
     docker build -t agentomics_img -f Dockerfile .
+    AGENTOMICS_IMAGE="agentomics_img"
 }

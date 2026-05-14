@@ -7,6 +7,7 @@ source "$SCRIPT_DIR/bash_helpers.sh"
 DOCKER_MODE=true
 CPU_ONLY=false
 REMOVE_CONDA_ENV=false
+DOCKERHUB_USERNAME="biogemt"
 ARGS=()
 
 show_help() {
@@ -141,7 +142,9 @@ if [[ "$DOCKER_MODE" == true ]]; then
     if ! docker info >/dev/null 2>&1; then
         die "Docker is not running or not accessible (start Docker and retry)"
     fi
-    ensure_agentomics_docker_image
+
+    FOUNDATION_MODEL_TYPE="$(load_string_field_from_run_config "$AGENT_DIR" "foundation_models_type")"
+    ensure_agentomics_docker_image "$FOUNDATION_MODEL_TYPE" "$DOCKERHUB_USERNAME"
 
     AGENT_DIR_ABS="$(cd "$(dirname "$AGENT_DIR")" && pwd)/$(basename "$AGENT_DIR")"
     INPUT_PATH_ABS="$(cd "$(dirname "$INPUT_PATH")" && pwd)/$(basename "$INPUT_PATH")"
@@ -161,7 +164,7 @@ if [[ "$DOCKER_MODE" == true ]]; then
             -v "${AGENT_DIR_ABS}/${CODE_PATH}:${CODE_ROOT_IN_CONTAINER}" \
             --entrypoint "" \
             -w "${CODE_ROOT_IN_CONTAINER}" \
-            agentomics_img \
+            "${AGENTOMICS_IMAGE}" \
             bash -c "conda install -n base mamba -c conda-forge -y && mamba env create -f \"${DESCRIPTOR_PATH_IN_CONTAINER}\" -p \"${CODE_ROOT_IN_CONTAINER}/.conda/envs/${AGENT_NAME}_env\""
     fi
 
@@ -170,7 +173,7 @@ if [[ "$DOCKER_MODE" == true ]]; then
         -v "$(dirname "$INPUT_PATH_ABS"):/input_dir" \
         -v "$NORMALIZE_SCRIPT_ABS:/normalize_dataset.py:ro" \
         --entrypoint "" \
-        agentomics_img \
+        "${AGENTOMICS_IMAGE}" \
         python /normalize_dataset.py --input "/input_dir/$(basename "$INPUT_PATH_ABS")")
     if [[ -n "$NORMALIZED_FILENAME" ]]; then
         trap "rm -f \"$(dirname "$INPUT_PATH_ABS")/$NORMALIZED_FILENAME\"" EXIT
@@ -186,7 +189,7 @@ if [[ "$DOCKER_MODE" == true ]]; then
         --entrypoint "" \
         -w "${INFERENCE_WORKDIR_IN_CONTAINER}" \
         -e PATH="${CODE_ROOT_IN_CONTAINER}/.conda/envs/${AGENT_NAME}_env/bin:$PATH" \
-        agentomics_img \
+        "${AGENTOMICS_IMAGE}" \
         python inference.py \
         --input "/input_dir/$(basename "$INPUT_PATH_ABS")" \
         --output "/output_dir/$(basename "$OUTPUT_PATH_ABS")" \
@@ -221,7 +224,7 @@ if [[ "$REMOVE_CONDA_ENV" == true ]]; then
         docker run --rm \
             -v "${AGENT_DIR_ABS}/${CODE_PATH}:${CODE_ROOT_IN_CONTAINER}" \
             --entrypoint "" \
-            agentomics_img \
+            "${AGENTOMICS_IMAGE}" \
             bash -c "rm -rf ${CODE_ROOT_IN_CONTAINER}/.conda/envs/${AGENT_NAME}_env"
     else
         rm -rf "$ENV_PATH"
