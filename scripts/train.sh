@@ -5,6 +5,7 @@ source "$SCRIPT_DIR/bash_helpers.sh"
 
 DOCKER_MODE=true
 CPU_ONLY=false
+DOCKERHUB_USERNAME="biogemt"
 ARGS=()
 
 show_help() {
@@ -142,9 +143,10 @@ if [[ "$DOCKER_MODE" == true ]]; then
     if ! docker info >/dev/null 2>&1; then
         die "Docker is not running or not accessible (start Docker and retry)"
     fi
-    if ! docker image inspect agentomics_img >/dev/null 2>&1; then
-        die "Docker image 'agentomics_img' not found. Run ./run.sh once to build it (or build it manually) and retry."
-    fi
+
+    FOUNDATION_MODEL_TYPE="$(load_string_field_from_run_config "$AGENT_DIR" "foundation_models_type")"
+    ensure_agentomics_docker_image "$FOUNDATION_MODEL_TYPE" "$DOCKERHUB_USERNAME"
+
     echo "Running training in Docker..."
     AGENT_DIR_ABS="$(cd "$(dirname "$AGENT_DIR")" && pwd)/$(basename "$AGENT_DIR")"
     TRAIN_DATA_PATH_ABS="$(cd "$(dirname "$TRAIN_DATA_PATH")" && pwd)/$(basename "$TRAIN_DATA_PATH")"
@@ -160,7 +162,7 @@ if [[ "$DOCKER_MODE" == true ]]; then
             -v "${AGENT_DIR_ABS}/best_iteration_snapshot:${CODE_ROOT_IN_CONTAINER}" \
             --entrypoint "" \
             -w "${CODE_ROOT_IN_CONTAINER}" \
-            agentomics_img \
+            "${AGENTOMICS_IMAGE}" \
             bash -c "conda install -n base mamba -c conda-forge -y && mamba env create -f \"${DESCRIPTOR_PATH_IN_CONTAINER}\" -p \"${CODE_ROOT_IN_CONTAINER}/.conda/envs/${AGENT_NAME}_env\""
     fi
     docker run --rm \
@@ -172,7 +174,7 @@ if [[ "$DOCKER_MODE" == true ]]; then
         --entrypoint "" \
         -w "${TRAIN_WORKDIR_IN_CONTAINER}" \
         -e PATH="${CODE_ROOT_IN_CONTAINER}/.conda/envs/${AGENT_NAME}_env/bin:$PATH" \
-        agentomics_img \
+        "${AGENTOMICS_IMAGE}" \
         python train.py \
         --train-data "/train_data_dir/$(basename "$TRAIN_DATA_PATH_ABS")" \
         --validation-data "/validation_data_dir/$(basename "$VALIDATION_DATA_PATH_ABS")" \
