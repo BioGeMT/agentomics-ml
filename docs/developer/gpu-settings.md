@@ -122,11 +122,13 @@ Agentomics-ML supports multi-GPU training:
 - Agent-generated scripts may use DataParallel or DistributedDataParallel
 - All available GPUs are passed to containers by default
 
-To limit GPUs:
+To limit GPUs in local mode:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0,1 ./run.sh  # Use only first 2 GPUs
+CUDA_VISIBLE_DEVICES=0,1 ./run.sh --local  # Use only first 2 GPUs
 ```
+
+In Docker mode, Agentomics passes all available GPUs to the container; selecting a subset requires running Docker manually with custom GPU flags.
 
 ## Docker GPU Flags
 

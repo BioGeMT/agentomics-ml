@@ -49,11 +49,12 @@ The agent analyzes the dataset:
 
 ### 3. Data Split
 
-Creates or modifies train/validation split:
+Creates, reuses, or modifies train/validation split files:
 
 - Stratified splitting for classification
 - Considers data distribution
 - May adjust split based on previous iterations
+- Reuses supplied `validation.csv` when present
 
 **Output:** Captured in structured outputs and iteration reports
 
@@ -144,7 +145,7 @@ Each step uses an LLM agent that:
 1. Receives context (data info, previous results, and the iteration plan when applicable)
 2. Generates a structured output (validated by Pydantic)
 3. Validates the output meets requirements
-4. Retries if validation fails (up to 10 times)
+4. Retries if validation fails (up to 5 times by default)
 
 ## Iteration Flow
 
@@ -186,11 +187,11 @@ Key architecture parameters in `src/utils/config.py`:
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `temperature` | 1.0 | LLM creativity level |
+| `temperature` | 0.7 | LLM creativity level |
 | `max_steps` | 100 | Max steps per agent |
-| `max_validation_retries` | 10 | Output validation retries |
-| `llm_response_timeout` | 900s | LLM response timeout |
-| `bash_tool_timeout` | 300s | Bash command timeout |
+| `max_validation_retries` | 5 | Output validation retries |
+| `llm_response_timeout` | 600s | LLM response timeout |
+| `bash_tool_timeout` | 180s | Bash command timeout |
 | `run_python_tool_timeout` | 21600s | Training timeout (6 hours, configurable via `--run-python-timeout`) |
 
 ## Next Steps

@@ -50,7 +50,7 @@ Without customization, the agent uses:
 
 ## What Custom Prompts Affect
 
-The user prompt influences all agent steps:
+The user prompt influences the agentic steps:
 
 | Step | How It's Used |
 |------|---------------|
@@ -61,7 +61,8 @@ The user prompt influences all agent steps:
 | Model Architecture | Model selection and design |
 | Model Training | Training approach and hyperparameters |
 | Model Inference | Prediction pipeline design |
-| Validation Evaluation | What success criteria matter most |
+
+Validation evaluation itself is deterministic: it runs the generated inference script on train/validation data and scores the configured `--val-metric`.
 
 ## Prompt Tips
 

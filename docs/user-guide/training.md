@@ -96,7 +96,7 @@ GPU is used automatically if available. To disable:
 
 ### "Docker image not found"
 
-Run `./run.sh` once to build the Docker image, or use `--local` mode.
+The script first looks for a local `agentomics_img`, then for the matching pre-built Docker Hub image, and builds locally if needed. Use `--local` to avoid Docker.
 
 ### "Agent directory not found"
 

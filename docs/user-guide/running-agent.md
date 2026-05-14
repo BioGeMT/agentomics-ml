@@ -17,7 +17,8 @@ You'll be prompted to select:
 1. **LLM Model** - Choose from available models
 2. **Dataset** - Select a prepared dataset
 3. **Iterations** - Number of optimization cycles (default prompt: 5)
-4. **Validation Metric** - Optional metric to optimize (defaults: `AUROC` for classification, `MAE` for regression)
+
+The validation metric is not prompted interactively; pass `--val-metric` to override the task-based default (`AUROC` for classification, `MAE` for regression).
 
 ## Non-Interactive Mode
 
@@ -30,13 +31,14 @@ Supply parameters directly to skip prompts:
   --iterations 10
 ```
 
-For non-interactive runs, provide at least `--model`, `--dataset`, and `--iterations`.
+For non-interactive fresh runs, provide at least `--model` and `--dataset`. If you omit `--iterations`, the default is 5.
 
 ## Common Options
 
 | Option | Description | Example |
 |--------|-------------|---------|
 | `--model` | LLM model to use | `--model openai/gpt-4` |
+| `--provider` | Provider to use when multiple providers are configured | `--provider openai` |
 | `--dataset` | Dataset name | `--dataset my_data` |
 | `--iterations` | Number of iterations | `--iterations 15` |
 | `--val-metric` | Validation metric (optional, task-based default if omitted) | `--val-metric AUROC` |
@@ -65,16 +67,16 @@ For non-interactive runs, provide at least `--model`, `--dataset`, and `--iterat
 | `--build-images` | Build Docker images locally |
 | `--local` | Run without Docker (uses conda) |
 | `--cpu-only` | Disable GPU acceleration |
-| `--ollama` | Use local Ollama models |
+| `--ollama` | Enable Docker host networking for a host Ollama server |
 
 ## Advanced Options
 
 ### Foundation Models
 
-Pre-download domain-specific foundation models:
+Enable domain-specific foundation models:
 
 ```bash
-./run.sh --foundation-model-type dna
+./run.sh --foundation-models-type dna
 ```
 
 Available types: `dna`, `rna`, `protein`, `molecule`
@@ -102,6 +104,12 @@ Set timeout for each training execution (default is 6 hours):
 
 ```bash
 ./run.sh --run-python-timeout 43200  # 12 hours per training run
+```
+
+You can also set a separate split deadline:
+
+```bash
+./run.sh --split-timeout 3600  # stop allowing split changes after 1 hour
 ```
 
 ### Custom User Prompt
@@ -136,7 +144,7 @@ See [Forking a Run](forking.md) for the full guide.
 
 ## What Happens During a Run
 
-1. **Dataset Preparation** - Validates and prepares data in `prepared_datasets/`
+1. **Dataset Preparation** - Validates data, writes training/validation inputs to `prepared_datasets/`, and separates held-out tests into `prepared_test_sets/`
 2. **Iterative Development** - Agent runs exploration, training, and evaluation cycles
 3. **Snapshot Best Model** - Tracks the best-performing iteration
 4. **Final Evaluation** - Tests on held-out test set (if provided)

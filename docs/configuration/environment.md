@@ -30,6 +30,9 @@ At least one API key is required:
 |----------|----------|---------|
 | `OPENROUTER_API_KEY` | OpenRouter | [openrouter.ai](https://openrouter.ai/) |
 | `OPENAI_API_KEY` | OpenAI | [platform.openai.com](https://platform.openai.com/) |
+| `ANTHROPIC_API_KEY` | Anthropic | [console.anthropic.com](https://console.anthropic.com/) |
+
+The Codex provider uses `codex login` and reads `~/.codex/auth.json`. Ollama does not use an API key, but set `OLLAMA_BASE_URL` so the provider is selectable.
 
 ### Provisioning Key (Optional)
 
@@ -115,6 +118,7 @@ export CUDA_VISIBLE_DEVICES=0,1
 # LLM Provider (choose one or more)
 OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxx
 # OPENAI_API_KEY=sk-xxxxxxxxxxxx
+# ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxx
 
 # Weights & Biases (optional)
 WANDB_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxx
@@ -128,6 +132,7 @@ WANDB_ENTITY=my-team
 
 # Ollama (optional)
 # Configure in src/utils/providers/configured_providers.yaml
+# OLLAMA_BASE_URL=http://localhost:11434/v1
 ```
 
 ## Security Notes

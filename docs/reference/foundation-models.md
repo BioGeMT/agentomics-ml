@@ -4,7 +4,7 @@ Pre-trained models for specialized omics domains.
 
 ## Overview
 
-Foundation models are large pre-trained models specialized for specific data types. Agentomics-ML can pre-download these models to speed up agent runs.
+Foundation models are large pre-trained models specialized for specific data types. Agentomics-ML can enable selected model families so the agent can use their catalog and local/downloaded weights during a run.
 
 ## Available Types
 
@@ -15,29 +15,26 @@ Foundation models are large pre-trained models specialized for specific data typ
 | `protein` | Proteomics | Protein sequences, structure |
 | `molecule` | Chemistry | Small molecules, drugs |
 
-## Pre-downloading Models
+## Enabling Models
 
-Download foundation models before running:
+Enable foundation models before running:
 
 ```bash
-./run.sh --foundation-model-type dna
+./run.sh --foundation-models-type dna
 ```
 
-This downloads relevant models to the Docker image, avoiding download delays during agent execution.
+This enables the selected family for the run and makes its catalog available to the agent. In Docker mode, the launcher pulls or builds an image tagged for that foundation-model type. In local mode, models are downloaded into the local workspace cache.
 
-You can also use `--foundation-model-type all` to include every type.
+You can also use `--foundation-models-type all` to include every type.
 
 ## Multiple Types
 
-Download multiple types by running multiple times:
+Enable a different type per run, or use `all` when the agent should see every configured type:
 
 ```bash
-./run.sh --foundation-model-type dna
-./run.sh --foundation-model-type protein
+./run.sh --foundation-models-type dna
+./run.sh --foundation-models-type protein
 ```
-
-In local mode (`--local`), models are downloaded into the workspace instead of
-being baked into a Docker image.
 
 ## DNA Models
 
@@ -103,17 +100,18 @@ Example datasets:
 Foundation model configurations are in:
 
 ```
-foundation_models/
+foundation_models/models.yaml
 ```
 
-Each type has a configuration specifying:
+The YAML file lists each model family with:
 - Model names and sources
-- Download locations
+- Domain type (`dna`, `rna`, `protein`, or `molecule`)
+- Brief summaries
 - Usage instructions for the agent
 
-## Without Pre-downloading
+## Without Foundation Models
 
-If you don't pre-download, the agent can still use foundation models but will download them during execution (slower first run).
+If `--foundation-models-type` is omitted on a fresh run, no foundation models are made available to the agent. Forked runs inherit the source run's foundation-model type when the flag is omitted.
 
 ## Storage Requirements
 
@@ -141,9 +139,9 @@ Use `--cpu-only` if GPU unavailable, but expect longer run times for foundation 
 
 To add custom foundation models:
 
-1. Add configuration to `foundation_models/`
-2. Update the download script
-3. Add usage instructions for the agent
+1. Add the family to `foundation_models/models.yaml`
+2. Add a companion usage guide under `foundation_models/`
+3. Ensure the listed model names can be downloaded by `src/utils/download_foundation_models.py`
 
 ## Related
 

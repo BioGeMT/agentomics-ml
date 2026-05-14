@@ -69,7 +69,7 @@ Dataset and validation metric are locked to keep all iterations comparable acros
 
 When a fork is set up, the following happens before the new run starts:
 
-1. The entire source workspace is copied (models, splits, conda environment, reports).
+1. The source workspace state is copied, excluding generated reports/extras and untracked Conda environments.
 2. The git history in the run directory is checked out at the requested checkpoint — files added in later commits are removed.
 3. Absolute paths stored in step outputs are rewritten to point to the new workspace.
 4. The shared conda environment is renamed for the new run ID and updated from the stored `environment.yml`.
