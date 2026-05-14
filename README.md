@@ -8,7 +8,7 @@ Made for biomedical data, Agentomics outperformed human experts and created new 
 
 How it works
 1) Input is a CSV training dataset + optional data description
-2) Agentomics autonomously experments with various ML models and strategies
+2) Agentomics autonomously experiments with various ML models and strategies
 3) Output is a trained model ready for inference and a detailed PDF report summarizing the development process and achieved metrics
 
 For more details see: [preprint](https://www.biorxiv.org/content/10.64898/2026.01.27.702049v1)
@@ -25,7 +25,7 @@ For more details see: [preprint](https://www.biorxiv.org/content/10.64898/2026.0
 git clone https://github.com/BioGeMT/agentomics-ml.git
 cd agentomics-ml
 cp .env.example .env
-# Edit .env and set at least one API key (OPENROUTER_API_KEY or OPENAI_API_KEY)
+# Edit .env and set at least one provider key, such as OPENROUTER_API_KEY or OPENAI_API_KEY
 
 # Download example dataset
 ./scripts/download_example_dataset.sh
@@ -35,7 +35,7 @@ cp .env.example .env
 
 Recommended model: `gpt-5.1-codex-max`
 
-Outputs are saved to `outputs/<agent_id>/`, including PDF reports in `outputs/<agent_id>/pdf_reports`.
+Outputs are saved to `outputs/<agent_id>/`, including PDF reports in `outputs/<agent_id>/reports/pdf/`.
 
 ### Installation Requirements
 
@@ -52,9 +52,9 @@ For more details visit **https://biogemt.github.io/agentomics-ml/**
 - Generic: Agentomics can crunch any classification and regression datasets in CSV format.
 - Secure: Agents execute code securely in Docker with read-only mounts to your file system and are only allowed to write in a Docker Volume.
 - Reproducible: Outputs include models, scripts, and conda environments needed to run inference or re-train models with one bash command.
-- Trustworthy: If you provide a test set, Agentomics fully abstracts LLMs from accessing it, allowing you to rely on programmaticly computed and reported test set metrics.
-- Foundation models: Agentomics can leverage foundation models from huggingface for both embeddings and fine-tuning.
-- Various LLM providers: OpenAI, OpenRouter, or local models via Ollama
+- Trustworthy: If you provide a test set, Agentomics keeps it hidden from the LLM and reports programmatically computed test metrics.
+- Foundation models: Agentomics can leverage foundation models from Hugging Face for both embeddings and fine-tuning.
+- Various LLM providers: OpenAI, Anthropic, OpenRouter, Codex/ChatGPT OAuth, or local models via Ollama.
 - Reliability: Thanks to our functional validators, Agentomics creates a working model 100% of the time (when using recommended settings).
 
 ## Roadmap
@@ -62,7 +62,6 @@ Agentomics is in active development. We welcome any raised Issues and suggestion
 
 Features coming soon:
 - Support for any data type (currently only CSV datasets)
-- Run forking and continuing
 - Better local model support and configuration
 - Remote GPU support for GCP
 
@@ -80,5 +79,3 @@ bioRxiv (preprint) https://www.biorxiv.org/content/10.64898/2026.01.27.702049v1
 ## License
 
 MIT. See `LICENSE`.
-
-

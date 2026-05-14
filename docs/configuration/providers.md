@@ -8,6 +8,7 @@ Agentomics-ML supports multiple LLM providers out of the box.
 |----------|---------------------|--------|
 | [OpenRouter](https://openrouter.ai/) | `OPENROUTER_API_KEY` | 100+ models |
 | [OpenAI](https://openai.com/) | `OPENAI_API_KEY` | Use `--list-models` to see available models |
+| [Anthropic](https://anthropic.com/) | `ANTHROPIC_API_KEY` | Claude models available to your account |
 | OpenAI Codex | `codex login` | Uses your local Codex/ChatGPT login |
 | [Ollama](https://ollama.ai/) | Local setup | Local models |
 
@@ -60,6 +61,21 @@ Use `./run.sh --list-models` to see what your API key can access.
 
 ---
 
+## Anthropic
+
+Direct access to Anthropic models.
+
+### Setup
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-xxxxxxxxxxxx"
+./run.sh --provider anthropic --list-models
+```
+
+Use `--provider anthropic` explicitly when other provider keys are also set.
+
+---
+
 ## Codex (ChatGPT OAuth)
 
 Experimental support for the local Codex CLI login flow.
@@ -76,7 +92,7 @@ Then run Agentomics with the `codex` provider:
 
 ```bash
 ./run.sh --provider codex --list-models
-./run.sh --provider codex --model gpt-5.4
+./run.sh --provider codex --model gpt-5.4 --dataset my_data
 ```
 
 This provider reads your local Codex auth state from `~/.codex/auth.json` and
@@ -98,15 +114,16 @@ Run models locally for privacy or offline use.
 
 ### Docker Mode (Recommended)
 
-Run with:
+Set `OLLAMA_BASE_URL` so Agentomics considers Ollama available, then run with:
 
 ```bash
-./run.sh --ollama
+export OLLAMA_BASE_URL=http://localhost:11434/v1
+./run.sh --ollama --provider ollama --model <ollama-model> --dataset <dataset>
 ```
 
 Docker mode connects to the Ollama base URL defined in
 `src/utils/providers/configured_providers.yaml`
-(default: `http://host.docker.internal:11434/v1`).
+(default: `http://localhost:11434/v1`) and uses host networking when `--ollama` is passed.
 Ensure your Ollama server is reachable from the host at `:11434`.
 
 ### Local Mode
@@ -115,7 +132,8 @@ For local mode, set the Ollama base URL in `src/utils/providers/configured_provi
 to `http://localhost:11434/v1`, then run:
 
 ```bash
-./run.sh --local
+export OLLAMA_BASE_URL=http://localhost:11434/v1
+./run.sh --local --provider ollama --model <ollama-model> --dataset <dataset>
 ```
 
 ### Popular Models
@@ -197,5 +215,4 @@ Ensure Ollama is running:
 ollama list  # Should show pulled models
 ```
 
-For Docker mode, verify that `host.docker.internal:11434` is reachable from
-containers (run with `./run.sh --ollama`).
+For Docker mode, run with `--ollama` so the container uses host networking, and verify the configured Ollama URL is reachable on the host.

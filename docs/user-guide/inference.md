@@ -25,6 +25,8 @@ Use trained models to make predictions on new data with `scripts/inference.sh`.
 |----------|-------------|
 | `--cpu-only` | Run without GPU |
 | `--local` | Run locally without Docker |
+| `--code-path` | Relative path inside `--agent-dir` containing generated code; defaults to `best_iteration_snapshot` |
+| `--remove-conda-env` | Remove the generated inference Conda environment after the run |
 | `--help` | Show help message |
 
 ## Example
@@ -53,9 +55,7 @@ feature1,feature2,feature3
 
 ## Output Format
 
-The output format is defined by the generated `inference.py` script. For
-classification tasks, the output often includes a `numeric_label` column with
-scores in `[0, 1]`, but you should treat the exact schema as run-specific.
+The generated `inference.py` must preserve the input `id` column and write a prediction for every row. Classification runs produce `prediction` plus `probability_<class_id>` columns. Regression runs produce `prediction`. Additional columns are run-specific.
 
 ## Docker vs Local Mode
 
@@ -99,7 +99,7 @@ outputs/<agent_id>/best_iteration_snapshot/
 
 ### "Docker image not found"
 
-Run `./run.sh` once to build the Docker image, or use `--local` mode.
+The script first looks for a local `agentomics_img`, then for the matching pre-built Docker Hub image, and builds locally if needed. Use `--local` to avoid Docker.
 
 ### "Column mismatch"
 

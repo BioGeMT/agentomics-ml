@@ -4,12 +4,12 @@ The iteration-plan step guides improvements between iterations.
 
 ## How It Works
 
-After each iteration completes:
+At the start of each iteration:
 
-1. **Results Collected** - Metrics, model outputs, and analysis from all steps
-2. **Plan Generated** - A separate LLM analyzes what worked and what didn't
-3. **Instructions Created** - Specific guidance for each step in the next iteration
-4. **Next Iteration Starts** - Agents receive the iteration plan as part of their context
+1. **Archived Results Loaded** - Metrics, model outputs, split history, and analysis from prior iterations
+2. **Plan Generated** - The iteration-planning model analyzes what worked and what did not
+3. **Instructions Created** - Specific guidance is produced for the remaining steps in the current iteration
+4. **Step Agents Run** - Later steps receive the iteration plan as part of their context
 
 ## Iteration-Plan Structure
 
@@ -120,11 +120,11 @@ For early iterations, the agent may suggest split changes:
 > Validation set may be too small for reliable metrics.
 > Consider increasing validation size to 30% for better estimates.
 
-After `--split-allowed-iterations`, splits are frozen to ensure fair comparison.
+After `--split-allowed-iterations`, or after `--split-timeout` when set, splits are frozen to ensure fair comparison.
 
 ## Iteration-Planning Model
 
-The iteration-planning step uses the same LLM as the main agent.
+The iteration-planning step uses `--iteration-plan-model` when provided. If it is omitted, it uses the same model as `--model`.
 
 ## Viewing Iteration Plans
 
@@ -145,6 +145,7 @@ Each report shows:
 |-----------|---------|-------------|
 | `--exploration-iterations` | 4 | Iterations for broad exploration |
 | `--split-allowed-iterations` | 1 | Iterations that can modify splits |
+| `--split-timeout` | None | Time deadline after which splits cannot change |
 
 ## Next Steps
 

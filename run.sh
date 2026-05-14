@@ -68,7 +68,7 @@ Optional Arguments:
                       Providing it means N more exploration iterations from the fork point.
   --val-metric <name> Metric to optimize. Defaults: AUROC (classification), MAE (regression).
   --user-prompt <str> The main prompt/goal for the agent.
-                      (Default: "Create the best possible machine learning model that will generalize to new unseen data.")
+                      (Default: "Develop a machine learning model that generalizes well to new unseen data.")
 
 Forking:
   --fork-from-run <path>  Path to the source run workspace directory (the 'outputs/<run_id>' folder).
@@ -79,7 +79,7 @@ Forking:
                             --dataset    (tied to the data the source run was trained on)
                             --val-metric (must stay consistent to compare iterations across the fork)
   --fork-from-step <step> Only used with --fork-from-run. Step ID to fork from (e.g. 'model_training').
-                          Defaults to the latest completed step or iteraiton end checkpoint in the source run.
+                          Defaults to the latest completed step or iteration end checkpoint in the source run.
   --fork-from-iteration <N>
                           Only used with --fork-from-run. Iteration to fork from.
                           Defaults to the latest iteration containing the specified step or iteration end checkpoint.

@@ -29,7 +29,7 @@ feature1,feature2,feature3,target
 
 ### validation.csv (Optional)
 
-Separate validation data. If not provided, the agent creates a train/validation split from `train.csv`.
+Separate validation data. If not provided, the agent creates train/validation split files during the `data_split` step and stores them under the run's `shared/splits/` directory.
 
 ### test.csv (Optional)
 
@@ -75,8 +75,8 @@ Fields:
 
 - `task_type` (optional): `"classification"` or `"regression"`; if omitted, you will be prompted during dataset preparation.
 - `target_col` (optional): column name to predict; auto-detected if omitted.
-- `positive_class` (optional): value that counts as "positive"; only applicable for some binary classification metrics, auto-detected if omitted.
-- `negative_class` (optional): value that counts as "negative"; only applicable for some binary classification metrics, auto-detected if omitted.
+- `positive_class` (optional): value that counts as "positive"; only applicable for binary classification label mapping.
+- `negative_class` (optional): value that counts as "negative"; only applicable for binary classification label mapping.
 
 Include only the fields you need — at minimum just `task_type`. Values from this file take precedence over auto-detection, but CLI flags (`--task-type`, `--target-col`, etc.) override the config file.
 
@@ -85,7 +85,7 @@ Include only the fields you need — at minimum just `task_type`. Values from th
 The target column is resolved in this order:
 1. CLI flag (`--target-col`)
 2. `dataset_config.json` (`target_col` field)
-3. Auto-detection from common names: `class`, `target`, `label`, `y`
+3. Auto-detection from common names: `class`, `target`, `label`, `y` and their uppercase variants
 4. Interactive prompt (if running interactively)
 
 If all of the above fail, preparation will raise an error.
@@ -128,7 +128,7 @@ After preparation, datasets are stored in:
 ```
 prepared_datasets/my_dataset/
 ├── train.csv              # Training data
-├── validation.csv         # Validation data (created if not provided)
+├── validation.csv         # Validation data (only if provided in the raw dataset)
 ├── dataset_description.md # Copied/created description
 └── metadata.json          # Task type, classes, etc.
 
