@@ -21,7 +21,6 @@ from runtime.read_write_utils import (
 from runtime.step_outputs import load_step_output, load_step_outputs
 from runtime.system_resources import get_resources_summary
 from tools.tool_registry import get_tool_names
-from utils.foundation_models_utils import build_foundation_model_catalog, format_foundation_model_catalog
 from utils.printing_utils import truncate_float
 from datasets.data_contract import SUPPLEMENTARY_DIR_NAME
 
@@ -100,7 +99,6 @@ class IterationPlanStep(AgenticStep):
         iteration_history_info = self._build_iteration_history_info()
         splitting_info = self._build_splitting_info()
         time_info = self._build_time_info()
-        foundation_models_info = self._build_foundation_models_info()
         exploration_info = self._build_exploration_info()
         tools_info = ", ".join(get_tool_names(self.config, self.config.tool_ids))
         best_iteration_model_info = self._build_best_iteration_model_info()
@@ -147,9 +145,6 @@ class IterationPlanStep(AgenticStep):
         The agent will have access to the train/ and validation/ split folders{", and a mini_train/ folder (a small subset of training data used for quick script validation)" if self._get_latest_split_version() is not None else ""}, all previous iteration files and step outputs, and the dataset_description.md file.
         {supplementary_info}
         The agent will have access to the following tools: {tools_info}.
-        <foundation_models_info>
-        The agent will have access to the following foundation models: {foundation_models_info}
-        </foundation_models_info>
         The agent will have access to the following resources: {get_resources_summary()}
 
         The iteration history consists of experiments that used some train/validation split strategy (S), data representation (R), and model architecture (A) combinations (S x R x A).
@@ -300,27 +295,6 @@ class IterationPlanStep(AgenticStep):
         if dataset_supplementary_path.is_dir():
             return f"The agent has access to the supplementary/ folder with supplementary dataset materials."
         return ""
-
-    def _build_foundation_models_info(self) -> str:
-        catalog = build_foundation_model_catalog(self.config.foundation_models_yaml, self.config.foundation_models_type)
-        if not catalog:
-            return "No foundation models available"
-
-        foundation_models_info = format_foundation_model_catalog(catalog)
-        foundation_models_info += (
-            "\n<foundation_model_guidelines>\n"
-            "When loading foundation model weights in certain ways (for example "
-            "transformers.AutoModelForSequenceClassification) a randomly initialized layer gets added "
-            "on top of the loaded model. If not trained, this layer will harm prediction accuracy.\n"
-            "If you instruct the agent to use a foundation model, you must:\n"
-            "1) Instruct the train script to train any layers that were automatically created and "
-            "randomly initialized by the transformers library, and save them to the training "
-            "artifacts directory\n"
-            "2) Instruct the inference step to load these saved layers properly and avoid using "
-            "randomly initialized layers in the inference.py script\n"
-            "</foundation_model_guidelines>"
-        )
-        return foundation_models_info
 
     def _build_exploration_info(self) -> str:
         iteration = load_current_iteration_index(self.config)

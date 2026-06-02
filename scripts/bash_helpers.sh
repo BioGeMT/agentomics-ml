@@ -69,17 +69,6 @@ docker_has_gpu() {
     return 1
 }
 
-is_valid_foundation_models_type() {
-    case "${1:-}" in
-        ""|dna|rna|molecule|protein|all)
-            return 0
-            ;;
-        *)
-            return 1
-            ;;
-    esac
-}
-
 load_string_field_from_run_config() {
     local source_workspace="$1"
     local field_name="$2"
@@ -226,11 +215,8 @@ EOF
 
 ensure_agentomics_docker_image() {
     # Check the existence of the agentomics docker image. Prioritize locally built images, then dockerhub ones
-    local fm_type="$1"
-    local dockerhub_username="$2"
-    local UPPERCASE_FM_TAG
-    UPPERCASE_FM_TAG="$(echo "${fm_type:-NONE}" | tr '[:lower:]' '[:upper:]')"
-    local dockerhub_img="${dockerhub_username}/agentomics:FM-${UPPERCASE_FM_TAG}-latest"
+    local dockerhub_username="$1"
+    local dockerhub_img="${dockerhub_username}/agentomics:latest"
 
     if docker image inspect agentomics_img >/dev/null 2>&1; then
         AGENTOMICS_IMAGE="agentomics_img"

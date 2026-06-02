@@ -34,8 +34,6 @@ async def run_experiment(
     exploration_iterations: int,
     input_structure: list[str],
     label_to_scalar: dict[str, int] | None = None,
-    foundation_models_type: str | None = None,
-    foundation_models_yaml: str | None = None,
     disable_training_reporting: bool = False,
     conda_export_mode: str = "full"
 ):
@@ -67,8 +65,6 @@ async def run_experiment(
         time_deadline=time_deadline,
         split_time_deadline=split_time_deadline,
         run_python_tool_timeout=run_python_timeout,
-        foundation_models_type=foundation_models_type,
-        foundation_models_yaml=foundation_models_yaml,
         agent_user=agent_user,
         disable_training_reporting=disable_training_reporting,
         conda_export_mode=conda_export_mode

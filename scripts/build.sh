@@ -1,6 +1,5 @@
 #!/bin/bash
 # Multi-architecture (amd64, arm64) Docker build and push script for Agentomics
-# Builds all foundation model variants of the main image
 # It assumes already logged in to Docker: docker login -u <username>
 #
 # Usage:
@@ -52,16 +51,8 @@ if [ -z "$USERNAME" ]; then
     exit 1
 fi
 
-# Foundation model variants to build (must match what run.sh expects: FM-{TYPE}-{VERSION})
-FM_VARIANTS=("NONE" "DNA" "RNA" "MOLECULE" "PROTEIN" "ALL")
-
-declare -A FM_BUILD_ARG_MAP
-FM_BUILD_ARG_MAP["NONE"]=""
-FM_BUILD_ARG_MAP["DNA"]="dna"
-FM_BUILD_ARG_MAP["RNA"]="rna"
-FM_BUILD_ARG_MAP["MOLECULE"]="molecule"
-FM_BUILD_ARG_MAP["PROTEIN"]="protein"
-FM_BUILD_ARG_MAP["ALL"]="all"
+AGENTOMICS_IMAGE="${USERNAME}/agentomics:${VERSION}"
+PREPARE_IMAGE="${USERNAME}/agentomics-prepare:${VERSION}"
 
 need_cmd docker
 
@@ -74,37 +65,21 @@ docker buildx create \
     --use
 docker buildx inspect --bootstrap
 
-for VARIANT in "${FM_VARIANTS[@]}"; do
-    IMAGE_TAG="${USERNAME}/agentomics:FM-${VARIANT}-${VERSION}"
-    BUILD_ARG_VALUE="${FM_BUILD_ARG_MAP[$VARIANT]}"
+# Build and push preparation image
+docker buildx build \
+    --platform linux/amd64,linux/arm64 \
+    -f Dockerfile.prepare \
+    -t "$PREPARE_IMAGE" \
+    ${PROXY_BUILD_ARGS[@]+"${PROXY_BUILD_ARGS[@]}"} \
+    --push .
 
-    echo ""
-    echo "============================================"
-    echo "Building: ${IMAGE_TAG}"
-    if [ -n "$BUILD_ARG_VALUE" ]; then
-        echo "Foundation model type: ${BUILD_ARG_VALUE}"
-    else
-        echo "Foundation model type: none"
-    fi
-    echo "============================================"
+echo ""
+echo "============================================"
+echo "Building: ${AGENTOMICS_IMAGE}"
+echo "============================================"
 
-    BUILD_CMD=(
-        docker buildx build
-        --platform linux/amd64,linux/arm64
-        -t "$IMAGE_TAG"
-        ${PROXY_BUILD_ARGS[@]+"${PROXY_BUILD_ARGS[@]}"}
-    )
-
-    if [ -n "$BUILD_ARG_VALUE" ]; then
-        BUILD_CMD+=(--build-arg "FOUNDATION_MODEL_TYPE=$BUILD_ARG_VALUE")
-    fi
-
-    BUILD_CMD+=(--push .)
-
-    if "${BUILD_CMD[@]}"; then
-        echo "Done: ${IMAGE_TAG}"
-    else
-        echo "FAILED: ${IMAGE_TAG}"
-        exit 1
-    fi
-done
+docker buildx build \
+    --platform linux/amd64,linux/arm64 \
+    -t "$AGENTOMICS_IMAGE" \
+    ${PROXY_BUILD_ARGS[@]+"${PROXY_BUILD_ARGS[@]}"} \
+    --push .

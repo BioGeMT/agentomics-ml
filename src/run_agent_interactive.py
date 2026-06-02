@@ -90,24 +90,12 @@ def parse_args():
         help="Tags to associate with the run. If not provided, defaults to no tags. For forked runs, inherits from the source run config.",
     )
     parser.add_argument(
-        "--foundation-models-type",
-        type=str,
-        default=None,
-        help="Foundation model type to enable (dna, rna, molecule, protein, all). If not provided, no foundation models are used. For forked runs, inherits from the source run config.",
-    )
-    parser.add_argument(
-        "--foundation-models-yaml",
-        type=str,
-        default=None,
-        help="Path to the foundation models YAML config file. For forked runs, inherits from the source run config.",
-    )
-    parser.add_argument(
         "--conda-export-mode",
         choices=["full", "yaml"],
         default="full",
         help="How to capture the best-iteration environment: 'full' (default) copies the conda env into the snapshot and reuses it directly at test time (fast, large snapshot); 'yaml' stores only environment.yml and rebuilds the env at test time (portable, slower). Determines also how the best-iteration environment is exported (full - full conda environment, yaml - environment.yml only).",
     )
-
+    
     # Paths
     parser.add_argument(
         "--workspace-dir",
@@ -166,8 +154,6 @@ def parse_args():
         )
         if args.run_python_timeout is None:        args.run_python_timeout = existing_config.run_python_tool_timeout
         if args.user_prompt is None:               args.user_prompt = existing_config.user_prompt
-        if args.foundation_models_type is None:    args.foundation_models_type = existing_config.foundation_models_type
-        if args.foundation_models_yaml is None:    args.foundation_models_yaml = existing_config.foundation_models_yaml
 
     # Apply built-in defaults only for still-unset optional args on fresh runs.
     if args.tags is None:                      args.tags = []
@@ -302,8 +288,6 @@ def main():
             timeout=args.timeout,
             split_timeout=args.split_timeout,
             run_python_timeout=args.run_python_timeout,
-            foundation_models_type=args.foundation_models_type,
-            foundation_models_yaml=args.foundation_models_yaml,
             disable_training_reporting=args.disable_training_reporting,
             conda_export_mode=args.conda_export_mode,
         )

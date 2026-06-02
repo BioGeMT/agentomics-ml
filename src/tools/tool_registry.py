@@ -7,7 +7,6 @@ import weave
 from pydantic_ai import Tool
 
 from .bash_tool import create_bash_tool
-from .foundation_models_info_tool import create_foundation_models_info_tool
 from .replace_tool import create_replace_tool
 from .run_python_tool import create_run_python_tool
 from .write_python_tool import create_write_python_tool
@@ -18,7 +17,6 @@ TOOL_FACTORY_REGISTRY: dict[str, Callable] = {
     "bash": create_bash_tool,
     "write_python": create_write_python_tool,
     "run_python": create_run_python_tool,
-    "foundation_models_info": create_foundation_models_info_tool,
     "replace": create_replace_tool,
 }
 

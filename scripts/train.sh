@@ -148,8 +148,7 @@ if [[ "$DOCKER_MODE" == true ]]; then
         die "Docker is not running or not accessible (start Docker and retry)"
     fi
 
-    FOUNDATION_MODEL_TYPE="$(load_string_field_from_run_config "$AGENT_DIR" "foundation_models_type")"
-    ensure_agentomics_docker_image "$FOUNDATION_MODEL_TYPE" "$DOCKERHUB_USERNAME"
+    ensure_agentomics_docker_image "$DOCKERHUB_USERNAME"
 
     echo "Running training in Docker..."
     AGENT_DIR_ABS="$(cd "$(dirname "$AGENT_DIR")" && pwd)/$(basename "$AGENT_DIR")"

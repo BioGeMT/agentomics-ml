@@ -53,8 +53,7 @@ for repetition in $(seq 1 $REPETITIONS); do
                 --val-metric "${metric_map[$dataset]}" \
                 --tags "${TAGS[@]}" \
                 --timeout "$TIME_BUDGET_S" \
-                --split-timeout "$SPLIT_TIME_BUDGET_S" \
-                --foundation-model-type all
+                --split-timeout "$SPLIT_TIME_BUDGET_S"
         done
     done
 done

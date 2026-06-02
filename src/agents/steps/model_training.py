@@ -39,8 +39,7 @@ class ModelTrainingOutput(AgenticStepOutput):
     unresolved_issues: str | None = Field(
         description=(
             "Issues that remain unresolved and could impact performance and/or metrics. "
-            "(e.g. expected GPU to be available but is inaccessible during training, "
-            "foundation model could not be loaded, etc...). Can be empty."
+            "(e.g. expected GPU to be available but is inaccessible during training). Can be empty."
         )
     )
 

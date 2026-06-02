@@ -21,7 +21,6 @@ DATASET_NAME=""
 TASK_TYPE=""
 VAL_METRIC=""
 LIST_MODE=false
-FOUNDATION_MODELS_TYPE=""
 VERBOSITY="full"
 ALL_ITERATIONS_TEST=false
 BUILD_IMAGES=false
@@ -93,10 +92,6 @@ Operational Flags:
   --cpu-only          Force Docker/Conda to run using CPU only (skip GPU configuration).
   --ollama            Enable support for an Ollama server running on the host machine.
   --build-images      Build Docker images locally instead of pulling prebuilt biogemt images from Docker Hub.
-  --foundation-models-type <dna|rna|molecule|protein|all>
-                      Enable foundation models of a specific type. Use 'all' to download all types.
-                      When omitted on a fresh run, no foundation models are used.
-                      When omitted on a forked run, the source run's foundation model type is reused.
   --use-provisioning-key  Use OpenRouter provisioning key to create temporary API key and log costs.
   --spend-limit <N>   Only applies when --use-provisioning-key is passed. Spend limit for a temporary key (default: 10).
   --disable-training-reporting
@@ -270,11 +265,6 @@ while [[ $# -gt 0 ]]; do
             BUILD_IMAGES=true
             shift
             ;;
-        --foundation-models-type)
-            require_opt_value "$1" "${2:-}"
-            FOUNDATION_MODELS_TYPE="$2"
-            shift 2
-            ;;
         --test)
             TEST_MODE=true
             shift
@@ -308,19 +298,11 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-if ! is_valid_foundation_models_type "$FOUNDATION_MODELS_TYPE"; then
-    die "Invalid --foundation-models-type '$FOUNDATION_MODELS_TYPE'. Allowed: dna, rna, molecule, protein, all."
-fi
 if [[ "$VERBOSITY" != "summary" && "$VERBOSITY" != "full" ]]; then
     die "Invalid --verbosity '$VERBOSITY'. Allowed: summary, full."
 fi
 
-EFFECTIVE_FOUNDATION_MODELS_TYPE="$(resolve_effective_string_field "$FOUNDATION_MODELS_TYPE" "$FORK_FROM_RUN" "foundation_models_type")"
 EFFECTIVE_DATASET_NAME="$(resolve_effective_string_field "$DATASET_NAME" "$FORK_FROM_RUN" "dataset" true)"
-
-if ! is_valid_foundation_models_type "$EFFECTIVE_FOUNDATION_MODELS_TYPE"; then
-    die "Invalid foundation model type '$EFFECTIVE_FOUNDATION_MODELS_TYPE' in the effective run configuration. Allowed: dna, rna, molecule, protein, all."
-fi
 
 if [[ -n "$FORK_FROM_RUN" && -n "$DATASET_NAME" && "$DATASET_NAME" != "$EFFECTIVE_DATASET_NAME" ]]; then
     warn "--dataset '$DATASET_NAME' is ignored for forked runs. Using '$EFFECTIVE_DATASET_NAME' from the source run config."
@@ -364,15 +346,6 @@ if [ "$LOCAL_MODE" = true ]; then
         export CUDA_VISIBLE_DEVICES=""
     fi
 
-    if [ -n "$EFFECTIVE_FOUNDATION_MODELS_TYPE" ]; then
-        FOUNDATION_MODELS_YAML_PATH="$(pwd)/foundation_models/models.yaml"
-        [[ -f "$FOUNDATION_MODELS_YAML_PATH" ]] || die "Foundation models YAML not found: $FOUNDATION_MODELS_YAML_PATH"
-        export HF_HOME="$WORKSPACE_CACHE_DIR/foundation_models"
-        mkdir -p "$HF_HOME"
-        AGENTOMICS_ARGS+=(--foundation-models-type "$EFFECTIVE_FOUNDATION_MODELS_TYPE")
-        AGENTOMICS_ARGS+=(--foundation-models-yaml "$FOUNDATION_MODELS_YAML_PATH")
-    fi
-
     echo -e "${RED}Running in local mode - this is only recommended if you run in a non-vulnerable environment!${NOCOLOR}"
     echo "For Docker mode (secure run), re-run without the --local flag."
     
@@ -385,16 +358,6 @@ if [ "$LOCAL_MODE" = true ]; then
         conda run -n agent_start_env conda-pack --format tar -o "$START_ENV_PKG_PATH"
     fi
     export START_ENV_PKG="$START_ENV_PKG_PATH"
-
-    if [ -n "$EFFECTIVE_FOUNDATION_MODELS_TYPE" ]; then
-        FOUNDATION_MODELS_MARKER="$HF_HOME/.downloaded_${EFFECTIVE_FOUNDATION_MODELS_TYPE}"
-        if [[ ! -f "$FOUNDATION_MODELS_MARKER" ]]; then
-            conda run -n agentomics-env python src/utils/download_foundation_models.py \
-                --foundation-models-type "$EFFECTIVE_FOUNDATION_MODELS_TYPE" \
-                --models-yaml "$FOUNDATION_MODELS_YAML_PATH"
-            touch "$FOUNDATION_MODELS_MARKER"
-        fi
-    fi
 
     TEMP_API_KEY_HASH=""
     if [ "$USE_PROVISIONING_KEY" = true ]; then
@@ -505,25 +468,15 @@ else
     fi
 
 
-    DOCKER_BUILD_ARGS=()
-    if [ -n "$EFFECTIVE_FOUNDATION_MODELS_TYPE" ]; then
-        DOCKER_BUILD_ARGS+=(--build-arg "FOUNDATION_MODEL_TYPE=$EFFECTIVE_FOUNDATION_MODELS_TYPE")
-        AGENTOMICS_ARGS+=(--foundation-models-type "$EFFECTIVE_FOUNDATION_MODELS_TYPE")
-        AGENTOMICS_ARGS+=(--foundation-models-yaml /foundation_models/models.yaml)
-    fi
-
     AGENTOMICS_IMAGE="agentomics_img"
 
     if [ "$BUILD_IMAGES" = true ]; then
         echo "Building the run image"
-        docker build -t "$AGENTOMICS_IMAGE" -f Dockerfile ${DOCKER_BUILD_ARGS[@]+"${DOCKER_BUILD_ARGS[@]}"} .
+        docker build -t "$AGENTOMICS_IMAGE" -f Dockerfile .
         echo "Build done"
     else
-        FM_TAG="NONE"
-        if [ -n "$EFFECTIVE_FOUNDATION_MODELS_TYPE" ]; then
-            FM_TAG="$(echo "$EFFECTIVE_FOUNDATION_MODELS_TYPE" | tr '[:lower:]' '[:upper:]')"
-        fi
-        AGENTOMICS_IMAGE="${DOCKERHUB_USERNAME}/agentomics:FM-${FM_TAG}-latest"
+        AGENTOMICS_IMAGE="${DOCKERHUB_USERNAME}/agentomics:FM-NONE-latest"
+        PREPARE_IMAGE="${DOCKERHUB_USERNAME}/agentomics-prepare:latest"
 
         echo "Pulling the run image"
         docker pull "$AGENTOMICS_IMAGE"
@@ -636,7 +589,6 @@ else
             -e AGENT_ID=${AGENT_ID} \
             -e AGENTOMICS_VERBOSITY=${VERBOSITY} \
             -e PYTHONWARNINGS=ignore \
-            ${EFFECTIVE_FOUNDATION_MODELS_TYPE:+-e FOUNDATION_MODELS_TYPE=${EFFECTIVE_FOUNDATION_MODELS_TYPE}} \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
             ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \

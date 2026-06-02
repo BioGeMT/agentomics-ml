@@ -40,7 +40,6 @@ class Config:
         "bash",
         "write_python",
         "run_python",
-        "foundation_models_info",
         "replace",
     ]
     DEFAULT_MAX_STEPS: ClassVar[int] = 100
@@ -76,8 +75,6 @@ class Config:
     time_deadline: int | None = None
     split_time_deadline: int | None = None
     run_python_tool_timeout: int = DEFAULT_RUN_PYTHON_TOOL_TIMEOUT
-    foundation_models_type: str | None = None
-    foundation_models_yaml: str | None = None
     disable_training_reporting: bool = False
     conda_export_mode: str = "full"
 
