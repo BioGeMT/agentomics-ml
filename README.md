@@ -43,6 +43,11 @@ Agentomics can be run either:
 - **(Recommended)** with [Docker](https://www.docker.com/)
 - **Locally** with [Conda](https://docs.conda.io/)
 
+### API Calls
+
+Agentomics can be run either:
+- with your **local Codex subscription**
+- with an **OpenRouter/OpenAI API key**
 
 ## Documentation
 
@@ -56,6 +61,38 @@ For more details visit **https://biogemt.github.io/agentomics-ml/**
 - Foundation models: Agentomics can leverage foundation models from huggingface for both embeddings and fine-tuning.
 - Various LLM providers: OpenAI, OpenRouter, or local models via Ollama
 - Reliability: Thanks to our functional validators, Agentomics creates a working model 100% of the time (when using recommended settings).
+
+## Run Output Structure Example
+
+run
+├── iteration_0
+│   ├── data_exploration
+│   ├── data_representation
+│   ├── data_split
+│   ├── iteration_plan
+│   ├── model_architecture
+│   ├── model_inference
+│   ├── model_training
+│   ├── prediction_exploration
+│   ├── runtime_info
+│   └── validation_evaluation
+├── iteration_1
+│   ├── data_exploration
+│   ├── data_representation
+│   ├── data_split
+│   ├── iteration_plan
+│   ├── model_architecture
+│   ├── model_inference
+│   ├── model_training
+│   ├── prediction_exploration
+│   ├── runtime_info
+│   └── validation_evaluation
+└── shared
+    ├── .conda
+    ├── datasets
+    ├── splits
+    ├── config.json
+    └── environment.yml
 
 ## Roadmap
 Agentomics is in active development. We welcome any raised Issues and suggestions. You can also [Email Us](mailto:martinekvlastimil95@gmail.com).
