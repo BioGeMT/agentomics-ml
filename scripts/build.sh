@@ -52,7 +52,6 @@ if [ -z "$USERNAME" ]; then
 fi
 
 AGENTOMICS_IMAGE="${USERNAME}/agentomics:${VERSION}"
-PREPARE_IMAGE="${USERNAME}/agentomics-prepare:${VERSION}"
 
 need_cmd docker
 
@@ -64,14 +63,6 @@ docker buildx create \
     ${DRIVER_OPTS[@]+"${DRIVER_OPTS[@]}"} \
     --use
 docker buildx inspect --bootstrap
-
-# Build and push preparation image
-docker buildx build \
-    --platform linux/amd64,linux/arm64 \
-    -f Dockerfile.prepare \
-    -t "$PREPARE_IMAGE" \
-    ${PROXY_BUILD_ARGS[@]+"${PROXY_BUILD_ARGS[@]}"} \
-    --push .
 
 echo ""
 echo "============================================"

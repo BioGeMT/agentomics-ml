@@ -475,8 +475,7 @@ else
         docker build -t "$AGENTOMICS_IMAGE" -f Dockerfile .
         echo "Build done"
     else
-        AGENTOMICS_IMAGE="${DOCKERHUB_USERNAME}/agentomics:FM-NONE-latest"
-        PREPARE_IMAGE="${DOCKERHUB_USERNAME}/agentomics-prepare:latest"
+        AGENTOMICS_IMAGE="${DOCKERHUB_USERNAME}/agentomics:latest"
 
         echo "Pulling the run image"
         docker pull "$AGENTOMICS_IMAGE"
