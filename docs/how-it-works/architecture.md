@@ -136,7 +136,6 @@ The agent has access to these tools:
 | **Write Python** | Create Python files |
 | **Run Python** | Execute Python scripts |
 | **Replace** | Modify code sections |
-| **Foundation Models Info** | Get domain model information |
 
 ## How Decisions Are Made
 

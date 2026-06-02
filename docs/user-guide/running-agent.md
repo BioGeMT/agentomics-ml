@@ -71,17 +71,6 @@ For non-interactive fresh runs, provide at least `--model` and `--dataset`. If y
 
 ## Advanced Options
 
-### Foundation Models
-
-Enable domain-specific foundation models:
-
-```bash
-./run.sh --foundation-models-type dna
-```
-
-Available types: `dna`, `rna`, `protein`, `molecule`
-Also supported: `all`
-
 ### Data Split and Exploration Controls
 
 ```bash

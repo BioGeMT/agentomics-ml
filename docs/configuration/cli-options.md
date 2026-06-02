@@ -44,7 +44,6 @@ The run stops when either the iteration count is reached or the timeout expires.
 |--------|-------------|
 | `--user-prompt <text>` | Custom prompt for the agent |
 | `--iteration-plan-model <name>` | LLM model used for generating the iteration plan (defaults to `--model`) |
-| `--foundation-models-type <type>` | Enable foundation models (`dna`, `rna`, `protein`, `molecule`, `all`) |
 | `--use-provisioning-key` | Use OpenRouter temporary API key |
 | `--spend-limit <n>` | Spend limit for provisioning key (requires `--use-provisioning-key`) |
 | `--verbosity <summary\|full>` | How much agent interaction detail is printed during the run (default: `full`) |
@@ -108,12 +107,6 @@ export OLLAMA_BASE_URL=http://localhost:11434/v1
 
 ```bash
 ./run.sh --cpu-only --model openai/gpt-4 --dataset my_data
-```
-
-### Enable Foundation Models
-
-```bash
-./run.sh --foundation-models-type protein --model openai/gpt-4 --dataset my_data
 ```
 
 ### Run with locally built Docker images

@@ -58,7 +58,6 @@ Most run options are **optional** when forking — omitting them reuses the valu
 | `--timeout` | Not inherited — no run timeout unless passed (applies only to the forked run's own runtime) |
 | `--split-timeout` | Not inherited — no split timeout unless passed (applies only to the forked run's own runtime) |
 | `--user-prompt` | Inherited if omitted |
-| `--foundation-models-type` | Inherited if omitted |
 | `--tags` | Inherited if omitted |
 | `--dataset` | **Always inherited, cannot be changed** |
 | `--val-metric` | **Always inherited, cannot be changed** |

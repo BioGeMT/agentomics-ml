@@ -64,8 +64,7 @@ For more details visit **https://biogemt.github.io/agentomics-ml/**
 - Secure: Agents execute code securely in Docker with read-only mounts to your file system and are only allowed to write in a Docker Volume.
 - Reproducible: Outputs include models, scripts, and conda environments needed to run inference or re-train models with one bash command.
 - Trustworthy: If you provide a test set, Agentomics fully abstracts LLMs from accessing it, allowing you to rely on programmaticly computed and reported test set metrics.
-- Foundation models: Agentomics can leverage foundation models from huggingface for both embeddings and fine-tuning.
-- Various LLM providers: OpenAI, Anthropic, OpenRouter, local Codex auth, local models via Ollama, or custom OpenAI-compatible providers
+- Various LLM providers: OpenAI, OpenRouter, or local models via Ollama
 - Reliability: Thanks to our functional validators, Agentomics creates a working model 100% of the time (when using recommended settings).
 
 ## Run Output Structure Example

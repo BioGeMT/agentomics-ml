@@ -6,7 +6,6 @@ Configure NVIDIA GPU support for accelerated training.
 
 GPU acceleration significantly speeds up:
 - Neural network training
-- Foundation model embeddings
 - Large dataset processing
 
 ## Requirements
