@@ -68,7 +68,7 @@ Optional Arguments:
                       Providing it means N more exploration iterations from the fork point.
   --val-metric <name> Metric to optimize. Defaults: AUROC (classification), MAE (regression).
   --user-prompt <str> The main prompt/goal for the agent.
-                      (Default: "Create the best possible machine learning model that will generalize to new unseen data.")
+                      (Default: "Develop a machine learning model that generalizes well to new unseen data.")
 
 Forking:
   --fork-from-run <path>  Path to the source run workspace directory (the 'outputs/<run_id>' folder).
