@@ -461,7 +461,7 @@ if [ "$LOCAL_MODE" = true ]; then
             die "Config not found: ${CONFIG_PATH}"
         fi
         export PYTHONPATH=./src
-        python src/run_logging/test_evaluation.py --workspace-dir "$WORKSPACE_DIR" --prepared-test-sets-dir "$(pwd)/prepared_test_sets"
+        conda run -n agentomics-env python src/run_logging/test_evaluation.py --workspace-dir "$WORKSPACE_DIR" --prepared-test-sets-dir "$(pwd)/prepared_test_sets"
     else
         RUN_SUCCEEDED=false
     fi
