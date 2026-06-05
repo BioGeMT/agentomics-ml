@@ -5,7 +5,6 @@ import json
 import math
 import os
 import re
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -16,8 +15,6 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from agents.steps.validation_evaluation import ValidationEvaluationStep
-from datasets.dataset_preparation import prepare_test_dataset
-from runtime.evaluate_result import get_metrics
 from runtime.step_outputs import load_step_output
 from utils.config import Config
 from utils.task_types import TaskTypes
@@ -38,7 +35,7 @@ from reportlab.platypus import (
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
-from datasets.data_contract import LABELS_FILE_NAME, NUMERIC_LABEL_COLUMN_NAME, TEST_SPLIT, TRAIN_SPLIT, VALIDATION_SPLIT
+from datasets.data_contract import LABELS_FILE_NAME, NUMERIC_LABEL_COLUMN_NAME, TRAIN_SPLIT, VALIDATION_SPLIT
 
 
 # Data models
@@ -60,7 +57,7 @@ class RunMeta:
 
 @dataclass
 class SplitArtifacts:
-    split_name: str  # train/validation/test
+    split_name: str  # train/validation
     labeled_csv: Optional[Path]
     preds_csv: Optional[Path]
     metrics: Dict[str, float]
@@ -221,29 +218,6 @@ def get_split_metrics(metrics: Dict[str, float], split_name: str) -> Dict[str, f
         if metric_name.startswith(split_prefix)
     }
 
-def load_test_metrics(
-    labeled_csv: Optional[Path],
-    preds_csv: Optional[Path],
-    dataset_meta: DatasetMeta,
-) -> Dict[str, float]:
-    if not labeled_csv or not labeled_csv.exists() or not preds_csv or not preds_csv.exists():
-        return {}
-    return get_metrics(
-        results_file=preds_csv,
-        test_file=labeled_csv,
-        task_type=dataset_meta.task_type,
-        numeric_label_col=dataset_meta.numeric_label_col,
-    )
-
-
-def load_saved_metrics(metrics_path: Path) -> Dict[str, float]:
-    if not metrics_path.exists():
-        return {}
-    payload = json.loads(metrics_path.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict):
-        raise ValueError(f"Expected JSON object at {metrics_path}.")
-    return {str(metric_name): float(metric_value) for metric_name, metric_value in payload.items()}
-
 def load_run_meta(config: Config) -> RunMeta:
     return RunMeta(
         agent_id=config.agent_id,
@@ -277,8 +251,6 @@ def _get_iteration_split_version(config: Config, iter_dir: Path) -> int | None:
 
 def gather_iteration_inputs(
     config: Config,
-    test_labels_path: Path | None,
-    dataset_meta: DatasetMeta,
     iteration: int,
 ) -> IterationInputs:
     iter_dir = config.iteration_dir(iteration)
@@ -291,27 +263,16 @@ def gather_iteration_inputs(
     split_version = _get_iteration_split_version(config, iter_dir)
     train_csv = _find_versioned_split_labels(config, TRAIN_SPLIT, split_version)
     val_csv = _find_versioned_split_labels(config, VALIDATION_SPLIT, split_version)
-    test_csv = test_labels_path
+
 
     validation_evaluation_dir = iter_dir / ValidationEvaluationStep.step_id
     train_preds = validation_evaluation_dir / "eval_predictions_train.csv"
     val_preds = validation_evaluation_dir / "eval_predictions_validation.csv"
-    test_preds = config.best_iteration_snapshot_dir / "eval_predictions_test.csv"
 
     splits: List[SplitArtifacts] = [
         SplitArtifacts("train", train_csv, train_preds, get_split_metrics(validation_metrics, "train")),
         SplitArtifacts("validation", val_csv, val_preds, get_split_metrics(validation_metrics, "validation")),
     ]
-
-    best_iter = load_best_iteration_snapshot_iteration(config)
-    if best_iter is not None and iteration == best_iter:
-        test_metrics = load_saved_metrics(config.best_iteration_snapshot_dir / "test_metrics.json") or load_test_metrics(
-            test_csv,
-            test_preds,
-            dataset_meta,
-        )
-        if (test_csv and test_csv.exists()) or (test_preds and test_preds.exists()) or bool(test_metrics):
-            splits.append(SplitArtifacts("test", test_csv, test_preds, test_metrics))
 
     return IterationInputs(iteration=iteration, report_md=report_md, splits=splits)
 
@@ -630,7 +591,7 @@ def plots_compare_splits_page_flowables(
     flows.append(Paragraph(f"Plots comparison (Iteration {iteration})", styles["H1"]))
     flows.append(
         Paragraph(
-            "Columns are dataset splits (train / validation / test if exists). "
+            "Columns are dataset splits (train / validation). "
             "Rows correspond to the same plot type across splits.",
             styles["Muted"],
         )
@@ -844,14 +805,11 @@ def main() -> None:
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--agent-dir", type=Path, required=True, help="Path to outputs/<agent_id>")
-    ap.add_argument("--test-datasets-dir", type=Path, required=True, help="Path to test datasets directory")
     args = ap.parse_args()
 
     agent_dir: Path = args.agent_dir.resolve()
     if not agent_dir.exists():
         raise SystemExit(f"Agent dir not found: {agent_dir}")
-
-    test_datasets_dir: Path = args.test_datasets_dir.resolve()
 
     config = load_config_from_run_dir_and_reroot(agent_dir / Config.RUN_DIRNAME)
     run_meta = load_run_meta(config)
@@ -866,69 +824,53 @@ def main() -> None:
     ensure_dir(out_dir)
     ensure_dir(plots_dir)
     config.markdown_reports_dir.mkdir(parents=True, exist_ok=True)
-    split_order = ["train", "validation", "test"]
-
-    with tempfile.TemporaryDirectory(prefix="report_test_data_") as temp_dir:
-        raw_test_split = test_datasets_dir / config.dataset / TEST_SPLIT
-        raw_labels = raw_test_split / LABELS_FILE_NAME
-        test_labels_path = None
-        if raw_test_split.is_dir() and raw_labels.is_file():
-            prepared_dir = Path(temp_dir) / config.dataset
-            prepare_test_dataset(
-                source_dir=test_datasets_dir / config.dataset,
-                destination_dir=prepared_dir,
-                task_type=config.task_type,
-                input_structure=config.input_structure,
-                label_to_scalar=config.label_to_scalar,
-            )
-            test_labels_path = prepared_dir / TEST_SPLIT / LABELS_FILE_NAME
-
-        for it in iterations:
-            inp = gather_iteration_inputs(config, test_labels_path, dataset_meta, it)
-            report_path = inp.report_md
-            if report_path is None:
-                report_metrics = {
-                    f"{split.split_name}/{metric_name}": metric_value
-                    for split in inp.splits
-                    if split.split_name != "test"
-                    for metric_name, metric_value in split.metrics.items()
-                }
-                test_metrics = next((split.metrics for split in inp.splits if split.split_name == "test"), None)
-                report_path = write_iteration_report(
-                    config,
-                    iteration=it,
-                    iteration_dir=config.iteration_dir(it),
-                    report_path=config.markdown_reports_dir / f"run_report_iter_{it}.md",
-                    metrics=report_metrics,
-                    test_metrics=test_metrics,
-                )
-            report_text = report_path.read_text(encoding="utf-8") if report_path.exists() else None
-
-            metrics_by_split: Dict[str, Dict[str, float]] = {
-                s.split_name: s.metrics for s in inp.splits if s.metrics
+    split_order = ["train", "validation"]
+    for it in iterations:
+        inp = gather_iteration_inputs(config, dataset_meta, it)
+        report_path = inp.report_md
+        if report_path is None:
+            report_metrics = {
+                f"{split.split_name}/{metric_name}": metric_value
+                for split in inp.splits
+                if split.split_name != "test"
+                for metric_name, metric_value in split.metrics.items()
             }
-
-            plot_groups: Dict[str, List[Path]] = {}
-            for s in inp.splits:
-                plots = build_plots_for_split(
-                    meta=dataset_meta,
-                    split=s,
-                    plots_dir=plots_dir,
-                    iteration=it,
-                )
-                if plots:
-                    plot_groups[s.split_name] = plots
-
-            out_pdf = out_dir / f"iteration_{it}.pdf"
-            write_iteration_pdf(
-                out_pdf=out_pdf,
+            test_metrics = next((split.metrics for split in inp.splits if split.split_name == "test"), None)
+            report_path = write_iteration_report(
+                config,
                 iteration=it,
-                run_meta=run_meta,
-                report_text_raw=report_text,
-                metrics_by_split=metrics_by_split,
-                plot_groups=plot_groups,
-                split_order=split_order,
+                iteration_dir=config.iteration_dir(it),
+                report_path=config.markdown_reports_dir / f"run_report_iter_{it}.md",
+                metrics=report_metrics,
+                test_metrics=test_metrics,
             )
+        report_text = report_path.read_text(encoding="utf-8") if report_path.exists() else None
+
+        metrics_by_split: Dict[str, Dict[str, float]] = {
+            s.split_name: s.metrics for s in inp.splits if s.metrics
+        }
+
+        plot_groups: Dict[str, List[Path]] = {}
+        for s in inp.splits:
+            plots = build_plots_for_split(
+                meta=dataset_meta,
+                split=s,
+                plots_dir=plots_dir,
+                iteration=it,
+            )
+            if plots:
+                plot_groups[s.split_name] = plots
+
+        out_pdf = out_dir / f"iteration_{it}.pdf"
+        write_iteration_pdf(
+            out_pdf=out_pdf,
+            iteration=it,
+            run_meta=run_meta,
+            report_text_raw=report_text,
+            metrics_by_split=metrics_by_split,
+            plot_groups=plot_groups,
+            split_order=split_order,
+        )
 
 if __name__ == "__main__":
     main()

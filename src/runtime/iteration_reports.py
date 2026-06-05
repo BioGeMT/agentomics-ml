@@ -17,7 +17,6 @@ def write_iteration_report(
     iteration_dir: Path | None = None,
     report_path: Path | None = None,
     metrics: dict[str, float] | None = None,
-    test_metrics: dict[str, float] | None = None,
 ) -> Path:
     source_dir = iteration_dir or config.current_iteration_dir
     target_path = report_path or config.markdown_reports_dir / f"run_report_iter_{iteration}.md"
@@ -28,7 +27,6 @@ def write_iteration_report(
             iteration=iteration,
             iteration_dir=source_dir,
             metrics=metrics,
-            test_metrics=test_metrics,
         ),
         encoding="utf-8",
     )
@@ -38,8 +36,6 @@ def write_iteration_report(
 def write_exported_run_reports(agent_dir: Path) -> list[Path]:
     config = load_config_from_run_dir_and_reroot(agent_dir / Config.RUN_DIRNAME)
     config.markdown_reports_dir.mkdir(parents=True, exist_ok=True)
-    best_iteration = load_best_iteration_snapshot_iteration(config)
-    saved_test_metrics = _load_metrics_file(config.best_iteration_snapshot_dir / "test_metrics.json")
 
     report_paths: list[Path] = []
     for iteration in get_archived_iterations(config):
@@ -51,7 +47,6 @@ def write_exported_run_reports(agent_dir: Path) -> list[Path]:
                 iteration_dir=iteration_dir,
                 report_path=config.markdown_reports_dir / f"run_report_iter_{iteration}.md",
                 metrics=_load_validation_metrics(config, iteration_dir),
-                test_metrics=saved_test_metrics if iteration == best_iteration else None,
             )
         )
     return report_paths
@@ -62,7 +57,6 @@ def render_iteration_report(
     iteration: int,
     iteration_dir: Path,
     metrics: dict[str, float] | None = None,
-    test_metrics: dict[str, float] | None = None,
 ) -> str:
     lines = [
         f"# Run Report - Iteration {iteration}",
@@ -105,9 +99,6 @@ def render_iteration_report(
 
     if metrics:
         lines.extend(["## Metrics", "", _render_metrics(metrics), ""])
-
-    if test_metrics:
-        lines.extend(["## Test Metrics", "", _render_metrics(test_metrics), ""])
 
     return "\n".join(lines).rstrip() + "\n"
 
@@ -193,15 +184,6 @@ def _load_validation_metrics(config: Config, iteration_dir: Path) -> dict[str, f
     if not isinstance(metrics, dict):
         return {}
     return {str(metric_name): float(metric_value) for metric_name, metric_value in metrics.items()}
-
-
-def _load_metrics_file(metrics_path: Path) -> dict[str, float]:
-    if not metrics_path.exists():
-        return {}
-    payload = json.loads(metrics_path.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict):
-        raise ValueError(f"Expected metrics JSON object at {metrics_path}.")
-    return {str(metric_name): float(metric_value) for metric_name, metric_value in payload.items()}
 
 
 def main() -> None:
