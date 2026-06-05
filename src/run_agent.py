@@ -7,7 +7,7 @@ from timeout_function_decorator import timeout as timeout_decorator
 
 from run_logging.wandb_setup import setup_logging
 from runtime.git_checkpoints import initialize_repo_if_needed
-from runtime.read_write_utils import initialize_run_directories, save_config
+from runtime.read_write_utils import initialize_run_directories, load_dataset_metadata, save_config
 from runtime.run_lifecycle import run_agentomics
 from utils.config import Config
 from run_logging.env_utils import are_wandb_vars_available

@@ -58,15 +58,18 @@ warn() {
     echo -e "${YELLOW}Warning: $*${NOCOLOR}" >&2
 }
 
-docker_has_gpu() {
-    # Check if nvidia-container-toolkit is installed and nvidia-smi works
-    if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >/dev/null 2>&1; then
-        # Also verify docker can use GPUs by checking for nvidia runtime
-        if docker info 2>/dev/null | grep -q nvidia; then
-            return 0
-        fi
+ensure_conda_env() {
+    local env_name="$1"
+    local env_yaml="$2"
+    need_cmd conda
+    if conda env list | grep -qE "^${env_name}[[:space:]]"; then
+        info "Conda env '${env_name}' already present — skipping creation"
+        #TODO think if we want to updated the env everytime: conda env update --file $env_yaml --prune
+    else
+        [[ -f "$env_yaml" ]] || die "Environment file not found: ${env_yaml}"
+        echo "Creating conda env '${env_name}' from ${env_yaml}"
+        conda env create -f "$env_yaml" -q
     fi
-    return 1
 }
 
 load_string_field_from_run_config() {

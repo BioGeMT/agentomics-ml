@@ -91,6 +91,7 @@ class Config:
     label_to_scalar: dict[str, int] | None = None
     wandb_run_id: str | None = None
     agent_user: str | None = None
+    label_to_scalar: dict[str, int] | None = None
 
     @property
     def run_dir(self) -> Path:
