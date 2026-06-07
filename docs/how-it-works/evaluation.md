@@ -32,7 +32,8 @@ At the end of the run:
 4. Results saved to final report
 
 !!! note
-    Test evaluation only occurs if you provide a `test.csv` file.
+    Test evaluation only occurs if you provide a `test/` split with `input/`
+    and `labels.csv`.
 
 ## Classification Metrics
 

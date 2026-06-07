@@ -21,6 +21,7 @@ from runtime.filesystem import remove_path
 from runtime.inference_runner import run_inference_script
 from runtime.read_write_utils import get_archived_iterations, load_config_from_run_dir_and_reroot, load_dataset_metadata
 from utils.config import Config
+from datasets.data_contract import INPUT_DIR_NAME, LABELS_FILE_NAME, TEST_SPLIT
 
 ITERATION_TEST_ENVS_DIRNAME = "_iteration_test_envs"
 STEALTH_TEST_METRICS_FILENAME = "stealth_test_metrics.json"
@@ -30,12 +31,12 @@ STEALTH_TEST_STEP_METRIC = "stealth_test/iteration"
 def evaluate_stealth_test_history(agent_dir: Path, prepared_test_sets_dir: Path) -> None:
     config = load_config_from_run_dir_and_reroot(agent_dir / Config.RUN_DIRNAME)
     metadata = load_dataset_metadata(config)
-    prepared_test_set_dir = prepared_test_sets_dir / config.dataset
-    test_input_path = prepared_test_set_dir / "test.no_label.csv"
-    labeled_test_path = prepared_test_set_dir / "test.csv"
-    if not test_input_path.exists() or not labeled_test_path.exists():
+    test_split_path = prepared_test_sets_dir / config.dataset / TEST_SPLIT
+    test_input_path = test_split_path / INPUT_DIR_NAME
+    labels_path = test_split_path / LABELS_FILE_NAME
+    if not test_input_path.is_dir() or not labels_path.is_file():
         raise FileNotFoundError(
-            f"Expected both test.no_label.csv and test.csv in {prepared_test_set_dir} for iteration test evaluation."
+            f"Expected input/ and labels.csv in {test_split_path} for iteration test evaluation."
         )
 
     run = resume_wandb_run(config, dir=config.extras_dir / "iteration_test_logs")
@@ -46,7 +47,7 @@ def evaluate_stealth_test_history(agent_dir: Path, prepared_test_sets_dir: Path)
             config=config,
             metadata=metadata,
             test_input_path=test_input_path,
-            labeled_test_path=labeled_test_path,
+            labels_path=labels_path,
         )
     finally:
         if run is not None:
@@ -63,7 +64,7 @@ def _evaluate_iterations(
     config: Config,
     metadata: dict[str, object],
     test_input_path: Path,
-    labeled_test_path: Path,
+    labels_path: Path,
 ) -> list[dict]:
     iteration_dirs = [
         (iteration, config.iteration_dir(iteration))
@@ -82,7 +83,7 @@ def _evaluate_iterations(
                 config=config,
                 metadata=metadata,
                 test_input_path=test_input_path,
-                labeled_test_path=labeled_test_path,
+                labels_path=labels_path,
                 temp_dir=temp_dir_path,
             )
             results.append(result)
@@ -102,7 +103,7 @@ def _evaluate_single_iteration(
     config: Config,
     metadata: dict[str, object],
     test_input_path: Path,
-    labeled_test_path: Path,
+    labels_path: Path,
     temp_dir: Path,
 ) -> dict:
     #TODO should use the step id by importing it
@@ -124,7 +125,7 @@ def _evaluate_single_iteration(
         )
         metrics = get_metrics(
             results_file=output_path,
-            test_file=labeled_test_path,
+            test_file=labels_path,
             numeric_label_col=metadata["numeric_label_col"],
             task_type=metadata["task_type"],
         )
