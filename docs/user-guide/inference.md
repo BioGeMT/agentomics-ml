@@ -7,7 +7,7 @@ Use trained models to make predictions on new data with `scripts/inference.sh`.
 ```bash
 ./scripts/inference.sh \
   --agent-dir outputs/<agent_id> \
-  --input /path/to/new_data.csv \
+  --input /path/to/input_folder \
   --output /path/to/predictions.csv
 ```
 
@@ -16,7 +16,7 @@ Use trained models to make predictions on new data with `scripts/inference.sh`.
 | Argument | Description |
 |----------|-------------|
 | `--agent-dir` | Path to completed agent output folder |
-| `--input` | Path to input CSV file (without labels) |
+| `--input` | Path to an input folder without labels |
 | `--output` | Path where predictions will be saved |
 
 ## Optional Arguments
@@ -34,28 +34,34 @@ Use trained models to make predictions on new data with `scripts/inference.sh`.
 ```bash
 ./scripts/inference.sh \
   --agent-dir outputs/enchanted_fixing_reigned \
-  --input new_samples.csv \
+  --input new_samples/input \
   --output predictions.csv
 ```
 
 ## Input Data Format
 
-Your input file should:
+Your input folder should:
 
-- Be a CSV file
-- Have the same feature columns as training data
-- **Not** include the target/label column
+- Match the structure of the training split's `input/` folder
+- Contain the sample IDs needed by the generated `inference.py`
+- Not include `labels.csv` or target labels
 
-Example:
+For a tabular dataset, the folder can contain a CSV file:
+
+```text
+new_samples/input/
+└── data.csv
+```
+
 ```csv
-feature1,feature2,feature3
-1.2,3.4,5.6
-7.8,9.0,1.2
+id,feature1,feature2,feature3
+sample-1,1.2,3.4,5.6
+sample-2,7.8,9.0,1.2
 ```
 
 ## Output Format
 
-The generated `inference.py` must preserve the input `id` column and write a prediction for every row. Classification runs produce `prediction` plus `probability_<class_id>` columns. Regression runs produce `prediction`. Additional columns are run-specific.
+The generated `inference.py` must preserve input sample IDs and write a prediction for every sample. Classification runs produce `id`, `prediction`, and probability columns when probabilities are available. Regression runs produce `id` and `prediction`. Additional columns are run-specific.
 
 ## Docker vs Local Mode
 
@@ -103,7 +109,9 @@ The script first looks for a local `agentomics_img`, then for the matching pre-b
 
 ### "Column mismatch"
 
-Ensure your input CSV has the same feature columns as the training data (minus the target column).
+Ensure your input folder has the same top-level files and folders as the
+training split's `input/` folder. Files inside matching top-level folders may
+differ.
 
 ### "Model file not found"
 
