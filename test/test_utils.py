@@ -11,7 +11,7 @@ if str(SRC_PATH) not in sys.path:
 
 from tools.tool_registry import create_tools
 from utils.config import Config
-from datasets.dataset_utils import setup_nonsensitive_dataset_files_for_agent
+from datasets.dataset_preparation import setup_nonsensitive_dataset_files_for_agent
 from runtime.read_write_utils import (
     initialize_current_iteration_workspace,
     initialize_run_directories,

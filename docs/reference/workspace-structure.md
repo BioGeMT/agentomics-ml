@@ -4,11 +4,11 @@ How Agentomics-ML organizes files during and after execution.
 
 ## Directory Overview
 
-```
+```text
 agentomics-ml/
 ├── datasets/                 # Raw input datasets
-├── prepared_datasets/        # Prepared training data
-├── prepared_test_sets/       # Prepared test data (hidden)
+├── prepared_datasets/        # Prepared public train/validation data
+├── prepared_test_sets/       # Prepared hidden test data
 └── outputs/                  # Final results
 
 ../workspace/runs/<agent_id>/ # Local-mode active workspace
@@ -23,36 +23,56 @@ Docker mode uses an internal temporary workspace volume with the same layout and
 
 ## datasets/
 
-Your raw input datasets:
+Raw datasets use split folders:
 
-```
+```text
 datasets/my_dataset/
-├── train.csv              # Training data (required)
-├── validation.csv         # Validation data (optional)
-├── test.csv               # Test data (optional)
-└── dataset_description.md # Domain info (optional)
+├── train/
+│   ├── input/
+│   └── labels.csv
+├── validation/             # Optional
+│   ├── input/
+│   └── labels.csv
+├── test/                   # Optional hidden test set
+│   ├── input/
+│   └── labels.csv
+├── supplementary/          # Optional: dataset-level source materials
+├── metadata.json           # Optional if task type is supplied at preparation
+└── dataset_description.md  # Optional domain information
 ```
+
+Each raw `labels.csv` must include `id` and `label` columns. Preparation writes
+prepared `labels.csv` files with `id` and `numeric_label`. Only `train`,
+`validation`, and `test` are supported split names. The `input/` interface is
+recorded at preparation time, must match across all splits, and must not be
+modified during a run.
 
 ## prepared_datasets/
 
-After preparation, datasets are formatted for the agent:
+After preparation, public splits are formatted for the agent:
 
-```
+```text
 prepared_datasets/my_dataset/
-├── train.csv              # Processed training data
-├── validation.csv         # Processed validation data, if supplied
-├── dataset_description.md # Copied/created description
-└── metadata.json          # Task info (type, classes, etc.)
+├── train/
+│   ├── input/
+│   └── labels.csv
+├── validation/
+│   ├── input/
+│   └── labels.csv
+├── supplementary/          # Dataset-level source materials, if provided
+├── dataset_description.md
+└── metadata.json
 ```
 
 ## prepared_test_sets/
 
-Test data is separated to ensure it stays hidden:
+Test data is separated to keep it hidden:
 
-```
+```text
 prepared_test_sets/my_dataset/
-├── test.csv               # Test data with labels
-└── test.no_label.csv      # Test data without labels
+└── test/
+    ├── input/
+    └── labels.csv
 ```
 
 The agent never sees files in this directory during training.
@@ -65,7 +85,7 @@ Active execution area. In local mode this is `../workspace/runs/<agent_id>/`; in
 
 Current run working directory:
 
-```
+```text
 <workspace_root>/run/
 ├── shared/
 │   ├── .conda/                  # Shared Conda environment
@@ -84,7 +104,7 @@ Current run working directory:
 
 Best iteration snapshot:
 
-```
+```text
 <workspace_root>/best_iteration_snapshot/
 ├── model_training/
 │   ├── train.py
@@ -102,11 +122,35 @@ Updated whenever a new best iteration is achieved.
 
 Reserved recovery area:
 
-```
+```text
 <workspace_root>/fallbacks/
 ```
 
 This directory may be empty for normal runs.
+
+### run/shared/splits/
+
+Versioned train/validation split folders:
+
+```text
+<workspace_root>/run/shared/splits/
+└── split_0/
+    ├── train/
+    │   ├── input/
+    │   └── labels.csv
+    ├── validation/
+    │   ├── input/
+    │   └── labels.csv
+    └── mini_train/
+        ├── input/
+        └── labels.csv
+```
+
+Each time the agent changes the train/validation split, a new `split_<n>/`
+folder is created. Iteration outputs record which split version they used.
+The `input/` structure must match the original recorded structure across all
+splits and must not be modified. The `mini_train/` folder is a small subset
+of training data (at most 100 samples) used for quick script validation.
 
 ### reports/
 
@@ -115,14 +159,14 @@ Iteration reports are written here during runs. These are copied to
 
 ### extras/
 
-Logs and auxiliary artifacts (metrics, run logs) are stored here and copied to
+Logs and auxiliary artifacts are stored here and copied to
 `outputs/<agent_id>/extras/`.
 
 ## outputs/
 
 Final results after run completion:
 
-```
+```text
 outputs/<agent_id>/
 ├── best_iteration_snapshot/           # Best iteration artifacts
 │   ├── model_training/
@@ -138,8 +182,15 @@ outputs/<agent_id>/
 │   │   ├── config.json
 │   │   └── splits/
 │   │       └── split_0/
-│   │           ├── train.csv
-│   │           └── validation.csv
+│   │           ├── train/
+│   │           │   ├── input/
+│   │           │   └── labels.csv
+│   │           ├── validation/
+│   │           │   ├── input/
+│   │           │   └── labels.csv
+│   │           └── mini_train/
+│   │               ├── input/
+│   │               └── labels.csv
 │   ├── iteration_0/
 │   ├── iteration_1/
 │   └── ...
@@ -190,9 +241,9 @@ rm -rf prepared_test_sets/*
 
 In Docker mode, workspace is mounted as a volume:
 
-- Code repository: Read-only
-- Workspace: Read-write
-- Outputs: Read-write
+- Code repository: read-only
+- Workspace: read-write
+- Outputs: read-write
 
 This isolates agent execution from the host system.
 

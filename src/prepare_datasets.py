@@ -3,8 +3,7 @@ import sys
 from pathlib import Path
 from rich.console import Console
 
-from datasets.dataset_utils import prepare_dataset, check_dataset_prepared
-from datasets.datasets_interactive import prepare_all_datasets
+from datasets.dataset_preparation import check_dataset_prepared, prepare_all_datasets, prepare_dataset
 from utils.task_types import TaskTypes
 
 
@@ -12,7 +11,6 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Dataset preparation")
     parser.add_argument('--dataset-dir', type=Path, help='Single dataset directory to prepare')
     parser.add_argument('--prepare-all', action='store_true', help='Prepare all datasets in datasets-dir')
-    parser.add_argument('--target-col', type=str, default=None, help='Target column name (auto-detected if not provided)')
     parser.add_argument('--task-type', choices=sorted(TaskTypes), default=None, help='Task type (prompted if not provided)')
     parser.add_argument('--positive-class', help='Value used in the label column for a positive class (affects some binary classification metrics). If not provided, numeric labels are assigned based on the label appearance order in the train csv file.', default=None)
     parser.add_argument('--negative-class', help='Value used in the label column for a negative class (affects some binary classification metrics). If not provided, numeric labels are assigned based on the label appearance order in the train csv file.', default=None)
@@ -34,15 +32,20 @@ def main():
     Path(prepared_test_sets_dir).mkdir(parents=True, exist_ok=True)
 
     if args.prepare_all or not dataset_dir:
+        if args.task_type or args.positive_class or args.negative_class:
+            console.print(
+                "[red]--task-type, --positive-class, and --negative-class can only be used with --dataset-dir. "
+                "For --prepare-all, add metadata.json to each dataset.[/red]"
+            )
+            sys.exit(1)
         prepare_all_datasets(datasets_dir, prepared_datasets_dir, prepared_test_sets_dir)
-    elif check_dataset_prepared(str(dataset_dir), str(prepared_datasets_dir)):
+    elif check_dataset_prepared(Path(dataset_dir), Path(prepared_datasets_dir)):
         console.print(f'[blue]Dataset "{dataset_dir.name}" already prepared, skipping preparation[/blue]')
     else:
-        console.print(f'[blue]Preparing dataset "{dataset_dir.name}"[/blue]')# for {task_type} task with target column "{target_col}"[/blue]')
+        console.print(f'[blue]Preparing dataset "{dataset_dir.name}"[/blue]')
         try:
             prepare_dataset(
                 dataset_dir=dataset_dir,
-                target_col=args.target_col,
                 positive_class=args.positive_class,
                 negative_class=args.negative_class,
                 task_type=args.task_type,

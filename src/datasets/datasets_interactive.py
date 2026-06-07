@@ -1,20 +1,59 @@
+import json
 import sys
-from typing import List, Dict, Optional
+from pathlib import Path
+
+import pandas as pd
 from rich.console import Console
 from rich.table import Table
-from utils.user_input import get_user_input_for_int
-from datasets.dataset_utils import prepare_dataset, get_all_datasets_info
 
+from datasets.data_contract import (
+    LABEL_COLUMN_NAME,
+    METADATA_FILE_NAME,
+)
+from utils.task_types import TaskTypes
+from utils.user_input import get_user_input_for_int
 
 console = Console()
 
-def print_datasets_table(datasets: List[Dict], skip_status_column: bool = False) -> None:
-    """
-    Display datasets in a Rich table for preparation.
+def _get_single_prepared_dataset_info(prepared_dataset_dir: Path) -> dict | None:
+    if not prepared_dataset_dir.is_dir():
+        return None
 
-    Args:
-        datasets: List of dataset dictionaries
-    """
+    base = {"name": prepared_dataset_dir.name, "path": prepared_dataset_dir}
+
+    metadata_path = prepared_dataset_dir / METADATA_FILE_NAME
+    if not metadata_path.is_file():
+        return {**base, "status": "Missing metadata.json"}
+
+    try:
+        metadata = json.loads(metadata_path.read_text())
+    except Exception as exc:
+        return {**base, "status": f"Invalid metadata.json: {exc}"}
+
+    splits = metadata["splits"]
+    return {
+        **base,
+        "train_rows": splits["train_rows"],
+        "validation_rows": splits["validation_rows"],
+        "test_rows": splits["test_rows"],
+        "status": "Prepared",
+    }
+
+def get_all_prepared_datasets_info(prepared_datasets_dir: Path) -> list[dict]:
+    if not prepared_datasets_dir.exists():
+        return []
+
+    prepared_datasets_info = []
+
+    for prepared_dataset_dir in prepared_datasets_dir.iterdir():
+        dataset_info = _get_single_prepared_dataset_info(prepared_dataset_dir)
+        if dataset_info:
+            prepared_datasets_info.append(dataset_info)
+
+    prepared_datasets_info.sort(key=lambda x: x["name"])
+    return prepared_datasets_info
+
+def print_datasets_table(datasets: list[dict], skip_status_column: bool = False) -> None:
     if not datasets:
         console.print("[red]No datasets found[/red]")
         return
@@ -29,138 +68,87 @@ def print_datasets_table(datasets: List[Dict], skip_status_column: bool = False)
         table.add_column("Status")
 
     for i, dataset in enumerate(datasets, 1):
-        train = f"{dataset['train_rows']:,}" if dataset['train_rows'] > 0 else "[dim]N/A[/dim]"
-        val = f"{dataset['validation_rows']:,}" if dataset['validation_rows'] > 0 else "[dim]N/A[/dim]"
-        test = f"{dataset['test_rows']:,}" if dataset['test_rows'] > 0 else "[dim]N/A[/dim]"
+        train = f"{dataset['train_rows']:,}" if dataset.get('train_rows') else "[dim]-[/dim]"
+        val = f"{dataset['validation_rows']:,}" if dataset.get('validation_rows') else "[dim]-[/dim]"
+        test = f"{dataset['test_rows']:,}" if dataset.get('test_rows') else "[dim]-[/dim]"
 
         row = [str(i), dataset['name'], train, val, test]
 
         if not skip_status_column:
             status = dataset["status"]
-            if status in ("Already prepared", "Prepared"):
+            if status == "Prepared":
                 row.append(f"[green]✓ {status}[/green]")
-            elif status == "Ready to prepare":
-                row.append(f"[yellow]⏳ {status}[/yellow]")
-            elif status == "Failed":
-                row.append(f"[red]✗ {status}[/red]")
-            elif "Missing" in status or "Empty" in status:
-                row.append(f"[red]⚠ {status}[/red]")
             else:
-                row.append(f"[red]{status}[/red]")
+                row.append(f"[red]⚠ {status}[/red]")
 
         table.add_row(*row)
 
     console.print(table)
 
-def prepare_all_datasets(datasets_dir: str, prepared_datasets_dir: str, prepared_test_sets_dir: str) -> None:
-    """
-    Prepare multiple datasets with Rich progress display.
-    
-    Args:
-        datasets_dir: Path to raw datasets directory
-        prepared_datasets_dir: Path to prepared datasets directory
-    """
-    console.print("[bold blue]■ Dataset Preparation[/bold blue]")
-    console.print("")
-    
-    # Get initial dataset information
-    datasets_info = get_all_datasets_info(datasets_dir, prepared_datasets_dir)
-    
-    if not datasets_info:
-        console.print(f"[red]No datasets found in {datasets_dir}[/red]")
-        console.print("")
-        console.print("[blue]To add datasets:[/blue]")
-        console.print(f"   1. Create directories in {datasets_dir}/ (e.g. {datasets_dir}/my_dataset/)")
-        console.print("   2. Add train.csv (and optionally test.csv) to each dataset directory")
-        console.print("   3. Run preparation again")
-        sys.exit(1)
-    
-    console.print("")
-    
-    # Show initial status
-    #TODO make sure table shows classification/regression that was detected
-    print_datasets_table(datasets_info)
-    console.print("")
-    
-    # Count datasets needing preparation
-    need_preparation = [d for d in datasets_info if d["should_prepare"]]
-    already_prepared = [d for d in datasets_info if d["is_prepared"]]
-    
-    if not need_preparation:
-        if not already_prepared:
-            console.print("[yellow]No datasets can be prepared. Check for missing train.csv files.[/yellow]")
-        sys.exit(0)
-    
-    # Prepare datasets with progress display
-    console.print(f"[yellow]Preparing {len(need_preparation)} dataset(s)...[/yellow]")
-    console.print("")
-    
-    prepared_now = 0
-    failed_now = 0
-
-    for dataset_info in need_preparation:
-        console.print(f"[cyan]Preparing {dataset_info['name']}[/cyan]")
-        try:
-            prepare_dataset(
-                dataset_dir=dataset_info['path'],
-                target_col=None, #auto-detected inside
-                positive_class=None, #auto-detected inside
-                negative_class=None, #auto-detected inside
-                task_type=None,
-                output_dir=prepared_datasets_dir,
-                interactive=True,
-                test_sets_output_dir=prepared_test_sets_dir
-            )
-            success = True
-        except Exception as e:
-            console.print(f"[red]Error preparing dataset '{dataset_info['name']}': {e}[/red]")
-            success = False
-
-        if success:
-            console.print(f"[green]{dataset_info['name']} prepared successfully[/green]")
-            prepared_now += 1
-            dataset_info["status"] = "Prepared"
-            dataset_info["is_prepared"] = True
-            dataset_info["can_prepare"] = False
-            dataset_info["should_prepare"] = False
-        else:
-            console.print(f"[red]{dataset_info['name']} preparation failed[/red]")
-            failed_now += 1
-            dataset_info["status"] = "Failed"
-            
-    console.print("")
-    
-    # Show final status
-    if prepared_now > 0:
-        print_datasets_table(datasets_info)
-        console.print("")
-    
-    if failed_now > 0:
-        console.print("")
-        console.print(f"[yellow]{failed_now} dataset(s) failed to prepare. Check your data files.[/yellow]")
-
-def interactive_dataset_selection(datasets: List[Dict]) -> Optional[str]:
-    """
-    Interactive dataset selection with info display.
-    
-    Args:
-        datasets: List of dataset dictionaries
-        
-    Returns:
-        Selected dataset name or None if cancelled
-    """
+def interactive_dataset_selection(datasets: list[dict]) -> str | None:
     if not datasets:
         console.print("[red]No datasets available[/red]")
         return None
-    
+
     print_datasets_table(datasets, skip_status_column=True)
-    prepared_datasets_table_indicies = [i+1 for i,d in enumerate(datasets)]
-    
+    prepared_datasets_table_indices = list(range(1, len(datasets) + 1))
+
     choice = get_user_input_for_int(
-        f"Select a prepared dataset", 
-        valid_options=prepared_datasets_table_indicies,
-        default=prepared_datasets_table_indicies[0],
+        "Select a prepared dataset",
+        valid_options=prepared_datasets_table_indices,
+        default=prepared_datasets_table_indices[0],
     )
-    selected_dataset = datasets[choice-1]["name"]
+    selected_dataset = datasets[choice - 1]["name"]
     console.print(f"[cyan]Selected: {selected_dataset}[/cyan]")
     return selected_dataset
+
+def select_task_type(train_labels: pd.DataFrame, interactive=False):
+    if not interactive or not sys.stdin.isatty():
+        raise ValueError("Task type is required. Pass --task-type classification or --task-type regression.")
+
+    print_label_summary(train_labels)
+    print("Action needed: Select the task type for this dataset.")
+
+    while True:
+        choice = input("Select task type ([c]lassification/[r]egression): ").strip().lower()
+        if choice in ("c", "class", TaskTypes.CLASSIFICATION):
+            return TaskTypes.CLASSIFICATION
+        if choice in ("r", "reg", TaskTypes.REGRESSION):
+            return TaskTypes.REGRESSION
+        print(f"Please enter '{TaskTypes.CLASSIFICATION}' or '{TaskTypes.REGRESSION}'.")
+
+def select_positive_class(unique_labels) -> str:
+    label_options = [str(label) for label in unique_labels]
+    print("Binary classification labels detected.")
+    print(f"Available labels: {', '.join(label_options)}")
+    while True:
+        positive_class = input("Enter the positive class label: ").strip()
+        if positive_class in label_options:
+            return positive_class
+        print(f"Label '{positive_class}' not found. Please enter one of: {', '.join(label_options)}")
+
+def print_label_summary(labels_df: pd.DataFrame) -> None:
+    label_values = labels_df[LABEL_COLUMN_NAME]
+    unique_values = label_values.unique()
+    unique_preview = _format_unique_values_preview(unique_values)
+    print(
+        "\nLabel summary\n"
+        f"- Column: {LABEL_COLUMN_NAME} ({label_values.dtype})\n"
+        f"- Rows: {len(labels_df):,}\n"
+        f"- Unique values: {len(unique_values):,}\n"
+        f"- Unique labels: {unique_preview}"
+    )
+
+def _format_unique_values_preview(values, limit=20):
+    preview = _format_preview_values(values[:limit])
+    if len(values) > limit:
+        return f"{preview}, ..."
+    return preview
+
+def _format_preview_values(values):
+    formatted_values = []
+    for value in values:
+        if hasattr(value, "item"):
+            value = value.item()
+        formatted_values.append(repr(value))
+    return ", ".join(formatted_values)

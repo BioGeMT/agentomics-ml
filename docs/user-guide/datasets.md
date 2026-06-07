@@ -1,43 +1,150 @@
 # Preparing Datasets
 
-Agentomics-ML works with CSV datasets for classification or regression tasks.
+Agentomics-ML uses folder-based dataset splits. Each split has an `input/`
+folder with the data files and a `labels.csv` file with labels.
 
 ## Quick Setup
 
 Create a folder in `datasets/` with your data:
 
-```
+```text
 datasets/my_dataset/
-├── train.csv              # Required
-├── validation.csv         # Optional
-├── test.csv               # Optional
-├── dataset_description.md # Optional
-└── dataset_config.json    # Optional — avoids interactive prompts during dataset preparation
+├── train/
+│   ├── input/              # Required: data files
+│   └── labels.csv          # Required: id,label
+├── validation/             # Optional
+│   ├── input/
+│   └── labels.csv
+├── test/                   # Optional hidden test set
+│   ├── input/
+│   └── labels.csv
+├── supplementary/          # Optional: dataset-level source materials
+├── metadata.json           # Optional if --task-type is provided
+└── dataset_description.md  # Optional domain context
 ```
 
-## File Requirements
+Only `train`, `validation`, and `test` are supported split names.
 
-### train.csv (Required)
+## Split Requirements
 
-Your training data with features and a target column.
+### input/
+
+The `input/` folder can contain any files in any format — the agent's generated
+training and inference scripts interpret the contents. The system does not
+enforce a specific mapping between IDs and input data; the agent figures out
+how to load data for each ID based on the format it finds.
+
+Common patterns:
+
+- **Tabular data**: `input/` contains a CSV or parquet file. IDs are row
+  identifiers within that file (e.g. a patient ID column).
+  ```text
+  train/input/data.csv       # all samples in one file
+  ```
+- **Per-sample files** (images, audio, etc.): `input/` contains a subdirectory
+  with one file per sample. IDs are typically filename stems.
+  ```text
+  train/input/images/img_001.png, img_002.png, ...
+  ```
+
+Make the relationship between IDs and data obvious so the agent can infer it.
+For example, use filename stems as IDs for file datasets, or include an ID
+column in tabular files that matches `labels.csv`.
+
+### labels.csv
+
+Every raw labeled split must include `labels.csv` with exactly these columns:
 
 ```csv
-feature1,feature2,feature3,target
-1.2,3.4,5.6,positive
-7.8,9.0,1.2,negative
+id,label
+sample-1,cancer
+sample-2,no_cancer
 ```
 
-### validation.csv (Optional)
+Requirements:
 
-Separate validation data. If not provided, the agent creates train/validation split files during the `data_split` step and stores them under the run's `shared/splits/` directory.
+- `id` is required, non-empty, and unique within the split
+- `label` is required and non-empty
+- Extra columns are not supported
+- Train and validation IDs must not overlap
+- Classification labels may be friendly strings; preparation maps them to integer class IDs
+- Regression labels must be numeric values
 
-### test.csv (Optional)
+### supplementary/ Optional
 
-Hidden test set for final evaluation. The agent never sees this data during training - it's only used to report final metrics.
+Supporting/supplementary materials (PDFs, papers, helper scripts) can be placed
+in a `supplementary/` folder inside the dataset directory. These are copied
+during preparation and made available to the agent. The agent can read
+these materials for context but must copy needed files into its working directory
+before using them. Generated training and inference scripts must not reference
+`supplementary/` directly.
 
-### dataset_description.md (Optional)
+You can describe what the supplementary folder contains and how it relates to
+the task in `dataset_description.md` to help the agent use it effectively.
 
-Domain information to help the agent understand your data:
+When forking a run, the supplementary folder is inherited from the source run's
+workspace — not re-copied from the raw or prepared dataset. If you update
+supplementary materials after a run has started, start a new run (re-prepare the
+dataset) rather than forking to pick up the changes.
+
+### input/ structure
+
+The top-level entries in `train/input/` are recorded at dataset preparation
+time and define the split interface. All splits must have matching top-level
+`input/` files and folders: `validation/input/` and `test/input/` are validated
+against `train/input/` during preparation, and the agent cannot add, remove, or
+rename top-level `input/` entries during the split step. Files inside matching
+top-level folders may differ between splits, which supports datasets where each
+split contains different sample files.
+
+For per-sample file datasets (images, audio, etc.), place files inside a
+subdirectory rather than directly under `input/`:
+
+```text
+# Correct — subdirectory contents may differ between splits
+train/input/images/cat_01.png, cat_02.png
+validation/input/images/cat_03.png
+
+# Wrong — top-level files must match exactly across splits
+train/input/cat_01.png, cat_02.png
+validation/input/cat_03.png          # fails: different top-level files
+```
+
+### validation/ Optional
+
+If `validation/` is not provided, the agent creates train and validation split
+folders from `train/` during the run.
+
+### test/ Optional
+
+The hidden test split is used only for final evaluation. The agent does not get
+access to `prepared_test_sets/` during training.
+
+### metadata.json Optional
+
+Preparation does not infer task type from generic input files. If you do not
+provide `metadata.json`, pass `--task-type classification` or
+`--task-type regression` during single-dataset preparation, or run single-dataset
+preparation interactively. For `--prepare-all`, every dataset must provide
+`metadata.json`. For classification datasets, Agentomics derives class IDs from
+`labels.csv` if `label_to_scalar` is absent.
+
+Example:
+
+```json
+{
+  "task_type": "classification",
+  "positive_class": "cancer",
+  "negative_class": "no_cancer"
+}
+```
+
+### dataset_description.md Optional
+
+Any domain information can help the agent understand your data. You may include how IDs in
+`labels.csv` relate to data in `input/` (e.g., row identifiers in a CSV, or
+filename stems). The agent discovers this during exploration, but providing it
+can be helpful.
 
 ```markdown
 # Gene Expression Dataset
@@ -45,68 +152,81 @@ Domain information to help the agent understand your data:
 This dataset contains RNA-seq expression levels from tumor samples.
 
 ## Features
-- Columns 1-100: Gene expression values (log2 TPM)
+- Input files contain log2 TPM expression values
 - Samples are from breast cancer patients
 
 ## Target
-- `class`: tumor subtype (Basal, Her2, LumA, LumB, Normal)
+- `label`: tumor subtype
+
+## Data format
+`input/` contains a single CSV with a `patient_id` column and expression value columns.
+Each ID in `labels.csv` matches the `patient_id` column in the input CSV.
 
 ## Notes
 - Data is already normalized
-- Consider using models that handle high-dimensional data
+- Consider models that handle high-dimensional data
 ```
 
-## Dataset Config File (Optional)
+## Converting CSV Files
 
-Add an optional `dataset_config.json` to your dataset folder to avoid interactive prompts during dataset preparation.
+If your data is in flat CSV files (features and labels in one table), use the
+CSV converter to create the folder-based layout:
 
-**`task_type` is the most important field** — without it you'll be prompted every time you prepare the dataset.
-
-```json
-{
-    "task_type": "classification",
-    "target_col": "label",
-    "positive_class": 1,
-    "negative_class": 0
-}
+```bash
+PYTHONPATH=src python src/datasets/csv_converter.py \
+    --train-csv data/train.csv \
+    --test-csv data/test.csv \
+    --label-column target \
+    --task-type classification \
+    --output-dir datasets/my_dataset
 ```
 
-Fields:
+| Option | Description |
+|--------|-------------|
+| `--train-csv` | Path to training CSV (required) |
+| `--validation-csv` | Path to validation CSV (optional) |
+| `--test-csv` | Path to test CSV (optional) |
+| `--label-column` | Name of the column containing labels (required) |
+| `--id-column` | Name of the ID column (auto-generated if not provided) |
+| `--task-type` | `classification` or `regression` (optional, writes metadata.json) |
+| `--output-dir` | Output dataset directory (required) |
 
-- `task_type` (optional): `"classification"` or `"regression"`; if omitted, you will be prompted during dataset preparation.
-- `target_col` (optional): column name to predict; auto-detected if omitted.
-- `positive_class` (optional): value that counts as "positive"; only applicable for binary classification label mapping.
-- `negative_class` (optional): value that counts as "negative"; only applicable for binary classification label mapping.
+The converter can also be called from Python:
 
-Include only the fields you need — at minimum just `task_type`. Values from this file take precedence over auto-detection, but CLI flags (`--task-type`, `--target-col`, etc.) override the config file.
+```python
+from datasets.csv_converter import convert_csv_dataset
 
-## Target Column Detection
+convert_csv_dataset(
+    output_dir=Path("datasets/my_dataset"),
+    label_column="target",
+    splits={"train": train_df, "test": test_df},
+    task_type="classification",
+)
+```
 
-The target column is resolved in this order:
-1. CLI flag (`--target-col`)
-2. `dataset_config.json` (`target_col` field)
-3. Auto-detection from common names: `class`, `target`, `label`, `y` and their uppercase variants
-4. Interactive prompt (if running interactively)
+The label column in the source CSV can have any name — specify it with
+`--label-column`. The converter writes it as `label` in `labels.csv`, which is
+the required column name for the folder-based format.
 
-If all of the above fail, preparation will raise an error.
+After conversion, run dataset preparation as usual.
 
 ## Manual Dataset Preparation
 
 For more control, run preparation separately:
 
 ```bash
-# Create preparation environment
 conda env create -f envs/environment_prepare.yaml
 conda activate agentomics-prepare-env
 
-# Prepare datasets
-python src/prepare_datasets.py --prepare-all
+python src/prepare_datasets.py --dataset-dir datasets/my_dataset --task-type classification
 ```
 
-### Preparation Options
+To prepare all datasets, include `metadata.json` in each dataset folder.
+`--task-type` is intentionally limited to single-dataset preparation because
+different datasets may have different task types.
 
 ```bash
-python src/prepare_datasets.py --help
+python src/prepare_datasets.py --prepare-all
 ```
 
 Key options:
@@ -114,28 +234,38 @@ Key options:
 | Option | Description |
 |--------|-------------|
 | `--dataset-dir` | Specific dataset to prepare |
-| `--task-type` | Specify `classification` or `regression` |
-| `--target-col` | Specify target column name |
-| `--positive-class` | Define positive class for binary classification |
-| `--negative-class` | Define negative class for binary classification |
+| `--task-type` | Single-dataset `classification` or `regression` value when `metadata.json` is absent |
+| `--positive-class` | Raw label value to encode as numeric class `1` for binary classification |
+| `--negative-class` | Raw label value to encode as numeric class `0` for binary classification |
 
-*Note: already-prepared datasets are skipped on re-runs (preserves `--positive-class`/`--negative-class`). To re-prepare, delete the folder under `prepared_datasets/` (and under `prepared_test_sets/` if a test set was provided) and rerun the preparation script.*
+Running preparation for a single dataset skips the dataset if it is already
+prepared under `prepared_datasets/`.
+
 
 ## Prepared Dataset Structure
 
 After preparation, datasets are stored in:
 
-```
+```text
 prepared_datasets/my_dataset/
-├── train.csv              # Training data
-├── validation.csv         # Validation data (only if provided in the raw dataset)
-├── dataset_description.md # Copied/created description
-└── metadata.json          # Task type, classes, etc.
+├── train/
+│   ├── input/
+│   └── labels.csv
+├── validation/
+│   ├── input/
+│   └── labels.csv
+├── supplementary/          # Dataset-level source materials, if provided
+├── dataset_description.md
+└── metadata.json
 
 prepared_test_sets/my_dataset/
-├── test.csv               # Test data (if provided)
-└── test.no_label.csv      # Test data without labels
+└── test/
+    ├── input/
+    └── labels.csv
 ```
+
+Prepared `labels.csv` files contain `id,numeric_label`; raw label values are
+kept in `metadata.json` through `label_to_scalar`.
 
 ## Example Datasets
 
@@ -145,37 +275,21 @@ Download example datasets:
 ./scripts/download_example_dataset.sh --all
 ```
 
-## Data Format Tips
-
-### Classification
-
-- Target column should contain class labels (strings or integers)
-- Binary: `positive`/`negative`, `1`/`0`, `yes`/`no`
-- Multi-class: `class_a`, `class_b`, `class_c`
-- Multi-label classification is not supported (use a single label per row)
-
-### Regression
-
-- Target column should contain numeric values
-- Select `regression` during preparation or pass `--task-type regression`
-
-### Feature Columns
-
-- Numeric features work best
-- Categorical features are supported (encoded automatically)
-- Missing values are handled, but clean data performs better
-
 ## Common Issues
 
-### "Could not detect target column"
+### "Required split folder is missing or incomplete"
 
-Solution: Add `--target-col your_column_name` to preparation command, or rename your target column to `class`, `target`, `label`, or `y`.
+Check that `train/input/` exists and that `train/labels.csv` is present.
 
-### "Task type required"
+### "labels.csv is invalid"
 
-Solution (preferred): Add a `dataset_config.json` to your dataset folder with `{"task_type": "classification"}` or `{"task_type": "regression"}`.
+Check that raw `labels.csv` has `id` and `label` columns, no duplicate or empty
+IDs, and non-empty labels.
 
-Alternative: Pass `--task-type classification` or `--task-type regression` to the preparation command, or run preparation interactively and select when prompted.
+### "metadata.json is required"
+
+Pass `--task-type classification` or `--task-type regression`, or add a
+`metadata.json` file with `task_type`.
 
 ## Next Steps
 
