@@ -73,11 +73,12 @@ Requirements:
 ### supplementary/ Optional
 
 Supporting/supplementary materials (PDFs, papers, helper scripts) can be placed
-in a `supplementary/` folder inside the dataset directory. These are copied
+in a `supplementary/` folder inside the dataset directory (as a sibling to the train folder). These are copied
 during preparation and made available to the agent. The agent can read
 these materials for context but must copy needed files into its working directory
 before using them. Generated training and inference scripts must not reference
-`supplementary/` directly.
+`supplementary/` directly. If you update supplementary materials, re-prepare the
+dataset to ensure the agent has the latest version.
 
 You can describe what the supplementary folder contains and how it relates to
 the task in `dataset_description.md` to help the agent use it effectively.

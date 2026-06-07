@@ -23,6 +23,7 @@ from runtime.system_resources import get_resources_summary
 from tools.tool_registry import get_tool_names
 from utils.foundation_models_utils import build_foundation_model_catalog, format_foundation_model_catalog
 from utils.printing_utils import truncate_float
+from datasets.data_contract import SUPPLEMENTARY_DIR_NAME
 
 
 class IterationPlanOutput(AgenticStepOutput):
@@ -103,6 +104,7 @@ class IterationPlanStep(AgenticStep):
         exploration_info = self._build_exploration_info()
         tools_info = ", ".join(get_tool_names(self.config, self.config.tool_ids))
         best_iteration_model_info = self._build_best_iteration_model_info()
+        supplementary_info = self._build_supplementary_info()
 
         return f"""
         <prompt_of_the_iteration_agents>
@@ -292,6 +294,12 @@ class IterationPlanStep(AgenticStep):
             return f"{time_left_in_seconds / 3600:.2f} hours"
         iterations_left = self.config.iterations - iteration - 1
         return f"{iterations_left} iterations"
+    
+    def _build_supplementary_info(self) -> str:
+        dataset_supplementary_path = self.config.agent_dataset_dir / SUPPLEMENTARY_DIR_NAME
+        if dataset_supplementary_path.is_dir():
+            return f"The agent has access to the supplementary/ folder with supplementary dataset materials."
+        return ""
 
     def _build_foundation_models_info(self) -> str:
         catalog = build_foundation_model_catalog(self.config.foundation_models_yaml, self.config.foundation_models_type)
