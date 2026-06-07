@@ -1,8 +1,9 @@
 from pathlib import Path
 import os
-import json
 import pandas as pd
 import argparse
+
+from datasets.csv_converter import convert_csv_dataset
 
 REPO_PATH = Path(os.path.abspath(os.path.dirname(__file__))).parent.parent
 
@@ -23,8 +24,7 @@ GENOMIC_BENCHMARKS_DATASETS = {
     "human_ensembl_regulatory": "The Human regulatory Ensembl dataset was constructed from Ensembl database [Nucleic Acids Res. 2021;49(D1):884–91]. This dataset has three classes: enhancer, promoter and open chromatin region from The Ensembl Regulatory Build [Genome Biol. 2015;16(1):1–8]."
 }
 
-CLASS_COL = "target"
-
+LABEL_COLUMN = "target"
 
 def generate_mirbench_files(dataset: str | None = None):
     from miRBench.dataset import download_dataset as mirbench_download_dataset
@@ -39,19 +39,18 @@ def generate_mirbench_files(dataset: str | None = None):
         with open(f"{local_dset_path}/dataset_description.md", "w") as f:
             f.write(info["description"])
 
-        with open(f"{local_dset_path}/dataset_config.json", "w") as f:
-            json.dump({"task_type": "classification"}, f, indent=4)
-
+        split_frames = {}
         for split in info["splits"]:
             download_path = REPO_PATH / ".miRBench"
             os.makedirs(download_path, exist_ok=True)
             mirbench_download_dataset(dataset_name, download_path=download_path / 'miRBench', split=split)
             df = pd.read_csv(download_path / 'miRBench', sep="\t")
-            df = df.rename(columns={"label": CLASS_COL})
-            df.to_csv(f"{local_dset_path}/{split}.csv", index=False)
+            df = df.rename(columns={"label": LABEL_COLUMN})
+            split_frames[split] = df
 
-        print(f"Downloaded dataset to {local_dset_path}")
-
+        convert_csv_dataset(
+            local_dset_path, label_column=LABEL_COLUMN, splits=split_frames, task_type="classification",
+        )
 
 def generate_genomic_benchmarks_files(dataset: str | None = None):
     from genomic_benchmarks.loc2seq import download_dataset
@@ -72,20 +71,20 @@ def generate_genomic_benchmarks_files(dataset: str | None = None):
         with open(f"{local_dset_path}/dataset_description.md", "w") as f:
             f.write(GENOMIC_BENCHMARKS_DATASETS[dataset_name])
 
-        with open(f"{local_dset_path}/dataset_config.json", "w") as f:
-            json.dump({"task_type": "classification"}, f, indent=4)
-
-        for split in ["test","train"]:
+        split_frames = {}
+        for split in ["test", "train"]:
             data = []
             for label_path in (download_path / split).iterdir():
                 label = label_path.stem
                 for sequence_file in label_path.iterdir():
                     seq = sequence_file.read_text().strip()
-                    data.append({"sequence": seq, CLASS_COL: label})
+                    data.append({"sequence": seq, LABEL_COLUMN: label})
             df = pd.DataFrame(data)
-            df.to_csv(f"{local_dset_path}/{split}.csv", index=False)
-        
-        print(f"Downloaded dataset to {local_dset_path}")
+            split_frames[split] = df
+
+        convert_csv_dataset(
+            local_dset_path, label_column=LABEL_COLUMN, splits=split_frames, task_type="classification",
+        )
 
 def generate_dataset_files(dataset: str, download_all: bool = False):
     if download_all:
