@@ -76,6 +76,8 @@ When a fork is set up, the following happens before the new run starts:
 
 The forked run then continues from that state exactly as if the original run had stopped there.
 
+**Note on supplementary materials**: The fork inherits `supplementary/` from the source workspace, not from the raw or prepared dataset. If you updated supplementary materials after the source run started, the fork will still use the old version. To pick up new supplementary content, re-prepare the dataset and start a fresh run instead of forking.
+
 ## Example: Extend a Completed Run
 
 ```bash

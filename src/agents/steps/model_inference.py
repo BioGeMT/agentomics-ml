@@ -19,7 +19,6 @@ from runtime.read_write_utils import (
     load_dataset_metadata,
 )
 from runtime.step_outputs import require_step_output
-from datasets.dataset_utils import get_classes_integers
 from utils.task_types import TaskTypes
 from utils.text_processing_utils import collapse_repeated_lines, concise_output
 
@@ -52,7 +51,7 @@ class ModelInferenceStep(AgenticStep):
         if self.config.task_type == TaskTypes.CLASSIFICATION:
             probability_columns = "\n".join(
                 f"- 'probability_{class_id}': probability for class {class_id} (float)"
-                for class_id in get_classes_integers(self.config)
+                for class_id in sorted(load_dataset_metadata(self.config)["label_to_scalar"].values())
             )
             output_file_description = f"A csv with columns:\n- 'prediction': the predicted class (int)\n{probability_columns}"
         elif self.config.task_type == TaskTypes.REGRESSION:
