@@ -25,7 +25,7 @@ class TestFoundationModels(BaseAgentTest):
         for doc_file in doc_files:
             with self.subTest(doc_file=doc_file): #checks which file fails (if any)
                 result = self.bash_tool.function(f"head -5 /foundation_models/{doc_file} 2>&1")
-                self.assertNotIn("Permission denied" or "No such file", result, "Agent should read foundation model documentation")
+                self.assertNotIn("Permission denied", result, "Agent should read foundation model documentation")
                 self.assertNotIn("No such file", result, f"{doc_file} should exist in foundation models directory")
                 self.assertNotIn("Command failed", result, "head command should succeed")
 
@@ -39,7 +39,8 @@ class TestFoundationModels(BaseAgentTest):
         """Test that agent can list foundation models directory."""
 
         result = self.bash_tool.function("ls /cache/foundation_models/hub 2>&1")
-        self.assertNotIn("Permission denied" or "No such file", result, "Agent should list foundation models directory")
+        self.assertNotIn("Permission denied", result, "Agent should list foundation models directory")
+        self.assertNotIn("No such file", result, "Agent should list foundation models directory")
 
         fm_type = self.config.foundation_models_type
         if fm_type in ("protein", "all"):

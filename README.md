@@ -7,7 +7,7 @@ Made for biomedical data, Agentomics outperformed human experts and created new 
 
 
 How it works
-1) Input is a CSV training dataset + optional data description
+1) Input is a folder-based dataset split + optional data description
 2) Agentomics autonomously experiments with various ML models and strategies
 3) Output is a trained model ready for inference and a detailed PDF report summarizing the development process and achieved metrics
 
@@ -56,7 +56,7 @@ Agentomics can be run via:
 For more details visit **https://biogemt.github.io/agentomics-ml/**
 
 ## Key Features
-- Generic: Agentomics can crunch any classification and regression datasets in CSV format.
+- Generic: Agentomics can use folder-based inputs for classification and regression tasks.
 - Secure: Agents execute code securely in Docker with read-only mounts to your file system and are only allowed to write in a Docker Volume.
 - Reproducible: Outputs include models, scripts, and conda environments needed to run inference or re-train models with one bash command.
 - Trustworthy: If you provide a test set, Agentomics fully abstracts LLMs from accessing it, allowing you to rely on programmaticly computed and reported test set metrics.
@@ -95,7 +95,7 @@ full iterative workspace, and `reports/` contains the human-readable summaries.
 Agentomics is in active development. We welcome any raised Issues and suggestions. You can also [Email Us](mailto:martinekvlastimil95@gmail.com).
 
 Features coming soon:
-- Support for any data type (currently only CSV datasets)
+- Run forking and continuing
 - Better local model support and configuration
 - Remote GPU support for GCP
 

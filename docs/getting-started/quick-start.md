@@ -46,12 +46,18 @@ The validation metric defaults to `AUROC` for classification and `MAE` for regre
 
 Place your data in `datasets/<your_dataset_name>/`:
 
-```
+```text
 datasets/my_dataset/
-├── train.csv           # Required: training data
-├── validation.csv      # Optional: validation data
-├── test.csv            # Optional: hidden test set
-└── dataset_description.md  # Optional: domain context
+├── train/
+│   ├── input/          # Required: model input files
+│   └── labels.csv      # Required: id,label
+├── validation/         # Optional
+│   ├── input/
+│   └── labels.csv
+├── test/               # Optional hidden test set
+│   ├── input/
+│   └── labels.csv
+└── dataset_description.md
 ```
 
 See [Preparing Datasets](../user-guide/datasets.md) for details.
