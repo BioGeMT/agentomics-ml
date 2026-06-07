@@ -31,7 +31,7 @@ Agentomics-ML works like an ML engineer:
 | Feature | Description |
 |---------|-------------|
 | **Any LLM** | Works with OpenAI, Anthropic, OpenRouter, Codex/ChatGPT OAuth, or local models via Ollama |
-| **Any Dataset** | Supports classification or regression datasets in CSV format |
+| **Any Dataset** | Supports folder-based inputs for classification or regression tasks |
 | **Secure Execution** | Docker containers with read-only access to code and isolated execution |
 | **Reproducible** | Outputs include trained models, scripts, and conda environments |
 

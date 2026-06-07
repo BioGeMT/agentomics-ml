@@ -156,7 +156,7 @@ This dataset contains RNA-seq expression levels from tumor samples.
 - Samples are from breast cancer patients
 
 ## Target
-- `label`: tumor subtype
+- `label`: tumor subtype (Basal, Her2, LumA, LumB, Normal)
 
 ## Data format
 `input/` contains a single CSV with a `patient_id` column and expression value columns.

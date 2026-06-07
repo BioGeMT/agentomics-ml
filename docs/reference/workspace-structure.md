@@ -66,7 +66,7 @@ prepared_datasets/my_dataset/
 
 ## prepared_test_sets/
 
-Test data is separated to keep it hidden:
+Test data is separated to ensure it stays hidden:
 
 ```text
 prepared_test_sets/my_dataset/
@@ -159,7 +159,7 @@ Iteration reports are written here during runs. These are copied to
 
 ### extras/
 
-Logs and auxiliary artifacts are stored here and copied to
+Logs and auxiliary artifacts (metrics, run logs) are stored here and copied to
 `outputs/<agent_id>/extras/`.
 
 ## outputs/
@@ -242,8 +242,8 @@ rm -rf prepared_test_sets/*
 In Docker mode, workspace is mounted as a volume:
 
 - Code repository: read-only
-- Workspace: read-write
-- Outputs: read-write
+- Workspace: Read-write
+- Outputs: Read-write
 
 This isolates agent execution from the host system.
 

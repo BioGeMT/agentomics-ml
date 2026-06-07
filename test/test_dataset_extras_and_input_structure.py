@@ -1,7 +1,6 @@
 import json
 import shutil
 import sys
-import types
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -10,19 +9,6 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_PATH = REPO_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
-
-metrics_stub = types.ModuleType("utils.metrics")
-metrics_stub.get_classification_metrics_functions = lambda: {}
-metrics_stub.get_higher_is_better_map = lambda: {}
-metrics_stub.get_regression_metrics_functions = lambda: {}
-metrics_stub.get_task_to_metrics_names = lambda: {}
-sys.modules.setdefault("utils.metrics", metrics_stub)
-
-logging_helpers_stub = types.ModuleType("run_logging.logging_helpers")
-logging_helpers_stub.is_wandb_active = lambda: False
-logging_helpers_stub.log_test_inference_duration = lambda *args, **kwargs: None
-sys.modules.setdefault("run_logging.logging_helpers", logging_helpers_stub)
-sys.modules.setdefault("wandb", types.SimpleNamespace(log=lambda *args, **kwargs: None))
 
 from datasets.dataset_preparation import prepare_dataset, setup_nonsensitive_dataset_files_for_agent
 from datasets.data_contract import _validate_input_structure, record_input_dir_structure

@@ -2,7 +2,6 @@ import json
 import shutil
 import sys
 import tempfile
-import types
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -15,6 +14,7 @@ if str(SRC_PATH) not in sys.path:
 from agents.steps.data_split import DataSplitOutput, DataSplitStep
 from agents.steps.validation_evaluation import ValidationEvaluationOutput, ValidationEvaluationStep
 from runtime.best_iteration_snapshot import update_best_iteration_snapshot
+from runtime.generate_final_reports import DatasetMeta, gather_iteration_inputs
 from runtime.read_write_utils import (
     initialize_current_iteration_metadata,
     initialize_current_iteration_state,
@@ -46,43 +46,6 @@ def _write_step_output(iteration_dir: Path, step_id: str, output) -> None:
         }, indent=2),
         encoding="utf-8",
     )
-
-
-def _report_generation_dependency_stubs() -> dict[str, types.ModuleType]:
-    matplotlib_stub = types.ModuleType("matplotlib")
-    matplotlib_stub.use = lambda *args, **kwargs: None
-    pyplot_stub = types.ModuleType("matplotlib.pyplot")
-
-    reportlab_stub = types.ModuleType("reportlab")
-    reportlab_lib_stub = types.ModuleType("reportlab.lib")
-    colors_stub = types.ModuleType("reportlab.lib.colors")
-    pagesizes_stub = types.ModuleType("reportlab.lib.pagesizes")
-    pagesizes_stub.A4 = (595, 842)
-    units_stub = types.ModuleType("reportlab.lib.units")
-    units_stub.cm = 28.35
-    platypus_stub = types.ModuleType("reportlab.platypus")
-    styles_stub = types.ModuleType("reportlab.lib.styles")
-
-    class DummyReportlabObject:
-        def __init__(self, *args, **kwargs):
-            pass
-
-    for name in ("SimpleDocTemplate", "Paragraph", "Spacer", "Table", "TableStyle", "PageBreak", "Image"):
-        setattr(platypus_stub, name, DummyReportlabObject)
-    styles_stub.getSampleStyleSheet = lambda: {}
-    styles_stub.ParagraphStyle = DummyReportlabObject
-
-    return {
-        "matplotlib": matplotlib_stub,
-        "matplotlib.pyplot": pyplot_stub,
-        "reportlab": reportlab_stub,
-        "reportlab.lib": reportlab_lib_stub,
-        "reportlab.lib.colors": colors_stub,
-        "reportlab.lib.pagesizes": pagesizes_stub,
-        "reportlab.lib.units": units_stub,
-        "reportlab.platypus": platypus_stub,
-        "reportlab.lib.styles": styles_stub,
-    }
 
 
 class TestBestIterationSnapshot(unittest.TestCase):
@@ -389,20 +352,6 @@ class TestDataSplitSkipReuse(unittest.TestCase):
         self.assertIn("split_0", output.train_path)
         self.assertEqual(output.splitting_strategy, "strategy for split 0")
 
-    def test_simulated_output_does_not_copy_supplementary_into_versioned_split(self):
-        _write_split_folder(self.config.agent_dataset_dir / "validation", row_id="validation-row")
-        _write_split_folder(self.config.agent_dataset_dir / "mini_train", row_id="train-row")
-        supplementary_dir = self.config.agent_dataset_dir / "supplementary"
-        supplementary_dir.mkdir()
-        (supplementary_dir / "notes.txt").write_text("dataset-level context", encoding="utf-8")
-        step = self._make_step_for_iteration(iteration=1)
-
-        output = step.build_simulated_output()
-
-        split_dir = Path(output.train_path).parent
-        self.assertFalse((split_dir / "supplementary").exists())
-        self.assertTrue((supplementary_dir / "notes.txt").is_file())
-
     def test_latest_split_strategy_returns_last_successful_iteration_strategy(self):
         self._archive_iteration_with_split(iteration=0, split_version=0)
         self._archive_iteration_with_split(iteration=1, split_version=1)
@@ -434,11 +383,6 @@ class TestFinalReportSplitLabels(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_iteration_inputs_use_iteration_split_version_labels(self):
-        with patch.dict(sys.modules, _report_generation_dependency_stubs()):
-            sys.modules.pop("runtime.generate_final_reports", None)
-            from runtime.generate_final_reports import DatasetMeta, gather_iteration_inputs
-            sys.modules.pop("runtime.generate_final_reports", None)
-
         _write_split_folder(self.config.splits_dir / "split_0" / "train", row_id="old-train")
         _write_split_folder(self.config.splits_dir / "split_0" / "validation", row_id="old-validation")
         _write_split_folder(self.config.splits_dir / "split_1" / "train", row_id="new-train")

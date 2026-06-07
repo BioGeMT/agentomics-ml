@@ -1,5 +1,4 @@
 import sys
-import types
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -11,30 +10,7 @@ SRC_PATH = REPO_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-
-def _stub(name, **attrs):
-    mod = types.ModuleType(name)
-    for k, v in attrs.items():
-        setattr(mod, k, v)
-    sys.modules.setdefault(name, mod)
-    return mod
-
-
-wandb_errors = _stub("wandb.errors", AuthenticationError=Exception, UsageError=Exception)
-wandb_mod = _stub("wandb", log=lambda *a, **k: None, run=None, login=lambda *a, **k: True)
-wandb_mod.errors = wandb_errors
-_stub("utils.metrics", get_task_to_metrics_names=lambda: {})
-_stub("run_logging.logging_helpers", is_wandb_active=lambda: False, log_test_inference_duration=lambda *a, **k: None)
-_stub("run_logging.wandb_setup", resume_wandb_run=lambda *a, **k: None)
-_stub("utils.printing_utils", print_best_iteration_metrics=lambda *a, **k: None)
-_stub("runtime.conda_utils", get_best_iteration_snapshot_environment_path=lambda *a: None)
-_stub("runtime.evaluate_result", get_metrics=lambda **k: {})
-_stub("runtime.inference_runner", compute_metrics=lambda **k: {}, run_inference_script=lambda **k: None)
-_stub("runtime.filesystem", remove_path=lambda *a: None)
-_stub("runtime.read_write_utils", load_config_from_run_dir=lambda *a, **k: None, load_dataset_metadata=lambda *a: {})
-_stub("utils.exceptions", AgentScriptFailed=Exception)
-
-from run_logging.test_evaluation import run_test_evaluation  # noqa: E402
+from run_logging.test_evaluation import run_test_evaluation
 
 
 METADATA = {"numeric_label_col": "numeric_label", "task_type": "classification"}
