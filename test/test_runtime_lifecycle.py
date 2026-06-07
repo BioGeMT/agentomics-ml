@@ -73,8 +73,9 @@ class TestStepOutputRoundtrip(unittest.TestCase):
 
     def test_pydantic_output_is_deserialized_to_original_type(self):
         split_output = DataSplitOutput(
-            train_path="/tmp/train.csv",
-            val_path="/tmp/val.csv",
+            train_path="/tmp/train",
+            val_path="/tmp/validation",
+            mini_train_path="/tmp/mini_train",
             splitting_strategy="stratified 80/20",
             split_changed=True,
         )
@@ -96,8 +97,9 @@ class TestStepOutputRoundtrip(unittest.TestCase):
 
     def test_save_creates_current_step_dir_for_skipped_step_flow(self):
         split_output = DataSplitOutput(
-            train_path="/tmp/train.csv",
-            val_path="/tmp/val.csv",
+            train_path="/tmp/train",
+            val_path="/tmp/validation",
+            mini_train_path="/tmp/mini_train",
             splitting_strategy="reused previous split",
             split_changed=False,
         )
@@ -117,7 +119,7 @@ class TestStepOutputRoundtrip(unittest.TestCase):
     def test_load_step_outputs_returns_all_archived_outputs_in_sequence_order(self):
         self._save_and_archive_step("data_exploration", {"origin": "exploration"})
         self._save_and_archive_step("data_split", DataSplitOutput(
-            train_path="/a", val_path="/b", splitting_strategy="s", split_changed=False,
+            train_path="/a", val_path="/b", mini_train_path="/c", splitting_strategy="s", split_changed=False,
         ))
 
         outputs = load_step_outputs(self.config)
