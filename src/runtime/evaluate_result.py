@@ -4,6 +4,7 @@ import sys
 
 import pandas as pd
 
+from datasets.data_contract import ID_COLUMN_NAME
 from utils.metrics import get_classification_metrics_functions, get_regression_metrics_functions
 from utils.task_types import TaskTypes
 
@@ -16,8 +17,8 @@ def get_metrics(
     pred_col="prediction",
     prob_col_prefix='probability_',
 ):
-    results = pd.read_csv(results_file)
-    test = pd.read_csv(test_file)
+    results = pd.read_csv(results_file, dtype={ID_COLUMN_NAME: str}, keep_default_na=False)
+    test = pd.read_csv(test_file, dtype={ID_COLUMN_NAME: str}, keep_default_na=False)
     if pred_col == numeric_label_col:
         test = test.rename(columns={numeric_label_col: f"{numeric_label_col}_to_predict"})
         numeric_label_col = f"{numeric_label_col}_to_predict"
