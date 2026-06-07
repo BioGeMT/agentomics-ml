@@ -72,7 +72,6 @@ def get_shared_test_resources():
             'write_python_tool': tools_by_name['write_python'],
             'run_python_tool': tools_by_name['run_python'],
             'replace_tool': tools_by_name['replace'],
-            'test_datasets_dir': Path('../repository/test_datasets').resolve(),
         }
 
     return _shared_test_resources
@@ -91,4 +90,3 @@ class BaseAgentTest(unittest.TestCase):
         cls.write_python_tool = resources['write_python_tool']
         cls.run_python_tool = resources['run_python_tool']
         cls.replace_tool = resources['replace_tool']
-        cls.test_datasets_dir = resources['test_datasets_dir']
