@@ -96,11 +96,6 @@ class Config:
     def run_dir(self) -> Path:
         return Path(self.workspace_dir) / self.RUN_DIRNAME
 
-
-    @property
-    def fallbacks_dir(self) -> Path:
-        return Path(self.workspace_dir) / "fallbacks"
-
     @property
     def reports_dir(self) -> Path:
         return Path(self.workspace_dir) / "reports"
