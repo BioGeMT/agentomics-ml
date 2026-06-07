@@ -58,7 +58,7 @@ The most important directory - contains the best-performing iteration's artifact
 ### Using the Best Model
 
 ```bash
-./scripts/inference.sh --agent-dir outputs/<agent_id> --input data.csv --output predictions.csv
+./scripts/inference.sh --agent-dir outputs/<agent_id> --input data/input --output predictions.csv
 ```
 
 ## Iteration Directories
@@ -108,6 +108,7 @@ During execution, the agent uses a workspace:
 ```
 <workspace_root>/
 ├── run/                     # Active run directory
+│   └── shared/splits/       # Versioned train/validation split folders
 ├── best_iteration_snapshot/    # Best iteration snapshot
 ├── reports/                 # Iteration reports
 ├── extras/                  # Logs and metrics
