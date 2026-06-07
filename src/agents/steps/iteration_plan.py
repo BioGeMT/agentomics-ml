@@ -129,6 +129,8 @@ class IterationPlanStep(AgenticStep):
         The iteration agent will have access to the code and steps' outputs from all archived iterations.
         For example if you want to instruct to re-use the same data representation from iteration 5, instruct "Re-use the data representation from iteration 5".
         The data exploration and splitting steps can be instructed to be skipped completely if they're not needed.
+        If any exploration step discovered important id-to-sample information (e.g., how label IDs relate to data in input/, file formats, column semantics) that are not already included in the dataset_knowledge_from_dataset_description_md, include those details in your instructions for relevant downstream steps so the iteration agent doesn't have to re-explore the structure.
+        Similarly, if the exploration step found useful insights from supplementary materials, carry those forward in your instructions.
         {splitting_info}
 
         You're providing instructions to an LLM agent, never offer that you will take any actions to fix or implement fixes yourself.
@@ -140,7 +142,8 @@ class IterationPlanStep(AgenticStep):
         Never refer to existing scripts or previous iteration agent's actions only as 'previous', 'existing', 'current, 'last', etc... Always mention the iteration number of what you're refering to.
         If you're requesting the agent to create specific files or folders, never request anything with the name 'iteration', 'iter', or similar. For example, prefer 'exploration_script.py' over 'exploration_scipt_iter3.py'. Simply refer to the agent's workspace path as 'your workspace'.
 
-        The agent will have access to the train.csv and validation.csv files, all previous iteration files and step outputs, and the dataset_description.md file.
+        The agent will have access to the train/ and validation/ split folders{", and a mini_train/ folder (a small subset of training data used for quick script validation)" if self._get_latest_split_version() is not None else ""}, all previous iteration files and step outputs, and the dataset_description.md file.
+        {supplementary_info}
         The agent will have access to the following tools: {tools_info}.
         <foundation_models_info>
         The agent will have access to the following foundation models: {foundation_models_info}
@@ -241,8 +244,15 @@ class IterationPlanStep(AgenticStep):
         best_metric_iteration = load_best_iteration_snapshot_iteration(self.config)
         latest_split_version = self._get_latest_split_version()
 
-        if not load_iteration_state(self.config.current_iteration_dir)["split_allowed_at_start"]:
+        iteration_state = load_iteration_state(self.config.current_iteration_dir)
+        if not iteration_state["full_split_allowed_at_start"] and not iteration_state["only_mini_split_allowed_at_start"]:
             return "Instruct to skip the splitting step, as the current iteration agent cannot split the data."
+
+        if iteration_state["only_mini_split_allowed_at_start"]:
+            return (
+                "Train and validation splits are already provided and must not be changed. "
+                "Instruct the agent to only create a mini_train subset of the training data."
+            )
 
         if latest_split_version is None:
             split_status = "No reusable train/validation split exists yet. Instruct the agent to create the initial train/validation split for this run."
@@ -264,8 +274,8 @@ class IterationPlanStep(AgenticStep):
 
         return (
             f"{split_status} "
-            "If you choose data splitting needs change, never suggest cross-validations split or any other split "
-            "that would result in more than two files (train.csv and validation.csv). "
+            "If you choose data splitting needs change, never suggest cross-validation or any other split "
+            "that would result in anything other than train/ and validation/ split folders. "
             "Keep in mind that using a more representative validation split will result in a better selected "
             "'best iteration model' and therefore a better final hidden test set metrics. "
             "Based on the iteration history, if you suspect the current split is not representative "

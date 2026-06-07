@@ -26,6 +26,21 @@ class DataExplorationOutput(AgenticStepOutput):
         - Domain-specific challenges or opportunities present in the data
         """
     )
+    id_to_sample_info: str = Field(
+        description="""
+        How sample IDs in labels.csv relate to the data in input/.
+        For example: IDs are row indices in a single CSV file, filename stems of per-sample files, or a column value in a tabular file.
+        This must be concrete and specific enough for downstream steps to correctly load data for a given ID without re-exploring.
+        """
+    )
+    supplementary_insights: str | None = Field(
+        default=None,
+        description="""
+        If a supplementary/ folder exists in the dataset, summarize what it contains and how the materials could inform modeling decisions (e.g., a paper describing a specific encoding scheme, reference data, helper scripts).
+        Keep this to a concise summary (max few sentences per item) — do not dump file contents here.
+        Return None if no supplementary/ folder exists or is empty.
+        """
+    )
 
 class DataExplorationStep(AgenticStep):
     step_id = "data_exploration"
@@ -35,7 +50,7 @@ class DataExplorationStep(AgenticStep):
     def step_prompt(self) -> str:
         iteration = load_current_iteration_index(self.config)
         if(iteration != 0):
-            extra_info = "Note: If you gathered enough information from your previous exploration and don't need to explore the data further, return 'Exploration skipped' in all the json fields (data_description, feature_analysis, domain_insights)."
+            extra_info = "Note: If you gathered enough information from your previous exploration and don't need to explore the data further, return 'Exploration skipped' in all the json fields (data_description, feature_analysis, domain_insights, id_to_sample_info, supplementary_insights)."
         else:
             extra_info = ""
         return f"""
