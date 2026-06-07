@@ -13,8 +13,8 @@ After the agent completes a run, you can re-train the model with new data using 
 ```bash
 ./scripts/train.sh \
   --agent-dir outputs/<agent_id> \
-  --train-data /path/to/new_train.csv \
-  --validation-data /path/to/new_validation.csv \
+  --train-data /path/to/train \
+  --validation-data /path/to/validation \
   --artifacts-dir /path/to/output_artifacts
 ```
 
@@ -23,8 +23,8 @@ After the agent completes a run, you can re-train the model with new data using 
 | Argument | Description |
 |----------|-------------|
 | `--agent-dir` | Path to completed agent output folder |
-| `--train-data` | Path to new training CSV file |
-| `--validation-data` | Path to new validation CSV file |
+| `--train-data` | Path to a training split folder with `input/` and `labels.csv` |
+| `--validation-data` | Path to a validation split folder with `input/` and `labels.csv` |
 | `--artifacts-dir` | Where to save new training artifacts |
 
 ## Optional Arguments
@@ -41,8 +41,8 @@ After the agent completes a run, you can re-train the model with new data using 
 # Re-train using new data
 ./scripts/train.sh \
   --agent-dir outputs/enchanted_fixing_reigned \
-  --train-data datasets/updated_data/train.csv \
-  --validation-data datasets/updated_data/validation.csv \
+  --train-data datasets/updated_data/train \
+  --validation-data datasets/updated_data/validation \
   --artifacts-dir outputs/retrained_model
 ```
 
@@ -57,11 +57,11 @@ The script:
 
 ## Data Format
 
-Your new data files must match the format expected by the agent's training script:
+Your new split folders must match the format expected by the agent's training script:
 
-- Same column names as original training data
-- Same feature encoding/preprocessing expectations
-- Target column with same name and format
+- Same `input/` structure as the original training data
+- `labels.csv` with `id` and `numeric_label`
+- Matching IDs between input files and labels
 
 ## Output
 

@@ -7,7 +7,6 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 
-import pandas as pd
 from pydantic import Field
 from pydantic_ai import Agent, ModelRetry, RunContext
 
@@ -15,11 +14,11 @@ import agents.injectables.training_reporter as _training_reporter_module
 from agents.steps.base import AgenticStep, AgenticStepOutput
 from agents.steps.data_split import DataSplitStep
 from runtime.conda_utils import get_shared_environment_path
+from datasets.data_contract import SUPPLEMENTARY_DIR_NAME
 from utils.task_types import TaskTypes
-from runtime.read_write_utils import does_file_contain_iteration_pattern
+from runtime.read_write_utils import does_file_contain_iteration_pattern, does_file_contain_string
 from runtime.step_outputs import require_step_output
 from runtime.system_resources import check_gpu_availability
-from datasets.dataset_utils import get_numeric_label_col_from_prepared_dataset
 from utils.text_processing_utils import collapse_repeated_lines, concise_output
 
 
@@ -80,9 +79,19 @@ class ModelTrainingStep(AgenticStep):
                 raise ModelRetry(f"Model file ({result.path_to_model_file}) must be inside the artifacts folder ({result.path_to_artifacts_dir})")
             if does_file_contain_iteration_pattern(result.path_to_train_file):
                 raise ModelRetry(f"Train file ({result.path_to_train_file}) contains path containing a forbidden string 'iteration_' or references an iteration folder, which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
+            dataset_supplementary_path = self.config.agent_dataset_dir / SUPPLEMENTARY_DIR_NAME
+            if dataset_supplementary_path.is_dir() and does_file_contain_string(
+                result.path_to_train_file, SUPPLEMENTARY_DIR_NAME + "/"
+            ):
+                raise ModelRetry(
+                    "Train file references supplementary/. "
+                    "Do not use supplementary/ directly in train.py. "
+                    "If you need those files, copy them into your current working directory."
+                )
+            mini_train_path = ctx.deps["mini_train_path"]
             created_files_names = self._validate_training_run(
-                train_data_path=ctx.deps["train_csv_path"],
-                valid_data_path=ctx.deps["validation_csv_path"],
+                train_data_path=mini_train_path, # Using mini train for both for quick validation
+                valid_data_path=mini_train_path,
                 train_script_path=result.path_to_train_file,
                 model_file_name=Path(result.path_to_model_file).name,
             )
@@ -117,6 +126,7 @@ class ModelTrainingStep(AgenticStep):
         - If the chosen training API exposes no real epoch or batch progress hooks, call reporter.report_unavailable("...") once with a concrete reason, you must then call report_epoch(...) at the end of training to report final metrics.
         - If you implement early stopping and know how many epochs remain before stopping, include early_stopping_patience_remaining in reporter.report_epoch(...).
 """
+        data_split = require_step_output(self.config, DataSplitStep.step_id, self.config.current_iteration_dir)
         return f"""
         Your next task: implement training code and train your model.
         Training guidelines:
@@ -126,19 +136,25 @@ class ModelTrainingStep(AgenticStep):
         {"- If your model can be accelerated by GPU, implement the code to use GPU." if check_gpu_availability() else ""}
         {reporting_requirement}
         - Save the training script directly as train.py in the current step directory, not inside a nested folder.
+        - Do not read supplementary/ directly from train.py. If you need files from there, copy them into your current step directory.
         The train script should take the following parameters
-        --train-data (a path to the training data csv)
-        --validation-data (a path to the validation data csv. For example for the purposes of early-stopping. If the training script doesn't need validation data, still include the argument for compatibility and don't use it.)
+        --train-data (a path to the training split folder. This folder contains input/ with the data files and labels.csv with labels keyed by id.)
+        --validation-data (a path to the validation split folder. This folder contains input/ with the data files and labels.csv with labels keyed by id. For example for the purposes of early-stopping. If the training script doesn't need validation data, still include the argument for compatibility and don't use it.)
         --artifacts-dir (path to a directory that will be populated by the training script with artifacts needed to use the trained model for predictions (e.g. produced model weights, produced tokenizers, ...). This directory should not contain any other external sources like imported scripts, conda packages, foundation models, etc..)
         The script must not accept any other parameters.
+
+        Data paths:
+        - Training split: {data_split.train_path}
+        - Validation split: {data_split.val_path}
+        - Mini train split (for quick debugging/test runs): {data_split.mini_train_path}
+        Use the mini train split to quickly test your script while developing. The final submitted model must be an output of the training script when the --train-data uses the full training split.
         """
 
     def build_deps(self, step_started_at: datetime) -> dict[str, object]:
         data_split = require_step_output(self.config, DataSplitStep.step_id, self.config.current_iteration_dir)
         return {
             "start_time": step_started_at,
-            "train_csv_path": data_split.train_path,
-            "validation_csv_path": data_split.val_path,
+            "mini_train_path": data_split.mini_train_path,
         }
 
     def _validate_training_run(self, train_data_path: str, valid_data_path: str, train_script_path: str, model_file_name: str) -> list[str]:
@@ -147,21 +163,13 @@ class ModelTrainingStep(AgenticStep):
         command_prefix = f"cd {run_dir} && conda run -p {conda_path}"
 
         temp_artifacts_dir = run_dir / "temp_retrain_artifacts"
-        temp_train_path = run_dir / "temp_train_subset.csv"
-        temp_valid_path = run_dir / "temp_valid_subset.csv"
 
         try:
-            target_col = get_numeric_label_col_from_prepared_dataset(self.config.prepared_dataset_dir)
-            train_subset = self._get_dataset_subset(train_data_path, target_col)
-            train_subset.to_csv(temp_train_path, index=False)
-            valid_subset = self._get_dataset_subset(valid_data_path, target_col)
-            valid_subset.to_csv(temp_valid_path, index=False)
-
             temp_artifacts_dir.mkdir(parents=True, exist_ok=True)
             command = (
                 f"{command_prefix} python \"{train_script_path}\" "
-                f"--train-data \"{temp_train_path}\" "
-                f"--validation-data \"{temp_valid_path}\" "
+                f"--train-data \"{train_data_path}\" "
+                f"--validation-data \"{valid_data_path}\" "
                 f"--artifacts-dir \"{temp_artifacts_dir}\""
             )
             training_out = subprocess.run(command, shell=True, executable="/bin/bash", capture_output=True)
@@ -211,25 +219,8 @@ class ModelTrainingStep(AgenticStep):
             traceback_msg = concise_output(collapse_repeated_lines(traceback.format_exc()))
             raise ModelRetry(f"Training script validation failed: {traceback_msg}") from error
         finally:
-            for temporary_path in [temp_train_path, temp_valid_path]:
-                if temporary_path.exists():
-                    temporary_path.unlink()
             if temp_artifacts_dir.exists():
                 shutil.rmtree(temp_artifacts_dir)
-
-    def _get_dataset_subset(self, data_path: str, target_col: str) -> pd.DataFrame:
-        dataframe = pd.read_csv(data_path)
-        if self.config.task_type == TaskTypes.CLASSIFICATION:
-            samples_per_label = 100
-            return dataframe.groupby(target_col, group_keys=False).apply(
-                lambda frame: frame.sample(n=min(len(frame), samples_per_label), random_state=42)
-            ).reset_index(drop=True)
-        if self.config.task_type == TaskTypes.REGRESSION:
-            total_samples = min(len(dataframe), 1000)
-            return dataframe.sample(n=total_samples, random_state=42).reset_index(drop=True)
-        raise ValueError(
-            f"Unknown task type: {self.config.task_type}. Supported types are {TaskTypes}."
-        )
 
     def _build_training_retry_message(self, prefix: str, returncode: int, stdout: bytes | str, stderr: bytes | str) -> str:
         message = f"{prefix}: Return code: {returncode}\nStderr: {stderr}, Stdout: {stdout}"
