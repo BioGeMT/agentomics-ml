@@ -187,7 +187,7 @@ outputs/${agent_id}/
 │   └── test_metrics.json           # Metrics on held-out test set
 │
 ├── run/                            # Run working directory
-│   ├── shared/splits/              # Train/validation split CSVs
+│   ├── shared/splits/              # Versioned train/validation split folders
 │   ├── iteration_0/                # Archive of iteration 0
 │   ├── iteration_1/                # Archive of iteration 1
 │   └── ...                         # Additional iterations if present
@@ -214,7 +214,7 @@ outputs/${agent_id}/
 ## Running inference on new data
 
 \`\`\`bash
-./inference.sh --agent-dir outputs/${agent_id} --input <path_to_input_csv> --output <path_to_output_csv>
+./inference.sh --agent-dir outputs/${agent_id} --input <path_to_input_folder> --output <path_to_output_csv>
 \`\`\`
 
 Inference relies on:

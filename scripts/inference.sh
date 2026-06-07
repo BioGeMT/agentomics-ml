@@ -14,7 +14,7 @@ show_help() {
     echo "Usage: $0 --agent-dir <agent_folder_path> --input <input_path> --output <output_path> [--cpu-only] [--local]"
     echo "Options:"
     echo "  --agent-dir   Path to agent folder (required)"
-    echo "  --input       Path to input file (required)"
+    echo "  --input       Path to input folder (required)"
     echo "  --output      Path to output file (required)"
     echo "  --code-path   Path to code files, points to best_iteration_snapshot by default, must be relative to --agent-dir and a child of --agent-dir (optional)"
     echo "  --remove-conda-env   Remove the conda environment after inference (optional)"
@@ -90,7 +90,7 @@ if [[ -z "$OUTPUT_PATH" ]]; then
 fi
 
 [[ -d "$AGENT_DIR" ]] || die "--agent-dir does not exist: $AGENT_DIR"
-[[ -f "$INPUT_PATH" ]] || die "--input does not exist: $INPUT_PATH"
+[[ -d "$INPUT_PATH" ]] || die "--input must be an input folder: $INPUT_PATH"
 [[ -d "$(dirname "$OUTPUT_PATH")" ]] || die "--output directory does not exist: $(dirname "$OUTPUT_PATH")"
 
 AGENT_NAME=$(basename "$AGENT_DIR")
@@ -168,18 +168,6 @@ if [[ "$DOCKER_MODE" == true ]]; then
             bash -c "conda install -n base mamba -c conda-forge -y && mamba env create -f \"${DESCRIPTOR_PATH_IN_CONTAINER}\" -p \"${CODE_ROOT_IN_CONTAINER}/.conda/envs/${AGENT_NAME}_env\""
     fi
 
-    NORMALIZE_SCRIPT_ABS="$SCRIPT_DIR/../src/datasets/normalize_dataset.py"
-    NORMALIZED_FILENAME=$(docker run --rm \
-        -v "$(dirname "$INPUT_PATH_ABS"):/input_dir" \
-        -v "$NORMALIZE_SCRIPT_ABS:/normalize_dataset.py:ro" \
-        --entrypoint "" \
-        "${AGENTOMICS_IMAGE}" \
-        python /normalize_dataset.py --input "/input_dir/$(basename "$INPUT_PATH_ABS")")
-    if [[ -n "$NORMALIZED_FILENAME" ]]; then
-        trap "rm -f \"$(dirname "$INPUT_PATH_ABS")/$NORMALIZED_FILENAME\"" EXIT
-        INPUT_PATH_ABS="$(dirname "$INPUT_PATH_ABS")/$NORMALIZED_FILENAME"
-    fi
-
     echo "Running inference in Docker..."
     docker run --rm \
         -v "${AGENT_DIR_ABS}/${CODE_PATH}:${CODE_ROOT_IN_CONTAINER}" \
@@ -200,12 +188,6 @@ else
     if [[ ! -d "$ENV_PATH" ]]; then
         echo "Conda environment not found at: $ENV_PATH"
         conda env create -f "$DESCRIPTOR_PATH" -p "$ENV_PATH"
-    fi
-    NORMALIZE_SCRIPT_ABS="$SCRIPT_DIR/../src/datasets/normalize_dataset.py"
-    NORMALIZED_FILENAME=$(python "$NORMALIZE_SCRIPT_ABS" --input "$INPUT_PATH")
-    if [[ -n "$NORMALIZED_FILENAME" ]]; then
-        trap "rm -f \"$(dirname "$INPUT_PATH")/$NORMALIZED_FILENAME\"" EXIT
-        INPUT_PATH="$(dirname "$INPUT_PATH")/$NORMALIZED_FILENAME"
     fi
 
     echo "Running inference locally..."
