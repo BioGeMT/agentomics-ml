@@ -29,7 +29,7 @@ class TestAgentPermissions(BaseAgentTest):
     def test_cross_agent_isolation(self):
         """Test that workspace contains the refactored shared layout, not per-agent run directories."""
         
-        result = self.bash_tool.function("ls -1 /workspace/")
+        result = self.bash_tool.function(f"ls -1 {self.config.workspace_dir}/")
         self.assertNotIn("Command failed", result, "Should be able to list workspace root")
         directories = [d.strip() for d in result.strip().split('\n') if d.strip() and not d.strip().startswith('[Tool call')]
 
@@ -78,6 +78,7 @@ class TestAgentPermissions(BaseAgentTest):
     def test_agent_access_to_repository_datasets(self):
         self.assertTrue(Path("/repository/datasets/").is_dir())
 
+    @unittest.skipUnless(os.getenv("AGENT_USER"), "Agent user sandboxing only enforced in Docker mode")
     def test_api_key_protection(self):
         """Test that agent cannot access API keys."""
         
@@ -140,7 +141,7 @@ class TestAgentPermissions(BaseAgentTest):
         disruptive_code = f"""
 import os
 try:
-    workspace_entries = sorted(os.listdir("/workspace"))
+    workspace_entries = sorted(os.listdir("{self.config.workspace_dir}"))
     print(f"Found workspace entries: {{workspace_entries}}")
 
     if "{Config.RUN_DIRNAME}" in workspace_entries and "{self.agent_id}" not in workspace_entries:

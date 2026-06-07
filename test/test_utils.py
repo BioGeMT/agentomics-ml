@@ -9,6 +9,9 @@ SRC_PATH = REPO_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
+WORKSPACE_DIR = "/workspace"
+PREPARED_DATASETS_DIR = str(REPO_ROOT / "prepared_datasets")
+
 from tools.tool_registry import create_tools
 from utils.config import Config
 from runtime.read_write_utils import (
