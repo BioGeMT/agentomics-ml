@@ -14,6 +14,15 @@ def remove_path(path: Path) -> None:
     if path.is_dir():
         shutil.rmtree(path)
 
+def copy_path_overwriting_target(source: Path, target: Path) -> None:
+    source = Path(source)
+    target = Path(target)
+    remove_path(target)
+    if source.is_dir():
+        shutil.copytree(source, target, symlinks=False)
+    else:
+        shutil.copy2(source, target)
+
 def copy_workspace_tree(
     source_dir: Path,
     destination_dir: Path,
