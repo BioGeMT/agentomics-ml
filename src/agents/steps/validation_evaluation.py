@@ -11,7 +11,7 @@ from agents.steps.model_inference import ModelInferenceStep
 from agents.steps.model_training import ModelTrainingStep
 from run_logging.logging_helpers import log_iteration_metrics, log_new_best
 from runtime.conda_utils import get_shared_environment_path
-from runtime.inference_runner import compute_metrics, run_inference_on_labeled_data
+from runtime.inference_runner import compute_metrics, run_inference_on_split
 from runtime.read_write_utils import (
     load_best_iteration_snapshot_iteration,
     load_dataset_metadata,
@@ -19,6 +19,7 @@ from runtime.read_write_utils import (
 from runtime.step_outputs import load_step_output, require_step_output
 from utils.exceptions import AgentScriptFailed, IterationRunFailed
 from utils.metrics import get_higher_is_better_map
+from datasets.data_contract import LABELS_FILE_NAME
 
 
 class ValidationEvaluationOutput(BaseModel):
@@ -64,23 +65,22 @@ class ValidationEvaluationStep(RuntimeStep):
         data_split = require_step_output(self.config, DataSplitStep.step_id, self.config.current_iteration_dir)
         for evaluation_stage in ["validation", "train"]:
             print(f"  Running {evaluation_stage} inference...")
-            labeled_input_path = Path(data_split.val_path if evaluation_stage == "validation" else data_split.train_path)
+            split_path = Path(data_split.val_path if evaluation_stage == "validation" else data_split.train_path)
+            labels_path = split_path / LABELS_FILE_NAME
             output_path = self.config.current_step_dir / f"eval_predictions_{evaluation_stage}.csv"
             try:
-                result = run_inference_on_labeled_data(
-                    evaluation_stage=evaluation_stage,
-                    labeled_input_path=labeled_input_path,
+                result = run_inference_on_split(
+                    split_path=split_path,
                     output_path=output_path,
                     conda_env_path=conda_env_path,
                     inference_script_path=inference_script_path,
                     training_artifacts_dir=training_artifacts_dir,
-                    label_col=dataset_metadata["numeric_label_col"],
                 )
                 if result.returncode != 0:
                     raise AgentScriptFailed(f"Inference on {evaluation_stage} failed: {str(result)}")
                 evaluation_metrics = compute_metrics(
                     results_file=output_path,
-                    labeled_input_path=labeled_input_path,
+                    labels_path=labels_path,
                     numeric_label_col=dataset_metadata["numeric_label_col"],
                     task_type=dataset_metadata["task_type"],
                     evaluation_stage=evaluation_stage,

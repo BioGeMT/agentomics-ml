@@ -12,6 +12,7 @@ from runtime.filesystem import remove_path
 from runtime.inference_runner import compute_metrics, run_inference_script
 from runtime.read_write_utils import load_config_from_run_dir, load_dataset_metadata
 from utils.config import Config
+from datasets.data_contract import INPUT_DIR_NAME, LABELS_FILE_NAME, TEST_SPLIT
 from utils.exceptions import AgentScriptFailed
 from utils.metrics import get_task_to_metrics_names
 from utils.printing_utils import print_best_iteration_metrics
@@ -39,12 +40,12 @@ def run_test_evaluation(workspace_dir, prepared_test_sets_dir: Path):
         inference_script_path = best_iteration_snapshot_dir / "model_inference" / "inference.py"
         output_path = config.best_iteration_snapshot_dir / "eval_predictions_test.csv"
         remove_path(output_path)
-        prepared_test_set_dir = prepared_test_sets_dir / config.dataset
-        test_input_path = prepared_test_set_dir / "test.no_label.csv"
-        labeled_test_path = prepared_test_set_dir / "test.csv"
-        if not test_input_path.exists() or not labeled_test_path.exists():
+        test_split_path = prepared_test_sets_dir / config.dataset / TEST_SPLIT
+        test_input_path = test_split_path / INPUT_DIR_NAME
+        labels_path = test_split_path / LABELS_FILE_NAME
+        if not test_input_path.is_dir() or not labels_path.is_file():
             raise FileNotFoundError(
-                f"Expected both test.no_label.csv and test.csv in {prepared_test_set_dir} for final test evaluation."
+                f"Expected input/ and labels.csv in {test_split_path} for final test evaluation."
             )
         result = run_inference_script(
             env_path=get_best_iteration_snapshot_environment_path(config),
@@ -58,7 +59,7 @@ def run_test_evaluation(workspace_dir, prepared_test_sets_dir: Path):
             raise AgentScriptFailed(f"Inference on test failed: {str(result)}")
         metrics = compute_metrics(
             results_file=output_path,
-            labeled_input_path=labeled_test_path,
+            labels_path=labels_path,
             numeric_label_col=dataset_metadata["numeric_label_col"],
             task_type=dataset_metadata["task_type"],
             evaluation_stage="test",
