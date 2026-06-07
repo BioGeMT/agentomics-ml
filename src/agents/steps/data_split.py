@@ -1,27 +1,42 @@
 from __future__ import annotations
 
-import os
+import json
 import shutil
 import time
 from pathlib import Path
 from typing import cast
 
+import pandas as pd
 from pydantic import Field
 from pydantic.json_schema import SkipJsonSchema
 from pydantic_ai import Agent, ModelRetry, RunContext
-import pandas as pd
 
 from agents.steps.base import AgenticStep, AgenticStepOutput
-from runtime.filesystem import chown_tree_to_root
+from runtime.filesystem import chown_tree_to_root, copy_path_overwriting_target
 from utils.task_types import TaskTypes
-from runtime.read_write_utils import get_last_successful_iteration, load_current_iteration_index, load_iteration_state, update_current_iteration_state
+from runtime.read_write_utils import (
+    get_last_successful_iteration,
+    load_current_iteration_index,
+    load_iteration_state,
+    update_current_iteration_state,
+)
 from runtime.step_outputs import load_step_output
 from run_logging.logging_helpers import log_split_is_allowed
-from datasets.dataset_utils import get_numeric_label_col_from_prepared_dataset
+from datasets.data_contract import (
+    ID_COLUMN_NAME,
+    LABELS_FILE_NAME,
+    METADATA_FILE_NAME,
+    MINI_TRAIN_SPLIT,
+    NUMERIC_LABEL_COLUMN_NAME,
+    TRAIN_SPLIT,
+    VALIDATION_SPLIT,
+    validate_splits,
+)
 
 class DataSplitOutput(AgenticStepOutput):
-    train_path: str = Field(description="Path to generated train.csv file")
-    val_path: str = Field(description="Path to generated validation.csv file")
+    train_path: str = Field(description="Path to generated train split folder")
+    val_path: str = Field(description="Path to generated validation split folder")
+    mini_train_path: str = Field(description="Path to generated mini_train split folder")
     splitting_strategy: str = Field(description="Detailed description of the splitting strategy used")
     split_changed: bool = Field(
         default=False,
@@ -36,6 +51,9 @@ class DataSplitStep(AgenticStep):
     step_id = "data_split"
     display_name = "SPLITTING"
     output_type = DataSplitOutput
+
+    CLASSIFICATION_MINI_TRAIN_SAMPLES_PER_CLASS = 100
+    REGRESSION_MINI_TRAIN_SAMPLE_COUNT = 100
 
     def _get_latest_split_strategy(self) -> str:
         iteration = get_last_successful_iteration(self.config)
@@ -53,16 +71,53 @@ class DataSplitStep(AgenticStep):
         n = int(latest.name.split("_")[1])
         return self.config.splits_dir / f"split_{n + 1}"
 
-    def _move_split_to_versioned_dir(self, result: DataSplitOutput) -> DataSplitOutput:
+    def _load_expected_input_structure(self) -> list[str]:
+        metadata_path = self.config.agent_dataset_dir / METADATA_FILE_NAME
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        if "input_structure" not in metadata:
+            raise ValueError(f"{metadata_path} is missing input_structure")
+        return metadata["input_structure"]
+
+    def _validate_mini_train_classification(self, train_df: pd.DataFrame, mini_train_df: pd.DataFrame) -> None:
+        train_class_counts = train_df[NUMERIC_LABEL_COLUMN_NAME].value_counts()
+        mini_train_class_counts = mini_train_df[NUMERIC_LABEL_COLUMN_NAME].value_counts()
+        missing_classes = set(train_class_counts.index) - set(mini_train_class_counts.index)
+        if missing_classes:
+            raise ModelRetry(
+                f"mini_train must contain samples from all classes. "
+                f"Missing classes: {sorted(missing_classes)}"
+            )
+        for cls, mini_count in mini_train_class_counts.items():
+            expected_count = min(self.CLASSIFICATION_MINI_TRAIN_SAMPLES_PER_CLASS, train_class_counts[cls])
+            if mini_count != expected_count:
+                raise ModelRetry(
+                    f"mini_train must have exactly {expected_count} samples for class {cls} "
+                    f"(min({self.CLASSIFICATION_MINI_TRAIN_SAMPLES_PER_CLASS}, {train_class_counts[cls]}) available in train), "
+                    f"got {mini_count}."
+                )
+
+    def _validate_mini_train_regression(self, mini_train_df: pd.DataFrame, train_df: pd.DataFrame) -> None:
+        expected_count = min(self.REGRESSION_MINI_TRAIN_SAMPLE_COUNT, len(train_df))
+        if len(mini_train_df) != expected_count:
+            raise ModelRetry(
+                f"mini_train must have exactly {expected_count} samples "
+                f"(min({self.REGRESSION_MINI_TRAIN_SAMPLE_COUNT}, {len(train_df)}) available in train), "
+                f"got {len(mini_train_df)}."
+            )
+
+    def _move_split_to_versioned_dir(self, result: DataSplitOutput, flag_as_changed: bool) -> DataSplitOutput:
         train_path = Path(result.train_path)
         val_path = Path(result.val_path)
+        mini_train_path = Path(result.mini_train_path)
         next_split_dir = self._get_next_split_dir()
         next_split_dir.mkdir(parents=True, exist_ok=True)
-        shutil.move(str(train_path), next_split_dir / "train.csv")
-        shutil.move(str(val_path), next_split_dir / "validation.csv")
-        result.train_path = str(next_split_dir / "train.csv")
-        result.val_path = str(next_split_dir / "validation.csv")
-        result.split_changed = True
+        shutil.move(str(train_path), next_split_dir / TRAIN_SPLIT)
+        shutil.move(str(val_path), next_split_dir / VALIDATION_SPLIT)
+        shutil.move(str(mini_train_path), next_split_dir / MINI_TRAIN_SPLIT)
+        result.train_path = str(next_split_dir / TRAIN_SPLIT)
+        result.val_path = str(next_split_dir / VALIDATION_SPLIT)
+        result.mini_train_path = str(next_split_dir / MINI_TRAIN_SPLIT)
+        result.split_changed = flag_as_changed
         result.split_version = int(next_split_dir.name.removeprefix("split_"))
         return result
 
@@ -70,37 +125,70 @@ class DataSplitStep(AgenticStep):
         @agent.output_validator
         async def validate_split_dataset(ctx: RunContext[dict], result: AgenticStepOutput) -> AgenticStepOutput:
             result = cast(DataSplitOutput, result)
-            if not os.path.exists(result.train_path) or not os.path.exists(result.val_path):
-                raise ModelRetry("Split dataset files do not exist.")
-
             train_path = Path(result.train_path)
             val_path = Path(result.val_path)
-            if train_path.name != 'train.csv' or val_path.name != 'validation.csv':
-                for p in (train_path, val_path):
-                    if p.parent == self.config.current_step_dir:
-                        p.unlink(missing_ok=True)
-                raise ModelRetry(f"The files must be called exactly 'train.csv' and 'validation.csv'. Files ({train_path.name} and {val_path.name}) have been deleted.")
+            mini_train_path = Path(result.mini_train_path)
+            if train_path.name != TRAIN_SPLIT or val_path.name != VALIDATION_SPLIT or mini_train_path.name != MINI_TRAIN_SPLIT:
+                raise ModelRetry(
+                    f"Split folders must be named exactly: "
+                    f"train_path='{TRAIN_SPLIT}', val_path='{VALIDATION_SPLIT}', mini_train_path='{MINI_TRAIN_SPLIT}'. "
+                    f"Received: train_path='{train_path.name}', val_path='{val_path.name}', mini_train_path='{mini_train_path.name}'."
+                )
+            expected_structure = self._load_expected_input_structure()
+            try:
+                validate_splits(
+                    {TRAIN_SPLIT: train_path, VALIDATION_SPLIT: val_path, MINI_TRAIN_SPLIT: mini_train_path},
+                    expected_structure,
+                )
+            except ValueError as exc:
+                raise ModelRetry(str(exc)) from exc
 
-            target_col = get_numeric_label_col_from_prepared_dataset(self.config.prepared_dataset_dir)
-            required_cols = [target_col, 'id']
-            train_df, val_df = pd.read_csv(result.train_path), pd.read_csv(result.val_path)
-            for df, path in [(train_df, result.train_path), (val_df, result.val_path)]:
-                missing = [col for col in required_cols if col not in df.columns]
-                if missing:
-                    raise ModelRetry(f"Required columns {missing} missing from {path}.")
+            train_df = pd.read_csv(train_path / LABELS_FILE_NAME, dtype={ID_COLUMN_NAME: str}, keep_default_na=False)
+            val_ids = set(
+                pd.read_csv(val_path / LABELS_FILE_NAME, dtype={ID_COLUMN_NAME: str}, keep_default_na=False)[ID_COLUMN_NAME].tolist()
+            )
+            train_ids = set(train_df[ID_COLUMN_NAME].tolist())
+            overlapping_ids = train_ids & val_ids
+            if overlapping_ids:
+                raise ModelRetry(
+                    "Train and validation labels.csv files have overlapping ids. "
+                    f"First overlaps: {list(overlapping_ids)[:20]}"
+                )
 
-            train_ids = set(train_df['id'].dropna().tolist())
-            val_ids = set(val_df['id'].dropna().tolist())
-            if train_ids.intersection(val_ids):
-                raise ModelRetry("Train and validation datasets have overlapping IDs. IDs must be unique across train and validation splits.")
+            mini_train_df = pd.read_csv(mini_train_path / LABELS_FILE_NAME, dtype={ID_COLUMN_NAME: str}, keep_default_na=False)
+            mini_train_ids = set(mini_train_df[ID_COLUMN_NAME].tolist())
+            if not mini_train_ids.issubset(train_ids):
+                extra_ids = mini_train_ids - train_ids
+                raise ModelRetry(
+                    f"mini_train IDs must be a subset of training IDs. "
+                    f"Found {len(extra_ids)} IDs not in train: {list(extra_ids)[:10]}"
+                )
+            if self.config.task_type == TaskTypes.CLASSIFICATION:
+                self._validate_mini_train_classification(train_df, mini_train_df)
+            else:
+                self._validate_mini_train_regression(mini_train_df, train_df)
 
-            #The moved files will be absent from created_files field of the output object, however will be in the structured output field
-            if not Path(result.train_path).is_relative_to(self.config.splits_dir):
+            is_mini_train_only = load_iteration_state(self.config.current_iteration_dir)["only_mini_split_allowed_at_start"]
+            if is_mini_train_only:
+                step_dir = self.config.current_step_dir
+                for split_name in [TRAIN_SPLIT, VALIDATION_SPLIT]:
+                    copy_path_overwriting_target(
+                        self.config.agent_dataset_dir / split_name,
+                        step_dir / split_name,
+                    )
+                result.train_path = str(step_dir / TRAIN_SPLIT)
+                result.val_path = str(step_dir / VALIDATION_SPLIT)
+                train_path = Path(result.train_path)
+                val_path = Path(result.val_path)
+
+            if train_path.parent != val_path.parent or train_path.parent != mini_train_path.parent:
+                raise ModelRetry("Train, validation, and mini_train split folders must be in the same directory.")
+            if not train_path.is_relative_to(self.config.splits_dir) or not val_path.is_relative_to(self.config.splits_dir) or not mini_train_path.is_relative_to(self.config.splits_dir):
                 #TODO what if its the explicit split files -> should be moved or copied?
-                result = self._move_split_to_versioned_dir(result)
+                result = self._move_split_to_versioned_dir(result, flag_as_changed=not is_mini_train_only)
             else:
                 result.splitting_strategy = self._get_latest_split_strategy()
-                result.split_version = int(Path(result.train_path).parent.name.removeprefix("split_"))
+                result.split_version = int(train_path.parent.name.removeprefix("split_"))
             return result
 
     def step_prompt(self) -> str:
@@ -109,65 +197,115 @@ class DataSplitStep(AgenticStep):
         current_step_dir = self.config.current_step_dir
 
         if self.config.task_type == TaskTypes.CLASSIFICATION:
-            extra_instructions = "Ensure that the validation split contains representative samples from ALL classes."
+            validation_instructions = "Ensure that the validation split contains representative samples from ALL classes."
+            mini_train_size_instructions = (
+                f"exactly {self.CLASSIFICATION_MINI_TRAIN_SAMPLES_PER_CLASS} samples per class "
+                f"(or all available if the training split has fewer than {self.CLASSIFICATION_MINI_TRAIN_SAMPLES_PER_CLASS} for a class)"
+            )
         elif self.config.task_type == TaskTypes.REGRESSION:
-            extra_instructions = ""
+            validation_instructions = ""
+            mini_train_size_instructions = (
+                f"exactly {self.REGRESSION_MINI_TRAIN_SAMPLE_COUNT} samples "
+                f"(or all available if the training split has fewer than {self.REGRESSION_MINI_TRAIN_SAMPLE_COUNT})"
+            )
         else:
             raise ValueError(f"Unknown task type: {self.config.task_type}. Supported types are {TaskTypes}.")
 
+        if load_iteration_state(self.config.current_iteration_dir)["only_mini_split_allowed_at_start"]:
+            train_split_path = self.config.agent_dataset_dir / TRAIN_SPLIT
+            validation_split_path = self.config.agent_dataset_dir / VALIDATION_SPLIT
+            return f"""
+            Your next task: Create a '{MINI_TRAIN_SPLIT}' folder as a subset of the training data.
+
+            The '{TRAIN_SPLIT}' and '{VALIDATION_SPLIT}' splits are already provided:
+            - {TRAIN_SPLIT}: {train_split_path}
+            - {VALIDATION_SPLIT}: {validation_split_path}
+            Do NOT modify or recreate them. Only create the '{MINI_TRAIN_SPLIT}' folder in {current_step_dir}.
+
+            '{MINI_TRAIN_SPLIT}': a subset of the training split ({train_split_path}) with {mini_train_size_instructions}, used solely for automatic system validation.
+            The '{MINI_TRAIN_SPLIT}' folder must contain an input/ folder with the data files and a labels.csv file. The input/ must contain only the data that corresponds to the ids in the newly created labels.csv file. Do not copy the full training /input files for ids that are not in the newly created labels.csv file.
+            Preserve the original ID scheme: each id in labels.csv must refer to the same data in input/ as it did in the original data.
+            The input/ interface must match the original train/input/ interface.
+
+            Return the absolute paths to all three split folders ('{TRAIN_SPLIT}', '{VALIDATION_SPLIT}', and '{MINI_TRAIN_SPLIT}').
+            """
+
         if iteration != 0 and latest_split_dir is not None:
             extra_info = f"""
-            Note: An existing split is already available at {latest_split_dir} (train.csv and validation.csv).
+            Note: An existing split is already available at {latest_split_dir} ({TRAIN_SPLIT}/, {VALIDATION_SPLIT}/, and {MINI_TRAIN_SPLIT}/ folders).
             If you don't have a reason to change the splitting strategy, return those existing paths immediately and return an empty string for the splitting strategy.
-            If you do create a new split, save 'train.csv' and 'validation.csv' in {current_step_dir}.
+            If you do create a new split, save '{TRAIN_SPLIT}', '{VALIDATION_SPLIT}', and '{MINI_TRAIN_SPLIT}' folders in {current_step_dir}.
             """
         else:
-            extra_info = f"Save 'train.csv' and 'validation.csv' in {current_step_dir}."
+            extra_info = f"Save '{TRAIN_SPLIT}', '{VALIDATION_SPLIT}', and '{MINI_TRAIN_SPLIT}' folders in {current_step_dir}."
 
-        train_csv_path = self.config.agent_dataset_dir / "train.csv"
+        train_split_path = self.config.agent_dataset_dir / TRAIN_SPLIT
         return f"""
-            Your next task: Split the training dataset ({train_csv_path}) into training and validation sets.
-            Ensure the validation split is representative of new unseen data, since it will be used for optimizing choices like architecture, hyperparameters, and training strategies.
-            {extra_instructions}
-            Return the absolute paths to the train and validation files.
+            Your next task: Split the training dataset ({train_split_path}) into '{TRAIN_SPLIT}', '{VALIDATION_SPLIT}', and '{MINI_TRAIN_SPLIT}' folders.
+            Each split folder must contain an input/ folder with the data files and a labels.csv file.
+            Each split's input/ must contain only the data that corresponds to the ids in that split's labels.csv file. Do not copy the full training /input files for ids that are not in the split's labels.csv file.
+            Preserve the original ID scheme: each id in labels.csv must refer to the same data in input/ as it did in the original data.
+            The input/ interface must match the original train/input/ interface.
+
+            '{VALIDATION_SPLIT}': representative of new unseen data, used for optimizing architecture, hyperparameters, and training strategies.
+            {validation_instructions}
+
+            '{MINI_TRAIN_SPLIT}': a subset of the training split with {mini_train_size_instructions}, used solely for automatic system validation.
+
+            Return the absolute paths to all three split folders.
 
             {extra_info}
             """
 
     def on_iteration_start(self, iteration: int) -> None:
-        if (self.config.agent_dataset_dir / "validation.csv").exists():
-            split_allowed = False
+        has_reusable = self._get_latest_split_dir() is not None
+        if (self.config.agent_dataset_dir / VALIDATION_SPLIT).exists():
+            update_current_iteration_state(
+                self.config,
+                full_split_allowed_at_start=False,
+                only_mini_split_allowed_at_start=not has_reusable,
+            )
         else:
-            has_reusable = any(d.is_dir() for d in self.config.splits_dir.iterdir())
             if not has_reusable:
-                split_allowed = True
+                full_split_allowed = True
             elif self.config.split_time_deadline is None:
-                split_allowed = iteration < self.config.split_allowed_iterations
+                full_split_allowed = iteration < self.config.split_allowed_iterations
             else:
-                split_allowed = time.time() < self.config.split_time_deadline
-        update_current_iteration_state(self.config, split_allowed_at_start=split_allowed)
+                full_split_allowed = time.time() < self.config.split_time_deadline
+            update_current_iteration_state(
+                self.config,
+                full_split_allowed_at_start=full_split_allowed,
+                only_mini_split_allowed_at_start=False,
+            )
 
     def should_be_simulated(self) -> bool:
-        return not bool(load_iteration_state(self.config.current_iteration_dir)["split_allowed_at_start"])
+        state = load_iteration_state(self.config.current_iteration_dir)
+        return not state["full_split_allowed_at_start"] and not state["only_mini_split_allowed_at_start"]
 
     def build_simulated_output(self) -> DataSplitOutput:
         latest_split_dir = self._get_latest_split_dir()
         if latest_split_dir is None:
-            if not (self.config.agent_dataset_dir / "validation.csv").exists(): #check for explicit validation files
+            validation_split = self.config.agent_dataset_dir / VALIDATION_SPLIT
+            mini_train_split = self.config.agent_dataset_dir / MINI_TRAIN_SPLIT
+            if not validation_split.exists() or not mini_train_split.exists():
                 raise AssertionError(
                     "Agent did not have a chance to split data. "
-                    "Provide a non-zero split budget or ensure split files are available on disk."
+                    "Provide a non-zero split budget or ensure split folders are available on disk."
                 )
             latest_split_dir = self._get_next_split_dir()
             latest_split_dir.mkdir(parents=True, exist_ok=True)
-            for f in ("train.csv", "validation.csv"):
-                shutil.copy2(self.config.agent_dataset_dir / f, latest_split_dir / f)
+            for split_name in [TRAIN_SPLIT, VALIDATION_SPLIT, MINI_TRAIN_SPLIT]:
+                shutil.copytree(
+                    self.config.agent_dataset_dir / split_name,
+                    latest_split_dir / split_name,
+                )
             splitting_strategy = ""
         else:
             splitting_strategy = self._get_latest_split_strategy()
         return DataSplitOutput(
-            train_path=str(latest_split_dir / "train.csv"),
-            val_path=str(latest_split_dir / "validation.csv"),
+            train_path=str(latest_split_dir / TRAIN_SPLIT),
+            val_path=str(latest_split_dir / VALIDATION_SPLIT),
+            mini_train_path=str(latest_split_dir / MINI_TRAIN_SPLIT),
             splitting_strategy=splitting_strategy,
             split_changed=False,
             split_version=int(latest_split_dir.name.removeprefix("split_")),
@@ -189,7 +327,7 @@ class DataSplitStep(AgenticStep):
         iteration_state = load_iteration_state(self.config.current_iteration_dir)
         log_split_is_allowed(
             iteration=iteration,
-            is_allowed=bool(iteration_state["split_allowed_at_start"]),
+            is_allowed=bool(iteration_state["full_split_allowed_at_start"]),
         )
         #TODO log if split has changed?
 
