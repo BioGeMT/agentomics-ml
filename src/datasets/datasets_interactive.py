@@ -27,17 +27,16 @@ def _get_single_prepared_dataset_info(prepared_dataset_dir: Path) -> dict | None
 
     try:
         metadata = json.loads(metadata_path.read_text())
+        splits = metadata["splits"]
+        return {
+            **base,
+            "train_rows": splits["train_rows"],
+            "validation_rows": splits["validation_rows"],
+            "test_rows": splits["test_rows"],
+            "status": "Prepared",
+        }
     except Exception as exc:
         return {**base, "status": f"Invalid metadata.json: {exc}"}
-
-    splits = metadata["splits"]
-    return {
-        **base,
-        "train_rows": splits["train_rows"],
-        "validation_rows": splits["validation_rows"],
-        "test_rows": splits["test_rows"],
-        "status": "Prepared",
-    }
 
 def get_all_prepared_datasets_info(prepared_datasets_dir: Path) -> list[dict]:
     if not prepared_datasets_dir.exists():

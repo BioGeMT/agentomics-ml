@@ -89,7 +89,7 @@ Also supported: `all`
 ```
 
 `--split-allowed-iterations` controls how many early iterations are allowed to resplit
-train/validation (ignored if you provide `validation.csv`). `--exploration-iterations`
+train/validation (ignored if you provide a `validation/` split). `--exploration-iterations`
 controls how long the agent spends on baseline/exploration models.
 
 ### Time Limits

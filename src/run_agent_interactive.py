@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import json
 import sys
 from pathlib import Path
 
@@ -9,8 +10,8 @@ from rich.console import Console
 from run_agent import run_experiment
 from runtime.read_write_utils import get_next_iteration_index, load_config_from_run_dir
 from utils.config import Config
-from datasets.dataset_utils import get_all_prepared_datasets_info, get_task_type_from_prepared_dataset
-from datasets.datasets_interactive import interactive_dataset_selection, print_datasets_table
+from datasets.data_contract import VALIDATION_SPLIT
+from datasets.datasets_interactive import get_all_prepared_datasets_info, interactive_dataset_selection, print_datasets_table
 from run_logging.env_utils import are_wandb_vars_available
 from utils.metrics import get_classification_metrics_names, get_regression_metrics_names, resolve_val_metric
 from utils.metrics_interactive import display_metrics_table
@@ -254,11 +255,11 @@ def main():
     dataset, model, iterations = resolve_interactive_params(args, provider)
     iteration_plan_model = args.iteration_plan_model or model
 
-    task_type = get_task_type_from_prepared_dataset(args.prepared_datasets_dir / dataset)
+    task_type = json.loads((args.prepared_datasets_dir / dataset / "metadata.json").read_text())["task_type"]
     val_metric = resolve_val_metric(task_type, args.val_metric)
 
     split_allowed_iterations = args.split_allowed_iterations
-    if (args.prepared_datasets_dir / dataset / "validation.csv").exists():
+    if (args.prepared_datasets_dir / dataset / VALIDATION_SPLIT).exists():
         split_allowed_iterations = 0
 
     asyncio.run(

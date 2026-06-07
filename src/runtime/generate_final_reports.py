@@ -36,6 +36,8 @@ from reportlab.platypus import (
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
+from datasets.data_contract import LABELS_FILE_NAME, TEST_SPLIT, TRAIN_SPLIT, VALIDATION_SPLIT
+
 
 # Data models
 @dataclass(frozen=True)
@@ -278,14 +280,19 @@ def load_prepared_dataset_meta(prepared_datasets_dir: Path, dataset_name: str) -
     )
 
 # Iteration discovery / inputs
-def _find_split_csv(config: Config, split_name: str, fallback_dir: Path) -> Optional[Path]:
-    if config.splits_dir.exists():
-        for split_dir in sorted(config.splits_dir.iterdir()):
-            candidate = split_dir / f"{split_name}.csv"
-            if candidate.exists():
-                return candidate
-    p = fallback_dir / config.dataset / f"{split_name}.csv"
-    return p if p.exists() else None
+def _find_versioned_split_labels(config: Config, split_name: str, split_version: int | None) -> Optional[Path]:
+    if split_version is None:
+        return None
+    candidate = config.splits_dir / f"split_{split_version}" / split_name / LABELS_FILE_NAME
+    return candidate if candidate.exists() else None
+
+def _find_prepared_split_labels(prepared_dir: Path, dataset_name: str, split_name: str) -> Optional[Path]:
+    candidate = prepared_dir / dataset_name / split_name / LABELS_FILE_NAME
+    return candidate if candidate.exists() else None
+
+def _get_iteration_split_version(config: Config, iter_dir: Path) -> int | None:
+    data_split_output = load_step_output(config, "data_split", iter_dir)
+    return getattr(data_split_output, "split_version", None)
 
 def gather_iteration_inputs(
     config: Config,
@@ -301,9 +308,10 @@ def gather_iteration_inputs(
     if not report_md.exists():
         report_md = None
 
-    train_csv = _find_split_csv(config, "train", prepared_datasets)
-    val_csv = _find_split_csv(config, "validation", prepared_datasets)
-    test_csv = _find_split_csv(config, "test", prepared_tests)
+    split_version = _get_iteration_split_version(config, iter_dir)
+    train_csv = _find_versioned_split_labels(config, TRAIN_SPLIT, split_version)
+    val_csv = _find_versioned_split_labels(config, VALIDATION_SPLIT, split_version)
+    test_csv = _find_prepared_split_labels(prepared_tests, config.dataset, TEST_SPLIT)
 
     validation_evaluation_dir = iter_dir / ValidationEvaluationStep.step_id
     train_preds = validation_evaluation_dir / "eval_predictions_train.csv"
