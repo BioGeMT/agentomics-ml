@@ -128,9 +128,7 @@ if [ "$CPU_ONLY" = true ]; then
 fi
 
 need_cmd conda
-# The snapshot ships exactly one model env, created at training time. Reuse it
-# by discovery: its name depends on the original run, not on what --agent-dir is
-# mounted as, so guessing the name from the path is unreliable (e.g. in Docker).
+
 ENV_PATH="$(find "$ENV_DIR" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | head -n1)"
 if [[ -z "$ENV_PATH" ]]; then
     echo "No model conda env found under $ENV_DIR; creating one from $DESCRIPTOR_PATH"
@@ -154,9 +152,6 @@ conda run -p "$ENV_PATH" \
     --artifacts-dir "$ARTIFACTS_PATH" ${ARGS[@]+"${ARGS[@]}"}
 echo "Inference done"
 
-# Metrics run in agentomics-env (repo-controlled), separate from the model env
-# used for inference above. Scores the predictions against the labels. Works the
-# same inside the Docker image (agentomics-env is baked in) or on a local clone.
 METRICS_PATH="$(dirname "$OUTPUT_PATH")/metrics.json"
 if [[ -n "$LABEL_COL" ]]; then
     ensure_conda_env "agentomics-env" "$SCRIPT_DIR/../envs/environment.yaml"
