@@ -115,13 +115,6 @@ def parse_args():
         help="Disable the TrainingReporter helper that emits structured best-effort training updates (enabled by default).",
     )
 
-    # Misc
-    parser.add_argument(
-        "--root-privileges",
-        action="store_true",
-        help="Whether the script has root privileges to create a new user for the agent (recommended)",
-    )
-
     args = parser.parse_args()
     args.workspace_dir = args.workspace_dir.resolve()
     args.datasets_dir = args.datasets_dir.resolve()
