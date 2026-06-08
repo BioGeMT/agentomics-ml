@@ -3,9 +3,7 @@
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/bash_helpers.sh"
 
-DOCKER_MODE=true
 CPU_ONLY=false
-DOCKERHUB_USERNAME="biogemt"
 ARGS=()
 
 show_help() {
@@ -15,8 +13,9 @@ show_help() {
     echo "  --train-data      Path to training split folder with input/ and labels.csv (required)"
     echo "  --validation-data Path to validation split folder with input/ and labels.csv (required)"
     echo "  --artifacts-dir   Path to directory where training artifacts will be saved (required)"
+    echo "  --label-col       Name of the label column in the raw --train-data/--validation-data. The data is converted to the prepared format (id + numeric_label, using the run's label mapping) before training (required)"
+    echo "  --code-path   Path to code files, points to best_iteration_snapshot by default, must be relative to --agent-dir and a child of --agent-dir (optional)"
     echo "  --cpu-only        Run without GPU (optional)"
-    echo "  --local           Run locally without Docker (optional)"
     echo "  --help            Show this help message and exit"
     exit 0
 }
@@ -25,6 +24,7 @@ AGENT_DIR=""
 TRAIN_DATA_PATH=""
 VALIDATION_DATA_PATH=""
 ARTIFACTS_DIR=""
+LABEL_COL=""
 
 for arg in "$@"; do
     if [[ "$arg" == "--help" ]]; then
@@ -55,12 +55,18 @@ while [[ $# -gt 0 ]]; do
             ARTIFACTS_DIR="$2"
             shift 2
             ;;
+        --label-col)
+            require_opt_value "$1" "${2:-}"
+            LABEL_COL="$2"
+            shift 2
+            ;;
+        --code-path)
+            require_opt_value "$1" "${2:-}"
+            CODE_PATH="$2"
+            shift 2
+            ;;
         --cpu-only)
             CPU_ONLY=true
-            shift
-            ;;
-        --local)
-            DOCKER_MODE=false
             shift
             ;;
         --help)
@@ -86,12 +92,18 @@ fi
 if [[ -z "$ARTIFACTS_DIR" ]]; then
     die "Missing required argument: --artifacts-dir. Run '$0 --help' for usage"
 fi
+if [[ -z "$LABEL_COL" ]]; then
+    die "Missing required argument: --label-col. Run '$0 --help' for usage"
+fi
 
 [[ -d "$AGENT_DIR" ]] || die "--agent-dir does not exist: $AGENT_DIR"
 
-AGENT_NAME=$(basename "$AGENT_DIR")
-CODE_ROOT="${AGENT_DIR}/best_iteration_snapshot"
-ENV_PATH="${CODE_ROOT}/.conda/envs/${AGENT_NAME}_env"
+AGENT_DIR="$(cd "$AGENT_DIR" && pwd)"
+
+CODE_PATH=${CODE_PATH:-"best_iteration_snapshot"}
+CODE_ROOT="${AGENT_DIR}/${CODE_PATH}"
+echo "Using code path: $CODE_PATH"
+ENV_DIR="${CODE_ROOT}/.conda/envs"
 TRAIN_PATH="${CODE_ROOT}/model_training/train.py"
 TRAIN_WORKDIR="$(dirname "$TRAIN_PATH")"
 DESCRIPTOR_PATH="${CODE_ROOT}/environment.yml"
@@ -104,23 +116,21 @@ DESCRIPTOR_PATH="${CODE_ROOT}/environment.yml"
 [[ -f "$VALIDATION_DATA_PATH/labels.csv" ]] || die "--validation-data must contain labels.csv: $VALIDATION_DATA_PATH"
 [[ -f "$TRAIN_PATH" ]] || die "train.py not found at: $TRAIN_PATH"
 [[ -f "$DESCRIPTOR_PATH" ]] || die "environment.yml not found at: $DESCRIPTOR_PATH"
+[[ -d "$(dirname "$ARTIFACTS_DIR")" ]] || die "--artifacts-dir parent directory does not exist: $(dirname "$ARTIFACTS_DIR")"
 
-if [[ "$DOCKER_MODE" == true ]]; then
-    if [ "$CPU_ONLY" = false ]; then
-        if ! docker_has_gpu; then
-            warn "GPU not available (nvidia-smi not found or Docker lacks GPU support)"
-            warn "Automatically switching to CPU-only mode"
-            warn "To suppress this warning, use --cpu-only flag"
-            CPU_ONLY=true
-        fi
-    fi
-fi
+TRAIN_DATA_PATH="$(cd "$(dirname "$TRAIN_DATA_PATH")" && pwd)/$(basename "$TRAIN_DATA_PATH")"
+VALIDATION_DATA_PATH="$(cd "$(dirname "$VALIDATION_DATA_PATH")" && pwd)/$(basename "$VALIDATION_DATA_PATH")"
+ARTIFACTS_DIR="$(cd "$(dirname "$ARTIFACTS_DIR")" && pwd)/$(basename "$ARTIFACTS_DIR")"
 
-GPU_FLAGS=()
-if [ "$CPU_ONLY" = false ]; then
-    GPU_FLAGS+=(--gpus all)
-    GPU_FLAGS+=(--env NVIDIA_VISIBLE_DEVICES=all)
-fi
+CONFIG_PATH="$AGENT_DIR/run/shared/config.json"
+[[ -f "$CONFIG_PATH" ]] || die "Run config not found at $CONFIG_PATH (needed to map --label-col)"
+NORMALIZE_SCRIPT="$SCRIPT_DIR/../src/datasets/normalize_dataset.py"
+
+train_norm=$(python "$NORMALIZE_SCRIPT" --input "$TRAIN_DATA_PATH" --label-col "$LABEL_COL" --config-path "$CONFIG_PATH")
+val_norm=$(python "$NORMALIZE_SCRIPT" --input "$VALIDATION_DATA_PATH" --label-col "$LABEL_COL" --config-path "$CONFIG_PATH")
+TRAIN_DATA_PATH="$(dirname "$TRAIN_DATA_PATH")/$train_norm"
+VALIDATION_DATA_PATH="$(dirname "$VALIDATION_DATA_PATH")/$val_norm"
+trap "rm -f \"$TRAIN_DATA_PATH\" \"$VALIDATION_DATA_PATH\"" EXIT
 
 print_summary() {
     local artifacts_path="$1"
@@ -142,61 +152,30 @@ print_summary() {
     echo "======================================"
 }
 
-if [[ "$DOCKER_MODE" == true ]]; then
-    need_cmd docker
-    if ! docker info >/dev/null 2>&1; then
-        die "Docker is not running or not accessible (start Docker and retry)"
-    fi
+if [ "$CPU_ONLY" = true ]; then
+    info "Training in CPU-only mode"
+    export CUDA_VISIBLE_DEVICES=""
+fi
 
-    ensure_agentomics_docker_image "$DOCKERHUB_USERNAME"
+need_cmd conda
 
-    echo "Running training in Docker..."
-    AGENT_DIR_ABS="$(cd "$(dirname "$AGENT_DIR")" && pwd)/$(basename "$AGENT_DIR")"
-    TRAIN_DATA_PATH_ABS="$(cd "$(dirname "$TRAIN_DATA_PATH")" && pwd)/$(basename "$TRAIN_DATA_PATH")"
-    VALIDATION_DATA_PATH_ABS="$(cd "$(dirname "$VALIDATION_DATA_PATH")" && pwd)/$(basename "$VALIDATION_DATA_PATH")"
-    ARTIFACTS_DIR_ABS="$(cd "$(dirname "$ARTIFACTS_DIR")" && pwd)/$(basename "$ARTIFACTS_DIR")"
-    CODE_ROOT_IN_CONTAINER="/workspace"
-    TRAIN_WORKDIR_IN_CONTAINER="${CODE_ROOT_IN_CONTAINER}/model_training"
-    DESCRIPTOR_PATH_IN_CONTAINER="${CODE_ROOT_IN_CONTAINER}/environment.yml"
-    if [[ ! -d "$ENV_PATH" ]]; then
-        echo "Conda environment not found at: $ENV_PATH"
-        echo "Creating conda environment inside Docker..."
-        docker run --rm \
-            -v "${AGENT_DIR_ABS}/best_iteration_snapshot:${CODE_ROOT_IN_CONTAINER}" \
-            --entrypoint "" \
-            -w "${CODE_ROOT_IN_CONTAINER}" \
-            "${AGENTOMICS_IMAGE}" \
-            bash -c "conda install -n base mamba -c conda-forge -y && mamba env create -f \"${DESCRIPTOR_PATH_IN_CONTAINER}\" -p \"${CODE_ROOT_IN_CONTAINER}/.conda/envs/${AGENT_NAME}_env\""
-    fi
-    docker run --rm \
-        -v "${AGENT_DIR_ABS}/best_iteration_snapshot:${CODE_ROOT_IN_CONTAINER}" \
-        -v "$(dirname "$TRAIN_DATA_PATH_ABS"):/train_data_dir" \
-        -v "$(dirname "$VALIDATION_DATA_PATH_ABS"):/validation_data_dir" \
-        -v "$(dirname "$ARTIFACTS_DIR_ABS"):/artifacts_parent_dir" \
-        ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
-        --entrypoint "" \
-        -w "${TRAIN_WORKDIR_IN_CONTAINER}" \
-        -e PATH="${CODE_ROOT_IN_CONTAINER}/.conda/envs/${AGENT_NAME}_env/bin:$PATH" \
-        "${AGENTOMICS_IMAGE}" \
-        python train.py \
-        --train-data "/train_data_dir/$(basename "$TRAIN_DATA_PATH_ABS")" \
-        --validation-data "/validation_data_dir/$(basename "$VALIDATION_DATA_PATH_ABS")" \
-        --artifacts-dir "/artifacts_parent_dir/$(basename "$ARTIFACTS_DIR_ABS")" ${ARGS[@]+"${ARGS[@]}"}
-    echo "Training done"
-    print_summary "$ARTIFACTS_DIR"
-else
-    need_cmd conda
-    if [[ ! -d "$ENV_PATH" ]]; then
-        echo "Conda environment not found at: $ENV_PATH"
-        conda env create -f "$DESCRIPTOR_PATH" -p "$ENV_PATH"
-    fi
-    echo "Running training locally..."
-    cd "$TRAIN_WORKDIR"
-    conda run -p "$ENV_PATH" \
-        python "$TRAIN_PATH" \
-        --train-data "$TRAIN_DATA_PATH" \
-        --validation-data "$VALIDATION_DATA_PATH" \
-        --artifacts-dir "$ARTIFACTS_DIR" ${ARGS[@]+"${ARGS[@]}"}
-    echo "Training done"
-    print_summary "$ARTIFACTS_DIR"
+ENV_PATH="$(find "$ENV_DIR" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | head -n1)"
+if [[ -z "$ENV_PATH" ]]; then
+    echo "No model conda env found under $ENV_DIR; creating one from $DESCRIPTOR_PATH"
+    ENV_PATH="$ENV_DIR/model_env"
+    conda env create -f "$DESCRIPTOR_PATH" -p "$ENV_PATH"
+fi
+echo "Using model env: $ENV_PATH"
+echo "Running training..."
+cd "$TRAIN_WORKDIR"
+conda run -p "$ENV_PATH" \
+    python "$TRAIN_PATH" \
+    --train-data "$TRAIN_DATA_PATH" \
+    --validation-data "$VALIDATION_DATA_PATH" \
+    --artifacts-dir "$ARTIFACTS_DIR" ${ARGS[@]+"${ARGS[@]}"}
+echo "Training done"
+print_summary "$ARTIFACTS_DIR"
+
+if [[ -n "${HOST_UID:-}" ]]; then
+    chown -R "$HOST_UID:${HOST_GID:-$HOST_UID}" "$ARTIFACTS_DIR"
 fi
