@@ -19,7 +19,6 @@ RUN mamba env create -f environment.yaml \
 RUN conda init bash \
     && echo "conda activate agentomics-env" >> /root/.bashrc
 
-
 # Setup agent start environment
 ENV START_ENV_PKG=/opt/agent_start_env.tar.gz
 COPY envs/environment_agent.yaml .
@@ -39,7 +38,12 @@ RUN mamba env create -f environment_agent.yaml \
 # The runtime (root) owns the workspace; only current_step_dir is chowned to this user per step.
 RUN useradd -m -s /bin/bash agentomics-agent
 ENV AGENT_USER=agentomics-agent
+ENV AGENTOMICS_WORKSPACE_DIR=/workspace
+RUN mkdir -p /workspace
+
+# Bake the repository into the Docker image so users don't need a local clone.
+COPY . /repository
 
 WORKDIR /repository
 
-ENTRYPOINT ["/opt/conda/envs/agentomics-env/bin/python", "/repository/src/run_agent_interactive.py"]
+ENTRYPOINT ["/repository/run.sh"]

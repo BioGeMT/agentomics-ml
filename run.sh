@@ -8,10 +8,8 @@ source "$AGENTOMICS_DIR/scripts/bash_helpers.sh"
 cd "$AGENTOMICS_DIR" || die "Cannot cd into repository directory: $AGENTOMICS_DIR"
 
 AGENTOMICS_ARGS=()
-LOCAL_MODE=false
 TEST_MODE=false
 CPU_ONLY=false
-OLLAMA=false
 USE_PROVISIONING_KEY=false
 SPEND_LIMIT=10
 TIMEOUT_SECS=""
@@ -22,9 +20,6 @@ TASK_TYPE=""
 VAL_METRIC=""
 LIST_MODE=false
 VERBOSITY="full"
-ALL_ITERATIONS_TEST=false
-BUILD_IMAGES=false
-DOCKERHUB_USERNAME="biogemt"
 FORK_FROM_RUN=""
 FORK_FROM_STEP=""
 FORK_FROM_ITERATION=""
@@ -33,8 +28,7 @@ show_help() {
     cat <<'EOF'
 Usage: ./run.sh [OPTIONS]
 
-Orchestrates the Agentomics training and evaluation process. By default, it runs in Docker containers.
-Use --local to run with a local Conda environment.
+Orchestrates the Agentomics training and evaluation process.
 
 Required Arguments (for non-interactive runs):
   --model <name>      The LLM model name (e.g., 'openai/gpt-4').
@@ -84,14 +78,8 @@ Forking:
                           Defaults to the latest iteration containing the specified step or iteration end checkpoint.
 
 Operational Flags:
-  --local             Run the project using local Conda environments instead of Docker.
   --test              Run the project's integrated test suite.
-                      (Note: Only supported in Docker mode, not in local Conda mode.)
-  --all-iterations-test
-                      After the run finishes, evaluate every archived iteration on the held-out test set.
-  --cpu-only          Force Docker/Conda to run using CPU only (skip GPU configuration).
-  --ollama            Enable support for an Ollama server running on the host machine.
-  --build-images      Build Docker images locally instead of pulling prebuilt biogemt images from Docker Hub.
+  --cpu-only          Force Conda to run using CPU only (skip GPU configuration).
   --use-provisioning-key  Use OpenRouter provisioning key to create temporary API key and log costs.
   --spend-limit <N>   Only applies when --use-provisioning-key is passed. Spend limit for a temporary key (default: 10).
   --disable-training-reporting
@@ -118,7 +106,9 @@ Environment:
   is available to the launcher.
 
 Output:
-  Results are copied from the temporary workspace to the local 'outputs/<AGENT_ID>' directory.
+  Results are written to the workspace directory: 'outputs/<AGENT_ID>' by default, or
+  \$AGENTOMICS_WORKSPACE_DIR if set (e.g. '/workspace' inside the Docker image — mount a
+  host directory there to retrieve the results).
 EOF
 }
 
@@ -141,10 +131,6 @@ while [[ $# -gt 0 ]]; do
         --list-metrics)
             AGENTOMICS_ARGS+=(--list-metrics)
             LIST_MODE=true
-            shift
-            ;;
-        --root-privileges)
-            AGENTOMICS_ARGS+=(--root-privileges)
             shift
             ;;
         --model)
@@ -244,14 +230,6 @@ while [[ $# -gt 0 ]]; do
             FORK_FROM_ITERATION="$2"
             shift 2
             ;;
-        --local)
-            LOCAL_MODE=true
-            shift
-            ;;
-        --ollama)
-            OLLAMA=true
-            shift
-            ;;
         --use-provisioning-key)
             USE_PROVISIONING_KEY=true
             shift
@@ -261,16 +239,8 @@ while [[ $# -gt 0 ]]; do
             SPEND_LIMIT="$2"
             shift 2
             ;;
-        --build-images)
-            BUILD_IMAGES=true
-            shift
-            ;;
         --test)
             TEST_MODE=true
-            shift
-            ;;
-        --all-iterations-test)
-            ALL_ITERATIONS_TEST=true
             shift
             ;;
         --disable-training-reporting)
@@ -308,439 +278,168 @@ if [[ -n "$FORK_FROM_RUN" && -n "$DATASET_NAME" && "$DATASET_NAME" != "$EFFECTIV
     warn "--dataset '$DATASET_NAME' is ignored for forked runs. Using '$EFFECTIVE_DATASET_NAME' from the source run config."
 fi
 
-
-if [ "$LOCAL_MODE" = true ]; then
-    need_cmd conda
-    need_cmd python
-    if [ "$TEST_MODE" = true ]; then
-        die "--test is only supported in Docker mode (remove --test or remove --local)"
+if [[ "$LIST_MODE" = false && "$TEST_MODE" = false ]] && ! has_tty; then
+    if [[ -z "$FORK_FROM_RUN" && ( -z "$MODEL_NAME" || -z "$DATASET_NAME" ) ]]; then
+        die "Non-interactive runs require --model and --dataset (or --fork-from-run) (or run in an interactive terminal)"
     fi
-    if [[ "$LIST_MODE" = false ]] && ! has_tty; then
-        if [[ -z "$FORK_FROM_RUN" && ( -z "$MODEL_NAME" || -z "$DATASET_NAME" ) ]]; then
-            die "Non-interactive runs require --model and --dataset (or --fork-from-run) (or run in an interactive terminal)"
-        fi
+fi
+
+ensure_conda_env "agentomics-env" "$AGENTOMICS_DIR/envs/environment.yaml"
+
+eval "$(conda shell.bash hook)"
+conda activate agentomics-env
+
+AGENT_ID=$(python src/utils/agent_id.py)
+export AGENT_ID
+export AGENTOMICS_VERBOSITY="$VERBOSITY"
+
+WORKSPACE_DIR="${AGENTOMICS_WORKSPACE_DIR:-$AGENTOMICS_DIR/outputs/$AGENT_ID}"
+mkdir -p "$WORKSPACE_DIR"
+AGENTOMICS_ARGS+=(--workspace-dir "$WORKSPACE_DIR")
+
+# allow git when running as root in container to avoid "dubious ownership" errors.
+if [[ "$(id -u)" -eq 0 ]]; then
+    git config --system --add safe.directory '*'
+fi
+
+PREPARED_DATASETS_DIR="$AGENTOMICS_DIR/prepared_datasets"
+mkdir -p "$PREPARED_DATASETS_DIR"
+
+if [ -n "$EFFECTIVE_DATASET_NAME" ]; then
+    PREPARE_ARGS=(
+        --dataset-dir "$AGENTOMICS_DIR/datasets/$EFFECTIVE_DATASET_NAME"
+        --prepared-datasets-dir "$PREPARED_DATASETS_DIR"
+    )
+    if [ -n "$TASK_TYPE" ]; then
+        PREPARE_ARGS+=(--task-type "$TASK_TYPE")
     fi
+    python src/prepare_datasets.py "${PREPARE_ARGS[@]}"
+else
+    python src/prepare_datasets.py --prepare-all \
+        --datasets-dir "$AGENTOMICS_DIR/datasets" \
+        --prepared-datasets-dir "$PREPARED_DATASETS_DIR"
+fi
 
-    if ! conda env list | grep -q "agentomics-env"; then
-        conda env create -f envs/environment.yaml -q
-    else
-        conda env update -n agentomics-env -f envs/environment.yaml -q
+AGENTOMICS_ARGS+=(--prepared-datasets-dir "$PREPARED_DATASETS_DIR")
+
+if [[ ! -f "${START_ENV_PKG:-}" ]]; then
+    AGENTOMICS_CACHE_DIR="$AGENTOMICS_DIR/.cache"
+    mkdir -p "$AGENTOMICS_CACHE_DIR"
+    local_pack="$AGENTOMICS_CACHE_DIR/agent_start_env.tar"
+    if [[ ! -f "$local_pack" ]]; then
+        ensure_conda_env "agent_start_env" "$AGENTOMICS_DIR/envs/environment_agent.yaml"
+        conda run -n agent_start_env conda-pack --format tar -o "$local_pack"
     fi
+    export START_ENV_PKG="$local_pack"
+fi
 
-    eval "$(conda shell.bash hook)"
-    conda activate agentomics-env
+if [ "$TEST_MODE" = true ]; then
+    set +e
+    PYTHONPATH="$AGENTOMICS_DIR/src" python -m test.run_all_tests \
+        --workspace-dir "$WORKSPACE_DIR" \
+        --prepared-datasets-dir "$PREPARED_DATASETS_DIR"
+    TEST_EXIT=$?
+    set -e
+    exit "$TEST_EXIT"
+fi
 
-    AGENT_ID=$(python src/utils/agent_id.py)
-    export AGENT_ID
-    export AGENTOMICS_VERBOSITY="$VERBOSITY"
+TEMP_API_KEY_HASH=""
+if [ "$USE_PROVISIONING_KEY" = true ]; then
+    echo "Creating temporary API key with spend limit: $SPEND_LIMIT"
+    API_KEY_OUTPUT=$(PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys.py create --name "agentomics_run_$(date +%s)" --limit "$SPEND_LIMIT")
+    TEMP_API_KEY=$(echo "$API_KEY_OUTPUT" | cut -d',' -f1)
+    TEMP_API_KEY_HASH=$(echo "$API_KEY_OUTPUT" | cut -d',' -f2)
+    export OPENROUTER_API_KEY="$TEMP_API_KEY"
+fi
 
-    WORKSPACE_ROOT="$(dirname "$AGENTOMICS_DIR")/workspace"
-    WORKSPACE_CACHE_DIR="$WORKSPACE_ROOT/cache"
-    WORKSPACE_DIR="$WORKSPACE_ROOT/runs/$AGENT_ID"
-    WORKSPACE_TEST_DATASETS_DIR="$(pwd)/test_datasets"
-    mkdir -p "$WORKSPACE_CACHE_DIR" "$(dirname "$WORKSPACE_DIR")"
-    rm -rf "$WORKSPACE_DIR"
-    mkdir -p "$WORKSPACE_DIR"
-
-    if [ "$CPU_ONLY" = true ]; then
-        export CUDA_VISIBLE_DEVICES=""
+if [[ -d /mnt/codex-host ]]; then
+    mkdir -p /tmp/codex
+    if [[ -f /mnt/codex-host/auth.json ]]; then
+        cp -f /mnt/codex-host/auth.json /tmp/codex/auth.json
     fi
-
-    echo -e "${RED}Running in local mode - this is only recommended if you run in a non-vulnerable environment!${NOCOLOR}"
-    echo "For Docker mode (secure run), re-run without the --local flag."
-    
-    if ! conda env list | grep -q "^agent_start_env "; then
-        conda env create -f envs/environment_agent.yaml -q
+    if [[ -f /mnt/codex-host/models_cache.json ]]; then
+        cp -f /mnt/codex-host/models_cache.json /tmp/codex/models_cache.json
     fi
-    START_ENV_PKG_PATH="$WORKSPACE_CACHE_DIR/agent_start_env.tar"
-    if [[ ! -f "$START_ENV_PKG_PATH" ]]; then
-        echo "Packing agent start environment to ${START_ENV_PKG_PATH}"
-        conda run -n agent_start_env conda-pack --format tar -o "$START_ENV_PKG_PATH"
-    fi
-    export START_ENV_PKG="$START_ENV_PKG_PATH"
+    export CODEX_AUTH_FILE=/tmp/codex/auth.json
+    export CODEX_MODELS_CACHE_FILE=/tmp/codex/models_cache.json
+fi
 
-    TEMP_API_KEY_HASH=""
-    if [ "$USE_PROVISIONING_KEY" = true ]; then
-        echo "Creating temporary API key with spend limit: $SPEND_LIMIT"
-        API_KEY_OUTPUT=$(PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys.py create --name "agentomics_run_$(date +%s)" --limit "$SPEND_LIMIT")
-        TEMP_API_KEY=$(echo "$API_KEY_OUTPUT" | cut -d',' -f1)
-        TEMP_API_KEY_HASH=$(echo "$API_KEY_OUTPUT" | cut -d',' -f2)
-        export OPENROUTER_API_KEY="$TEMP_API_KEY"
-    fi
+if [ "$CPU_ONLY" = true ]; then
+    export CUDA_VISIBLE_DEVICES=""
+fi
 
-    AGENTOMICS_ARGS+=(--workspace-dir "$WORKSPACE_DIR" --datasets-dir "$(pwd)/datasets")
+if [ -n "$FORK_FROM_RUN" ]; then
+    FORK_FROM_RUN_ABS="$(cd "$FORK_FROM_RUN" && pwd)"
+    build_setup_fork_args "$FORK_FROM_RUN_ABS" "$WORKSPACE_DIR" "$AGENT_ID" "$FORK_FROM_STEP" "$FORK_FROM_ITERATION"
+    PYTHONPATH="$AGENTOMICS_DIR/src" python src/runtime/setup_fork.py "${SETUP_FORK_ARGS[@]}"
+fi
 
-    if [ -n "$FORK_FROM_RUN" ]; then
-        FORK_FROM_RUN_ABS="$(cd "$FORK_FROM_RUN" && pwd)"
-        build_setup_fork_args "$FORK_FROM_RUN_ABS" "$WORKSPACE_DIR" "$AGENT_ID" "$FORK_FROM_STEP" "$FORK_FROM_ITERATION"
-        PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/runtime/setup_fork.py "${SETUP_FORK_ARGS[@]}"
-    fi
-
-    RUN_EXIT_CODE=0
-    if [[ -n "$TIMEOUT_SECS" ]]; then
-        need_cmd timeout
-        [[ "$TIMEOUT_SECS" =~ ^[0-9]+$ ]] || die "--timeout must be an integer number of seconds (got: $TIMEOUT_SECS)"
-        set +e
-        timeout "$TIMEOUT_SECS" python src/run_agent_interactive.py ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
-        RUN_EXIT_CODE=$?
-        set -e
-        if [[ "$RUN_EXIT_CODE" -eq 124 ]]; then
-            echo "Timed out after $TIMEOUT_SECS seconds"
-        elif [[ "$RUN_EXIT_CODE" -ne 0 ]]; then
-            warn "Run process exited with code ${RUN_EXIT_CODE}. Exporting available run state before exiting."
-        fi
-    else
-        set +e
-        python src/run_agent_interactive.py ${AGENTOMICS_ARGS+"${AGENTOMICS_ARGS[@]}"}
-        RUN_EXIT_CODE=$?
-        set -e
-        if [[ "$RUN_EXIT_CODE" -ne 0 ]]; then
-            warn "Run process exited with code ${RUN_EXIT_CODE}. Exporting available run state before exiting."
-        fi
-    fi
-
-    if [[ "$LIST_MODE" = true ]]; then
-        exit 0
-    fi
-
-    RUN_SUCCEEDED=true
-    if [[ -f "${WORKSPACE_DIR}/best_iteration_snapshot/runtime_info/iteration_metadata.json" ]]; then
-        CONFIG_PATH="${WORKSPACE_DIR}/run/shared/config.json"
-        if [[ ! -f "${CONFIG_PATH}" ]]; then
-            die "Config not found: ${CONFIG_PATH}"
-        fi
-        export PYTHONPATH=./src
-        conda run -n agentomics-env python src/run_logging/test_evaluation.py \
-            --workspace-dir "$WORKSPACE_DIR" \
-            --test-datasets-dir "$WORKSPACE_TEST_DATASETS_DIR"
-    else
-        RUN_SUCCEEDED=false
-    fi
-
-    mkdir -p "outputs/${AGENT_ID}"
-    tar -c --exclude='./run/shared/.conda' -C "${WORKSPACE_DIR}" . | tar -x -C "outputs/${AGENT_ID}/"
-
-    if [[ "$RUN_SUCCEEDED" = true ]]; then
-        PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python -m runtime.iteration_reports --agent-dir "outputs/${AGENT_ID}"
-
-        if [ "$USE_PROVISIONING_KEY" = true ]; then
-            echo "Logging costs and cleaning up temporary API key"
-            PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys.py cleanup-and-log --config-path "outputs/${AGENT_ID}/run/shared/config.json" --api-key-hash "$TEMP_API_KEY_HASH"
-        fi
-
-        write_outputs_readme "${AGENT_ID}"
-        PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/runtime/generate_final_reports.py \
-            --agent-dir "outputs/${AGENT_ID}" \
-            --test-datasets-dir "$WORKSPACE_TEST_DATASETS_DIR"
-
-        if [ "$ALL_ITERATIONS_TEST" = true ]; then
-            echo "Running held-out test evaluation for all archived iterations"
-            PYTHONPATH="$(pwd)/src" conda run -n agentomics-env \
-                python -m runtime.stealth_test_evaluation \
-                --agent-dir "outputs/${AGENT_ID}" \
-                --test-datasets-dir "$WORKSPACE_TEST_DATASETS_DIR"
-        fi
-
-        echo "PDF reports ready at: outputs/${AGENT_ID}/reports/pdf/"
-        echo -e "${GREEN}Run finished. Report and files can be found in outputs/${AGENT_ID}${NOCOLOR}"
-        echo -e "${GREEN}To run inference on new data, use ./scripts/inference.sh --agent-dir outputs/${AGENT_ID} --input <path_to_input_folder> --output <path_to_output_csv>${NOCOLOR}"
-    else
-        PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python -m runtime.iteration_reports --agent-dir "outputs/${AGENT_ID}"
-        warn "Agent didn't produce any valid best iteration snapshot. Exported run artifacts to outputs/${AGENT_ID}."
-        write_outputs_readme "${AGENT_ID}"
-    fi
-
-    if [[ "$RUN_EXIT_CODE" -ne 0 ]]; then
-        exit "$RUN_EXIT_CODE"
-    fi
-    if [[ "$RUN_SUCCEEDED" = false ]]; then
-        exit 1
+RUN_EXIT_CODE=0
+if [[ -n "$TIMEOUT_SECS" ]]; then
+    need_cmd timeout
+    [[ "$TIMEOUT_SECS" =~ ^[0-9]+$ ]] || die "--timeout must be an integer number of seconds (got: $TIMEOUT_SECS)"
+    set +e
+    timeout "$TIMEOUT_SECS" python src/run_agent_interactive.py "${AGENTOMICS_ARGS[@]}"
+    RUN_EXIT_CODE=$?
+    set -e
+    if [[ "$RUN_EXIT_CODE" -eq 124 ]]; then
+        echo "Timed out after $TIMEOUT_SECS seconds"
+    elif [[ "$RUN_EXIT_CODE" -ne 0 ]]; then
+        warn "Run process exited with code ${RUN_EXIT_CODE}."
     fi
 else
-    need_cmd docker
-    if ! docker info >/dev/null 2>&1; then
-        die "Docker is not running or not accessible (start Docker and retry). Alternatively, run with --local argument(./run.sh --local), if you are running in a non-vulnerable environment."
+    set +e
+    python src/run_agent_interactive.py "${AGENTOMICS_ARGS[@]}"
+    RUN_EXIT_CODE=$?
+    set -e
+    if [[ "$RUN_EXIT_CODE" -ne 0 ]]; then
+        warn "Run process exited with code ${RUN_EXIT_CODE}."
     fi
-    if [[ "$LIST_MODE" = false ]] && ! has_tty; then
-        if [[ -z "$FORK_FROM_RUN" && ( -z "$MODEL_NAME" || -z "$DATASET_NAME" ) ]]; then
-            die "Non-interactive runs require --model and --dataset (or --fork-from-run) (or run in an interactive terminal)"
-        fi
-    fi
+fi
 
+if [[ "$LIST_MODE" = true ]]; then
+    exit "$RUN_EXIT_CODE"
+fi
 
-    AGENTOMICS_IMAGE="agentomics_img"
+RUN_SUCCEEDED=true
+if [[ ! -f "$WORKSPACE_DIR/best_iteration_snapshot/runtime_info/iteration_metadata.json" ]]; then
+    RUN_SUCCEEDED=false
+fi
 
-    if [ "$BUILD_IMAGES" = true ]; then
-        echo "Building the run image"
-        docker build -t "$AGENTOMICS_IMAGE" -f Dockerfile .
-        echo "Build done"
+PYTHONPATH="$AGENTOMICS_DIR/src" python -m runtime.iteration_reports --agent-dir "$WORKSPACE_DIR" \
+    || warn "Failed to generate iteration reports"
+PYTHONPATH="$AGENTOMICS_DIR/src" python src/runtime/generate_final_reports.py \
+    --agent-dir "$WORKSPACE_DIR" --prepared-datasets "$PREPARED_DATASETS_DIR" \
+    || warn "Failed to generate PDF reports"
+
+write_outputs_readme "$WORKSPACE_DIR" "$AGENT_ID"
+
+if [[ "$RUN_SUCCEEDED" = true ]]; then
+    echo -e "${GREEN}Run finished. Files can be found in $WORKSPACE_DIR${NOCOLOR}"
+    echo -e "${GREEN}To run inference on new data, use ./scripts/inference.sh --agent-dir $WORKSPACE_DIR --input <path_to_input_csv> --output <path_to_output_csv>${NOCOLOR}"
+else
+    warn "Agent didn't produce a valid best iteration snapshot. Run artifacts are in $WORKSPACE_DIR."
+fi
+
+if [ "$USE_PROVISIONING_KEY" = true ]; then
+    CONFIG_PATH="$WORKSPACE_DIR/run/shared/config.json"
+    if [[ -f "$CONFIG_PATH" ]]; then
+        echo "Logging costs and cleaning up temporary API key"
+        PYTHONPATH="$AGENTOMICS_DIR/src" python src/utils/api_keys.py cleanup-and-log \
+            --config-path "$CONFIG_PATH" --api-key-hash "$TEMP_API_KEY_HASH" \
+            || warn "Failed to clean up temporary API key (hash: $TEMP_API_KEY_HASH)"
     else
-        AGENTOMICS_IMAGE="${DOCKERHUB_USERNAME}/agentomics:latest"
-
-        echo "Pulling the run image"
-        docker pull "$AGENTOMICS_IMAGE"
+        warn "Config not found at $CONFIG_PATH; cannot log costs/clean up key (hash: $TEMP_API_KEY_HASH)"
     fi
-    AGENT_ID=$(docker run --rm -u $(id -u):$(id -g) -v "$(pwd)":/repository:ro --entrypoint \
-               /opt/conda/envs/agentomics-env/bin/python "$AGENTOMICS_IMAGE" /repository/src/utils/agent_id.py)
+fi
 
-    printless_command docker volume create temp_agentomics_volume_${AGENT_ID}
-    cleanup_volume_on_finish
+if [[ -n "${HOST_UID:-}" ]]; then
+    chown -R "$HOST_UID:${HOST_GID:-$HOST_UID}" "$WORKSPACE_DIR"
+fi
 
-    TEMP_API_KEY_HASH=""
-    if [ "$USE_PROVISIONING_KEY" = true ]; then
-        need_cmd conda
-        if ! conda env list | grep -q "^agentomics-env "; then
-            echo "Creating agentomics-env conda environment"
-            conda env create -f envs/environment.yaml -q
-        fi
-        echo "Creating temporary API key with spend limit: $SPEND_LIMIT"
-        API_KEY_OUTPUT=$(PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/utils/api_keys.py create --name "agentomics_run_$(date +%s)" --limit "$SPEND_LIMIT")
-        TEMP_API_KEY=$(echo "$API_KEY_OUTPUT" | cut -d',' -f1)
-        TEMP_API_KEY_HASH=$(echo "$API_KEY_OUTPUT" | cut -d',' -f2)
-        export OPENROUTER_API_KEY="$TEMP_API_KEY"
-    fi
-
-    OLLAMA_FLAGS=()
-    if [ "$OLLAMA" = true ]; then
-        OLLAMA_FLAGS+=(--network="host")
-    fi
-
-    ENV_FILE_PATH="$(pwd)/.env"
-    [[ -f "$ENV_FILE_PATH" ]] || die "Env file not found: $ENV_FILE_PATH (create it from .env.example)"
-    ENV_FILE_ARGS=(--env-file "$ENV_FILE_PATH")
-
-    PROVIDERS_CONFIG_FILE="src/utils/providers/configured_providers.yaml"
-    [[ -f "$PROVIDERS_CONFIG_FILE" ]] || die "Missing providers config: $PROVIDERS_CONFIG_FILE"
-    API_KEY_NAMES=$(grep -E 'apikey:' "$PROVIDERS_CONFIG_FILE" | grep -o '\${[^}]*}' | tr -d '${}' | sort -u)
-    DOCKER_API_KEY_ENV_VARS=()
-    for KEY_NAME in $API_KEY_NAMES; do
-        if [ -n "${!KEY_NAME:-}" ]; then
-            DOCKER_API_KEY_ENV_VARS+=(-e "$KEY_NAME=${!KEY_NAME}")
-            echo "Adding API key env var to docker: $KEY_NAME"
-        fi
-    done
-
-    if [ "$USE_PROVISIONING_KEY" = true ]; then
-        DOCKER_API_KEY_ENV_VARS+=(-e "OPENROUTER_API_KEY=${OPENROUTER_API_KEY}")
-    fi
-
-    if [ "$LIST_MODE" = false ]; then
-        if [ "$CPU_ONLY" = false ]; then
-            if ! docker_has_gpu; then
-                warn "GPU not available (nvidia-smi not found or Docker lacks GPU support)"
-                warn "Automatically switching to CPU-only mode"
-                warn "To suppress this warning, use --cpu-only flag"
-                CPU_ONLY=true
-            fi
-        fi
-
-        GPU_FLAGS=()
-        if [ "$CPU_ONLY" = false ]; then
-            GPU_FLAGS+=(--gpus all)
-            GPU_FLAGS+=(--env NVIDIA_VISIBLE_DEVICES=all)
-        fi
-    fi
-
-    CODEX_DOCKER_FLAGS=()
-    HOST_CODEX_DIR="${HOME}/.codex"
-    if [[ -d "$HOST_CODEX_DIR" ]] && ([[ -z "$PREFERRED_PROVIDER" ]] || [[ "$PREFERRED_PROVIDER" == "codex" ]]); then
-        CODEX_DOCKER_FLAGS+=(-v "${HOST_CODEX_DIR}:/mnt/codex-host:ro")
-        CODEX_DOCKER_FLAGS+=(-e "CODEX_AUTH_FILE=/tmp/codex/auth.json")
-        CODEX_DOCKER_FLAGS+=(-e "CODEX_MODELS_CACHE_FILE=/tmp/codex/models_cache.json")
-    fi
-
-    AGENTOMICS_ARGS+=(--workspace-dir /workspace --datasets-dir /repository/datasets)
-    TEST_EXEC=(--entrypoint /opt/conda/envs/agentomics-env/bin/python "$AGENTOMICS_IMAGE" -m test.run_all_tests)
-    RUN_EXEC=("$AGENTOMICS_IMAGE" "${AGENTOMICS_ARGS[@]}")
-    if [[ ${#CODEX_DOCKER_FLAGS[@]} -gt 0 ]]; then
-        CODEX_BOOTSTRAP='
-            mkdir -p /tmp/codex
-            if [[ -f /mnt/codex-host/auth.json ]]; then cp -f /mnt/codex-host/auth.json /tmp/codex/auth.json; fi
-            if [[ -f /mnt/codex-host/models_cache.json ]]; then cp -f /mnt/codex-host/models_cache.json /tmp/codex/models_cache.json; fi
-            exec "$@"
-        '
-        TEST_EXEC=(
-            --entrypoint /bin/bash
-            "$AGENTOMICS_IMAGE"
-            -lc "$CODEX_BOOTSTRAP"
-            --
-            /opt/conda/envs/agentomics-env/bin/python
-            -m
-            test.run_all_tests
-        )
-        RUN_EXEC=(
-            --entrypoint /bin/bash
-            "$AGENTOMICS_IMAGE"
-            -lc "$CODEX_BOOTSTRAP"
-            --
-            /opt/conda/envs/agentomics-env/bin/python
-            /repository/src/run_agent_interactive.py
-            "${AGENTOMICS_ARGS[@]}"
-        )
-    fi
-
-    if [ "$TEST_MODE" = true ]; then
-        docker run \
-            -it \
-            --rm \
-            --name agentomics_test_cont_${AGENT_ID} \
-            ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
-            -e AGENT_ID=${AGENT_ID} \
-            -e AGENTOMICS_VERBOSITY=${VERBOSITY} \
-            -e PYTHONWARNINGS=ignore \
-            ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
-            ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
-            ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
-            ${CODEX_DOCKER_FLAGS[@]+"${CODEX_DOCKER_FLAGS[@]}"} \
-            -v "$(pwd)/src":/repository/src:ro \
-            -v "$(pwd)/test":/repository/test:ro \
-            -v "$(pwd)/scripts":/repository/scripts:ro \
-            -v "$(pwd)/run.sh":/repository/run.sh:ro \
-            -v "$(pwd)/datasets":/repository/datasets:ro \
-            -v temp_agentomics_volume_${AGENT_ID}:/workspace \
-            ${TEST_EXEC[@]+"${TEST_EXEC[@]}"}
-    else
-        if [ -n "$FORK_FROM_RUN" ]; then
-            FORK_FROM_RUN_ABS="$(cd "$FORK_FROM_RUN" && pwd)"
-            FORK_MOUNT_FLAGS=(-v "${FORK_FROM_RUN_ABS}:/fork_source:ro")
-
-            build_setup_fork_args /fork_source /workspace "$AGENT_ID" "$FORK_FROM_STEP" "$FORK_FROM_ITERATION"
-            docker run --rm \
-                -e PYTHONPATH=/repository/src \
-                ${FORK_MOUNT_FLAGS[@]+"${FORK_MOUNT_FLAGS[@]}"} \
-                -v "$(pwd)/src":/repository/src:ro \
-                -v temp_agentomics_volume_${AGENT_ID}:/workspace \
-                --entrypoint /opt/conda/envs/agentomics-env/bin/python \
-                "$AGENTOMICS_IMAGE" /repository/src/runtime/setup_fork.py "${SETUP_FORK_ARGS[@]}"
-        fi
-
-        set +e
-        docker run \
-            --rm \
-            -it \
-            --name agentomics_cont_${AGENT_ID} \
-            ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
-            -e AGENT_ID=${AGENT_ID} \
-            -e AGENTOMICS_VERBOSITY=${VERBOSITY} \
-            -e PYTHONWARNINGS=ignore \
-            ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
-            ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
-            ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
-            ${CODEX_DOCKER_FLAGS[@]+"${CODEX_DOCKER_FLAGS[@]}"} \
-            -v "$(pwd)/src":/repository/src:ro \
-            -v "$(pwd)/datasets":/repository/datasets:ro \
-            -v temp_agentomics_volume_${AGENT_ID}:/workspace \
-            ${RUN_EXEC[@]+"${RUN_EXEC[@]}"}
-        RUN_EXIT_CODE=$?
-        set -e
-
-        if [ "$LIST_MODE" = true ]; then
-            exit "$RUN_EXIT_CODE"
-        fi
-        if [[ "$RUN_EXIT_CODE" -ne 0 ]]; then
-            warn "Run container exited with code ${RUN_EXIT_CODE}. Exporting available run state before exiting."
-        fi
-        RUN_SUCCEEDED=true
-        if docker run --rm -v temp_agentomics_volume_${AGENT_ID}:/workspace busybox test -f "/workspace/best_iteration_snapshot/runtime_info/iteration_metadata.json"; then
-            echo "Running final evaluation on test set"
-            docker run \
-                --rm \
-                --name agentomics_test_eval_cont_${AGENT_ID} \
-                ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
-                -e PYTHONPATH=/repository/src \
-                -e PYTHONWARNINGS=ignore \
-                ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
-                -v "$(pwd)/src":/repository/src:ro \
-                -v "$(pwd)/test_datasets":/repository/test_datasets:ro \
-                -v temp_agentomics_volume_${AGENT_ID}:/workspace \
-                --entrypoint /opt/conda/envs/agentomics-env/bin/python \
-                "$AGENTOMICS_IMAGE" src/run_logging/test_evaluation.py \
-                    --workspace-dir /workspace \
-                    --test-datasets-dir /repository/test_datasets
-        else
-            RUN_SUCCEEDED=false
-        fi
-
-        mkdir -p "outputs/${AGENT_ID}"
-        docker run --rm -v temp_agentomics_volume_${AGENT_ID}:/workspace busybox chmod -R a+rX /workspace/ || true
-        docker run --rm -v temp_agentomics_volume_${AGENT_ID}:/source busybox tar -c --exclude='./run/shared/.conda' -C /source . | tar -x -C "outputs/${AGENT_ID}/"
-
-        if [[ "$RUN_SUCCEEDED" = true ]]; then
-            docker run --rm \
-              -u "$(id -u):$(id -g)" \
-              -e PYTHONPATH=/repository/src \
-              -v "$(pwd)/src":/repository/src:ro \
-              -v "$(pwd)/outputs/${AGENT_ID}":/agent_out \
-              --entrypoint /opt/conda/envs/agentomics-env/bin/python \
-              "$AGENTOMICS_IMAGE" -m runtime.iteration_reports --agent-dir /agent_out
-
-            MPLCONFIGDIR_IN_CONTAINER="/tmp/mplconfig"
-            docker run --rm \
-              -u "$(id -u):$(id -g)" \
-              -e MPLCONFIGDIR="$MPLCONFIGDIR_IN_CONTAINER" \
-              -e PYTHONPATH=/repository/src \
-              -v "$(pwd)":/repository \
-              -v "$(pwd)/outputs/${AGENT_ID}":/agent_out \
-              --entrypoint /opt/conda/envs/agentomics-env/bin/python \
-              "$AGENTOMICS_IMAGE" /repository/src/runtime/generate_final_reports.py \
-                --agent-dir /agent_out \
-                --test-datasets-dir /repository/test_datasets
-
-            echo "PDF reports ready at: outputs/${AGENT_ID}/reports/pdf/"
-
-            if [ "$USE_PROVISIONING_KEY" = true ]; then
-                echo "Logging costs and cleaning up temporary API key"
-                docker run --rm \
-                  -u "$(id -u):$(id -g)" \
-                  ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
-                  ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
-                  -e PYTHONPATH=/repository/src \
-                  -v "$(pwd)/src":/repository/src:ro \
-                  -v "$(pwd)/outputs/${AGENT_ID}":/agent_out \
-                  --entrypoint /opt/conda/envs/agentomics-env/bin/python \
-                  "$AGENTOMICS_IMAGE" /repository/src/utils/api_keys.py cleanup-and-log \
-                    --config-path /agent_out/run/shared/config.json \
-                    --api-key-hash "$TEMP_API_KEY_HASH"
-            fi
-
-            if [ "$ALL_ITERATIONS_TEST" = true ]; then
-                echo "Running held-out test evaluation for all archived iterations"
-                docker run --rm \
-                  ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
-                  -e PYTHONPATH=/repository/src \
-                  -e PYTHONWARNINGS=ignore \
-                  ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
-                  -v "$(pwd)/src":/repository/src:ro \
-                  -v "$(pwd)/test_datasets":/repository/test_datasets:ro \
-                  -v "$(pwd)/outputs/${AGENT_ID}":/agent_out \
-                  --entrypoint /opt/conda/envs/agentomics-env/bin/python \
-                  "$AGENTOMICS_IMAGE" -m runtime.stealth_test_evaluation \
-                    --agent-dir /agent_out \
-                    --test-datasets-dir /repository/test_datasets
-            fi
-
-            write_outputs_readme "${AGENT_ID}"
-
-            echo -e "${GREEN}Run finished. Report and files can be found in outputs/${AGENT_ID}${NOCOLOR}"
-            echo -e "${GREEN}To run inference on new data, use ./scripts/inference.sh --agent-dir outputs/${AGENT_ID} --input <path_to_input_folder> --output <path_to_output_csv>${NOCOLOR}"
-        else
-            docker run --rm \
-              -u "$(id -u):$(id -g)" \
-              -e PYTHONPATH=/repository/src \
-              -v "$(pwd)/src":/repository/src:ro \
-              -v "$(pwd)/outputs/${AGENT_ID}":/agent_out \
-              --entrypoint /opt/conda/envs/agentomics-env/bin/python \
-              "$AGENTOMICS_IMAGE" -m runtime.iteration_reports --agent-dir /agent_out
-            warn "Agent didn't produce any valid best iteration snapshot. Exported run files for later continuation to outputs/${AGENT_ID}."
-            write_outputs_readme "${AGENT_ID}"
-        fi
-
-        if [[ "$RUN_EXIT_CODE" -ne 0 ]]; then
-            exit "$RUN_EXIT_CODE"
-        fi
-        if [[ "$RUN_SUCCEEDED" = false ]]; then
-            exit 1
-        fi
-
-      fi
-  fi
+if [[ "$RUN_EXIT_CODE" -ne 0 ]]; then
+    exit "$RUN_EXIT_CODE"
+fi
+if [[ "$RUN_SUCCEEDED" = false ]]; then
+    exit 1
+fi
