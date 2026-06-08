@@ -38,16 +38,6 @@ has_tty() {
     [[ -t 0 && -t 1 ]]
 }
 
-# Run a command and suppress its output. Still prints errors if the command fails
-printless_command(){
-    "$@" > /dev/null 
-}
-
-# Setup a trap to clean up the Docker volume on script exit
-cleanup_volume_on_finish() {
-    trap 'docker volume rm temp_agentomics_volume_${AGENT_ID} >/dev/null 2>&1 || true' EXIT
-}
-
 # Print info message in green
 info() {
     echo -e "${GREEN}$*${NOCOLOR}"
@@ -131,16 +121,17 @@ build_setup_fork_args() {
 }
 
 write_outputs_readme() {
-    local agent_id="$1"
+    local run_dir="$1"
+    local agent_id="$2"
     local best_iter="No best iteration found"
-    local metadata_path="outputs/${agent_id}/best_iteration_snapshot/runtime_info/iteration_metadata.json"
+    local metadata_path="${run_dir}/best_iteration_snapshot/runtime_info/iteration_metadata.json"
 
     if [[ -f "$metadata_path" ]]; then
         best_iter="$(sed -nE 's/.*"iteration"[[:space:]]*:[[:space:]]*([0-9]+).*/\1/p' "$metadata_path" | head -n 1)"
         [[ -z "$best_iter" ]] && best_iter="No best iteration found"
     fi
 
-    cat > "outputs/${agent_id}/README.md" << EOF
+    cat > "${run_dir}/README.md" << EOF
 
 This directory contains the full results of one run (**AGENT_ID: ${agent_id}**).
 It includes: (1) the **best model chosen across iterations**, (2) per-iteration run artifacts,
@@ -174,9 +165,7 @@ outputs/${agent_id}/
 │   ├── <other_step_dirs>/          # output.json + step scripts per step
 │   ├── runtime_info/
 │   │   └── iteration_metadata.json
-│   ├── environment.yml
-│   ├── eval_predictions_test.csv   # Predictions on held-out test set
-│   └── test_metrics.json           # Metrics on held-out test set
+│   └── environment.yml
 │
 ├── run/                            # Run working directory
 │   ├── shared/splits/              # Versioned train/validation split folders
@@ -214,28 +203,4 @@ Inference relies on:
 - \`best_iteration_snapshot/model_training/training_artifacts/\`
 
 EOF
-}
-
-ensure_agentomics_docker_image() {
-    # Check the existence of the agentomics docker image. Prioritize locally built images, then dockerhub ones
-    local dockerhub_username="$1"
-    local dockerhub_img="${dockerhub_username}/agentomics:latest"
-
-    if docker image inspect agentomics_img >/dev/null 2>&1; then
-        AGENTOMICS_IMAGE="agentomics_img"
-        return
-    fi
-    if docker image inspect "$dockerhub_img" >/dev/null 2>&1; then
-        AGENTOMICS_IMAGE="$dockerhub_img"
-        return
-    fi
-    if docker pull "$dockerhub_img" >/dev/null 2>&1; then
-        AGENTOMICS_IMAGE="$dockerhub_img"
-        return
-    fi
-
-    warn "Docker image not found locally or on Dockerhub. Building 'agentomics_img'..."
-    [[ -f "Dockerfile" ]] || die "Dockerfile not found in repository root; cannot build 'agentomics_img'."
-    docker build -t agentomics_img -f Dockerfile .
-    AGENTOMICS_IMAGE="agentomics_img"
 }
