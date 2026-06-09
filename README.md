@@ -25,7 +25,7 @@ For more details see: [preprint](https://www.biorxiv.org/content/10.64898/2026.0
 git clone https://github.com/BioGeMT/agentomics-ml.git
 cd agentomics-ml
 cp .env.example .env
-# Edit .env and set at least one API key (OPENROUTER_API_KEY or OPENAI_API_KEY)
+# Edit .env and set at least one supported provider credential
 
 # Download example dataset
 ./scripts/download_example_dataset.sh
@@ -35,7 +35,7 @@ cp .env.example .env
 
 Recommended model: `gpt-5.1-codex-max`
 
-Outputs are saved to `outputs/<agent_id>/`, including PDF reports in `outputs/<agent_id>/pdf_reports`.
+Outputs are saved to `outputs/<agent_id>/`, including PDF reports in `outputs/<agent_id>/reports/pdf`.
 
 ### Installation Requirements
 
@@ -45,9 +45,11 @@ Agentomics can be run either:
 
 ### API Calls
 
-Agentomics can be run either:
-- with your **local Codex subscription**
-- with an **OpenRouter/OpenAI API key**
+Agentomics can be run via:
+- your **local Codex subscription** via `codex login`
+- a **supported provider API key** such as OpenRouter, OpenAI, Anthropic, or a configured OpenAI-compatible provider
+- **local Ollama models** for offline/private runs
+
 
 ## Documentation
 
@@ -59,40 +61,35 @@ For more details visit **https://biogemt.github.io/agentomics-ml/**
 - Reproducible: Outputs include models, scripts, and conda environments needed to run inference or re-train models with one bash command.
 - Trustworthy: If you provide a test set, Agentomics fully abstracts LLMs from accessing it, allowing you to rely on programmaticly computed and reported test set metrics.
 - Foundation models: Agentomics can leverage foundation models from huggingface for both embeddings and fine-tuning.
-- Various LLM providers: OpenAI, OpenRouter, or local models via Ollama
+- Various LLM providers: OpenAI, Anthropic, OpenRouter, local Codex auth, local models via Ollama, or custom OpenAI-compatible providers
 - Reliability: Thanks to our functional validators, Agentomics creates a working model 100% of the time (when using recommended settings).
 
 ## Run Output Structure Example
 
-run
-├── iteration_0
-│   ├── data_exploration
-│   ├── data_representation
-│   ├── data_split
-│   ├── iteration_plan
-│   ├── model_architecture
-│   ├── model_inference
-│   ├── model_training
-│   ├── prediction_exploration
-│   ├── runtime_info
-│   └── validation_evaluation
-├── iteration_1
-│   ├── data_exploration
-│   ├── data_representation
-│   ├── data_split
-│   ├── iteration_plan
-│   ├── model_architecture
-│   ├── model_inference
-│   ├── model_training
-│   ├── prediction_exploration
-│   ├── runtime_info
-│   └── validation_evaluation
-└── shared
-    ├── .conda
-    ├── datasets
-    ├── splits
-    ├── config.json
-    └── environment.yml
+Each completed run is written to `outputs/<agent_id>/`. The key paths are:
+
+```text
+outputs/<agent_id>/
+├── best_iteration_snapshot/
+│   ├── model_training/
+│   │   ├── train.py
+│   │   └── training_artifacts/
+│   ├── model_inference/
+│   │   └── inference.py
+│   ├── environment.yml
+│   └── runtime_info/
+├── run/
+│   ├── shared/
+│   │   ├── config.json
+│   │   └── splits/
+│   └── iteration_*/
+└── reports/
+    ├── markdown/
+    └── pdf/
+```
+
+Use `best_iteration_snapshot/` for inference or re-training. `run/` keeps the
+full iterative workspace, and `reports/` contains the human-readable summaries.
 
 ## Roadmap
 Agentomics is in active development. We welcome any raised Issues and suggestions. You can also [Email Us](mailto:martinekvlastimil95@gmail.com).
@@ -117,5 +114,3 @@ bioRxiv (preprint) https://www.biorxiv.org/content/10.64898/2026.01.27.702049v1
 ## License
 
 MIT. See `LICENSE`.
-
-
