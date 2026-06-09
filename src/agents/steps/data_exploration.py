@@ -37,6 +37,7 @@ class DataExplorationOutput(AgenticStepOutput):
         default=None,
         description="""
         If a supplementary/ folder exists in the dataset, summarize what it contains and how the materials could inform modeling decisions (e.g., a paper describing a specific encoding scheme, reference data, helper scripts).
+        If a supplementary/README.md exists, read it first to learn what the materials are and which are most relevant, then explore the rest of the folder including any files it does not mention.
         Summarize this extensively since it will be used to inform downstream steps and iterations. Do not output the raw contents of the supplementary materials themselves. If you do not explore some supplementary content fully, be explicit about it and suggest that it could be explored in a future iteration.
         Return None if no supplementary/ folder exists or is empty.
         """

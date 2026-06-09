@@ -72,16 +72,26 @@ Requirements:
 
 ### supplementary/ Optional
 
-Supporting/supplementary materials (PDFs, papers, helper scripts) can be placed
-in a `supplementary/` folder inside the dataset directory (as a sibling to the train folder). These are copied
-during preparation and made available to the agent. The agent can read
-these materials for context but must copy needed files into its working directory
-before using them. Generated training and inference scripts must not reference
-`supplementary/` directly. If you update supplementary materials, re-prepare the
-dataset to ensure the agent has the latest version.
+Supporting/supplementary materials (PDFs, papers, helper scripts, foundation model docs or weights, ...) can be placed in a `supplementary/` folder inside the dataset directory (as a sibling to the train folder). The supplementary folder is made available to the agent as read-only folder and the agent can copy any files into its working directory. If you update supplementary materials, re-prepare the dataset so the agent gets the latest version.
 
 You can describe what the supplementary folder contains and how it relates to
-the task in `dataset_description.md` to help the agent use it effectively.
+the task in `supplementary/README.md` to help the agent use it effectively.
+
+#### Using existing / foundation models
+
+To make models available to the agent, copy the models or their docs
+into the dataset's `supplementary/` folder before preparing the dataset.
+If you put model weights or other large files in the supplementary/ folder, the agent might copy them multiple times during the run and their full copies might be present multiple times in the exported runs. To reduce disk use, it is recommended to provide code snippets that will download the models on-demand into `~/.cache` (e.g. using huggingface).  
+Ready-to-use examples live in `example_supplementary/`, covering protein (ESM-2),
+DNA (HyenaDNA, Nucleotide Transformer), RNA (RiNALMo), and molecule (ChemBERTa)
+models. To use them in your runs, copy them into your dataset's supplementary folder:
+
+```bash
+mkdir -p datasets/<your_dataset>/supplementary
+cp -r example_supplementary/. datasets/<your_dataset>/supplementary/
+```
+
+#### Note on using supplementary + forking
 
 When forking a run, the supplementary folder is inherited from the source run's
 workspace — not re-copied from the raw or prepared dataset. If you update

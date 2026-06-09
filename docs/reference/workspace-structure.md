@@ -37,6 +37,7 @@ datasets/my_dataset/
 │   ├── input/
 │   └── labels.csv
 ├── supplementary/          # Optional: dataset-level source materials
+│   └── README.md           # Optional: describes the supplementary materials
 ├── metadata.json           # Optional if task type is supplied at preparation
 └── dataset_description.md  # Optional domain information
 ```
