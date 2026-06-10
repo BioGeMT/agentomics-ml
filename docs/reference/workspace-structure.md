@@ -9,14 +9,17 @@ agentomics-ml/
 ├── datasets/                 # Raw input datasets
 ├── prepared_datasets/        # Prepared training data
 ├── prepared_test_sets/       # Prepared test data (hidden)
-├── workspace/                # Active execution workspace
-│   ├── run/                  # Current run files
-│   ├── best_iteration_snapshot/ # Best iteration snapshot
-│   ├── reports/              # Iteration reports
-│   ├── extras/               # Logs and extra artifacts
-│   └── fallbacks/            # Backup for recovery
 └── outputs/                  # Final results
+
+../workspace/runs/<agent_id>/ # Local-mode active workspace
+├── run/                      # Current run files
+├── best_iteration_snapshot/  # Best iteration snapshot
+├── reports/                  # Iteration reports
+├── extras/                   # Logs and extra artifacts
+└── fallbacks/                # Reserved recovery area
 ```
+
+Docker mode uses an internal temporary workspace volume with the same layout and copies it to `outputs/<agent_id>/` when the run ends.
 
 ## datasets/
 
@@ -37,7 +40,7 @@ After preparation, datasets are formatted for the agent:
 ```
 prepared_datasets/my_dataset/
 ├── train.csv              # Processed training data
-├── validation.csv         # Processed validation data
+├── validation.csv         # Processed validation data, if supplied
 ├── dataset_description.md # Copied/created description
 └── metadata.json          # Task info (type, classes, etc.)
 ```
@@ -54,16 +57,16 @@ prepared_test_sets/my_dataset/
 
 The agent never sees files in this directory during training.
 
-## workspace/
+## Active Workspace
 
-Active execution area:
+Active execution area. In local mode this is `../workspace/runs/<agent_id>/`; in Docker mode it is the temporary `/workspace` volume.
 
-### workspace/run/
+### run/
 
 Current run working directory:
 
 ```
-workspace/run/
+<workspace_root>/run/
 ├── shared/
 │   ├── .conda/                  # Shared Conda environment
 │   ├── config.json
@@ -77,12 +80,12 @@ workspace/run/
 └── ...
 ```
 
-### workspace/best_iteration_snapshot/
+### best_iteration_snapshot/
 
 Best iteration snapshot:
 
 ```
-workspace/best_iteration_snapshot/
+<workspace_root>/best_iteration_snapshot/
 ├── model_training/
 │   ├── train.py
 │   └── training_artifacts/
@@ -95,25 +98,22 @@ workspace/best_iteration_snapshot/
 
 Updated whenever a new best iteration is achieved.
 
-### workspace/fallbacks/
+### fallbacks/
 
-Recovery backup for split changes:
+Reserved recovery area:
 
 ```
-workspace/fallbacks/<agent_id>/
-├── train.csv
-├── validation.csv
-└── split_fingerprint.json
+<workspace_root>/fallbacks/
 ```
 
-Used to restore data if a split change causes issues.
+This directory may be empty for normal runs.
 
-### workspace/reports/
+### reports/
 
 Iteration reports are written here during runs. These are copied to
 `outputs/<agent_id>/reports/` after completion.
 
-### workspace/extras/
+### extras/
 
 Logs and auxiliary artifacts (metrics, run logs) are stored here and copied to
 `outputs/<agent_id>/extras/`.
@@ -174,16 +174,14 @@ rm -rf outputs/<agent_id>
 ### Clean Workspace
 
 ```bash
-rm -rf workspace/run/*
-rm -rf workspace/best_iteration_snapshot/*
-rm -rf workspace/fallbacks/*
+rm -rf ../workspace/runs/<agent_id>
 ```
 
 ### Clean Everything
 
 ```bash
 rm -rf outputs/*
-rm -rf workspace/*
+rm -rf ../workspace/*
 rm -rf prepared_datasets/*
 rm -rf prepared_test_sets/*
 ```

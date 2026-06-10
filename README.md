@@ -8,7 +8,7 @@ Made for biomedical data, Agentomics outperformed human experts and created new 
 
 How it works
 1) Input is a CSV training dataset + optional data description
-2) Agentomics autonomously experments with various ML models and strategies
+2) Agentomics autonomously experiments with various ML models and strategies
 3) Output is a trained model ready for inference and a detailed PDF report summarizing the development process and achieved metrics
 
 For more details see: [preprint](https://www.biorxiv.org/content/10.64898/2026.01.27.702049v1)
@@ -96,7 +96,6 @@ Agentomics is in active development. We welcome any raised Issues and suggestion
 
 Features coming soon:
 - Support for any data type (currently only CSV datasets)
-- Run forking and continuing
 - Better local model support and configuration
 - Remote GPU support for GCP
 

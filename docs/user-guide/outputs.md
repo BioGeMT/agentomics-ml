@@ -14,10 +14,13 @@ outputs/<agent_id>/
 │   │   └── inference.py      # Inference script
 │   ├── validation_evaluation/
 │   │   ├── eval_predictions_train.csv
-│   │   └── eval_predictions_validation.csv
+│   │   ├── eval_predictions_validation.csv
+│   │   └── output.json
 │   ├── runtime_info/
 │   │   └── iteration_metadata.json
 │   ├── environment.yml
+│   ├── eval_predictions_test.csv      # If a held-out test set was provided
+│   ├── test_metrics.json              # If final test evaluation succeeded
 │   └── .conda/
 ├── run/                      # All iterations + shared run state
 │   ├── shared/
@@ -103,15 +106,15 @@ Metrics depend on the selected validation metric and task type. See
 During execution, the agent uses a workspace:
 
 ```
-workspace/
+<workspace_root>/
 ├── run/                     # Active run directory
 ├── best_iteration_snapshot/    # Best iteration snapshot
 ├── reports/                 # Iteration reports
 ├── extras/                  # Logs and metrics
-└── fallbacks/               # Backup for recovery
+└── fallbacks/               # Reserved recovery area
 ```
 
-After completion, everything is copied to `outputs/`.
+In Docker mode, this is an internal temporary volume. In local mode, it lives under `../workspace/runs/<agent_id>/`. After completion, the run workspace is copied to `outputs/<agent_id>/`.
 
 ## W&B Logging
 
@@ -146,12 +149,10 @@ rm -rf outputs/<agent_id>
 rm -rf outputs/*
 ```
 
-In Docker mode, the temporary workspace volume is removed after a run. In local
-mode, you can manually clean:
+In Docker mode, the temporary workspace volume is removed after a run. In local mode, you can manually remove the active workspace:
 
 ```bash
-rm -rf workspace/run/*
-rm -rf workspace/best_iteration_snapshot/*
+rm -rf ../workspace/runs/<agent_id>
 ```
 
 ## Next Steps

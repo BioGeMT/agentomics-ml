@@ -8,7 +8,7 @@ Models are evaluated at multiple stages:
 
 | Stage | Data Used | Purpose |
 |-------|-----------|---------|
-| **Dry Run** | Small sample | Validate inference script works |
+| **Dry Run** | Prepared training data without labels | Validate inference script shape and metrics compatibility |
 | **Validation** | Validation set | Guide optimization |
 | **Train** | Training set | Detect overfitting |
 | **Test** | Hidden test set | Final unbiased evaluation |

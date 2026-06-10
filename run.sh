@@ -79,7 +79,7 @@ Forking:
                             --dataset    (tied to the data the source run was trained on)
                             --val-metric (must stay consistent to compare iterations across the fork)
   --fork-from-step <step> Only used with --fork-from-run. Step ID to fork from (e.g. 'model_training').
-                          Defaults to the latest completed step or iteraiton end checkpoint in the source run.
+                          Defaults to the latest completed step or iteration end checkpoint in the source run.
   --fork-from-iteration <N>
                           Only used with --fork-from-run. Iteration to fork from.
                           Defaults to the latest iteration containing the specified step or iteration end checkpoint.

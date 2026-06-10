@@ -24,7 +24,7 @@ cd Agentomics-ML
 ```bash
 # Create a .env file (required for Docker mode)
 cp .env.example .env
-# Edit .env and set at least one API key
+# Edit .env and set at least one provider key
 
 # Run with pre-built images
 ./run.sh
@@ -47,13 +47,13 @@ The images will be downloaded automatically on first run. All subsequent runs wi
 ```bash
 # Create a .env file (required for Docker mode)
 cp .env.example .env
-# Edit .env and set at least one API key
+# Edit .env and set at least one provider key
 
 # Run while building images locally
 ./run.sh --build-images
 ```
 
-On first run, you'll be prompted to build the Docker images. This takes a few minutes but only needs to be done once.
+With `--build-images`, the Docker images are built locally before the run starts. This takes a few minutes but only needs to be repeated when dependencies or Dockerfiles change.
 
 ---
 
@@ -103,15 +103,16 @@ Run with local models using Ollama for privacy or offline use.
 
 ### Docker Mode Setup
 
-1. Ensure Ollama listens on the host (e.g., `0.0.0.0:11434`).
-2. Run with the `--ollama` flag:
+1. Ensure Ollama is running on the host.
+2. Make the Ollama provider selectable and choose it explicitly:
 
     ```bash
-    ./run.sh --ollama
+    export OLLAMA_BASE_URL=http://localhost:11434/v1
+    ./run.sh --ollama --provider ollama --model <ollama-model> --dataset <dataset>
     ```
 
 Docker mode connects to the URL configured in `src/utils/providers/configured_providers.yaml`
-(default: `http://host.docker.internal:11434/v1`).
+(default: `http://localhost:11434/v1`) and uses host networking when `--ollama` is passed.
 
 ### Local Mode Setup
 
@@ -119,7 +120,8 @@ For local mode, set the Ollama base URL in `src/utils/providers/configured_provi
 to `http://localhost:11434/v1`, then run:
 
 ```bash
-./run.sh --local
+export OLLAMA_BASE_URL=http://localhost:11434/v1
+./run.sh --local --provider ollama --model <ollama-model> --dataset <dataset>
 ```
 
 ---
