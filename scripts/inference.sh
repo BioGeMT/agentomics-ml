@@ -6,16 +6,18 @@ source "$SCRIPT_DIR/bash_helpers.sh"
 
 CPU_ONLY=false
 REMOVE_CONDA_ENV=false
+ALL_ITERATIONS=false
 ARGS=()
 
 show_help() {
-    echo "Usage: $0 --agent-dir <agent_folder_path> --input <input_path> --output <output_path> [--cpu-only]"
+    echo "Usage: $0 --agent-dir <agent_folder_path> --input <input_path> --output <output_path> [options]"
     echo "Options:"
     echo "  --agent-dir   Path to agent folder (required)"
     echo "  --input       Path to input folder (required)"
     echo "  --output      Path to output file (required)"
-    echo "  --label-col   Name of the true label column in --input. When set, metrics are computed against it and written to metrics.json next to --output (optional)"
+    echo "  --label-col   Name of the true label column in --input. When set, metrics are computed against it and written to <output>.metrics.json next to --output (optional)"
     echo "  --code-path   Path to code files, points to best_iteration_snapshot by default, must be relative to --agent-dir and a child of --agent-dir (optional)"
+    echo "  --all-iterations   Run inference for every run/iteration_N in --agent-dir against --input. Per-iteration predictions go to <output_dir>/<iteration>_predictions.csv (metrics to <iteration>_predictions.metrics.json when --label-col is set). Each iteration's env is rebuilt and removed in turn (optional)"
     echo "  --remove-conda-env   Remove the conda environment after inference (optional)"
     echo "  --cpu-only    Run without GPU (optional)"
     echo "  --help        Show this help message and exit"
@@ -60,6 +62,10 @@ while [[ $# -gt 0 ]]; do
             CODE_PATH="$2"
             shift 2
             ;;
+        --all-iterations)
+            ALL_ITERATIONS=true
+            shift
+            ;;
         --remove-conda-env)
             REMOVE_CONDA_ENV=true
             shift
@@ -99,6 +105,35 @@ AGENT_DIR="$(cd "$AGENT_DIR" && pwd)"
 INPUT_PATH="$(cd "$(dirname "$INPUT_PATH")" && pwd)/$(basename "$INPUT_PATH")"
 OUTPUT_PATH="$(cd "$(dirname "$OUTPUT_PATH")" && pwd)/$(basename "$OUTPUT_PATH")"
 
+if [[ "$ALL_ITERATIONS" == true ]]; then
+    RUN_DIR="${AGENT_DIR}/run"
+    [[ -d "$RUN_DIR" ]] || die "--all-iterations requires ${RUN_DIR}, not found"
+    OUTPUT_DIR="$(dirname "$OUTPUT_PATH")"
+
+    mapfile -t ITERATION_DIRS < <(find "$RUN_DIR" -mindepth 1 -maxdepth 1 -type d -name 'iteration_*' | sort -V)
+    [[ ${#ITERATION_DIRS[@]} -gt 0 ]] || die "No iteration_* directories found under ${RUN_DIR}"
+
+    echo "Evaluating ${#ITERATION_DIRS[@]} archived iteration(s) on $INPUT_PATH"
+    for iter_dir in "${ITERATION_DIRS[@]}"; do
+        iter_name="$(basename "$iter_dir")"
+        echo "=== ${iter_name} ==="
+        iter_args=(
+            --agent-dir "$AGENT_DIR"
+            --input "$INPUT_PATH"
+            --output "${OUTPUT_DIR}/${iter_name}_predictions.csv"
+            --code-path "run/${iter_name}"
+        )
+        [[ -n "$LABEL_COL" ]] && iter_args+=(--label-col "$LABEL_COL")
+        [[ "$CPU_ONLY" == true ]] && iter_args+=(--cpu-only)
+        iter_args+=(--remove-conda-env)
+
+        "$0" "${iter_args[@]}" ${ARGS[@]+"${ARGS[@]}"} \
+            || warn "Inference failed for ${iter_name}; continuing"
+    done
+    echo "All iterations done. Predictions written to ${OUTPUT_DIR}/<iteration>_predictions.csv"
+    exit 0
+fi
+
 CODE_PATH=${CODE_PATH:-"best_iteration_snapshot"}
 CODE_ROOT="${AGENT_DIR}/${CODE_PATH}"
 echo "Using code path: $CODE_PATH"
@@ -129,7 +164,10 @@ fi
 
 need_cmd conda
 
-ENV_PATH="$(find "$ENV_DIR" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | head -n1)"
+ENV_PATH=""
+if [[ -d "$ENV_DIR" ]]; then
+    ENV_PATH="$(find "$ENV_DIR" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | head -n1)"
+fi
 if [[ -z "$ENV_PATH" ]]; then
     echo "No model conda env found under $ENV_DIR; creating one from $DESCRIPTOR_PATH"
     ENV_PATH="$ENV_DIR/model_env"
@@ -152,7 +190,7 @@ conda run -p "$ENV_PATH" \
     --artifacts-dir "$ARTIFACTS_PATH" ${ARGS[@]+"${ARGS[@]}"}
 echo "Inference done"
 
-METRICS_PATH="$(dirname "$OUTPUT_PATH")/metrics.json"
+METRICS_PATH="$(dirname "$OUTPUT_PATH")/$(basename "$OUTPUT_PATH" .csv).metrics.json"
 if [[ -n "$LABEL_COL" ]]; then
     ensure_conda_env "agentomics-env" "$SCRIPT_DIR/../envs/environment.yaml"
     echo "Computing metrics..."
