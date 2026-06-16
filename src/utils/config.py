@@ -119,10 +119,6 @@ class Config:
         return Path(self.datasets_dir) / self.dataset
 
     @property
-    def agent_dataset_dir(self) -> Path:
-        return self.dataset_dir
-
-    @property
     def shared_dir(self) -> Path:
         return self.run_dir / self.SHARED_DIRNAME
 

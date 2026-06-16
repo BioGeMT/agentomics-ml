@@ -7,13 +7,13 @@ from utils.task_types import TaskTypes
 
 
 def get_system_prompt(config: Config):
-    train_split_path = config.agent_dataset_dir / TRAIN_SPLIT
-    validation_split_path = config.agent_dataset_dir / VALIDATION_SPLIT
+    train_split_path = config.dataset_dir / TRAIN_SPLIT
+    validation_split_path = config.dataset_dir / VALIDATION_SPLIT
     dataset_knowledge = get_dataset_knowledge(config)
     dataset_paths = f"Training split path:\n    {train_split_path}"
     if validation_split_path.exists():
         dataset_paths += f"\n    Validation split path:\n    {validation_split_path}"
-    supplementary_path = config.agent_dataset_dir / SUPPLEMENTARY_DIR_NAME
+    supplementary_path = config.dataset_dir / SUPPLEMENTARY_DIR_NAME
     if supplementary_path.is_dir():
         dataset_paths += (
             f"\n    Supplementary materials that can be used at any point e.g. during training, during decision making, etc.. (read-only):\n    {supplementary_path}"
@@ -60,7 +60,7 @@ def get_system_prompt(config: Config):
     """
 
 def get_dataset_knowledge(config: Config):
-    dataset_knowledge_path = config.agent_dataset_dir / "dataset_description.md"
+    dataset_knowledge_path = config.dataset_dir / "dataset_description.md"
     with open(dataset_knowledge_path) as f:
         dataset_knowledge = f.read()
     if config.task_type == TaskTypes.CLASSIFICATION:

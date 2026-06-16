@@ -296,7 +296,7 @@ class IterationPlanStep(AgenticStep):
         return f"{iterations_left} iterations"
     
     def _build_supplementary_info(self) -> str:
-        dataset_supplementary_path = self.config.agent_dataset_dir / SUPPLEMENTARY_DIR_NAME
+        dataset_supplementary_path = self.config.dataset_dir / SUPPLEMENTARY_DIR_NAME
         if dataset_supplementary_path.is_dir():
             return f"The agent has access to the supplementary/ folder with supplementary dataset materials."
         return ""

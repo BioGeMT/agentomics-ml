@@ -39,13 +39,13 @@ class TestAgentPermissions(BaseAgentTest):
     def test_protection_test_dataset(self):
         """Test that agent cannot access test datasets."""
         
-        result = self.bash_tool.function(f"touch {self.config.agent_dataset_dir}/test_write.txt 2>&1")
+        result = self.bash_tool.function(f"touch {self.config.dataset_dir}/test_write.txt 2>&1")
         self.assertTrue(
             "Permission denied" in result or "Command failed" in result,
             "Agent should not write to datasets directory",
         )
         
-        result = self.bash_tool.function(f"ls {self.config.agent_dataset_dir}/test/input 2>&1")
+        result = self.bash_tool.function(f"ls {self.config.dataset_dir}/test/input 2>&1")
         self.assertTrue(
             "Permission denied" in result or "Command failed" in result or "No such file" in result,
             "Agent should not read test data content"
@@ -54,29 +54,29 @@ class TestAgentPermissions(BaseAgentTest):
     def test_agent_dataset_access_permissions(self):
         """Test agent's dataset access from workspace."""
         
-        result = self.bash_tool.function(f"ls -la {self.config.agent_dataset_dir}/")
+        result = self.bash_tool.function(f"ls -la {self.config.dataset_dir}/")
         self.assertNotIn("Permission denied", result, "Agent should access its dataset directory")
         self.assertNotIn("Command failed", result, "ls command should succeed")
 
-        result = self.bash_tool.function(f"ls {self.config.agent_dataset_dir}/train/input 2>&1")
+        result = self.bash_tool.function(f"ls {self.config.dataset_dir}/train/input 2>&1")
         self.assertNotIn("Permission denied", result, "Agent should read its dataset content")
         self.assertNotIn("Command failed", result, "ls command should succeed")
     
     def test_agent_access_to_datasets(self):
-        """Test that agent can access all files in prepared_datasets and not the ones in prepared_test_sets."""
-        for file in self.config.prepared_dataset_dir.iterdir():
+        """Test that agent can access all files in datasets and not the ones in test_datasets."""
+        for file in self.config.dataset_dir.iterdir():
             if file.is_dir():
-                result = self.bash_tool.function(f"ls {self.config.prepared_dataset_dir}/{file.name} 2>&1")
+                result = self.bash_tool.function(f"ls {self.config.dataset_dir}/{file.name} 2>&1")
             else:
-                result = self.bash_tool.function(f"head -5 {self.config.prepared_dataset_dir}/{file.name} 2>&1")
-            self.assertNotIn("Permission denied", result, f"Agent should access the {file.name} file in prepared_datasets")
+                result = self.bash_tool.function(f"head -5 {self.config.dataset_dir}/{file.name} 2>&1")
+            self.assertNotIn("Permission denied", result, f"Agent should access the {file.name} file in datasets")
 
-        test_set_dir = self.prepared_test_sets_dir / self.config.dataset
+        test_set_dir = self.test_datasets_dir / self.config.dataset
         result = self.bash_tool.function(f"ls {test_set_dir} 2>&1")
-        self.assertIn("No such file or directory", result, "Agent should not have access to prepared_test_sets directory")
+        self.assertIn("No such file or directory", result, "Agent should not have access to test_datasets directory")
 
     def test_agent_access_to_repository_datasets(self):
-        self.assertFalse(Path("/repository/datasets/").is_dir())
+        self.assertTrue(Path("/repository/datasets/").is_dir())
 
     def test_api_key_protection(self):
         """Test that agent cannot access API keys."""

@@ -79,7 +79,16 @@ class ModelTrainingStep(AgenticStep):
                 raise ModelRetry(f"Model file ({result.path_to_model_file}) must be inside the artifacts folder ({result.path_to_artifacts_dir})")
             if does_file_contain_iteration_pattern(result.path_to_train_file):
                 raise ModelRetry(f"Train file ({result.path_to_train_file}) contains path containing a forbidden string 'iteration_' or references an iteration folder, which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
-            dataset_supplementary_path = self.config.agent_dataset_dir / SUPPLEMENTARY_DIR_NAME
+            artifact_symlinks = [
+                path.relative_to(result.path_to_artifacts_dir)
+                for path in Path(result.path_to_artifacts_dir).rglob("*")
+                if path.is_symlink()
+            ]
+            if artifact_symlinks:
+                raise ModelRetry(
+                    f"training_artifacts/ must contain training outputs, not symlinks: {artifact_symlinks[:10]}"
+                )
+            dataset_supplementary_path = self.config.dataset_dir / SUPPLEMENTARY_DIR_NAME
             if dataset_supplementary_path.is_dir() and does_file_contain_string(
                 result.path_to_train_file, SUPPLEMENTARY_DIR_NAME + "/"
             ):
