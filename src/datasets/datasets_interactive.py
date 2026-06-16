@@ -8,7 +8,10 @@ from rich.table import Table
 
 from datasets.data_contract import (
     LABEL_COLUMN_NAME,
+    LABELS_FILE_NAME,
     METADATA_FILE_NAME,
+    TRAIN_SPLIT,
+    VALIDATION_SPLIT,
 )
 from utils.task_types import TaskTypes
 from utils.user_input import get_user_input_for_int
@@ -20,18 +23,30 @@ def _get_single_dataset_info(dataset_dir: Path) -> dict | None:
         return None
 
     base = {"name": dataset_dir.name, "path": dataset_dir}
+    train_labels_path = dataset_dir / TRAIN_SPLIT / LABELS_FILE_NAME
+    validation_labels_path = dataset_dir / VALIDATION_SPLIT / LABELS_FILE_NAME
+    try:
+        train_rows = len(pd.read_csv(train_labels_path)) if train_labels_path.is_file() else None
+        validation_rows = len(pd.read_csv(validation_labels_path)) if validation_labels_path.is_file() else None
+    except Exception as exc:
+        return {**base, "status": f"Invalid labels.csv: {exc}"}
+
     metadata_path = dataset_dir / METADATA_FILE_NAME
     if not metadata_path.is_file():
-        return {**base, "status": "Unprepared"}
+        return {
+            **base,
+            "train_rows": train_rows,
+            "validation_rows": validation_rows,
+            "status": "Unprepared",
+        }
 
     try:
         metadata = json.loads(metadata_path.read_text())
-        splits = metadata.get("splits", {})
         status = "Prepared" if metadata.get("prepared") is True else "Unprepared"
         return {
             **base,
-            "train_rows": splits.get("train_rows"),
-            "validation_rows": splits.get("validation_rows"),
+            "train_rows": train_rows,
+            "validation_rows": validation_rows,
             "status": status,
         }
     except Exception as exc:

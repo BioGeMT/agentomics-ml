@@ -69,6 +69,9 @@ class DatasetFolderSplitContractTest(unittest.TestCase):
     def test_get_single_dataset_info_counts_folder_labels(self):
         with TemporaryDirectory() as tmp:
             dataset_dir = create_prepared_folder_dataset(Path(tmp) / "datasets")
+            metadata = json.loads((dataset_dir / "metadata.json").read_text(encoding="utf-8"))
+            metadata["splits"] = {"train_rows": 999, "validation_rows": 999}
+            (dataset_dir / "metadata.json").write_text(json.dumps(metadata), encoding="utf-8")
 
             info = _get_single_dataset_info(dataset_dir)
 
