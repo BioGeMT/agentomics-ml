@@ -6,9 +6,8 @@ How Agentomics-ML organizes files during and after execution.
 
 ```text
 agentomics-ml/
-├── datasets/                 # Raw input datasets
-├── prepared_datasets/        # Prepared public train/validation data
-├── prepared_test_sets/       # Prepared hidden test data
+├── datasets/                 # Public train/validation datasets
+├── test_datasets/            # Hidden test datasets
 └── outputs/                  # Final results
 
 ../workspace/runs/<agent_id>/ # Local-mode active workspace
@@ -23,7 +22,7 @@ Docker mode uses an internal temporary workspace volume with the same layout and
 
 ## datasets/
 
-Raw datasets use split folders:
+Public datasets use split folders:
 
 ```text
 datasets/my_dataset/
@@ -33,50 +32,53 @@ datasets/my_dataset/
 ├── validation/             # Optional
 │   ├── input/
 │   └── labels.csv
-├── test/                   # Optional hidden test set
-│   ├── input/
-│   └── labels.csv
 ├── supplementary/          # Optional: dataset-level source materials
 │   └── README.md           # Optional: describes the supplementary materials
 ├── metadata.json           # Optional if task type is supplied at preparation
 └── dataset_description.md  # Optional domain information
 ```
 
-Each raw `labels.csv` must include `id` and `label` columns. Preparation writes
-prepared `labels.csv` files with `id` and `numeric_label`. Only `train`,
-`validation`, and `test` are supported split names. The `input/` interface is
-recorded at preparation time, must match across all splits, and must not be
-modified during a run.
-
-## prepared_datasets/
-
-After preparation, public splits are formatted for the agent:
+Hidden test data uses a matching separate root:
 
 ```text
-prepared_datasets/my_dataset/
-├── train/
-│   ├── input/
-│   └── labels.csv
-├── validation/
-│   ├── input/
-│   └── labels.csv
-├── supplementary/          # Dataset-level source materials, if provided
-├── dataset_description.md
-└── metadata.json
-```
-
-## prepared_test_sets/
-
-Test data is separated to ensure it stays hidden:
-
-```text
-prepared_test_sets/my_dataset/
+test_datasets/my_dataset/
 └── test/
     ├── input/
     └── labels.csv
 ```
 
-The agent never sees files in this directory during training.
+Each unprepared `labels.csv` must include `id` and `label` columns. Preparation
+rewrites labels in place with `id` and `numeric_label`, then writes
+`metadata.json` with `"prepared": true`. Only `train` and `validation` are
+supported under `datasets/`; only `test` is supported under `test_datasets/`.
+The `input/` interface is recorded at preparation time, must match across all
+splits, and must not be modified during a run.
+
+After preparation, the public dataset directory is the agent-facing dataset:
+
+```text
+datasets/my_dataset/
+├── train/
+│   ├── input/
+│   └── labels.csv          # id,numeric_label
+├── validation/
+│   ├── input/
+│   └── labels.csv          # id,numeric_label
+├── supplementary/          # Dataset-level source materials, if provided
+├── dataset_description.md
+└── metadata.json           # includes "prepared": true
+```
+
+Hidden test data is also prepared in place before final evaluation:
+
+```text
+test_datasets/my_dataset/
+└── test/
+    ├── input/
+    └── labels.csv          # id,numeric_label
+```
+
+The agent never sees `test_datasets/` during training.
 
 ## Active Workspace
 
@@ -92,7 +94,7 @@ Current run working directory:
 │   ├── .conda/                  # Shared Conda environment
 │   ├── config.json
 │   ├── environment.yml
-│   └── datasets/
+│   └── splits/
 ├── current_iteration/
 │   ├── current_step/            # Active step workspace
 │   └── runtime_info/
@@ -234,8 +236,8 @@ rm -rf ../workspace/runs/<agent_id>
 ```bash
 rm -rf outputs/*
 rm -rf ../workspace/*
-rm -rf prepared_datasets/*
-rm -rf prepared_test_sets/*
+rm -rf datasets/*
+rm -rf test_datasets/*
 ```
 
 ## Docker Volumes

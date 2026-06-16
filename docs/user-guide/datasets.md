@@ -15,15 +15,23 @@ datasets/my_dataset/
 ├── validation/             # Optional
 │   ├── input/
 │   └── labels.csv
-├── test/                   # Optional hidden test set
-│   ├── input/
-│   └── labels.csv
 ├── supplementary/          # Optional: dataset-level source materials
 ├── metadata.json           # Optional if --task-type is provided
 └── dataset_description.md  # Optional domain context
 ```
 
-Only `train`, `validation`, and `test` are supported split names.
+Hidden test data belongs in a separate root so the agent never sees it during
+training:
+
+```text
+test_datasets/my_dataset/
+└── test/
+    ├── input/
+    └── labels.csv
+```
+
+Only `train` and `validation` are supported in `datasets/`. Only `test` is
+supported in `test_datasets/`.
 
 ## Split Requirements
 
@@ -53,7 +61,7 @@ column in tabular files that matches `labels.csv`.
 
 ### labels.csv
 
-Every raw labeled split must include `labels.csv` with exactly these columns:
+Every labeled split must include `labels.csv` with exactly these columns:
 
 ```csv
 id,label
@@ -72,7 +80,7 @@ Requirements:
 
 ### supplementary/ Optional
 
-Supporting/supplementary materials (PDFs, papers, helper scripts, foundation model docs or weights, ...) can be placed in a `supplementary/` folder inside the dataset directory (as a sibling to the train folder). The supplementary folder is made available to the agent as read-only folder and the agent can copy any files into its working directory. If you update supplementary materials, re-prepare the dataset so the agent gets the latest version.
+Supporting/supplementary materials (PDFs, papers, helper scripts, foundation model docs or weights, ...) can be placed in a `supplementary/` folder inside the dataset directory (as a sibling to the train folder). The supplementary folder is made available to the agent as a read-only folder and the agent can copy any files into its working directory.
 
 You can describe what the supplementary folder contains and how it relates to
 the task in `supplementary/README.md` to help the agent use it effectively.
@@ -80,8 +88,8 @@ the task in `supplementary/README.md` to help the agent use it effectively.
 #### Using existing / foundation models
 
 To make models available to the agent, copy the models or their docs
-into the dataset's `supplementary/` folder before preparing the dataset.
-If you put model weights or other large files in the supplementary/ folder, the agent might copy them multiple times during the run and their full copies might be present multiple times in the exported runs. To reduce disk use, it is recommended to provide code snippets that will download the models on-demand into `~/.cache` (e.g. using huggingface).  
+into the dataset's `supplementary/` folder before starting the run.
+If you put model weights or other large files in the supplementary/ folder, the agent might copy them multiple times during the run and their full copies might be present multiple times in the exported runs. To reduce disk use, it is recommended to provide code snippets that will download the models on-demand into `~/.cache` (e.g. using huggingface).
 Ready-to-use examples live in `example_supplementary/`, covering protein (ESM-2),
 DNA (HyenaDNA, Nucleotide Transformer), RNA (RiNALMo), and molecule (ChemBERTa)
 models. To use them in your runs, copy them into your dataset's supplementary folder:
@@ -93,16 +101,15 @@ cp -r example_supplementary/. datasets/<your_dataset>/supplementary/
 
 #### Note on using supplementary + forking
 
-When forking a run, the supplementary folder is inherited from the source run's
-workspace — not re-copied from the raw or prepared dataset. If you update
-supplementary materials after a run has started, start a new run (re-prepare the
-dataset) rather than forking to pick up the changes.
+Forked runs use the dataset referenced by the source run config. If you change
+dataset files after a run, start a fresh run when you need that changed data to
+be part of the experiment.
 
 ### input/ structure
 
 The top-level entries in `train/input/` are recorded at dataset preparation
 time and define the split interface. All splits must have matching top-level
-`input/` files and folders: `validation/input/` and `test/input/` are validated
+`input/` files and folders: `validation/input/` and `test_datasets/<name>/test/input/` are validated
 against `train/input/` during preparation, and the agent cannot add, remove, or
 rename top-level `input/` entries during the split step. Files inside matching
 top-level folders may differ between splits, which supports datasets where each
@@ -128,8 +135,9 @@ folders from `train/` during the run.
 
 ### test/ Optional
 
-The hidden test split is used only for final evaluation. The agent does not get
-access to `prepared_test_sets/` during training.
+The hidden test split is used only for final evaluation. Keep it under
+`test_datasets/<dataset>/test/`, not under `datasets/<dataset>/test/`.
+The agent does not get access to `test_datasets/` during training.
 
 ### metadata.json Optional
 
@@ -178,104 +186,69 @@ Each ID in `labels.csv` matches the `patient_id` column in the input CSV.
 - Consider models that handle high-dimensional data
 ```
 
-## Converting CSV Files
+## Flat CSV Files
 
-If your data is in flat CSV files (features and labels in one table), use the
-CSV converter to create the folder-based layout:
+If your data is in flat CSV files with features and labels in one table, you can
+place them directly in the dataset directories. Agentomics converts them inside
+the run workspace when the run starts; your source CSV files are not modified.
 
-```bash
-PYTHONPATH=src python src/datasets/csv_converter.py \
-    --train-csv data/train.csv \
-    --test-csv data/test.csv \
-    --label-column target \
-    --task-type classification \
-    --output-dir datasets/my_dataset
+```text
+datasets/my_dataset/
+├── train.csv
+├── validation.csv          # optional
+├── metadata.json
+└── dataset_description.md  # optional
+
+test_datasets/my_dataset/
+├── test.csv
+└── metadata.json           # label_column, optional id_column
 ```
 
-| Option | Description |
-|--------|-------------|
-| `--train-csv` | Path to training CSV (required) |
-| `--validation-csv` | Path to validation CSV (optional) |
-| `--test-csv` | Path to test CSV (optional) |
-| `--label-column` | Name of the column containing labels (required) |
-| `--id-column` | Name of the ID column (auto-generated if not provided) |
-| `--task-type` | `classification` or `regression` (optional, writes metadata.json) |
-| `--output-dir` | Output dataset directory (required) |
+Only these CSV names are auto-detected: `train.csv`, optional `validation.csv`,
+and `test.csv` for hidden test data.
 
-The converter can also be called from Python:
+For CSV datasets, `metadata.json` should identify the label column and task type:
 
-```python
-from datasets.csv_converter import convert_csv_dataset
-
-convert_csv_dataset(
-    output_dir=Path("datasets/my_dataset"),
-    label_column="target",
-    splits={"train": train_df, "test": test_df},
-    task_type="classification",
-)
+```json
+{
+  "task_type": "classification",
+  "label_column": "target",
+  "id_column": "sample_id"
+}
 ```
 
-The label column in the source CSV can have any name — specify it with
-`--label-column`. The converter writes it as `label` in `labels.csv`, which is
-the required column name for the folder-based format.
+`id_column` is optional. If it is absent, Agentomics generates sample IDs. In
+interactive runs, Agentomics can ask for the public dataset `label_column`; in
+non-interactive runs, add it to `metadata.json`. Hidden test CSV datasets must
+provide `label_column` in `test_datasets/<name>/metadata.json`.
 
-After conversion, run dataset preparation as usual.
-
-## Manual Dataset Preparation
-
-For more control, run preparation separately:
-
-```bash
-conda env create -f envs/environment_prepare.yaml
-conda activate agentomics-prepare-env
-
-python src/prepare_datasets.py --dataset-dir datasets/my_dataset --task-type classification
-```
-
-To prepare all datasets, include `metadata.json` in each dataset folder.
-`--task-type` is intentionally limited to single-dataset preparation because
-different datasets may have different task types.
-
-```bash
-python src/prepare_datasets.py --prepare-all
-```
-
-Key options:
-
-| Option | Description |
-|--------|-------------|
-| `--dataset-dir` | Specific dataset to prepare |
-| `--task-type` | Single-dataset `classification` or `regression` value when `metadata.json` is absent |
-| `--positive-class` | Raw label value to encode as numeric class `1` for binary classification |
-| `--negative-class` | Raw label value to encode as numeric class `0` for binary classification |
-
-Running preparation for a single dataset skips the dataset if it is already
-prepared under `prepared_datasets/`.
-
+The label column in the source CSV can have any name. During conversion it is
+written as `label` in `labels.csv`, which is the required column name for the
+folder-based format.
 
 ## Prepared Dataset Structure
 
-After preparation, datasets are stored in:
+After preparation, the same dataset directory contains numeric labels:
 
 ```text
-prepared_datasets/my_dataset/
+datasets/my_dataset/
 ├── train/
 │   ├── input/
-│   └── labels.csv
+│   └── labels.csv          # id,numeric_label
 ├── validation/
 │   ├── input/
-│   └── labels.csv
+│   └── labels.csv          # id,numeric_label
 ├── supplementary/          # Dataset-level source materials, if provided
 ├── dataset_description.md
-└── metadata.json
+└── metadata.json           # includes "prepared": true
 
-prepared_test_sets/my_dataset/
+test_datasets/my_dataset/
 └── test/
     ├── input/
-    └── labels.csv
+    └── labels.csv          # id,numeric_label
 ```
 
-Prepared `labels.csv` files contain `id,numeric_label`; raw label values are
+Prepared `labels.csv` files contain `id,numeric_label`; original label values are
 kept in `metadata.json` through `label_to_scalar`.
 
 ## Example Datasets
@@ -361,7 +334,7 @@ Check that `train/input/` exists and that `train/labels.csv` is present.
 
 ### "labels.csv is invalid"
 
-Check that raw `labels.csv` has `id` and `label` columns, no duplicate or empty
+Check that `labels.csv` has `id` and `label` columns, no duplicate or empty
 IDs, and non-empty labels.
 
 ### "metadata.json is required"
@@ -371,5 +344,5 @@ Pass `--task-type classification` or `--task-type regression`, or add a
 
 ## Next Steps
 
-- [Running the Agent](running-agent.md) - Use your prepared dataset
+- [Running the Agent](running-agent.md) - Use your dataset
 - [Understanding Outputs](outputs.md) - See what the agent produces

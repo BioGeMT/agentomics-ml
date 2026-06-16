@@ -54,10 +54,16 @@ datasets/my_dataset/
 ├── validation/         # Optional
 │   ├── input/
 │   └── labels.csv
-├── test/               # Optional hidden test set
-│   ├── input/
-│   └── labels.csv
 └── dataset_description.md
+```
+
+(Optional) Put hidden test data under the matching `test_datasets/` folder:
+
+```text
+test_datasets/my_dataset/
+└── test/
+    ├── input/
+    └── labels.csv
 ```
 
 See [Preparing Datasets](../user-guide/datasets.md) for details.

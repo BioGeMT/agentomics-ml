@@ -76,7 +76,9 @@ When a fork is set up, the following happens before the new run starts:
 
 The forked run then continues from that state exactly as if the original run had stopped there.
 
-**Note on supplementary materials**: The fork inherits `supplementary/` from the source workspace, not from the raw or prepared dataset. If you updated supplementary materials after the source run started, the fork will still use the old version. To pick up new supplementary content, re-prepare the dataset and start a fresh run instead of forking.
+**Note on supplementary materials**: Forked runs reference the same dataset directory as the source run. Any changes to dataset files (including `supplementary/`) will be visible to the fork.
+
+**Note on Docker exports**: When a Docker run is exported to `outputs/`, the split directories contain symbolic links pointing to the container-internal path `/repository/datasets/...`. These symlinks do not resolve on the host, and forked runs using local mode will be broken. When forking from a finished Docker run, make sure to use docker mode as well for the fork.  The forked container mounts `datasets/` at the same `/repository/datasets` path, so the symlinks resolve correctly inside the container.
 
 ## Example: Extend a Completed Run
 

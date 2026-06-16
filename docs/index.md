@@ -10,7 +10,7 @@
 
 ## What is Agentomics-ML?
 
-Agentomics-ML is an autonomous AI agent that develops machine learning models for omics data. Given a raw dataset, it produces:
+Agentomics-ML is an autonomous AI agent that develops machine learning models for omics data. Given a dataset, it produces:
 
 - **A trained model** ready to run inference on new data
 - **A detailed report** summarizing the model development process and evaluation metrics

@@ -15,7 +15,7 @@ Docker mode expects a `.env` file in the repo root (copy `.env.example`).
 You'll be prompted to select:
 
 1. **LLM Model** - Choose from available models
-2. **Dataset** - Select a prepared dataset
+2. **Dataset** - Select a dataset
 3. **Iterations** - Number of optimization cycles (default prompt: 5)
 
 The validation metric is not prompted interactively; pass `--val-metric` to override the task-based default (`AUROC` for classification, `MAE` for regression).
@@ -53,7 +53,7 @@ For non-interactive fresh runs, provide at least `--model` and `--dataset`. If y
 # List available models
 ./run.sh --list-models
 
-# List prepared datasets
+# List available datasets
 ./run.sh --list-datasets
 
 # List available metrics
@@ -144,7 +144,7 @@ See [Forking a Run](forking.md) for the full guide.
 
 ## What Happens During a Run
 
-1. **Dataset Preparation** - Validates data, writes training/validation inputs to `prepared_datasets/`, and separates held-out tests into `prepared_test_sets/`
+1. **Dataset Preparation** - Validates and prepares data in `datasets/` and `test_datasets/`
 2. **Iterative Development** - Agent runs exploration, training, and evaluation cycles
 3. **Snapshot Best Model** - Tracks the best-performing iteration
 4. **Final Evaluation** - Tests on held-out test set (if provided)
