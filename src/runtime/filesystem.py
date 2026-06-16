@@ -25,11 +25,15 @@ def rewrite_symlinks_to_absolute(root: Path) -> None:
             os.symlink(absolute_target, path)
 
 def validate_symlinks_targets_in(root: Path, allowed_parent: Path) -> None:
-    """Raise ValueError if any symlink under root resolves outside allowed_parent."""
-    allowed_resolved = allowed_parent.resolve()
+    """Raise ValueError if any symlink under root resolves outside allowed_parent or its symlinked contents."""
+    allowed_resolved_roots = [allowed_parent.resolve()]
+    allowed_resolved_roots.extend(
+        path.resolve() for path in allowed_parent.rglob("*") if path.is_symlink()
+    )
     bad = [
         path for path in root.rglob("*")
-        if path.is_symlink() and not path.resolve().is_relative_to(allowed_resolved)
+        if path.is_symlink()
+        and not any(path.resolve().is_relative_to(allowed) for allowed in allowed_resolved_roots)
     ]
     if bad:
         relative = [str(p.relative_to(root)) for p in bad[:10]]
