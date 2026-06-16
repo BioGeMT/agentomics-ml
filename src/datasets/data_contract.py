@@ -97,6 +97,17 @@ def _validate_split_folder(
     validate_and_read_labels(labels_path, NUMERIC_LABEL_COLUMN_NAME, require_numeric_values=True)
     _validate_input_structure(input_path, expected_input_structure)
 
+def _format_input_structure_mismatch(input_dir: Path, entries: list[str]) -> list[str]:
+    formatted_entries = []
+    for entry in entries[:10]:
+        path = input_dir / entry.rstrip("/")
+        if path.is_symlink():
+            formatted_entries.append(f"{entry} (symlink -> {path.readlink()})")
+        else:
+            formatted_entries.append(entry)
+    return formatted_entries
+
+
 def _validate_input_structure(input_dir: Path, expected_structure: list[str]) -> None:
     actual = record_input_dir_structure(input_dir)
     if actual == expected_structure:
@@ -106,7 +117,8 @@ def _validate_input_structure(input_dir: Path, expected_structure: list[str]) ->
 
     raise ValueError(
         f"Input structure doesn't match the recorded train/input/ structure: {input_dir}. "
-        f"Missing: {missing[:10]}; Extra: {extra[:10]} "
+        f"Missing: {_format_input_structure_mismatch(input_dir, missing)}; "
+        f"Extra: {_format_input_structure_mismatch(input_dir, extra)} "
         "(showing up to 10 missing/extra entries)"
     )
 

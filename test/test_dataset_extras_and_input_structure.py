@@ -67,6 +67,26 @@ class RecordInputStructureTest(unittest.TestCase):
             expected = record_input_dir_structure(train_input)
             _validate_input_structure(validation_input, expected)
 
+    def test_accepts_symlinked_files_inside_matching_top_level_directory(self):
+        with TemporaryDirectory() as tmp:
+            source_audio = Path(tmp) / "source" / "audio"
+            source_audio.mkdir(parents=True)
+            (source_audio / "train.wav").write_text("train audio")
+            (source_audio / "validation.wav").write_text("validation audio")
+
+            train_input = Path(tmp) / "train_input"
+            train_audio = train_input / "audio"
+            train_audio.mkdir(parents=True)
+            (train_audio / "train.wav").symlink_to(source_audio / "train.wav")
+
+            validation_input = Path(tmp) / "validation_input"
+            validation_audio = validation_input / "audio"
+            validation_audio.mkdir(parents=True)
+            (validation_audio / "validation.wav").symlink_to(source_audio / "validation.wav")
+
+            expected = record_input_dir_structure(train_input)
+            _validate_input_structure(validation_input, expected)
+
     def test_distinguishes_file_from_empty_dir_with_same_name(self):
         with TemporaryDirectory() as tmp:
             file_root = Path(tmp) / "file_variant"
