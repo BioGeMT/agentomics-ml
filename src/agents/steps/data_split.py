@@ -24,6 +24,7 @@ from runtime.step_outputs import load_step_output
 from run_logging.logging_helpers import log_split_is_allowed
 from datasets.data_contract import (
     ID_COLUMN_NAME,
+    INPUT_DIR_NAME,
     LABELS_FILE_NAME,
     METADATA_FILE_NAME,
     MINI_TRAIN_SPLIT,
@@ -242,8 +243,9 @@ class DataSplitStep(AgenticStep):
         train_split_path = self.config.agent_dataset_dir / TRAIN_SPLIT
         return f"""
             Your next task: Split the training dataset ({train_split_path}) into '{TRAIN_SPLIT}', '{VALIDATION_SPLIT}', and '{MINI_TRAIN_SPLIT}' folders.
-            Each split folder must contain an input/ folder with the data files and a labels.csv file.
-            Each split's input/ must contain only the data that corresponds to the ids in that split's labels.csv file. Do not copy the full training /input files for ids that are not in the split's labels.csv file.
+            Each split folder must contain an {INPUT_DIR_NAME}/ folder with the data files and a {LABELS_FILE_NAME} file.
+            Each split's {INPUT_DIR_NAME}/ must contain only data for ids in that split's {LABELS_FILE_NAME}. If an input file contains multiple samples, write a filtered copy for each split; do not reuse an unfiltered shared file across splits.
+            Train and validation {LABELS_FILE_NAME} files must contain disjoint ids. mini_train {LABELS_FILE_NAME} must contain only ids that are present in train {LABELS_FILE_NAME}.
             Preserve the original ID scheme: each id in labels.csv must refer to the same data in input/ as it did in the original data.
             The input/ interface must match the original train/input/ interface.
 
