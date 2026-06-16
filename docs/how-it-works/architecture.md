@@ -167,7 +167,6 @@ Iteration 1-N (Refinement)
 
 Final
 ├── Select best iteration
-├── Evaluate on test set
 └── Generate reports
 ```
 
@@ -178,7 +177,7 @@ The agent tracks the best-performing iteration:
 - After each iteration, metrics are compared
 - If better than previous best, a snapshot is saved
 - Snapshots include model, scripts, and environment
-- Final evaluation uses the best snapshot
+- The best snapshot is exported to `best_iteration_snapshot/` for inference and re-training
 
 ## Configuration
 

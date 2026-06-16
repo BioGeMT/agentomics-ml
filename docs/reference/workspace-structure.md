@@ -2,7 +2,12 @@
 
 How Agentomics-ML organizes files during and after execution.
 
-## Directory Overview
+A run's files live in a single workspace directory:
+
+- **Local mode:** `outputs/<agent_id>/`
+- **Docker mode:** the host directory you mount at `/workspace`
+
+## Repository Layout
 
 ```text
 agentomics-ml/
@@ -17,8 +22,6 @@ agentomics-ml/
 ├── extras/                   # Logs and extra artifacts
 └── fallbacks/                # Reserved recovery area
 ```
-
-Docker mode uses an internal temporary workspace volume with the same layout and copies it to `outputs/<agent_id>/` when the run ends.
 
 ## datasets/
 
@@ -200,15 +203,31 @@ outputs/<agent_id>/
 ├── reports/
 │   ├── markdown/
 │   │   ├── run_report_iter_0.md
-│   │   ├── run_report_iter_1.md
 │   │   └── ...
 │   └── pdf/
 │       ├── iteration_0.pdf
-│       ├── iteration_1.pdf
 │       └── plots/
-├── extras/                   # Additional files and logs
-└── README.md                 # Run summary
+├── extras/                     # Logs and auxiliary artifacts
+├── fallbacks/                  # Reserved recovery area (often empty)
+└── README.md                   # Run summary
 ```
+
+### run/
+
+The working directory. `shared/` holds the run config, the shared conda
+environment, the prepared dataset copy, and the train/validation splits.
+`current_iteration/` is the active iteration while the run is in progress;
+completed iterations are archived as `iteration_N/`.
+
+### best_iteration_snapshot/
+
+The best iteration's exported model, scripts, and environment — updated whenever
+a new best iteration is achieved. Use it for inference and re-training.
+
+### reports/ and extras/
+
+Per-iteration markdown and PDF reports, plus logs and auxiliary artifacts,
+written directly to the workspace as the run progresses.
 
 ## File Notes
 
@@ -219,36 +238,20 @@ per-run details.
 
 ## Cleanup
 
-### Remove Specific Run
-
 ```bash
+# Remove a specific run
 rm -rf outputs/<agent_id>
+
+# Clean everything
+rm -rf outputs/* prepared_datasets/*
 ```
 
-### Clean Workspace
+## Docker Mode
 
-```bash
-rm -rf ../workspace/runs/<agent_id>
-```
-
-### Clean Everything
-
-```bash
-rm -rf outputs/*
-rm -rf ../workspace/*
-rm -rf datasets/*
-rm -rf test_datasets/*
-```
-
-## Docker Volumes
-
-In Docker mode, workspace is mounted as a volume:
-
-- Code repository: read-only
-- Workspace: Read-write
-- Outputs: Read-write
-
-This isolates agent execution from the host system.
+The repository is baked into the image; you mount your datasets at
+`/repository/datasets` and a host directory at `/workspace` to receive the run's
+output. The agent runs entirely inside the container, isolating execution from
+the host. See [Installation](../getting-started/installation.md).
 
 ## Related
 

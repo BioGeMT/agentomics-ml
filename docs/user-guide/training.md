@@ -1,110 +1,119 @@
 # Re-training Models
 
-After the agent completes a run, you can re-train the model with new data using the `scripts/train.sh` script.
+After the agent completes a run, you can re-train its model on new data using
+`scripts/train.sh`. The script reuses the run's training script and conda
+environment, so the model and preprocessing stay identical — only the data
+changes.
 
 ## When to Use
 
 - Train on updated or expanded datasets
-- Fine-tune with additional samples
-- Reproduce training with different data splits
+- Refit the same model on a new split
+
+## Requirements
+
+- A completed agent output directory (a finished `outputs/<agent_id>` run)
+- [Docker](https://docs.docker.com/get-docker/) **or** [Conda](https://docs.conda.io/en/latest/miniconda.html)
 
 ## Basic Usage
 
 ```bash
 ./scripts/train.sh \
   --agent-dir outputs/<agent_id> \
-  --train-data /path/to/train \
-  --validation-data /path/to/validation \
-  --artifacts-dir /path/to/output_artifacts
+  --train-data /path/to/new_train.csv \
+  --validation-data /path/to/new_validation.csv \
+  --artifacts-dir /path/to/output_artifacts \
+  --label-col label
 ```
 
-## Required Arguments
+## Arguments
+
+### Required
 
 | Argument | Description |
 |----------|-------------|
-| `--agent-dir` | Path to completed agent output folder |
-| `--train-data` | Path to a training split folder with `input/` and `labels.csv` |
-| `--validation-data` | Path to a validation split folder with `input/` and `labels.csv` |
-| `--artifacts-dir` | Where to save new training artifacts |
+| `--agent-dir` | Completed agent output folder |
+| `--train-data` | New training CSV — raw, including the label column |
+| `--validation-data` | New validation CSV — raw, including the label column |
+| `--artifacts-dir` | Where to write the new training artifacts |
+| `--label-col` | Name of the label column in `--train-data`/`--validation-data` |
 
-## Optional Arguments
+### Optional
 
 | Argument | Description |
 |----------|-------------|
+| `--code-path` | Code directory to use, relative to `--agent-dir` (default: `best_iteration_snapshot`) |
 | `--cpu-only` | Run without GPU |
-| `--local` | Run locally without Docker |
 | `--help` | Show help message |
 
-## Example
+## Docker Mode
+
+To re-train inside the container, override the image entrypoint to run
+`train.sh`, and mount the run and your new data. Writing artifacts into the
+already-mounted run directory avoids a separate output mount:
 
 ```bash
-# Re-train using new data
-./scripts/train.sh \
-  --agent-dir outputs/enchanted_fixing_reigned \
-  --train-data datasets/updated_data/train \
-  --validation-data datasets/updated_data/validation \
-  --artifacts-dir outputs/retrained_model
+docker run --rm --gpus all \
+  -v "$(pwd)/outputs/my_run_1:/agent" \
+  -v "$(pwd)/new_data:/data:ro" \
+  -e HOST_UID=$(id -u) -e HOST_GID=$(id -g) \
+  --entrypoint /repository/scripts/train.sh \
+  biogemt/agentomics:latest \
+  --agent-dir /agent \
+  --train-data /data/train.csv \
+  --validation-data /data/validation.csv \
+  --artifacts-dir /agent/retrained_artifacts \
+  --label-col label
 ```
+
+The retrained artifacts appear under `outputs/my_run_1/retrained_artifacts/`.
+Drop `--gpus all` (or add `--cpu-only` after the image) to train on CPU. No API
+key is needed — re-training does not call an LLM.
 
 ## How It Works
 
-The script:
-
-1. Loads the agent's `model_training/train.py` script from `best_iteration_snapshot/`
-2. Uses the agent's conda environment
-3. Runs training with the new data
-4. Saves artifacts to the specified directory
+1. Converts your raw `--train-data`/`--validation-data` into the prepared format
+   (`id` + `numeric_label`) the training script expects, using the run's own
+   label mapping.
+2. Reuses the model's conda environment under the code path's `.conda/envs/`,
+   recreating it from `environment.yml` if it's missing.
+3. Runs the run's `model_training/train.py` on the converted data.
+4. Writes artifacts to `--artifacts-dir` and prints a summary.
 
 ## Data Format
 
-Your new split folders must match the format expected by the agent's training script:
+Provide raw CSVs that contain:
 
-- Same `input/` structure as the original training data
-- `labels.csv` with `id` and `numeric_label`
-- Matching IDs between input files and labels
+- The same feature columns as the original training data
+- A label column, whose name you pass via `--label-col`
+
+Label values are mapped to the run's numeric labels automatically, so your
+labels must match the classes the run was trained on — you don't need to encode
+them yourself.
+
+## GPU Support
+
+GPU is used automatically if available. Disable it with `--cpu-only` (local), or
+by omitting `--gpus` (Docker).
 
 ## Output
-
-After training completes, you'll find:
 
 ```
 artifacts_dir/
 ├── ...                 # Artifacts produced by train.py
 ```
 
-## Docker vs Local Mode
-
-By default, training runs in Docker for isolation. Use `--local` for direct execution:
-
-```bash
-# Docker mode (default)
-./scripts/train.sh --agent-dir outputs/my_agent ...
-
-# Local mode
-./scripts/train.sh --local --agent-dir outputs/my_agent ...
-```
-
-## GPU Support
-
-GPU is used automatically if available. To disable:
-
-```bash
-./scripts/train.sh --cpu-only --agent-dir outputs/my_agent ...
-```
-
 ## Troubleshooting
 
-### "Docker image not found"
+### "environment.yml not found"
 
-The script first looks for a local `agentomics_img`, then for the matching pre-built Docker Hub image, and builds locally if needed. Use `--local` to avoid Docker.
-
-### "Agent directory not found"
-
-Ensure the path points to a completed agent output in `outputs/`.
+The code path must contain `environment.yml` (or `runtime_info/environment.yml`).
+Check that the run completed and produced a model.
 
 ### "Column mismatch"
 
-Your new data must have the same column structure as the original training data.
+New data must have the same feature columns and label classes as the original
+training data.
 
 ## Next Steps
 

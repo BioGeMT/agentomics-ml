@@ -77,23 +77,23 @@ GPU is detected and used automatically.
 
 Disables GPU even if available.
 
-### Specific GPUs (Local Mode Only)
+### Specific GPUs (Local Mode)
 
 In local mode, you can use `CUDA_VISIBLE_DEVICES`:
 
 ```bash
 # Use only GPU 0
-CUDA_VISIBLE_DEVICES=0 ./run.sh --local
+CUDA_VISIBLE_DEVICES=0 ./run.sh
 
 # Use GPUs 0 and 1
-CUDA_VISIBLE_DEVICES=0,1 ./run.sh --local
+CUDA_VISIBLE_DEVICES=0,1 ./run.sh
 
 # Use no GPU (equivalent to --cpu-only)
-CUDA_VISIBLE_DEVICES="" ./run.sh --local
+CUDA_VISIBLE_DEVICES="" ./run.sh
 ```
 
-In Docker mode, Agentomics uses all available GPUs and does not expose a flag
-to select a subset.
+In Docker mode, control GPU access with the `--gpus` flag on the `docker run`
+command (see [Docker GPU Flags](#docker-gpu-flags) below).
 
 ## GPU Memory
 
@@ -119,15 +119,14 @@ If you encounter OOM errors:
 Agentomics-ML supports multi-GPU training:
 
 - Agent-generated scripts may use DataParallel or DistributedDataParallel
-- All available GPUs are passed to containers by default
-
-To limit GPUs in local mode:
+- In local mode, all visible GPUs are available; limit them with `CUDA_VISIBLE_DEVICES`
+- In Docker mode, the GPUs you expose with `--gpus` are available
 
 ```bash
-CUDA_VISIBLE_DEVICES=0,1 ./run.sh --local  # Use only first 2 GPUs
+CUDA_VISIBLE_DEVICES=0,1 ./run.sh  # Local mode: use only the first 2 GPUs
 ```
 
-In Docker mode, Agentomics passes all available GPUs to the container; selecting a subset requires running Docker manually with custom GPU flags.
+In Docker mode, select GPUs with the `--gpus` flag on `docker run` (see below).
 
 ## Docker GPU Flags
 

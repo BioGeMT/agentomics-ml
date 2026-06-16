@@ -2,6 +2,8 @@
 
 Complete reference for `run.sh` command-line options.
 
+In Docker mode, pass these after the image name (`docker run ... biogemt/agentomics:latest <options>`); in local mode, after `./run.sh`. See [Installation](../getting-started/installation.md).
+
 ## Basic Options
 
 | Option | Description | Default |
@@ -18,16 +20,14 @@ Complete reference for `run.sh` command-line options.
 
 The run stops when either the iteration count is reached or the timeout expires.
 
-## Deployment Options
+## Execution Options
 
 | Option | Description |
 |--------|-------------|
-| `--build-images` | Build Docker images locally |
-| `--local` | Run without Docker (uses conda) |
 | `--cpu-only` | Disable GPU acceleration |
-| `--ollama` | Enable Docker host networking for a host Ollama server |
-| `--test` | Run the integrated test suite in Docker mode |
-| `--all-iterations-test` | Evaluate every archived iteration on the held-out test set after the run |
+| `--test` | Run the integrated test suite |
+
+For Docker vs local mode and Ollama setup, see [Installation](../getting-started/installation.md).
 
 ## Listing Options
 
@@ -69,50 +69,38 @@ See [Forking a Run](../user-guide/forking.md) for a full guide and examples.
 ### Basic Run
 
 ```bash
-./run.sh --model openai/gpt-4 --dataset breast_cancer --iterations 10
+./run.sh --model openai/gpt-5.1-codex-max --dataset breast_cancer --iterations 10
 ```
 
-### Quick Start with Pre-built Images
+### Interactive Run
 
 ```bash
 ./run.sh
 ```
 
-### Local Mode
-
-```bash
-./run.sh --local --model openai/gpt-4 --dataset my_data
-```
-
 ### With Time Limit
 
 ```bash
-./run.sh --timeout 3600 --model openai/gpt-4 --dataset my_data
+./run.sh --timeout 3600 --model openai/gpt-5.1-codex-max --dataset my_data
 ```
 
 ### Custom Optimization Goal
 
 ```bash
-./run.sh --user-prompt "Focus on interpretable models only" --model openai/gpt-4
+./run.sh --user-prompt "Focus on interpretable models only" --model openai/gpt-5.1-codex-max
 ```
 
 ### Using Ollama
 
 ```bash
 export OLLAMA_BASE_URL=http://localhost:11434/v1
-./run.sh --ollama --provider ollama --model llama3.1 --dataset my_data
+./run.sh --provider ollama --model llama3.1 --dataset my_data
 ```
 
 ### CPU Only
 
 ```bash
-./run.sh --cpu-only --model openai/gpt-4 --dataset my_data
-```
-
-### Run with locally built Docker images
-
-```bash
-./run.sh --build-images 
+./run.sh --cpu-only --model openai/gpt-5.1-codex-max --dataset my_data
 ```
 
 ## Validation Metrics

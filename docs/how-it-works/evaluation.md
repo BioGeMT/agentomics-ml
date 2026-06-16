@@ -11,7 +11,6 @@ Models are evaluated at multiple stages:
 | **Dry Run** | Prepared training data without labels | Validate inference script shape and metrics compatibility |
 | **Validation** | Validation set | Guide optimization |
 | **Train** | Training set | Detect overfitting |
-| **Test** | Hidden test set | Final unbiased evaluation |
 
 ## Validation Evaluation
 
@@ -22,18 +21,12 @@ After each iteration:
 3. Compared to previous iterations
 4. Best iteration snapshot updated if improved
 
-## Test Evaluation
+## Evaluating on a Held-out Test Set
 
-At the end of the run:
-
-1. Best iteration's model is loaded
-2. Predictions made on test set (never seen during training)
-3. Final metrics reported
-4. Results saved to final report
-
-!!! note
-    Test evaluation only occurs if you provide a `test/` split with `input/`
-    and `labels.csv`.
+Test evaluation is not performed automatically during a run. To score the
+finished model on a labeled held-out set, run inference with `--label-col` after
+the run — metrics are computed by the bundled evaluator and written next to the
+predictions. See [Running Inference](../user-guide/inference.md#computing-metrics).
 
 ## Classification Metrics
 
@@ -154,7 +147,6 @@ outputs/<agent_id>/reports/pdf/iteration_N.pdf
 Contains:
 - All iteration metrics
 - Best iteration details
-- Test set results
 - Metric comparisons
 
 ### In W&B

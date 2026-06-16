@@ -41,8 +41,7 @@ Choose the setup that works best for you:
 
 | Mode | Description | Best For |
 |------|-------------|----------|
-| [Docker + Pull Images](getting-started/installation.md#docker-with-pre-built-images) | Fastest setup - pulls pre-built images | Getting started quickly |
-| [Docker + Local Build](getting-started/installation.md#docker-with-local-build) | Build images locally | Custom modifications |
+| [Docker](getting-started/installation.md#docker-mode) | Run the pre-built image; everything runs in the container | Recommended default |
 | [Local Mode](getting-started/installation.md#local-mode-no-docker) | No Docker, uses conda directly | Development, Google Colab |
 | [Local LLMs](configuration/providers.md#ollama-local-models) | Run with Ollama | Privacy, offline use |
 
@@ -57,14 +56,13 @@ Choose the setup that works best for you:
 ## Quick Example
 
 ```bash
-# Set your API key
+# Local mode: set your API key and run with conda
 export OPENROUTER_API_KEY="your-key-here"
 
-# Run the agent (pulls Docker images automatically)
 ./run.sh
 ```
 
-The agent will guide you through selecting a model, dataset, and run parameters interactively.
+The agent will guide you through selecting a model, dataset, and run parameters interactively. To run in a container instead, see [Docker mode](getting-started/installation.md#docker-mode).
 
 ## Try It Now
 

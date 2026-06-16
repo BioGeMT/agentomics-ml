@@ -1,68 +1,77 @@
 # Installation
 
-Agentomics-ML supports multiple deployment options. Choose the one that best fits your needs.
+Agentomics-ML runs in two modes:
 
-## Prerequisites
+- **Docker mode (recommended)** — run the pre-built image. Everything (conda
+  environments, dataset preparation, the agent) runs inside the container.
+- **Local mode** — run `./run.sh` directly on your machine with Conda.
 
-All installation methods require:
+## Docker Mode
+
+### Requirements
+
+- [Docker](https://docs.docker.com/get-docker/) installed and running
+
+### Setup
+
+The repository is baked into the image, so no clone is needed — only a `.env`
+file with your API key, a folder with your dataset, and an output directory:
+
+```bash
+# .env with at least one provider key, e.g.:
+# OPENROUTER_API_KEY=...
+
+mkdir -p outputs/my_run_1
+
+docker run --rm -it \
+  --env-file .env \
+  -v "$(pwd)/datasets:/repository/datasets" \
+  -v "$(pwd)/outputs/my_run_1:/workspace" \
+  -e HOST_UID=$(id -u) -e HOST_GID=$(id -g) \
+  biogemt/agentomics:latest \
+  --dataset my_dataset
+```
+
+Everything after the image name is passed to `run.sh`. With no run arguments,
+the run is interactive, prompting for model, dataset, and iterations.
+
+!!! note "One run per output mount"
+    `/workspace` holds the contents of a **single** run
+    (`best_iteration_snapshot/`, `run/`, `reports/`, ...) — not an `outputs/`
+    parent. Mount a fresh, empty directory for each run (e.g.
+    `outputs/my_run_2`) so runs don't overwrite each other. This differs from
+    local mode, where runs are auto-organized under `outputs/<agent_id>/`.
+
+- `-v ...:/repository/datasets` makes your datasets visible to the agent. Select
+  one with `--dataset <name>`.
+- `-v ...:/workspace` is where this run's results are written. After the run,
+  find them in the mounted host directory (`./outputs/my_run_1`).
+- `HOST_UID`/`HOST_GID` make the output files owned by you instead of root.
+- For GPU runs, add `--gpus all` (see [GPU Settings](../developer/gpu-settings.md)).
+- For the `codex` provider, also mount your codex auth:
+  `-v ~/.codex:/mnt/codex-host:ro`.
+
+### Building the image yourself
 
 ```bash
 git clone https://github.com/BioGeMT/Agentomics-ML.git
 cd Agentomics-ML
+docker build -t agentomics .
 ```
 
-## Docker with Pre-built Images
-
-**Default mode** - Downloads pre-built images from Docker Hub.
-
-### Requirements
-
-- [Docker](https://docs.docker.com/get-docker/) installed and running
-
-### Setup
-
-```bash
-# Create a .env file (required for Docker mode)
-cp .env.example .env
-# Edit .env and set at least one provider key
-
-# Run with pre-built images
-./run.sh
-```
-
-The images will be downloaded automatically on first run. All subsequent runs will use the cached images.
-
----
-
-## Docker with Local Build
-
-**Alternative mode** - Builds Docker images locally.
-
-### Requirements
-
-- [Docker](https://docs.docker.com/get-docker/) installed and running
-
-### Setup
-
-```bash
-# Create a .env file (required for Docker mode)
-cp .env.example .env
-# Edit .env and set at least one provider key
-
-# Run while building images locally
-./run.sh --build-images
-```
-
-With `--build-images`, the Docker images are built locally before the run starts. This takes a few minutes but only needs to be repeated when dependencies or Dockerfiles change.
+Then use `agentomics` in place of `biogemt/agentomics:latest` above.
 
 ---
 
 ## Local Mode (No Docker)
 
-**For development or Google Colab** - Runs directly with conda.
+Runs `run.sh` directly with Conda. Environments are created automatically on
+first run, and results are organized under `outputs/<agent_id>/`.
 
 !!! warning "Security Notice"
-    Local mode executes code without containerization. Only use in secure environments like Google Colab or your own isolated container.
+    In local mode, agent-generated code executes directly on your machine.
+    Prefer Docker mode unless you are in an already-isolated environment
+    (e.g., a container or Google Colab).
 
 ### Requirements
 
@@ -71,14 +80,15 @@ With `--build-images`, the Docker images are built locally before the run starts
 ### Setup
 
 ```bash
-# Set your API key (export or .env)
+git clone https://github.com/BioGeMT/Agentomics-ML.git
+cd Agentomics-ML
+
+# Set your API key: export it, or put it in a .env file in the repo root
+# (loaded automatically)
 export OPENROUTER_API_KEY="your-key-here"
 
-# Run in local mode
-./run.sh --local
+./run.sh
 ```
-
-Conda environments will be created automatically.
 
 ---
 
@@ -88,7 +98,7 @@ The easiest way to try Agentomics-ML without any local setup.
 
 [:material-google: Open in Google Colab](https://colab.research.google.com/drive/1rxsGsIwxrE49E4rjzNh920s66UdG34xF?usp=sharing){ .md-button .md-button--primary }
 
-The Colab notebook uses local mode automatically.
+The Colab notebook runs Agentomics-ML in local mode.
 
 ---
 
@@ -98,55 +108,50 @@ Run with local models using Ollama for privacy or offline use.
 
 ### Requirements
 
-- [Ollama](https://ollama.ai/) installed and running
-- Docker (recommended) or conda
+- [Ollama](https://ollama.ai/) installed and running on the host
 
-### Docker Mode Setup
-
-1. Ensure Ollama is running on the host.
-2. Make the Ollama provider selectable and choose it explicitly:
-
-    ```bash
-    export OLLAMA_BASE_URL=http://localhost:11434/v1
-    ./run.sh --ollama --provider ollama --model <ollama-model> --dataset <dataset>
-    ```
-
-Docker mode connects to the URL configured in `src/utils/providers/configured_providers.yaml`
-(default: `http://localhost:11434/v1`) and uses host networking when `--ollama` is passed.
-
-### Local Mode Setup
-
-For local mode, set the Ollama base URL in `src/utils/providers/configured_providers.yaml`
-to `http://localhost:11434/v1`, then run:
+### Local Mode
 
 ```bash
 export OLLAMA_BASE_URL=http://localhost:11434/v1
-./run.sh --local --provider ollama --model <ollama-model> --dataset <dataset>
+./run.sh --provider ollama --model <ollama-model> --dataset <dataset>
+```
+
+### Docker Mode
+
+Add `--network host` so the container can reach the Ollama server on the host:
+
+```bash
+docker run --rm -it --network host \
+  --env-file .env \
+  -e OLLAMA_BASE_URL=http://localhost:11434/v1 \
+  -v "$(pwd)/datasets:/repository/datasets" \
+  -v "$(pwd)/outputs/my_run_1:/workspace" \
+  biogemt/agentomics:latest \
+  --provider ollama --model <ollama-model> --dataset <dataset>
 ```
 
 ---
 
 ## CPU-Only Mode
 
-Disable GPU acceleration:
+Disable GPU acceleration with `--cpu-only` (works in both modes):
 
 ```bash
 ./run.sh --cpu-only
 ```
 
-Works with both Docker and local modes.
+In Docker mode, simply omitting `--gpus` also keeps the run on CPU.
 
 ---
 
 ## Comparison Table
 
-| Mode | Docker Required | Build Time | Security | Best For |
-|------|-----------------|------------|----------|----------|
-| Docker + Pull Images | Yes | None | High | Quick start |
-| Docker + Local Build | Yes | ~5-10 min | High | Custom builds |
-| Local Mode | No | ~2 min | Low | Development, Colab |
-| Google Colab | No | None | Medium | Trying it out |
-| Ollama | Depends | Varies | High | Privacy, offline |
+| Mode | Requirements | Isolation | Best For |
+|------|--------------|-----------|----------|
+| Docker | Docker | High | Recommended default |
+| Local | Conda | None | Development, already-isolated machines |
+| Google Colab | Browser | Colab VM | Trying it out |
 
 ## Next Steps
 

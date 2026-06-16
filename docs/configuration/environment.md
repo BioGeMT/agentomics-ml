@@ -20,7 +20,9 @@ cp .env.example .env
 # Edit .env with your values
 ```
 
-Docker mode expects a `.env` file to exist, even if you export variables in your shell.
+In Docker mode, env vars are not auto-loaded from a file — pass them to
+`docker run` with `--env-file .env` or `-e VAR=value`. In local mode, a `.env`
+file in the repo root is loaded automatically.
 
 ## LLM Provider Keys
 
@@ -93,8 +95,11 @@ See [Proxy Settings](../developer/proxy-settings.md) for Docker proxy configurat
 
 ## Ollama Configuration
 
-Ollama uses the base URL defined in `src/utils/providers/configured_providers.yaml`.
-Edit the `Ollama` provider entry to point to your Ollama server.
+Set `OLLAMA_BASE_URL` to make the Ollama provider selectable (e.g.
+`http://localhost:11434/v1`). The actual server URL is read from the `Ollama`
+entry's `base_url` in `src/utils/providers/configured_providers.yaml` — if your
+Ollama server is not at the default `http://localhost:11434/v1`, edit that entry
+to match.
 
 ## GPU Configuration
 
@@ -130,8 +135,8 @@ WANDB_ENTITY=my-team
 # HTTPS_PROXY=http://proxy.company.com:8080
 # NO_PROXY=localhost,127.0.0.1
 
-# Ollama (optional)
-# Configure in src/utils/providers/configured_providers.yaml
+# Ollama (optional) — enables the Ollama provider; set the server URL in
+# src/utils/providers/configured_providers.yaml if it differs from the default
 # OLLAMA_BASE_URL=http://localhost:11434/v1
 ```
 

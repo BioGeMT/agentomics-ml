@@ -80,16 +80,17 @@ docker build \
 
 ## Running with Proxy
 
-The `run.sh` script automatically passes proxy settings to containers.
-
-If running manually:
+In Docker mode, pass proxy settings to the container with `-e`:
 
 ```bash
-docker run \
+docker run --rm \
   -e HTTP_PROXY=$HTTP_PROXY \
   -e HTTPS_PROXY=$HTTPS_PROXY \
   -e NO_PROXY=$NO_PROXY \
-  agentomics_img
+  --env-file .env \
+  -v "$(pwd)/datasets:/repository/datasets" \
+  -v "$(pwd)/outputs/my_run_1:/workspace" \
+  biogemt/agentomics:latest --dataset my_dataset
 ```
 
 ## Checking Proxy Variables
@@ -161,7 +162,7 @@ Add to `NO_PROXY` if these should bypass the proxy.
 
 ## Local Mode
 
-In local mode (`--local`), proxy settings are inherited from your shell environment automatically.
+In local mode, proxy settings are inherited from your shell environment automatically.
 
 ## Related
 

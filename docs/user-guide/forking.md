@@ -10,14 +10,34 @@ Forking lets you branch off from a completed checkpoint in an existing run and c
 
 ## Basic Usage
 
+In local mode, point `--fork-from-run` at an `outputs/<run_id>` directory:
+
 ```bash
 ./run.sh \
   --fork-from-run outputs/my_source_run \
-  --model openai/gpt-4 \
+  --model openai/gpt-5.1-codex-max \
   --iterations 3
 ```
 
-Point `--fork-from-run` at an `outputs/<run_id>` directory. The fork starts from the latest checkpoint in that run and continues for 3 more iterations.
+The fork starts from the latest checkpoint in that run and continues for 3 more iterations.
+
+### Forking in Docker Mode
+
+In Docker mode, `--fork-from-run` must point to a path **inside the container**.
+Mount the source run read-only and give the fork its own fresh output mount:
+
+```bash
+mkdir -p outputs/fork_1
+
+docker run --rm -it \
+  --env-file .env \
+  -v "$(pwd)/datasets:/repository/datasets" \
+  -v "$(pwd)/outputs/my_source_run:/source_run:ro" \
+  -v "$(pwd)/outputs/fork_1:/workspace" \
+  -e HOST_UID=$(id -u) -e HOST_GID=$(id -g) \
+  biogemt/agentomics:latest \
+  --fork-from-run /source_run --iterations 3
+```
 
 ## Choosing a Checkpoint
 

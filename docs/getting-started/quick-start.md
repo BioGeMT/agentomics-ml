@@ -1,6 +1,7 @@
 # Quick Start
 
-Get Agentomics-ML running in under 5 minutes using pre-built Docker images.
+Get Agentomics-ML running in a few minutes with the pre-built Docker image. For
+a Conda-based setup, see [Local mode](installation.md#local-mode-no-docker).
 
 ## Prerequisites
 
@@ -9,16 +10,20 @@ Get Agentomics-ML running in under 5 minutes using pre-built Docker images.
 
 ## Steps
 
-### 1. Clone the Repository
+### 1. Get the Repository and an Example Dataset
+
+Clone the repo and download a single example dataset to try
+(`AGO2_CLASH_Hejret2023`). The download script creates a small conda
+environment and writes the data to `datasets/`:
 
 ```bash
 git clone https://github.com/BioGeMT/Agentomics-ML.git
 cd Agentomics-ML
+
+./scripts/download_example_dataset.sh --dataset AGO2_CLASH_Hejret2023
 ```
 
-### 2. Create a .env File and Set a Key
-
-Docker mode requires a `.env` file in the repo root.
+### 2. Set a Provider Key
 
 ```bash
 cp .env.example .env
@@ -28,19 +33,24 @@ cp .env.example .env
 
 ### 3. Run the Agent
 
+Mount your `datasets/` folder and a fresh directory for this run's results:
+
 ```bash
-./run.sh
+mkdir -p outputs/my_run_1
+
+docker run --rm -it \
+  --env-file .env \
+  -v "$(pwd)/datasets:/repository/datasets" \
+  -v "$(pwd)/outputs/my_run_1:/workspace" \
+  -e HOST_UID=$(id -u) -e HOST_GID=$(id -g) \
+  biogemt/agentomics:latest \
+  --dataset AGO2_CLASH_Hejret2023
 ```
 
-### 4. Follow the Interactive Prompts
+Drop `--dataset AGO2_CLASH_Hejret2023` to pick a model,
+dataset, and iteration count interactively instead.
 
-The agent will prompt you to:
-
-1. **Select a model** - Choose from available LLMs
-2. **Select a dataset** - Use your own or download examples
-3. **Configure iterations** - How many optimization cycles to run
-
-The validation metric defaults to `AUROC` for classification and `MAE` for regression. To choose one explicitly, pass `--val-metric`; see `./run.sh --list-metrics`.
+The validation metric defaults to `AUROC` for classification and `MAE` for regression. To choose one explicitly, pass `--val-metric`; list options with `--list-metrics` in place of the run arguments.
 
 ## Using Your Own Dataset
 
@@ -66,6 +76,7 @@ test_datasets/my_dataset/
     └── labels.csv
 ```
 
+The `datasets/` mount above already exposes it; run with `--dataset my_dataset`.
 See [Preparing Datasets](../user-guide/datasets.md) for details.
 
 ## Example Datasets
@@ -88,12 +99,12 @@ The agent will:
 
 1. Prepare your dataset
 2. Run iterative ML development cycles
-3. Save the best model to `outputs/<agent_id>/`
+3. Save the best model to the mounted output directory (`outputs/my_run_1/`)
 
-Results include trained models, inference scripts, markdown reports in `outputs/<agent_id>/reports/markdown/`, and PDF reports in `outputs/<agent_id>/reports/pdf/`.
+Results include trained models, inference scripts, markdown reports in `reports/markdown/`, and PDF reports in `reports/pdf/`.
 
 ## Next Steps
 
-- [Installation Options](installation.md) - Docker build, local mode, Ollama
+- [Installation Options](installation.md) - Docker mode, local mode, Ollama
 - [Running the Agent](../user-guide/running-agent.md) - Advanced usage
 - [CLI Options](../configuration/cli-options.md) - All available flags
