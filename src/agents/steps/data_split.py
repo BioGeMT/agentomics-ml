@@ -12,7 +12,12 @@ from pydantic.json_schema import SkipJsonSchema
 from pydantic_ai import Agent, ModelRetry, RunContext
 
 from agents.steps.base import AgenticStep, AgenticStepOutput
-from runtime.filesystem import chown_tree_to_root, copy_path_overwriting_target
+from runtime.filesystem import (
+    chown_tree_to_root,
+    create_absolute_symlink,
+    rewrite_symlinks_to_absolute,
+    validate_symlinks_targets_in,
+)
 from utils.task_types import TaskTypes
 from runtime.read_write_utils import (
     get_last_successful_iteration,
@@ -106,6 +111,25 @@ class DataSplitStep(AgenticStep):
                 f"got {len(mini_train_df)}."
             )
 
+    def _raise_on_unnecessary_copies(self, split_path: Path) -> None:
+        dataset_train_input = self.config.dataset_dir / TRAIN_SPLIT / INPUT_DIR_NAME
+        split_input = split_path / INPUT_DIR_NAME
+        copied_files = []
+        for path in split_input.rglob("*"):
+            if path.is_symlink() or path.is_dir():
+                continue
+            # Assumes split mirrors the original structure.
+            # If the agent reorganized files, original.is_file() is False and we skip — no false positives but could have some false negatives.
+            original = dataset_train_input / path.relative_to(split_input)
+            if original.is_file() and path.stat().st_size == original.stat().st_size:
+                copied_files.append(path)
+        if copied_files:
+            names = [str(c.relative_to(split_path)) for c in copied_files[:10]]
+            raise ModelRetry(
+                f"Files in {split_path.name}/input/ that exist unchanged in the source dataset "
+                f"must be symbolic links, not copies. Up to first 10: {names}"
+            )
+
     def _move_split_to_versioned_dir(self, result: DataSplitOutput, flag_as_changed: bool) -> DataSplitOutput:
         train_path = Path(result.train_path)
         val_path = Path(result.val_path)
@@ -173,10 +197,7 @@ class DataSplitStep(AgenticStep):
             if is_mini_train_only:
                 step_dir = self.config.current_step_dir
                 for split_name in [TRAIN_SPLIT, VALIDATION_SPLIT]:
-                    copy_path_overwriting_target(
-                        self.config.dataset_dir / split_name,
-                        step_dir / split_name,
-                    )
+                    create_absolute_symlink(self.config.dataset_dir / split_name, step_dir / split_name)
                 result.train_path = str(step_dir / TRAIN_SPLIT)
                 result.val_path = str(step_dir / VALIDATION_SPLIT)
                 train_path = Path(result.train_path)
@@ -185,7 +206,13 @@ class DataSplitStep(AgenticStep):
             if train_path.parent != val_path.parent or train_path.parent != mini_train_path.parent:
                 raise ModelRetry("Train, validation, and mini_train split folders must be in the same directory.")
             if not train_path.is_relative_to(self.config.splits_dir) or not val_path.is_relative_to(self.config.splits_dir) or not mini_train_path.is_relative_to(self.config.splits_dir):
-                #TODO what if its the explicit split files -> should be moved or copied?
+                for split_path in [train_path, val_path, mini_train_path]:
+                    try:
+                        validate_symlinks_targets_in(split_path, self.config.dataset_dir)
+                    except ValueError as e:
+                        raise ModelRetry(str(e))
+                    self._raise_on_unnecessary_copies(split_path)
+                    rewrite_symlinks_to_absolute(split_path)
                 result = self._move_split_to_versioned_dir(result, flag_as_changed=not is_mini_train_only)
             else:
                 result.splitting_strategy = self._get_latest_split_strategy()
@@ -224,7 +251,8 @@ class DataSplitStep(AgenticStep):
             Do NOT modify or recreate them. Only create the '{MINI_TRAIN_SPLIT}' folder in {current_step_dir}.
 
             '{MINI_TRAIN_SPLIT}': a subset of the training split ({train_split_path}) with {mini_train_size_instructions}, used solely for automatic system validation.
-            The '{MINI_TRAIN_SPLIT}' folder must contain an input/ folder with the data files and a labels.csv file. The input/ must contain only the data that corresponds to the ids in the newly created labels.csv file. Do not copy the full training /input files for ids that are not in the newly created labels.csv file.
+            The '{MINI_TRAIN_SPLIT}' folder must contain an input/ folder with the data files and a labels.csv file. The input/ must contain only the data that corresponds to the ids in the newly created labels.csv file.
+            When populating input/, use symbolic links to the original files in {train_split_path}/input/ instead of copying them. Only create new files when the data must be modified (e.g. splitting a single file that contains multiple samples into per-split subsets). Always create labels.csv as a new file.
             Preserve the original ID scheme: each id in labels.csv must refer to the same data in input/ as it did in the original data.
             The input/ interface must match the original train/input/ interface.
 
@@ -244,7 +272,8 @@ class DataSplitStep(AgenticStep):
         return f"""
             Your next task: Split the training dataset ({train_split_path}) into '{TRAIN_SPLIT}', '{VALIDATION_SPLIT}', and '{MINI_TRAIN_SPLIT}' folders.
             Each split folder must contain an {INPUT_DIR_NAME}/ folder with the data files and a {LABELS_FILE_NAME} file.
-            Each split's {INPUT_DIR_NAME}/ must contain only data for ids in that split's {LABELS_FILE_NAME}. If an input file contains multiple samples, write a filtered copy for each split; do not reuse an unfiltered shared file across splits.
+            Each split's {INPUT_DIR_NAME}/ must contain only data for ids in that split's {LABELS_FILE_NAME}.
+            When populating {INPUT_DIR_NAME}/, use symbolic links to the original files in {train_split_path}/{INPUT_DIR_NAME}/ instead of copying them. Only create new files when the data must be modified (e.g. splitting a single file that contains multiple samples into per-split subsets); do not reuse an unfiltered shared file across splits. Always create {LABELS_FILE_NAME} as a new file.
             Train and validation {LABELS_FILE_NAME} files must contain disjoint ids. mini_train {LABELS_FILE_NAME} must contain only ids that are present in train {LABELS_FILE_NAME}.
             Preserve the original ID scheme: each id in labels.csv must refer to the same data in input/ as it did in the original data.
             The input/ interface must match the original train/input/ interface.
@@ -297,10 +326,7 @@ class DataSplitStep(AgenticStep):
             latest_split_dir = self._get_next_split_dir()
             latest_split_dir.mkdir(parents=True, exist_ok=True)
             for split_name in [TRAIN_SPLIT, VALIDATION_SPLIT, MINI_TRAIN_SPLIT]:
-                shutil.copytree(
-                    self.config.dataset_dir / split_name,
-                    latest_split_dir / split_name,
-                )
+                create_absolute_symlink(self.config.dataset_dir / split_name, latest_split_dir / split_name)
             splitting_strategy = ""
         else:
             splitting_strategy = self._get_latest_split_strategy()
