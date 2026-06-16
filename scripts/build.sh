@@ -1,6 +1,6 @@
 #!/bin/bash
 # Multi-architecture (amd64, arm64) Docker build and push script for Agentomics
-# Builds all foundation model variants of the main image + the prepare image
+# Builds all foundation model variants of the main image
 # It assumes already logged in to Docker: docker login -u <username>
 #
 # Usage:
@@ -63,8 +63,6 @@ FM_BUILD_ARG_MAP["MOLECULE"]="molecule"
 FM_BUILD_ARG_MAP["PROTEIN"]="protein"
 FM_BUILD_ARG_MAP["ALL"]="all"
 
-PREPARE_IMAGE="${USERNAME}/agentomics-prepare:${VERSION}"
-
 need_cmd docker
 
 # Recreate buildx builder to ensure current proxy settings are applied
@@ -75,14 +73,6 @@ docker buildx create \
     ${DRIVER_OPTS[@]+"${DRIVER_OPTS[@]}"} \
     --use
 docker buildx inspect --bootstrap
-
-# Build and push preparation image
-docker buildx build \
-    --platform linux/amd64,linux/arm64 \
-    -f Dockerfile.prepare \
-    -t "$PREPARE_IMAGE" \
-    ${PROXY_BUILD_ARGS[@]+"${PROXY_BUILD_ARGS[@]}"} \
-    --push .
 
 for VARIANT in "${FM_VARIANTS[@]}"; do
     IMAGE_TAG="${USERNAME}/agentomics:FM-${VARIANT}-${VERSION}"

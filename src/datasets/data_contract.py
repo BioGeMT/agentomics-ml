@@ -19,6 +19,15 @@ PREDICTION_COLUMN_NAME = "prediction"
 METADATA_FILE_NAME = "metadata.json"
 DATASET_DESCRIPTION_FILE_NAME = "dataset_description.md"
 
+ALLOWED_PUBLIC_DATASET_ENTRIES = {
+    TRAIN_SPLIT,
+    VALIDATION_SPLIT,
+    SUPPLEMENTARY_DIR_NAME,
+    METADATA_FILE_NAME,
+    DATASET_DESCRIPTION_FILE_NAME,
+}
+ALLOWED_SPLIT_ENTRIES = {INPUT_DIR_NAME, LABELS_FILE_NAME}
+
 def record_input_dir_structure(input_dir: Path) -> list[str]:
     """
     Returns sorted top-level entries in input_dir. Directories are suffixed with '/'.
@@ -30,6 +39,32 @@ def record_input_dir_structure(input_dir: Path) -> list[str]:
     return sorted(
         f"{item.name}/" if item.is_dir() else item.name for item in Path(input_dir).iterdir()
     )
+
+def validate_split_entries(split_path: Path, split_name: str) -> None:
+    unsupported_entries = sorted(
+        item.name for item in split_path.iterdir() if item.name not in ALLOWED_SPLIT_ENTRIES
+    )
+    if unsupported_entries:
+        raise ValueError(
+            f"{split_name} split folder has unsupported top-level entries: {unsupported_entries}. "
+            f"Allowed: {sorted(ALLOWED_SPLIT_ENTRIES)}."
+        )
+
+def validate_public_dataset_entries(dataset_dir: Path) -> None:
+    if (dataset_dir / TEST_SPLIT).exists():
+        raise ValueError(
+            f"Public dataset {dataset_dir.name} must not contain test/ - "
+            f"hidden test data belongs under test_datasets/{dataset_dir.name}/test/."
+        )
+    unsupported_entries = sorted(
+        item.name for item in dataset_dir.iterdir()
+        if item.name not in ALLOWED_PUBLIC_DATASET_ENTRIES
+    )
+    if unsupported_entries:
+        raise ValueError(
+            f"Public dataset {dataset_dir.name} has unsupported top-level entries: {unsupported_entries}. "
+            f"Allowed: {sorted(ALLOWED_PUBLIC_DATASET_ENTRIES)}."
+        )
 
 def validate_splits(split_paths: dict[str, Path], expected_input_structure: list[str]) -> None:
     """Validates selected split folders against the full dataset contract."""
@@ -58,15 +93,7 @@ def _validate_split_folder(
             f"{split_name} split folder must contain input/ and labels.csv: {split_path}"
         )
 
-    allowed_entry_names = {INPUT_DIR_NAME, LABELS_FILE_NAME}
-    unsupported_entries = sorted(
-        item.name for item in split_path.iterdir() if item.name not in allowed_entry_names
-    )
-    if unsupported_entries:
-        raise ValueError(
-            f"{split_name} split folder has unsupported top-level entries: {unsupported_entries}. "
-            f"Only {INPUT_DIR_NAME}/ and {LABELS_FILE_NAME} are allowed."
-        )
+    validate_split_entries(split_path, split_name)
     validate_and_read_labels(labels_path, NUMERIC_LABEL_COLUMN_NAME, require_numeric_values=True)
     _validate_input_structure(input_path, expected_input_structure)
 

@@ -60,11 +60,12 @@ class Config:
     tags: list[str]
     val_metric: str
     workspace_dir: str
-    prepared_datasets_dir: str
+    datasets_dir: str
 
     # Required, not settable through the CLI
     agent_id: str
     task_type: str
+    input_structure: list[str]
 
     # Optional, default values can be overwritten through the CLI
     user_prompt: str = DEFAULT_USER_PROMPT
@@ -89,6 +90,7 @@ class Config:
     llm_response_timeout: int = DEFAULT_LLM_RESPONSE_TIMEOUT
     bash_tool_timeout: int = DEFAULT_BASH_TOOL_TIMEOUT
     max_tool_retries: int = DEFAULT_MAX_TOOL_RETRIES
+    label_to_scalar: dict[str, int] | None = None
     wandb_run_id: str | None = None
     agent_user: str | None = None
 
@@ -113,12 +115,12 @@ class Config:
         return Path(self.workspace_dir) / "extras"
 
     @property
-    def prepared_dataset_dir(self) -> Path:
-        return Path(self.prepared_datasets_dir) / self.dataset
+    def dataset_dir(self) -> Path:
+        return Path(self.datasets_dir) / self.dataset
 
     @property
     def agent_dataset_dir(self) -> Path:
-        return self.shared_dir / "datasets" / self.dataset
+        return self.dataset_dir
 
     @property
     def shared_dir(self) -> Path:

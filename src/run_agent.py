@@ -10,7 +10,6 @@ from runtime.git_checkpoints import initialize_repo_if_needed
 from runtime.read_write_utils import initialize_run_directories, save_config
 from runtime.run_lifecycle import run_agentomics
 from utils.config import Config
-from datasets.dataset_preparation import setup_nonsensitive_dataset_files_for_agent
 from run_logging.env_utils import are_wandb_vars_available
 from utils.printing_utils import print_phase
 from utils.providers.provider import get_provider_from_string
@@ -22,7 +21,7 @@ async def run_experiment(
     dataset_name: str,
     task_type: str,
     val_metric: str,
-    prepared_datasets_dir: str | Path,
+    datasets_dir: str | Path,
     workspace_dir: str | Path,
     tags: list[str],
     iterations: int,
@@ -33,12 +32,14 @@ async def run_experiment(
     run_python_timeout: int,
     split_allowed_iterations: int,
     exploration_iterations: int,
+    input_structure: list[str],
+    label_to_scalar: dict[str, int] | None = None,
     foundation_models_type: str | None = None,
     foundation_models_yaml: str | None = None,
     disable_training_reporting: bool = False,
 ):
     workspace_dir = Path(workspace_dir)
-    prepared_datasets_dir = Path(prepared_datasets_dir)
+    datasets_dir = Path(datasets_dir)
 
     time_deadline = time.time() + timeout if timeout is not None else None
     split_time_deadline = time.time() + split_timeout if split_timeout is not None else None
@@ -54,10 +55,12 @@ async def run_experiment(
         tags=tags,
         val_metric=val_metric,
         workspace_dir=str(workspace_dir),
-        prepared_datasets_dir=str(prepared_datasets_dir),
+        datasets_dir=str(datasets_dir),
         iterations=iterations,
         user_prompt=user_prompt,
         task_type=task_type,
+        label_to_scalar=label_to_scalar,
+        input_structure=input_structure,
         split_allowed_iterations=split_allowed_iterations,
         exploration_iterations=exploration_iterations,
         time_deadline=time_deadline,
@@ -70,11 +73,6 @@ async def run_experiment(
     )
     print_phase("Agentomics run started")
     initialize_run_directories(config)
-    setup_nonsensitive_dataset_files_for_agent(
-        prepared_datasets_dir=config.prepared_dataset_dir.parent,
-        agent_datasets_dir=config.agent_dataset_dir.parent,
-        dataset_name=dataset_name,
-    )
     config.wandb_run_id = setup_logging(config) if are_wandb_vars_available() else None
     save_config(config)
     initialize_repo_if_needed(config)

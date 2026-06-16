@@ -6,7 +6,6 @@ from pathlib import Path
 import pandas as pd
 from rich.console import Console
 
-from runtime.filesystem import copy_path_overwriting_target, remove_path
 from datasets.data_contract import (
     DATASET_DESCRIPTION_FILE_NAME,
     INPUT_DIR_NAME,
@@ -20,7 +19,15 @@ from datasets.data_contract import (
     TRAIN_SPLIT,
     VALIDATION_SPLIT,
     record_input_dir_structure,
+    validate_public_dataset_entries,
+    validate_split_entries,
     validate_splits,
+)
+from datasets.csv_converter import (
+    convert_csv_dataset_to_standard_raw_dataset,
+    convert_csv_test_dataset_to_standard_raw_dataset,
+    is_public_csv_dataset,
+    is_test_csv_dataset,
 )
 from datasets.datasets_interactive import (
     select_positive_class,
@@ -32,9 +39,19 @@ from datasets.label_processing import (
     load_split_label_dfs,
     validate_single_label_classification,
 )
+from runtime.filesystem import create_absolute_symlink
 from utils.task_types import TaskTypes
 
 console = Console()
+
+def _reject_symlinks_in_dir(directory: Path) -> None:
+    symlinks = [directory] if directory.is_symlink() else []
+    symlinks.extend(path for path in directory.rglob("*") if path.is_symlink())
+    if symlinks:
+        raise ValueError(
+            f"Symlinks in {directory} are not allowed. "
+            f"{len(symlinks)} symlink(s) found (e.g. {symlinks[0]})."
+        )
 
 def _sort_class_labels(labels) -> list[str]:
     string_labels = [str(label) for label in labels]
@@ -100,48 +117,62 @@ def _build_output_metadata(
     metadata["splits"] = {
         "train_rows": len(split_labels[TRAIN_SPLIT]),
         "validation_rows": len(split_labels[VALIDATION_SPLIT]) if VALIDATION_SPLIT in split_labels else None,
-        "test_rows": len(split_labels[TEST_SPLIT]) if TEST_SPLIT in split_labels else None,
     }
     metadata["numeric_label_col"] = NUMERIC_LABEL_COLUMN_NAME
     metadata["input_structure"] = input_structure
+    metadata["prepared"] = True
     return metadata
 
 def prepare_dataset(
-    dataset_dir,
-    output_dir,
-    test_sets_output_dir,
+    source_dir: Path,
+    destination_dir: Path,
     task_type=None,
     positive_class=None,
     negative_class=None,
     interactive=False,
-):
-    dataset_dir = Path(dataset_dir)
-    output_dir = Path(output_dir)
-    test_sets_output_dir = Path(test_sets_output_dir)
+) -> dict:
+    """Prepare a dataset from source_dir into destination_dir.
 
-    dataset_name = dataset_dir.name
-    prepared_dir = output_dir / dataset_name
-    prepared_test_dir = test_sets_output_dir / dataset_name
-    if dataset_dir.resolve() == prepared_dir.resolve():
-        raise ValueError("Input dataset directory must be different from the prepared output directory.")
+    Reads from source_dir (never modified), writes the prepared result to
+    destination_dir (input dirs are symlinked, labels are converted, metadata
+    is written). Returns the output metadata dict.
+    """
+    source_dir = Path(source_dir)
+    destination_dir = Path(destination_dir)
+
+    if source_dir.resolve() == destination_dir.resolve():
+        raise ValueError(
+            f"source_dir and destination_dir must be different. "
+            f"Both resolve to: {source_dir.resolve()}"
+        )
+
+    _reject_symlinks_in_dir(source_dir)
+    if is_public_csv_dataset(source_dir):
+        source_dir = convert_csv_dataset_to_standard_raw_dataset(
+            source_dir=source_dir,
+            destination_dir=destination_dir,
+            task_type=task_type,
+            interactive=interactive,
+        )
+    metadata_path = source_dir / METADATA_FILE_NAME
+    source_metadata = json.loads(metadata_path.read_text()) if metadata_path.exists() else {}
+    validate_public_dataset_entries(source_dir)
 
     source_splits = {
-        split_name: dataset_dir / split_name
-        for split_name in [*NON_TEST_SPLIT_NAMES, TEST_SPLIT]
-        if (dataset_dir / split_name).is_dir()
+        split_name: source_dir / split_name
+        for split_name in NON_TEST_SPLIT_NAMES
+        if (source_dir / split_name).is_dir()
     }
-
     if TRAIN_SPLIT not in source_splits:
-        raise FileNotFoundError(f"Required train/ split is missing: {dataset_dir / TRAIN_SPLIT}")
+        raise FileNotFoundError(f"Required train/ split is missing: {source_dir / TRAIN_SPLIT}")
+
+    for split_name, split_path in source_splits.items():
+        validate_split_entries(split_path, split_name)
 
     input_structure = record_input_dir_structure(source_splits[TRAIN_SPLIT] / INPUT_DIR_NAME)
     split_labels = load_split_label_dfs(source_splits)
 
-    metadata_path = dataset_dir / METADATA_FILE_NAME
-    source_metadata = json.loads(metadata_path.read_text()) if metadata_path.exists() else {}
-
     resolved_task_type = _resolve_task_type(source_metadata, task_type, split_labels[TRAIN_SPLIT], interactive)
-
     output_metadata = _build_output_metadata(
         source_metadata, resolved_task_type, split_labels, input_structure,
     )
@@ -152,13 +183,8 @@ def prepare_dataset(
         if "label_to_scalar" in source_metadata and not has_cli_class_override:
             label_to_scalar = {str(k): int(v) for k, v in source_metadata["label_to_scalar"].items()}
         else:
-            non_test_labels = [
-                split_labels[split_name]
-                for split_name in NON_TEST_SPLIT_NAMES
-                if split_name in split_labels
-            ]
             unique_labels = pd.concat(
-                [frame[LABEL_COLUMN_NAME] for frame in non_test_labels],
+                [frame[LABEL_COLUMN_NAME] for frame in split_labels.values()],
                 ignore_index=True,
             ).dropna().unique()
             if len(unique_labels) == 2 or has_cli_class_override:
@@ -170,14 +196,6 @@ def prepare_dataset(
                 label_to_scalar = {str(label): index for index, label in enumerate(sorted_labels)}
             console.print(f"INFO: Label to number mapping: {label_to_scalar}. If this is wrong, please provide --positive-class and --negative-class parameters to the script.")
         output_metadata["label_to_scalar"] = label_to_scalar
-        if TEST_SPLIT in split_labels:
-            test_labels = set(split_labels[TEST_SPLIT][LABEL_COLUMN_NAME].astype(str).unique())
-            unknown_labels = sorted(test_labels - set(label_to_scalar))
-            if unknown_labels:
-                raise ValueError(
-                    f"Test split contains labels not present in train: {unknown_labels}. "
-                    f"Known labels: {sorted(label_to_scalar)}"
-                )
         numeric_split_labels = {
             split_name: convert_classification_labels(labels, label_to_scalar, split_name)
             for split_name, labels in split_labels.items()
@@ -190,109 +208,108 @@ def prepare_dataset(
     else:
         raise ValueError(f"Unknown task_type: {resolved_task_type}. Expected one of {TaskTypes}.")
 
-    remove_path(prepared_dir)
-    prepared_dir.mkdir(parents=True)
-    remove_path(prepared_test_dir)
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    destination_splits = {}
+    for split_name, source_split in source_splits.items():
+        dest_split = destination_dir / split_name
+        dest_split.mkdir(exist_ok=True)
+        create_absolute_symlink(source_split / INPUT_DIR_NAME, dest_split / INPUT_DIR_NAME)
+        numeric_split_labels[split_name].to_csv(dest_split / LABELS_FILE_NAME, index=False)
+        destination_splits[split_name] = dest_split
 
-    for split_name in NON_TEST_SPLIT_NAMES:
-        if split_name in source_splits:
-            copy_path_overwriting_target(source_splits[split_name], prepared_dir / split_name)
-            numeric_split_labels[split_name].to_csv(prepared_dir / split_name / LABELS_FILE_NAME, index=False)
+    validate_splits(destination_splits, input_structure)
 
-    if TEST_SPLIT in source_splits:
-        prepared_test_dir.mkdir(parents=True)
-        copy_path_overwriting_target(source_splits[TEST_SPLIT], prepared_test_dir / TEST_SPLIT)
-        numeric_split_labels[TEST_SPLIT].to_csv(prepared_test_dir / TEST_SPLIT / LABELS_FILE_NAME, index=False)
-
-    prepared_splits = {
-        split_name: prepared_dir / split_name
-        for split_name in NON_TEST_SPLIT_NAMES
-        if split_name in source_splits
-    }
-    validate_splits(prepared_splits, input_structure)
-    if TEST_SPLIT in source_splits:
-        validate_splits({TEST_SPLIT: prepared_test_dir / TEST_SPLIT}, input_structure)
-
-    supplementary_source = dataset_dir / SUPPLEMENTARY_DIR_NAME
-    if supplementary_source.is_dir():
-        copy_path_overwriting_target(supplementary_source, prepared_dir / SUPPLEMENTARY_DIR_NAME)
-
-    description_source = dataset_dir / DATASET_DESCRIPTION_FILE_NAME
-    if description_source.exists():
-        copy_path_overwriting_target(description_source, prepared_dir / DATASET_DESCRIPTION_FILE_NAME)
+    source_desc = source_dir / DATASET_DESCRIPTION_FILE_NAME
+    if source_desc.exists():
+        create_absolute_symlink(source_desc, destination_dir / DATASET_DESCRIPTION_FILE_NAME)
     else:
         console.print("INFO: No dataset description provided.")
-        (prepared_dir / DATASET_DESCRIPTION_FILE_NAME).write_text(
+        (destination_dir / DATASET_DESCRIPTION_FILE_NAME).write_text(
             "No dataset description available.",
             encoding="utf-8",
         )
 
-    # Written last - check_dataset_prepared uses metadata.json existence as a succesful preparation proof
-    (prepared_dir / METADATA_FILE_NAME).write_text(json.dumps(output_metadata, indent=4), encoding="utf-8")
+    source_supp = source_dir / SUPPLEMENTARY_DIR_NAME
+    if source_supp.exists():
+        create_absolute_symlink(source_supp, destination_dir / SUPPLEMENTARY_DIR_NAME)
 
-def check_dataset_prepared(dataset_dir: Path, prepared_datasets_dir: Path) -> bool:
-    return (prepared_datasets_dir / dataset_dir.name / METADATA_FILE_NAME).is_file()
+    (destination_dir / METADATA_FILE_NAME).write_text(json.dumps(output_metadata, indent=4), encoding="utf-8")
 
-def prepare_all_datasets(
-    datasets_dir: str,
-    prepared_datasets_dir: str,
-    prepared_test_sets_dir: str,
-) -> None:
-    datasets_path = Path(datasets_dir)
+    return output_metadata
 
-    if not datasets_path.exists():
-        console.print(f"[red]No datasets found in {datasets_dir}[/red]")
-        sys.exit(1)
 
-    dataset_dirs = sorted(
-        d for d in datasets_path.iterdir() if d.is_dir()
-    )
+def check_dataset_prepared(dataset_dir: Path) -> bool:
+    metadata_path = Path(dataset_dir) / METADATA_FILE_NAME
+    if not metadata_path.is_file():
+        return False
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    return metadata.get("prepared") is True
 
-    if not dataset_dirs:
-        console.print(f"[red]No datasets found in {datasets_dir}[/red]")
-        sys.exit(1)
 
-    skipped = 0
-    prepared = 0
-    failed = 0
+def prepare_test_dataset(
+    source_dir: Path,
+    destination_dir: Path,
+    task_type: str,
+    input_structure: list[str],
+    label_to_scalar: dict[str, int] | None = None,
+) -> dict:
+    """Prepare test dataset from source_dir into destination_dir using run metadata.
 
-    for dataset_dir in dataset_dirs:
-        if check_dataset_prepared(dataset_dir, Path(prepared_datasets_dir)):
-            skipped += 1
-            continue
-        console.print(f"[cyan]Preparing {dataset_dir.name}[/cyan]")
-        try:
-            prepare_dataset(
-                dataset_dir=dataset_dir,
-                output_dir=prepared_datasets_dir,
-                test_sets_output_dir=prepared_test_sets_dir,
+    Reads from source_dir (never modified), writes the prepared result to
+    destination_dir (input dir is symlinked, labels are converted, metadata
+    is written). Returns the output metadata dict.
+    """
+    source_dir = Path(source_dir)
+    destination_dir = Path(destination_dir)
+
+    _reject_symlinks_in_dir(source_dir)
+    if is_test_csv_dataset(source_dir):
+        source_dir = convert_csv_test_dataset_to_standard_raw_dataset(source_dir, destination_dir)
+
+    test_source = source_dir / TEST_SPLIT
+    if not test_source.is_dir():
+        raise FileNotFoundError(f"Required test/ split is missing: {test_source}")
+
+    validate_split_entries(test_source, TEST_SPLIT)
+
+    test_labels = load_split_label_dfs({TEST_SPLIT: test_source})
+
+    if task_type == TaskTypes.CLASSIFICATION:
+        if not label_to_scalar:
+            raise ValueError("label_to_scalar is required for classification test data preparation")
+        validate_single_label_classification(test_labels)
+        label_to_scalar = {str(k): int(v) for k, v in label_to_scalar.items()}
+        actual_labels = set(test_labels[TEST_SPLIT][LABEL_COLUMN_NAME].astype(str).unique())
+        unknown_labels = sorted(actual_labels - set(label_to_scalar))
+        if unknown_labels:
+            raise ValueError(
+                f"Test split contains labels not present in train: {unknown_labels}. "
+                f"Known labels: {sorted(label_to_scalar)}"
             )
-            console.print(f"[green]{dataset_dir.name} prepared successfully[/green]")
-            prepared += 1
-        except Exception as e:
-            console.print(f"[red]{dataset_dir.name} failed: {e}[/red]")
-            failed += 1
+        numeric_labels = convert_classification_labels(test_labels[TEST_SPLIT], label_to_scalar, TEST_SPLIT)
+    elif task_type == TaskTypes.REGRESSION:
+        numeric_labels = convert_regression_labels(test_labels[TEST_SPLIT], TEST_SPLIT)
+    else:
+        raise ValueError(f"Unknown task_type: {task_type}. Expected one of {TaskTypes}.")
 
-    console.print("")
-    console.print(f"Prepared: {prepared}, skipped (already prepared): {skipped}, failed: {failed}")
-    if failed > 0:
-        sys.exit(1)
+    dest_test = destination_dir / TEST_SPLIT
+    dest_test.mkdir(parents=True, exist_ok=True)
+    create_absolute_symlink(test_source / INPUT_DIR_NAME, dest_test / INPUT_DIR_NAME)
+    numeric_labels.to_csv(dest_test / LABELS_FILE_NAME, index=False)
 
-def setup_nonsensitive_dataset_files_for_agent(prepared_datasets_dir: Path, agent_datasets_dir: Path, dataset_name: str):
-    source_dataset_dir = prepared_datasets_dir / dataset_name
-    target_dataset_dir = agent_datasets_dir / dataset_name
-    target_dataset_dir.mkdir(parents=True, exist_ok=True)
+    validate_splits({TEST_SPLIT: dest_test}, input_structure)
 
-    target_paths = [
-        DATASET_DESCRIPTION_FILE_NAME,
-        METADATA_FILE_NAME,
-        SUPPLEMENTARY_DIR_NAME,
-        TRAIN_SPLIT,
-        VALIDATION_SPLIT,
-    ]
-    for relative_path in target_paths:
-        source_path = source_dataset_dir / relative_path
-        target_path = target_dataset_dir / relative_path
+    test_metadata = {
+        "task_type": task_type,
+        "splits": {"test_rows": len(test_labels[TEST_SPLIT])},
+        "numeric_label_col": NUMERIC_LABEL_COLUMN_NAME,
+        "input_structure": input_structure,
+        "prepared": True,
+    }
+    if task_type == TaskTypes.CLASSIFICATION:
+        test_metadata["label_to_scalar"] = label_to_scalar
+    (destination_dir / METADATA_FILE_NAME).write_text(json.dumps(test_metadata, indent=4), encoding="utf-8")
 
-        if source_path.exists():
-            copy_path_overwriting_target(source_path, target_path)
+    return test_metadata
+
+

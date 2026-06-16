@@ -10,7 +10,7 @@ SRC_PATH = REPO_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-from datasets.dataset_preparation import prepare_dataset, setup_nonsensitive_dataset_files_for_agent
+from datasets.dataset_preparation import prepare_dataset, prepare_test_dataset
 from datasets.data_contract import _validate_input_structure, record_input_dir_structure
 
 DATASET_NAME = "extras_test_dataset"
@@ -126,23 +126,23 @@ class PrepareDatasetSplitEntryTest(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             raw = root / "raw" / DATASET_NAME
+            dest = root / "prepared" / DATASET_NAME
             raw.mkdir(parents=True)
             write_split(raw, "train")
 
             prepare_dataset(
-                dataset_dir=raw,
-                output_dir=root / "prepared",
-                test_sets_output_dir=root / "prepared_tests",
+                source_dir=raw,
+                destination_dir=dest,
                 task_type="classification",
             )
 
-            self.assertTrue((root / "prepared" / DATASET_NAME / "train" / "input").is_dir())
-            self.assertFalse((root / "prepared" / DATASET_NAME / "extras").exists())
+            self.assertTrue((dest / "train" / "input").exists())
 
     def test_rejects_split_level_extras(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             raw = root / "raw" / DATASET_NAME
+            dest = root / "prepared" / DATASET_NAME
             raw.mkdir(parents=True)
             write_split(raw, "train")
             split_extras = raw / "train" / "extras"
@@ -151,9 +151,8 @@ class PrepareDatasetSplitEntryTest(unittest.TestCase):
 
             with self.assertRaises(ValueError) as ctx:
                 prepare_dataset(
-                    dataset_dir=raw,
-                    output_dir=root / "prepared",
-                    test_sets_output_dir=root / "prepared_tests",
+                    source_dir=raw,
+                    destination_dir=dest,
                     task_type="classification",
                 )
             self.assertIn("unsupported", str(ctx.exception))
@@ -162,6 +161,7 @@ class PrepareDatasetSplitEntryTest(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             raw = root / "raw" / DATASET_NAME
+            dest = root / "prepared" / DATASET_NAME
             raw.mkdir(parents=True)
             write_split(raw, "train")
             train_supp = raw / "train" / "supplementary"
@@ -170,9 +170,8 @@ class PrepareDatasetSplitEntryTest(unittest.TestCase):
 
             with self.assertRaises(ValueError) as ctx:
                 prepare_dataset(
-                    dataset_dir=raw,
-                    output_dir=root / "prepared",
-                    test_sets_output_dir=root / "prepared_tests",
+                    source_dir=raw,
+                    destination_dir=dest,
                     task_type="classification",
                 )
             self.assertIn("train", str(ctx.exception))
@@ -181,17 +180,17 @@ class PrepareDatasetSplitEntryTest(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             raw = root / "raw" / DATASET_NAME
+            dest = root / "prepared" / DATASET_NAME
             raw.mkdir(parents=True)
             write_split(raw, "train")
 
             prepare_dataset(
-                dataset_dir=raw,
-                output_dir=root / "prepared",
-                test_sets_output_dir=root / "prepared_tests",
+                source_dir=raw,
+                destination_dir=dest,
                 task_type="classification",
             )
 
-            metadata = json.loads((root / "prepared" / DATASET_NAME / "metadata.json").read_text())
+            metadata = json.loads((dest / "metadata.json").read_text())
             self.assertIn("input_structure", metadata)
             self.assertIn("data.csv", metadata["input_structure"])
 
@@ -199,15 +198,15 @@ class PrepareDatasetSplitEntryTest(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             raw = root / "raw" / DATASET_NAME
+            dest = root / "prepared" / DATASET_NAME
             raw.mkdir(parents=True)
             write_split(raw, "train", input_files={"data.csv": "id,a\n1,x\n2,y\n"})
             write_split(raw, "validation", input_files={"different.csv": "id,b\n1,x\n2,y\n"})
 
             with self.assertRaises(ValueError) as ctx:
                 prepare_dataset(
-                    dataset_dir=raw,
-                    output_dir=root / "prepared",
-                    test_sets_output_dir=root / "prepared_tests",
+                    source_dir=raw,
+                    destination_dir=dest,
                     task_type="classification",
                 )
             self.assertIn("validation/input", str(ctx.exception))
@@ -216,26 +215,37 @@ class PrepareDatasetSplitEntryTest(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             raw = root / "raw" / DATASET_NAME
+            dest = root / "prepared" / DATASET_NAME
+            raw_test = root / "raw_tests" / DATASET_NAME
             raw.mkdir(parents=True)
+            raw_test.mkdir(parents=True)
             write_split(raw, "train", input_files={"images/train-0.png": "fake train image"})
             write_split(raw, "validation", input_files={"images/validation-0.png": "fake validation image"})
-            write_split(raw, "test", input_files={"images/test-0.png": "fake test image"})
+            write_split(raw_test, "test", input_files={"images/test-0.png": "fake test image"})
 
-            prepare_dataset(
-                dataset_dir=raw,
-                output_dir=root / "prepared",
-                test_sets_output_dir=root / "prepared_tests",
+            train_metadata = prepare_dataset(
+                source_dir=raw,
+                destination_dir=dest,
                 task_type="classification",
             )
+            dest_test = root / "prepared_test" / DATASET_NAME
+            prepare_test_dataset(
+                source_dir=raw_test,
+                destination_dir=dest_test,
+                task_type=train_metadata["task_type"],
+                input_structure=train_metadata["input_structure"],
+                label_to_scalar=train_metadata.get("label_to_scalar"),
+            )
 
-            metadata = json.loads((root / "prepared" / DATASET_NAME / "metadata.json").read_text())
+            metadata = json.loads((dest / "metadata.json").read_text())
             self.assertEqual(["images/"], metadata["input_structure"])
 
 class PrepareDatasetSupplementaryTest(unittest.TestCase):
-    def test_copies_supplementary_folder(self):
+    def test_preserves_supplementary_folder(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             raw = root / "raw" / DATASET_NAME
+            dest = root / "prepared" / DATASET_NAME
             raw.mkdir(parents=True)
             write_split(raw, "train")
             supp = raw / "supplementary"
@@ -243,58 +253,29 @@ class PrepareDatasetSupplementaryTest(unittest.TestCase):
             (supp / "paper.pdf").write_text("fake pdf")
 
             prepare_dataset(
-                dataset_dir=raw,
-                output_dir=root / "prepared",
-                test_sets_output_dir=root / "prepared_tests",
+                source_dir=raw,
+                destination_dir=dest,
                 task_type="classification",
             )
 
-            prepared_supp = root / "prepared" / DATASET_NAME / "supplementary"
-            self.assertTrue(prepared_supp.is_dir())
-            self.assertTrue((prepared_supp / "paper.pdf").is_file())
+            self.assertTrue((dest / "supplementary").exists())
+            self.assertTrue((dest / "supplementary" / "paper.pdf").is_file())
 
     def test_works_without_supplementary(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             raw = root / "raw" / DATASET_NAME
+            dest = root / "prepared" / DATASET_NAME
             raw.mkdir(parents=True)
             write_split(raw, "train")
 
             prepare_dataset(
-                dataset_dir=raw,
-                output_dir=root / "prepared",
-                test_sets_output_dir=root / "prepared_tests",
+                source_dir=raw,
+                destination_dir=dest,
                 task_type="classification",
             )
 
-            self.assertFalse((root / "prepared" / DATASET_NAME / "supplementary").exists())
-
-
-class SetupNonsensitiveSupplementaryTest(unittest.TestCase):
-    def test_copies_supplementary_to_agent_workspace(self):
-        with TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            prepared_dir = root / "prepared"
-            dataset_dir = prepared_dir / DATASET_NAME
-            dataset_dir.mkdir(parents=True)
-            write_split(dataset_dir, "train")
-            write_split(dataset_dir, "validation")
-            (dataset_dir / "metadata.json").write_text("{}", encoding="utf-8")
-            (dataset_dir / "dataset_description.md").write_text("desc", encoding="utf-8")
-            supp = dataset_dir / "supplementary"
-            supp.mkdir()
-            (supp / "notes.txt").write_text("some notes")
-
-            agent_dir = root / "agent_datasets"
-            setup_nonsensitive_dataset_files_for_agent(
-                prepared_datasets_dir=prepared_dir,
-                agent_datasets_dir=agent_dir,
-                dataset_name=DATASET_NAME,
-            )
-
-            agent_supp = agent_dir / DATASET_NAME / "supplementary"
-            self.assertTrue(agent_supp.is_dir())
-            self.assertTrue((agent_supp / "notes.txt").is_file())
+            self.assertFalse((dest / "supplementary").exists())
 
 if __name__ == "__main__":
     unittest.main()

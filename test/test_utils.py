@@ -11,7 +11,6 @@ if str(SRC_PATH) not in sys.path:
 
 from tools.tool_registry import create_tools
 from utils.config import Config
-from datasets.dataset_preparation import setup_nonsensitive_dataset_files_for_agent
 from runtime.read_write_utils import (
     initialize_current_iteration_workspace,
     initialize_run_directories,
@@ -44,8 +43,9 @@ def get_shared_test_resources():
             tags=[],
             val_metric="ACC",
             task_type="classification",
+            input_structure=["data.csv"],
             workspace_dir=str(Path("/workspace").resolve()),
-            prepared_datasets_dir=str(Path('../repository/prepared_datasets').resolve()),
+            datasets_dir=str(Path('../repository/datasets').resolve()),
             iterations=5,
             user_prompt="Create the best possible machine learning model that will generalize to new unseen data.",
             agent_user=agent_user,
@@ -54,11 +54,6 @@ def get_shared_test_resources():
         )
 
         initialize_run_directories(config)
-        setup_nonsensitive_dataset_files_for_agent(
-            prepared_datasets_dir=config.prepared_dataset_dir.parent,
-            agent_datasets_dir=config.agent_dataset_dir.parent,
-            dataset_name=config.dataset,
-        )
         save_config(config)
         # Clean up leftover workspace from a previous failed setup attempt.
         if config.current_iteration_dir.exists():
@@ -86,7 +81,7 @@ def get_shared_test_resources():
             'run_python_tool': tools_by_name['run_python'],
             'foundation_models_info_tool': tools_by_name['get_foundation_models_info'],
             'replace_tool': tools_by_name['replace'],
-            'prepared_test_sets_dir': Path('../repository/prepared_test_sets').resolve(),
+            'test_datasets_dir': Path('../repository/test_datasets').resolve(),
         }
 
     return _shared_test_resources
@@ -106,4 +101,4 @@ class BaseAgentTest(unittest.TestCase):
         cls.run_python_tool = resources['run_python_tool']
         cls.foundation_models_info_tool = resources['foundation_models_info_tool']
         cls.replace_tool = resources['replace_tool']
-        cls.prepared_test_sets_dir = resources['prepared_test_sets_dir']
+        cls.test_datasets_dir = resources['test_datasets_dir']

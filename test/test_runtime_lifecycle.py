@@ -53,9 +53,10 @@ class TestStepOutputRoundtrip(unittest.TestCase):
             tags=[],
             val_metric="ACC",
             workspace_dir=str(self.root / "workspace"),
-            prepared_datasets_dir=str(self.root / "prepared_datasets"),
+            datasets_dir=str(self.root / "datasets"),
             user_prompt="test",
             task_type="classification",
+            input_structure=["data.csv"],
         )
         initialize_run_directories(config)
         save_config(config)
@@ -153,8 +154,8 @@ class TestIterationArchival(unittest.TestCase):
         self.root = Path(self.temp_dir.name)
         self.workspace_dir = self.root / "workspace"
         self.workspace_dir.mkdir()
-        self.prepared_datasets_dir = self.root / "prepared_datasets"
-        self.prepared_datasets_dir.mkdir()
+        self.datasets_dir = self.root / "datasets"
+        self.datasets_dir.mkdir()
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -168,9 +169,10 @@ class TestIterationArchival(unittest.TestCase):
             tags=[],
             val_metric="ACC",
             workspace_dir=str(self.workspace_dir),
-            prepared_datasets_dir=str(self.prepared_datasets_dir),
+            datasets_dir=str(self.datasets_dir),
             user_prompt="test",
             task_type="classification",
+            input_structure=["data.csv"],
         )
         initialize_run_directories(config)
         save_config(config)
