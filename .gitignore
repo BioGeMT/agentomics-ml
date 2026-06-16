@@ -199,19 +199,14 @@ AGENTS.md
 .genomic_benchmarks
 .miRBench
 .free_spoken_digit_dataset
-prepared_datasets
-prepared_test_sets
 /datasets
+/test_datasets
 workspace/runs
 workspace
 outputs
 cleanup_wandb_logs
-competitors/data
 cache/
 wandb/
-competitors/cache/
-competitors/results/
-competitors/wandb/
 
 # Misc
 *playground*.ipynb

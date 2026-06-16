@@ -34,7 +34,7 @@ The run stops when either the iteration count is reached or the timeout expires.
 | Option | Description |
 |--------|-------------|
 | `--list-models` | Show available LLM models |
-| `--list-datasets` | Show prepared datasets |
+| `--list-datasets` | Show available datasets |
 | `--list-metrics` | Show available validation metrics |
 | `--help` | Show help message |
 
