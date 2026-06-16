@@ -82,6 +82,7 @@ def generate_mirbench_files(dataset: str | None = None):
     for dataset_name in names:
         info = MIRBENCH_DATASETS[dataset_name]
         local_dset_path = REPO_PATH / "datasets" / dataset_name
+        local_test_dset_path = REPO_PATH / "test_datasets" / dataset_name
         os.makedirs(local_dset_path, exist_ok=True)
 
         with open(f"{local_dset_path}/dataset_description.md", "w") as f:
@@ -97,7 +98,11 @@ def generate_mirbench_files(dataset: str | None = None):
             split_frames[split] = df
 
         convert_csv_dataset(
-            local_dset_path, label_column=LABEL_COLUMN, splits=split_frames, task_type="classification",
+            local_dset_path,
+            label_column=LABEL_COLUMN,
+            splits=split_frames,
+            test_output_dir=local_test_dset_path,
+            task_type="classification",
         )
 
 def generate_genomic_benchmarks_files(dataset: str | None = None):
@@ -117,6 +122,7 @@ def generate_genomic_benchmarks_files(dataset: str | None = None):
         )
 
         local_dset_path = REPO_PATH / "datasets" / dataset_name
+        local_test_dset_path = REPO_PATH / "test_datasets" / dataset_name
         os.makedirs(local_dset_path, exist_ok=True)
 
         with open(f"{local_dset_path}/dataset_description.md", "w") as f:
@@ -134,7 +140,11 @@ def generate_genomic_benchmarks_files(dataset: str | None = None):
             split_frames[split] = df
 
         convert_csv_dataset(
-            local_dset_path, label_column=LABEL_COLUMN, splits=split_frames, task_type="classification",
+            local_dset_path,
+            label_column=LABEL_COLUMN,
+            splits=split_frames,
+            test_output_dir=local_test_dset_path,
+            task_type="classification",
         )
 
 def generate_breast_cancer_files(_dataset_name: str = "breast_cancer") -> None:

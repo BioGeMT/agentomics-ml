@@ -1,6 +1,5 @@
 import argparse
 import asyncio
-import json
 import sys
 from pathlib import Path
 
@@ -11,7 +10,8 @@ from run_agent import run_experiment
 from runtime.read_write_utils import get_next_iteration_index, load_config_from_run_dir
 from utils.config import Config
 from datasets.data_contract import VALIDATION_SPLIT
-from datasets.datasets_interactive import get_all_prepared_datasets_info, interactive_dataset_selection, print_datasets_table
+from datasets.dataset_preparation import prepare_dataset
+from datasets.datasets_interactive import get_all_datasets_info, interactive_dataset_selection, print_datasets_table
 from run_logging.env_utils import are_wandb_vars_available
 from utils.metrics import get_classification_metrics_names, get_regression_metrics_names, resolve_val_metric
 from utils.metrics_interactive import display_metrics_table
@@ -34,6 +34,11 @@ def parse_args():
 
     # Run configuration
     parser.add_argument("--dataset", help="Dataset name. If not provided, can be interactively selected. Cannot be changed for forked runs — always inherited from the source run config.")
+    parser.add_argument(
+        "--task-type",
+        choices=["classification", "regression"],
+        help="Task type for dataset preparation. If omitted and the dataset metadata does not define it, preparation prompts interactively.",
+    )
     parser.add_argument("--model", help="Model name compatible with the selected provider. If not provided, can be interactively selected. For forked runs, inherits from the source run config.")
     parser.add_argument("--iteration-plan-model", help="Iteration-plan model name compatible with the selected provider. If not provided, it defaults to --model. For forked runs, inherits from the source run config.")
     parser.add_argument("--provider", help="API provider. If not provided, auto-detected from environment. For forked runs, inherits from the source run config.")
@@ -105,10 +110,10 @@ def parse_args():
         help="Path to a directory for agent run, best iteration snapshot, and reports.",
     )
     parser.add_argument(
-        "--prepared-datasets-dir",
+        "--datasets-dir",
         type=Path,
         required=True,
-        help="Path to a directory containing prepared datasets.",
+        help="Path to a directory containing public datasets.",
     )
     parser.add_argument(
         "--disable-training-reporting",
@@ -125,7 +130,7 @@ def parse_args():
 
     args = parser.parse_args()
     args.workspace_dir = args.workspace_dir.resolve()
-    args.prepared_datasets_dir = args.prepared_datasets_dir.resolve()
+    args.datasets_dir = args.datasets_dir.resolve()
 
     # When parsing inside a forked workspace, merge CLI overrides with the source run config.
     existing_config = load_config_from_run_dir(args.workspace_dir / Config.RUN_DIRNAME, missing_ok=True)
@@ -174,7 +179,7 @@ def handle_list_modes(args, provider: Provider) -> int | None:
     """Handle --list-datasets, --list-models, --list-metrics. Returns exit code or None to continue."""
     if args.list_datasets:
         console.print("Available Datasets", style="cyan")
-        datasets = get_all_prepared_datasets_info(args.prepared_datasets_dir)
+        datasets = get_all_datasets_info(args.datasets_dir)
         print_datasets_table(datasets)
         return 0
 
@@ -207,7 +212,7 @@ def resolve_interactive_params(args, provider: Provider) -> tuple[str, str, int]
     dataset = args.dataset
     if not dataset:
         print_phase("Dataset Selection")
-        datasets = get_all_prepared_datasets_info(args.prepared_datasets_dir)
+        datasets = get_all_datasets_info(args.datasets_dir)
         dataset = interactive_dataset_selection(datasets)
         if not dataset:
             console.print("No dataset selected", style="red")
@@ -255,11 +260,20 @@ def main():
     dataset, model, iterations = resolve_interactive_params(args, provider)
     iteration_plan_model = args.iteration_plan_model or model
 
-    task_type = json.loads((args.prepared_datasets_dir / dataset / "metadata.json").read_text())["task_type"]
+    prepared_datasets_dir = args.workspace_dir / "prepared_datasets"
+    dataset_metadata = prepare_dataset(
+        source_dir=args.datasets_dir / dataset,
+        destination_dir=prepared_datasets_dir / dataset,
+        task_type=args.task_type,
+        interactive=_is_tty_available(),
+    )
+    task_type = dataset_metadata["task_type"]
+    label_to_scalar = dataset_metadata.get("label_to_scalar")
+    input_structure = dataset_metadata["input_structure"]
     val_metric = resolve_val_metric(task_type, args.val_metric)
 
     split_allowed_iterations = args.split_allowed_iterations
-    if (args.prepared_datasets_dir / dataset / VALIDATION_SPLIT).exists():
+    if (prepared_datasets_dir / dataset / VALIDATION_SPLIT).exists():
         split_allowed_iterations = 0
 
     asyncio.run(
@@ -268,8 +282,10 @@ def main():
             iteration_plan_model=iteration_plan_model,
             dataset_name=dataset,
             task_type=task_type,
+            label_to_scalar=label_to_scalar,
+            input_structure=input_structure,
             val_metric=val_metric,
-            prepared_datasets_dir=args.prepared_datasets_dir,
+            datasets_dir=prepared_datasets_dir,
             workspace_dir=args.workspace_dir,
             tags=args.tags,
             iterations=iterations,
