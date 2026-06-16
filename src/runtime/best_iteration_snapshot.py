@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 import wandb
@@ -9,13 +10,9 @@ from agents.steps.validation_evaluation import ValidationEvaluationStep
 from run_logging.logging_helpers import is_wandb_active
 from runtime.conda_utils import (
     export_environment_descriptor_to_path,
-    get_shared_conda_root,
     get_shared_environment_path,
 )
-from runtime.filesystem import (
-    copy_workspace_tree,
-    remove_path,
-)
+from runtime.filesystem import remove_path
 from runtime.step_outputs import load_step_output
 from utils.config import Config
 
@@ -51,16 +48,20 @@ def update_best_iteration_snapshot(config: Config, iteration: int) -> None:
 
 def _publish_best_iteration_snapshot(config: Config, source_dir: Path) -> None:
     best_iteration_snapshot_dir = config.best_iteration_snapshot_dir
-    conda_source = get_shared_conda_root(config)
     conda_env = get_shared_environment_path(config)
     if not conda_env.exists():
         raise FileNotFoundError(
             f"Cannot publish the best iteration snapshot because the shared Conda environment is missing at {conda_env}."
         )
 
+    junk_names = {".conda", ".cache", "__pycache__"}
     remove_path(best_iteration_snapshot_dir)
-    copy_workspace_tree(source_dir, best_iteration_snapshot_dir)
-    copy_workspace_tree(conda_source, best_iteration_snapshot_dir / ".conda")
+    shutil.copytree(
+        source_dir,
+        best_iteration_snapshot_dir,
+        symlinks=False,
+        ignore=lambda _dir, names: {n for n in names if n in junk_names},
+    )
     export_environment_descriptor_to_path(
         env_path=conda_env,
         descriptor_path=best_iteration_snapshot_dir / "environment.yml",
