@@ -73,7 +73,7 @@ class DataSplitStep(AgenticStep):
         return self.config.splits_dir / f"split_{n + 1}"
 
     def _load_expected_input_structure(self) -> list[str]:
-        metadata_path = self.config.agent_dataset_dir / METADATA_FILE_NAME
+        metadata_path = self.config.dataset_dir / METADATA_FILE_NAME
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         if "input_structure" not in metadata:
             raise ValueError(f"{metadata_path} is missing input_structure")
@@ -174,7 +174,7 @@ class DataSplitStep(AgenticStep):
                 step_dir = self.config.current_step_dir
                 for split_name in [TRAIN_SPLIT, VALIDATION_SPLIT]:
                     copy_path_overwriting_target(
-                        self.config.agent_dataset_dir / split_name,
+                        self.config.dataset_dir / split_name,
                         step_dir / split_name,
                     )
                 result.train_path = str(step_dir / TRAIN_SPLIT)
@@ -213,8 +213,8 @@ class DataSplitStep(AgenticStep):
             raise ValueError(f"Unknown task type: {self.config.task_type}. Supported types are {TaskTypes}.")
 
         if load_iteration_state(self.config.current_iteration_dir)["only_mini_split_allowed_at_start"]:
-            train_split_path = self.config.agent_dataset_dir / TRAIN_SPLIT
-            validation_split_path = self.config.agent_dataset_dir / VALIDATION_SPLIT
+            train_split_path = self.config.dataset_dir / TRAIN_SPLIT
+            validation_split_path = self.config.dataset_dir / VALIDATION_SPLIT
             return f"""
             Your next task: Create a '{MINI_TRAIN_SPLIT}' folder as a subset of the training data.
 
@@ -240,7 +240,7 @@ class DataSplitStep(AgenticStep):
         else:
             extra_info = f"Save '{TRAIN_SPLIT}', '{VALIDATION_SPLIT}', and '{MINI_TRAIN_SPLIT}' folders in {current_step_dir}."
 
-        train_split_path = self.config.agent_dataset_dir / TRAIN_SPLIT
+        train_split_path = self.config.dataset_dir / TRAIN_SPLIT
         return f"""
             Your next task: Split the training dataset ({train_split_path}) into '{TRAIN_SPLIT}', '{VALIDATION_SPLIT}', and '{MINI_TRAIN_SPLIT}' folders.
             Each split folder must contain an {INPUT_DIR_NAME}/ folder with the data files and a {LABELS_FILE_NAME} file.
@@ -261,7 +261,7 @@ class DataSplitStep(AgenticStep):
 
     def on_iteration_start(self, iteration: int) -> None:
         has_reusable = self._get_latest_split_dir() is not None
-        if (self.config.agent_dataset_dir / VALIDATION_SPLIT).exists():
+        if (self.config.dataset_dir / VALIDATION_SPLIT).exists():
             update_current_iteration_state(
                 self.config,
                 full_split_allowed_at_start=False,
@@ -287,8 +287,8 @@ class DataSplitStep(AgenticStep):
     def build_simulated_output(self) -> DataSplitOutput:
         latest_split_dir = self._get_latest_split_dir()
         if latest_split_dir is None:
-            validation_split = self.config.agent_dataset_dir / VALIDATION_SPLIT
-            mini_train_split = self.config.agent_dataset_dir / MINI_TRAIN_SPLIT
+            validation_split = self.config.dataset_dir / VALIDATION_SPLIT
+            mini_train_split = self.config.dataset_dir / MINI_TRAIN_SPLIT
             if not validation_split.exists() or not mini_train_split.exists():
                 raise AssertionError(
                     "Agent did not have a chance to split data. "
@@ -298,7 +298,7 @@ class DataSplitStep(AgenticStep):
             latest_split_dir.mkdir(parents=True, exist_ok=True)
             for split_name in [TRAIN_SPLIT, VALIDATION_SPLIT, MINI_TRAIN_SPLIT]:
                 shutil.copytree(
-                    self.config.agent_dataset_dir / split_name,
+                    self.config.dataset_dir / split_name,
                     latest_split_dir / split_name,
                 )
             splitting_strategy = ""

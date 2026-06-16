@@ -203,7 +203,7 @@ def update_current_iteration_state(config: Config, **changes: object) -> None:
     _write_json(iteration_state_path, iteration_state)
 
 def load_dataset_metadata(config: Config) -> dict[str, str]:
-    return json.loads((config.prepared_dataset_dir / "metadata.json").read_text(encoding="utf-8"))
+    return json.loads((config.dataset_dir / "metadata.json").read_text(encoding="utf-8"))
 
 def replace_string_in_tree_files(root_dir: Path, old: str, new: str, skip_dirs: set[str] | None = None) -> None:
     for file_path in root_dir.rglob("*"):

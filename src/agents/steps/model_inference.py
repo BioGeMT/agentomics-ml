@@ -110,7 +110,7 @@ class ModelInferenceStep(AgenticStep):
             )
         if does_file_contain_string(inference_file_path, "labels.csv"):
             raise ModelRetry("Inference file contains references to labels.csv, which will not be accessible during final testing.")
-        dataset_supplementary_path = self.config.agent_dataset_dir / SUPPLEMENTARY_DIR_NAME
+        dataset_supplementary_path = self.config.dataset_dir / SUPPLEMENTARY_DIR_NAME
         if dataset_supplementary_path.is_dir() and does_file_contain_string(
             inference_file_path, SUPPLEMENTARY_DIR_NAME + "/"
         ):
