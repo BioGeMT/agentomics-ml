@@ -536,6 +536,21 @@ class TestSplitSymlinkHelpers(unittest.TestCase):
 
         validate_symlinks_targets_in(split_dir, allowed)
 
+    def test_validate_symlinks_targets_in_accepts_logical_prepared_target(self):
+        raw_data = self.root / "raw" / "input"
+        raw_data.mkdir(parents=True)
+        (raw_data / "file.txt").write_text("content", encoding="utf-8")
+        prepared = self.root / "prepared" / "dataset"
+        prepared.mkdir(parents=True)
+        os.symlink(raw_data, prepared / "input")
+        split_dir = self.root / "split"
+        split_dir.mkdir()
+        os.symlink(prepared / "input" / "file.txt", split_dir / "link.txt")
+
+        self.assertFalse((split_dir / "link.txt").resolve().is_relative_to(prepared.resolve()))
+
+        validate_symlinks_targets_in(split_dir, prepared)
+
     def _make_step_with_dataset(self, dataset_dir: Path) -> DataSplitStep:
         config = Mock()
         config.dataset_dir = dataset_dir
