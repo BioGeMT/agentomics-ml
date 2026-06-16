@@ -1,4 +1,5 @@
 import json
+import os
 import shutil
 import sys
 import tempfile
@@ -24,6 +25,7 @@ from runtime.read_write_utils import (
     save_config,
     update_current_iteration_state,
 )
+from runtime.filesystem import rewrite_symlinks_to_absolute, validate_symlinks_targets_in
 from utils.config import Config
 
 
@@ -69,9 +71,10 @@ class TestBestIterationSnapshot(unittest.TestCase):
             tags=[],
             val_metric="ACC",
             workspace_dir=str(self.root / "workspace"),
-            prepared_datasets_dir=str(self.root / "prepared_datasets"),
+            datasets_dir=str(self.root / "datasets"),
             user_prompt="test",
             task_type="classification",
+            input_structure=["data.csv"],
         )
         initialize_run_directories(config)
         save_config(config)
@@ -166,9 +169,10 @@ class TestIsNewBest(unittest.TestCase):
             tags=[],
             val_metric="ACC",
             workspace_dir=str(self.root / "workspace"),
-            prepared_datasets_dir=str(self.root / "prepared_datasets"),
+            datasets_dir=str(self.root / "datasets"),
             user_prompt="test",
             task_type="classification",
+            input_structure=["data.csv"],
         )
         initialize_run_directories(config)
         save_config(config)
@@ -264,15 +268,16 @@ class TestDataSplitSkipReuse(unittest.TestCase):
             tags=[],
             val_metric="ACC",
             workspace_dir=str(self.root / "workspace"),
-            prepared_datasets_dir=str(self.root / "prepared_datasets"),
+            datasets_dir=str(self.root / "datasets"),
             user_prompt="test",
             task_type="classification",
+            input_structure=["data.csv"],
             split_allowed_iterations=1,
         )
         initialize_run_directories(config)
         save_config(config)
-        config.agent_dataset_dir.mkdir(parents=True, exist_ok=True)
-        _write_split_folder(config.agent_dataset_dir / "train", row_id="train-row")
+        config.dataset_dir.mkdir(parents=True, exist_ok=True)
+        _write_split_folder(config.dataset_dir / "train", row_id="train-row")
         return config
 
     def _create_split_dir(self, version: int) -> Path:
@@ -318,7 +323,7 @@ class TestDataSplitSkipReuse(unittest.TestCase):
         self.assertTrue(step.should_be_simulated())
 
     def test_mini_train_only_when_explicit_validation_exists(self):
-        _write_split_folder(self.config.agent_dataset_dir / "validation", row_id="validation-row")
+        _write_split_folder(self.config.dataset_dir / "validation", row_id="validation-row")
         step = self._make_step_for_iteration(iteration=0)
         step.on_iteration_start(iteration=0)
 
@@ -328,7 +333,7 @@ class TestDataSplitSkipReuse(unittest.TestCase):
         self.assertFalse(iteration_state["full_split_allowed_at_start"])
 
     def test_split_simulated_when_explicit_validation_and_split_dir_exist(self):
-        _write_split_folder(self.config.agent_dataset_dir / "validation", row_id="validation-row")
+        _write_split_folder(self.config.dataset_dir / "validation", row_id="validation-row")
         self._create_split_dir(0)
         step = self._make_step_for_iteration(iteration=1)
         step.on_iteration_start(iteration=1)
@@ -338,7 +343,7 @@ class TestDataSplitSkipReuse(unittest.TestCase):
         self.assertFalse(iteration_state["only_mini_split_allowed_at_start"])
         self.assertFalse(iteration_state["full_split_allowed_at_start"])
 
-    def test_simulated_output_copies_latest_split(self):
+    def test_simulated_output_reuses_latest_split(self):
         self._create_split_dir(0)
         self._archive_iteration_with_split(iteration=0, split_version=0)
         initialize_current_iteration_workspace(self.config)
@@ -351,6 +356,35 @@ class TestDataSplitSkipReuse(unittest.TestCase):
         self.assertFalse(output.split_changed)
         self.assertIn("split_0", output.train_path)
         self.assertEqual(output.splitting_strategy, "strategy for split 0")
+
+    def test_simulated_output_resolves_symlinked_train_val(self):
+        split_dir = self.config.splits_dir / "split_0"
+        split_dir.mkdir(parents=True)
+        _write_split_folder(self.config.dataset_dir / "validation", row_id="val-row")
+        os.symlink(self.config.dataset_dir / "train", split_dir / "train")
+        os.symlink(self.config.dataset_dir / "validation", split_dir / "validation")
+        _write_split_folder(split_dir / "mini_train", row_id="train-row")
+        self._archive_iteration_with_split(iteration=0, split_version=0)
+        step = self._make_step_for_iteration(iteration=1)
+
+        output = step.build_simulated_output()
+
+        self.assertTrue(Path(output.train_path).is_symlink())
+        self.assertTrue((Path(output.train_path) / "labels.csv").exists())
+        self.assertTrue((Path(output.val_path) / "labels.csv").exists())
+
+    def test_simulated_output_fallback_creates_symlinks_not_copies(self):
+        _write_split_folder(self.config.dataset_dir / "validation", row_id="val-row")
+        _write_split_folder(self.config.dataset_dir / "mini_train", row_id="train-row")
+        step = self._make_step_for_iteration(iteration=0)
+
+        output = step.build_simulated_output()
+
+        split_dir = Path(output.train_path).parent
+        self.assertTrue((split_dir / "train").is_symlink())
+        self.assertTrue((split_dir / "validation").is_symlink())
+        self.assertTrue((split_dir / "mini_train").is_symlink())
+        self.assertEqual((split_dir / "train").resolve(), (self.config.dataset_dir / "train").resolve())
 
     def test_latest_split_strategy_returns_last_successful_iteration_strategy(self):
         self._archive_iteration_with_split(iteration=0, split_version=0)
@@ -372,9 +406,10 @@ class TestFinalReportSplitLabels(unittest.TestCase):
             tags=[],
             val_metric="ACC",
             workspace_dir=str(self.root / "workspace"),
-            prepared_datasets_dir=str(self.root / "prepared_datasets"),
+            datasets_dir=str(self.root / "datasets"),
             user_prompt="test",
             task_type="classification",
+            input_structure=["data.csv"],
         )
         initialize_run_directories(self.config)
         save_config(self.config)
@@ -401,8 +436,7 @@ class TestFinalReportSplitLabels(unittest.TestCase):
 
         inputs = gather_iteration_inputs(
             config=self.config,
-            prepared_datasets=self.root / "prepared_datasets",
-            prepared_tests=self.root / "prepared_tests",
+            test_labels_path=None,
             dataset_meta=DatasetMeta(task_type="classification", numeric_label_col="numeric_label"),
             iteration=0,
         )
@@ -413,6 +447,137 @@ class TestFinalReportSplitLabels(unittest.TestCase):
             self.config.splits_dir / "split_1" / "validation" / "labels.csv",
             labels_by_split["validation"],
         )
+
+    def test_iteration_inputs_resolve_symlinked_splits(self):
+        self.config.dataset_dir.mkdir(parents=True, exist_ok=True)
+        _write_split_folder(self.config.dataset_dir / "train", row_id="ds-train")
+        _write_split_folder(self.config.dataset_dir / "validation", row_id="ds-val")
+
+        split_dir = self.config.splits_dir / "split_0"
+        split_dir.mkdir(parents=True)
+        os.symlink(self.config.dataset_dir / "train", split_dir / "train")
+        os.symlink(self.config.dataset_dir / "validation", split_dir / "validation")
+        _write_split_folder(split_dir / "mini_train", row_id="ds-train")
+
+        iteration_dir = self.config.iteration_dir(0)
+        iteration_dir.mkdir(parents=True, exist_ok=True)
+        _write_step_output(iteration_dir, "data_split", DataSplitOutput(
+            train_path=str(split_dir / "train"),
+            val_path=str(split_dir / "validation"),
+            mini_train_path=str(split_dir / "mini_train"),
+            splitting_strategy="",
+            split_changed=False,
+            split_version=0,
+        ))
+
+        inputs = gather_iteration_inputs(
+            config=self.config,
+            test_labels_path=None,
+            dataset_meta=DatasetMeta(task_type="classification", numeric_label_col="numeric_label"),
+            iteration=0,
+        )
+
+        labels_by_split = {split.split_name: split.labeled_csv for split in inputs.splits}
+        self.assertIsNotNone(labels_by_split["train"])
+        self.assertIsNotNone(labels_by_split["validation"])
+        self.assertTrue(labels_by_split["train"].exists())
+        self.assertTrue(labels_by_split["validation"].exists())
+
+
+class TestSplitSymlinkHelpers(unittest.TestCase):
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp_dir.name)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_rewrite_symlinks_to_absolute_rewrites_relative(self):
+        target_file = self.root / "data" / "file.txt"
+        target_file.parent.mkdir()
+        target_file.write_text("content", encoding="utf-8")
+        link_dir = self.root / "links"
+        link_dir.mkdir()
+        os.symlink("../data/file.txt", link_dir / "link.txt")
+
+        self.assertFalse(os.readlink(link_dir / "link.txt").startswith("/"))
+
+        rewrite_symlinks_to_absolute(link_dir)
+
+        self.assertTrue(os.readlink(link_dir / "link.txt").startswith("/"))
+        self.assertEqual((link_dir / "link.txt").resolve(), target_file.resolve())
+
+    def test_validate_symlinks_targets_in_rejects_outside(self):
+        allowed = self.root / "dataset"
+        allowed.mkdir()
+        (allowed / "ok.txt").write_text("ok", encoding="utf-8")
+        outside = self.root / "secret"
+        outside.mkdir()
+        (outside / "bad.txt").write_text("bad", encoding="utf-8")
+        split_dir = self.root / "split"
+        split_dir.mkdir()
+        os.symlink(allowed / "ok.txt", split_dir / "good_link")
+        os.symlink(outside / "bad.txt", split_dir / "bad_link")
+
+        with self.assertRaises(ValueError) as ctx:
+            validate_symlinks_targets_in(split_dir, allowed)
+        self.assertIn("bad_link", str(ctx.exception))
+
+    def test_validate_symlinks_targets_in_accepts_all_inside(self):
+        allowed = self.root / "dataset"
+        allowed.mkdir()
+        (allowed / "a.txt").write_text("a", encoding="utf-8")
+        (allowed / "b.txt").write_text("b", encoding="utf-8")
+        split_dir = self.root / "split"
+        split_dir.mkdir()
+        os.symlink(allowed / "a.txt", split_dir / "link_a")
+        os.symlink(allowed / "b.txt", split_dir / "link_b")
+
+        validate_symlinks_targets_in(split_dir, allowed)
+
+    def _make_step_with_dataset(self, dataset_dir: Path) -> DataSplitStep:
+        config = Mock()
+        config.dataset_dir = dataset_dir
+        return DataSplitStep(config, Mock(), Mock(), Mock(), [])
+
+    def test_raise_on_unnecessary_copies_detects_copied_file(self):
+        dataset_dir = self.root / "dataset"
+        (dataset_dir / "train" / "input").mkdir(parents=True)
+        (dataset_dir / "train" / "input" / "file.txt").write_text("hello", encoding="utf-8")
+
+        split = self.root / "split"
+        (split / "input").mkdir(parents=True)
+        (split / "input" / "file.txt").write_text("hello", encoding="utf-8")
+
+        step = self._make_step_with_dataset(dataset_dir)
+        from pydantic_ai import ModelRetry
+        with self.assertRaises(ModelRetry):
+            step._raise_on_unnecessary_copies(split)
+
+    def test_raise_on_unnecessary_copies_allows_different_size(self):
+        dataset_dir = self.root / "dataset"
+        (dataset_dir / "train" / "input").mkdir(parents=True)
+        (dataset_dir / "train" / "input" / "data.csv").write_text("a,b,c\n1,2,3\n4,5,6", encoding="utf-8")
+
+        split = self.root / "split"
+        (split / "input").mkdir(parents=True)
+        (split / "input" / "data.csv").write_text("a,b,c\n1,2,3", encoding="utf-8")
+
+        step = self._make_step_with_dataset(dataset_dir)
+        step._raise_on_unnecessary_copies(split)
+
+    def test_raise_on_unnecessary_copies_ignores_symlinks(self):
+        dataset_dir = self.root / "dataset"
+        (dataset_dir / "train" / "input").mkdir(parents=True)
+        (dataset_dir / "train" / "input" / "file.txt").write_text("hello", encoding="utf-8")
+
+        split = self.root / "split"
+        (split / "input").mkdir(parents=True)
+        os.symlink(dataset_dir / "train" / "input" / "file.txt", split / "input" / "file.txt")
+
+        step = self._make_step_with_dataset(dataset_dir)
+        step._raise_on_unnecessary_copies(split)
 
 
 if __name__ == "__main__":
