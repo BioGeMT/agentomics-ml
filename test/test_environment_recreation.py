@@ -4,6 +4,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_PATH = REPO_ROOT / "src"
@@ -15,6 +16,7 @@ from runtime.conda_utils import (
     export_environment_descriptor_to_path,
     remove_environment,
 )
+from runtime import conda_utils
 
 
 def _pip_in_env(env_path: Path) -> str:
@@ -96,6 +98,34 @@ def _export_destroy_recreate(
     remove_environment(source_env)
     create_environment_from_descriptor(descriptor_path=descriptor_path, env_path=recreated_env)
     test.assertTrue(recreated_env.exists(), "Recreated env directory should exist")
+
+
+class TestEnvironmentDescriptorExport(unittest.TestCase):
+    def test_export_strips_pip_local_version_labels(self):
+        """PyPI's default index does not accept local version pins like torch==2.11.0+cpu."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source_env = root / "source_env"
+            source_env.mkdir(parents=True)
+            descriptor_path = root / "environment.yml"
+
+            with mock.patch.object(
+                conda_utils,
+                "_collect_environment_packages",
+                return_value=(
+                    [("python", "3.12.0")],
+                    [("torch", "2.11.0+cpu"), ("torchaudio", "2.11.0+cpu")],
+                ),
+            ):
+                export_environment_descriptor_to_path(
+                    env_path=source_env, descriptor_path=descriptor_path,
+                )
+
+            yml = descriptor_path.read_text(encoding="utf-8")
+            self.assertIn("  - pip\n", yml, "pip must be an explicit conda dependency")
+            self.assertIn("torch==2.11.0\n", yml)
+            self.assertIn("torchaudio==2.11.0\n", yml)
+            self.assertNotIn("+cpu", yml)
 
 
 @unittest.skipUnless(shutil.which("conda"), "conda not available")

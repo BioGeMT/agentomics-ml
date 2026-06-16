@@ -72,9 +72,10 @@ def export_environment_descriptor_to_path(env_path: Path, descriptor_path: Path)
     for name, version in conda_packages:
         lines.append(f"  - {name}={version}")
     if pip_packages:
+        lines.append("  - pip")
         lines.append("  - pip:")
         for name, version in pip_packages:
-            lines.append(f"      - {name}=={version}")
+            lines.append(f"      - {name}=={version.split('+', maxsplit=1)[0]}")
 
     descriptor_path.parent.mkdir(parents=True, exist_ok=True)
     descriptor_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
