@@ -8,6 +8,8 @@ from pathlib import Path
 
 import wandb
 
+from datasets.data_contract import INPUT_DIR_NAME, LABELS_FILE_NAME, TEST_SPLIT
+from datasets.dataset_preparation import prepare_test_dataset
 from runtime.evaluate_result import get_metrics
 from run_logging.logging_helpers import define_serial_metrics, log_serial_metrics
 from run_logging.wandb_setup import resume_wandb_run
@@ -19,24 +21,23 @@ from runtime.conda_utils import (
 )
 from runtime.filesystem import remove_path
 from runtime.inference_runner import run_inference_script
-from runtime.read_write_utils import get_archived_iterations, load_config_from_run_dir_and_reroot, load_dataset_metadata
+from runtime.read_write_utils import get_archived_iterations, load_config_from_run_dir_and_reroot
 from utils.config import Config
-from datasets.data_contract import INPUT_DIR_NAME, LABELS_FILE_NAME, TEST_SPLIT
 
 ITERATION_TEST_ENVS_DIRNAME = "_iteration_test_envs"
 STEALTH_TEST_METRICS_FILENAME = "stealth_test_metrics.json"
 STEALTH_TEST_METRIC_PREFIX = "stealth_test"
 STEALTH_TEST_STEP_METRIC = "stealth_test/iteration"
 
-def evaluate_stealth_test_history(agent_dir: Path, prepared_test_sets_dir: Path) -> None:
+def evaluate_stealth_test_history(agent_dir: Path, test_datasets_dir: Path) -> None:
     config = load_config_from_run_dir_and_reroot(agent_dir / Config.RUN_DIRNAME)
-    metadata = load_dataset_metadata(config)
-    test_split_path = prepared_test_sets_dir / config.dataset / TEST_SPLIT
-    test_input_path = test_split_path / INPUT_DIR_NAME
-    labels_path = test_split_path / LABELS_FILE_NAME
-    if not test_input_path.is_dir() or not labels_path.is_file():
+    raw_test_dataset_dir = test_datasets_dir / config.dataset
+    raw_test_split_path = raw_test_dataset_dir / TEST_SPLIT
+    raw_test_input_path = raw_test_split_path / INPUT_DIR_NAME
+    raw_labels_path = raw_test_split_path / LABELS_FILE_NAME
+    if not raw_test_input_path.is_dir() or not raw_labels_path.is_file():
         raise FileNotFoundError(
-            f"Expected input/ and labels.csv in {test_split_path} for iteration test evaluation."
+            f"Expected input/ and labels.csv in {raw_test_split_path} for iteration test evaluation."
         )
 
     run = resume_wandb_run(config, dir=config.extras_dir / "iteration_test_logs")
@@ -45,9 +46,8 @@ def evaluate_stealth_test_history(agent_dir: Path, prepared_test_sets_dir: Path)
         results = _evaluate_iterations(
             agent_dir=agent_dir,
             config=config,
-            metadata=metadata,
-            test_input_path=test_input_path,
-            labels_path=labels_path,
+            raw_test_dataset_dir=raw_test_dataset_dir,
+            raw_test_input_path=raw_test_input_path,
         )
     finally:
         if run is not None:
@@ -62,9 +62,8 @@ def evaluate_stealth_test_history(agent_dir: Path, prepared_test_sets_dir: Path)
 def _evaluate_iterations(
     agent_dir: Path,
     config: Config,
-    metadata: dict[str, object],
-    test_input_path: Path,
-    labels_path: Path,
+    raw_test_dataset_dir: Path,
+    raw_test_input_path: Path,
 ) -> list[dict]:
     iteration_dirs = [
         (iteration, config.iteration_dir(iteration))
@@ -74,6 +73,17 @@ def _evaluate_iterations(
 
     with tempfile.TemporaryDirectory(prefix="iteration_test_eval_") as temp_dir:
         temp_dir_path = Path(temp_dir)
+
+        prepared_test_dir = temp_dir_path / "prepared_test" / config.dataset
+        prepare_test_dataset(
+            source_dir=raw_test_dataset_dir,
+            destination_dir=prepared_test_dir,
+            task_type=config.task_type,
+            input_structure=config.input_structure,
+            label_to_scalar=config.label_to_scalar,
+        )
+        prepared_labels_path = prepared_test_dir / TEST_SPLIT / LABELS_FILE_NAME
+
         for iteration, iteration_dir in iteration_dirs:
             print(f"Evaluating iteration {iteration} on held-out test set")
             result = _evaluate_single_iteration(
@@ -81,9 +91,8 @@ def _evaluate_iterations(
                 iteration=iteration,
                 iteration_dir=iteration_dir,
                 config=config,
-                metadata=metadata,
-                test_input_path=test_input_path,
-                labels_path=labels_path,
+                test_input_path=raw_test_input_path,
+                prepared_labels_path=prepared_labels_path,
                 temp_dir=temp_dir_path,
             )
             results.append(result)
@@ -101,9 +110,8 @@ def _evaluate_single_iteration(
     iteration: int,
     iteration_dir: Path,
     config: Config,
-    metadata: dict[str, object],
     test_input_path: Path,
-    labels_path: Path,
+    prepared_labels_path: Path,
     temp_dir: Path,
 ) -> dict:
     #TODO should use the step id by importing it
@@ -125,9 +133,8 @@ def _evaluate_single_iteration(
         )
         metrics = get_metrics(
             results_file=output_path,
-            test_file=labels_path,
-            numeric_label_col=metadata["numeric_label_col"],
-            task_type=metadata["task_type"],
+            test_file=prepared_labels_path,
+            task_type=config.task_type,
         )
         return {"iteration": iteration, "status": "success", "metrics": metrics, "error": None}
     except Exception:
@@ -138,11 +145,11 @@ def _evaluate_single_iteration(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate all successful archived iterations on the held-out test set.")
     parser.add_argument("--agent-dir", type=Path, required=True, help="Path to exported agent output directory")
-    parser.add_argument("--prepared-test-sets-dir", type=Path, required=True, help="Path to prepared test sets root directory")
+    parser.add_argument("--test-datasets-dir", type=Path, required=True, help="Path to hidden test datasets root directory")
     args = parser.parse_args()
     evaluate_stealth_test_history(
         args.agent_dir.resolve(),
-        prepared_test_sets_dir=args.prepared_test_sets_dir.resolve(),
+        test_datasets_dir=args.test_datasets_dir.resolve(),
     )
 
 if __name__ == "__main__":

@@ -88,10 +88,8 @@ mkdir -p "${OUTPUT_DIR}"
 echo "Copying workspace..."
 docker run --rm -v "${VOLUME_NAME}:/workspace" busybox chmod -R a+rX /workspace/ || true
 docker run --rm \
-    -u "$(id -u):$(id -g)" \
     -v "${VOLUME_NAME}:/source" \
-    -v "$(pwd)/${OUTPUT_DIR}:/dest" \
-    busybox cp -r /source/. /dest/
+    busybox tar -c --exclude=.conda -C /source . | tar -x -C "${OUTPUT_DIR}/"
 
 # ── Best iteration snapshot (only present if at least one iteration completed) ─
 HAS_SNAPSHOT=false
@@ -118,8 +116,8 @@ if [ "$SKIP_REPORTS" = false ]; then
                 --entrypoint /opt/conda/envs/agentomics-env/bin/python \
                 "$AGENTOMICS_IMAGE" /repository/src/runtime/generate_final_reports.py \
                     --agent-dir /agent_out \
-                    --prepared-datasets /repository/prepared_datasets \
-                    --prepared-tests /repository/prepared_test_sets
+                    --datasets-dir /repository/datasets \
+                    --test-datasets-dir /repository/test_datasets
         else
             warn "Docker image '${AGENTOMICS_IMAGE}' not found — skipping PDF reports."
             warn "Build it first with: ./run.sh --build-images --list-datasets"
