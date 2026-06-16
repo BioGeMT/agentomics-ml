@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -159,9 +160,10 @@ class TestForkRun(unittest.TestCase):
             tags=[],
             val_metric="ACC",
             workspace_dir=str(self.source_workspace),
-            prepared_datasets_dir=str(self.root / "prepared_datasets"),
+            datasets_dir=str(self.root / "datasets"),
             user_prompt="test",
             task_type="classification",
+            input_structure=["data.csv"],
         )
         initialize_run_directories(source_config)
         save_config(source_config)
@@ -291,6 +293,70 @@ class TestForkRun(unittest.TestCase):
         self._fork("src_run", target_run_id, fork_from_step="data_split", fork_from_iteration=0)
         branch = _git(self.target_workspace, ["branch", "--show-current"]).stdout.strip()
         self.assertEqual(branch, f"agentomics-run-{target_run_id}")
+
+    def test_fork_preserves_symlinked_splits(self):
+        """Symlinked split files in the source workspace survive the fork (copytree + checkout)."""
+        run_id = "src_run"
+        source_config = Config(
+            agent_id=run_id,
+            model_name="test-model",
+            iteration_plan_model_name="test-model",
+            dataset="toy",
+            tags=[],
+            val_metric="ACC",
+            workspace_dir=str(self.source_workspace),
+            datasets_dir=str(self.root / "datasets"),
+            user_prompt="test",
+            task_type="classification",
+            input_structure=["data.csv"],
+        )
+        initialize_run_directories(source_config)
+        save_config(source_config)
+
+        dataset_dir = self.root / "datasets" / "toy"
+        (dataset_dir / "train" / "input").mkdir(parents=True)
+        (dataset_dir / "train" / "input" / "img_0.png").write_text("pixel data", encoding="utf-8")
+        (dataset_dir / "train" / "labels.csv").write_text("id,numeric_label\nimg_0,0\n", encoding="utf-8")
+
+        split_dir = source_config.splits_dir / "split_0" / "train"
+        split_dir.mkdir(parents=True)
+        (split_dir / "input").mkdir()
+        os.symlink(
+            dataset_dir / "train" / "input" / "img_0.png",
+            split_dir / "input" / "img_0.png",
+        )
+        (split_dir / "labels.csv").write_text("id,numeric_label\nimg_0,0\n", encoding="utf-8")
+
+        _setup_git_repo(self.source_workspace)
+        (self.source_workspace / ".gitignore").write_text(
+            f"run/shared/.conda/\n{Config.BEST_ITERATION_SNAPSHOT_DIRNAME}/.conda/\n__pycache__/\n.cache/\n*.pyc\n",
+            encoding="utf-8",
+        )
+        run_dir = source_config.run_dir
+        (run_dir / "shared" / "environment.yml").write_text("name: fork-test\n", encoding="utf-8")
+        (run_dir / "shared" / ".conda" / "envs" / f"{run_id}_env").mkdir(parents=True)
+        _commit(self.source_workspace, f"agentomics/{run_id}/start", "init.txt")
+        _commit(self.source_workspace, build_iteration_end_commit_message(run_id, 0), "iter_end.txt")
+
+        with patch("runtime.setup_fork.ensure_environment_from_descriptor"):
+            fork_run(
+                source_workspace_dir=self.source_workspace,
+                target_agent_id="tgt_run",
+                target_workspace_dir=self.target_workspace,
+                fork_from_step=None,
+                fork_from_iteration=None,
+            )
+
+        forked_link = (
+            self.target_workspace / Config.RUN_DIRNAME / "shared" / "splits"
+            / "split_0" / "train" / "input" / "img_0.png"
+        )
+        self.assertTrue(forked_link.is_symlink(), "Symlink should be preserved in forked workspace")
+        self.assertEqual(
+            os.readlink(forked_link),
+            str(dataset_dir / "train" / "input" / "img_0.png"),
+        )
+        self.assertTrue(forked_link.exists(), "Symlink should resolve to the dataset file")
 
     def test_handles_dangling_symlink_in_source(self):
         # Regression: wandb creates debug-core.log as a symlink to a path inside the container
