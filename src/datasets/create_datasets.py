@@ -46,6 +46,13 @@ def _reset_dataset_dir(dataset_name: str) -> Path:
     local_dset_path.mkdir(parents=True)
     return local_dset_path
 
+def _reset_test_dataset_dir(dataset_name: str) -> Path:
+    local_test_dset_path = REPO_PATH / "test_datasets" / dataset_name
+    if local_test_dset_path.exists():
+        shutil.rmtree(local_test_dset_path)
+    local_test_dset_path.mkdir(parents=True)
+    return local_test_dset_path
+
 def _write_metadata(dataset_dir: Path, task_type: str) -> None:
     (dataset_dir / METADATA_FILE_NAME).write_text(
         json.dumps({"task_type": task_type}, indent=4),
@@ -153,7 +160,8 @@ def generate_breast_cancer_files(_dataset_name: str = "breast_cancer") -> None:
 
     from datasets.csv_converter import convert_csv_dataset
 
-    dataset_dir = _reset_dataset_dir("breast_cancer")
+    dataset_dir = _reset_dataset_dir(_dataset_name)
+    test_dataset_dir = _reset_test_dataset_dir(_dataset_name)
     data = load_breast_cancer(as_frame=True)
     df = data.frame.copy()
     df = df.rename(columns={"target": LABEL_COLUMN})
@@ -171,6 +179,7 @@ def generate_breast_cancer_files(_dataset_name: str = "breast_cancer") -> None:
         dataset_dir,
         label_column=LABEL_COLUMN,
         splits={TRAIN_SPLIT: train_df, TEST_SPLIT: test_df},
+        test_output_dir=test_dataset_dir,
         id_column=ID_COLUMN_NAME,
         task_type="classification",
     )
@@ -189,7 +198,8 @@ def generate_digits_images_files(_dataset_name: str = "digits_images") -> None:
     from sklearn.datasets import load_digits
     from sklearn.model_selection import train_test_split
 
-    dataset_dir = _reset_dataset_dir("digits_images")
+    dataset_dir = _reset_dataset_dir(_dataset_name)
+    test_dataset_dir = _reset_test_dataset_dir(_dataset_name)
     digits = load_digits()
     indices = np.arange(len(digits.target))
     train_indices, test_indices = train_test_split(
@@ -205,14 +215,15 @@ def generate_digits_images_files(_dataset_name: str = "digits_images") -> None:
     }
 
     for split_name, split_idx in split_indices.items():
-        images_dir = _make_split_dirs(dataset_dir, split_name, "images")
+        split_dataset_dir = test_dataset_dir if split_name == TEST_SPLIT else dataset_dir
+        images_dir = _make_split_dirs(split_dataset_dir, split_name, "images")
         labels = []
         for idx in sorted(split_idx):
             sample_id = f"digit_{idx:04d}"
             image = (digits.images[idx] / 16 * 255).astype(np.uint8)
             Image.fromarray(image, mode="L").save(images_dir / f"{sample_id}.png")
             labels.append({ID_COLUMN_NAME: sample_id, LABEL_COLUMN_NAME: str(digits.target[idx])})
-        _write_labels(dataset_dir / split_name, labels)
+        _write_labels(split_dataset_dir / split_name, labels)
 
     _write_metadata(dataset_dir, "classification")
     _write_description(
@@ -225,7 +236,8 @@ def generate_digits_images_files(_dataset_name: str = "digits_images") -> None:
     )
 
 def generate_spoken_digits_files(_dataset_name: str = "spoken_digits") -> None:
-    dataset_dir = _reset_dataset_dir("spoken_digits")
+    dataset_dir = _reset_dataset_dir(_dataset_name)
+    test_dataset_dir = _reset_test_dataset_dir(_dataset_name)
     download_dir = REPO_PATH / ".free_spoken_digit_dataset"
     download_dir.mkdir(exist_ok=True)
     archive_path = download_dir / f"free-spoken-digit-dataset-{FREE_SPOKEN_DIGIT_DATASET_VERSION}.zip"
@@ -252,7 +264,8 @@ def generate_spoken_digits_files(_dataset_name: str = "spoken_digits") -> None:
     for wav_path in sorted(recordings_dir.glob("*.wav")):
         label, _speaker, index = wav_path.stem.rsplit("_", 2)
         split_name = TEST_SPLIT if int(index) < 5 else TRAIN_SPLIT
-        audio_dir = _make_split_dirs(dataset_dir, split_name, "audio")
+        split_dataset_dir = test_dataset_dir if split_name == TEST_SPLIT else dataset_dir
+        audio_dir = _make_split_dirs(split_dataset_dir, split_name, "audio")
         destination = audio_dir / wav_path.name
         shutil.copy2(wav_path, destination)
         split_labels[split_name].append({
@@ -261,7 +274,8 @@ def generate_spoken_digits_files(_dataset_name: str = "spoken_digits") -> None:
         })
 
     for split_name, labels in split_labels.items():
-        _write_labels(dataset_dir / split_name, labels)
+        split_dataset_dir = test_dataset_dir if split_name == TEST_SPLIT else dataset_dir
+        _write_labels(split_dataset_dir / split_name, labels)
 
     _write_metadata(dataset_dir, "classification")
     _write_description(
