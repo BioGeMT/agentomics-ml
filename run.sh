@@ -39,7 +39,7 @@ Use --local to run with a local Conda environment.
 
 Required Arguments (for non-interactive runs):
   --model <name>      The LLM model name (e.g., 'openai/gpt-4').
-  --dataset <name>    The short identifier for the prepared dataset (e.g., 'breast_cancer').
+  --dataset <name>    The short identifier for the dataset (e.g., 'breast_cancer').
                       Can be replaced by --fork-from-run, which inherits the dataset from the source run.
 
 Optional Arguments:
@@ -48,8 +48,8 @@ Optional Arguments:
                       If not provided, defaults to the same model as --model.
   --provider <name>   When multiple api keys are provided, provider override (e.g., 'openai', 'openrouter').
   --task-type <classification|regression>
-                      Task type used when preparing a raw dataset selected with --dataset.
-                      If omitted and the dataset config does not define it, preparation prompts in interactive mode.
+                      Task type used when preparing a dataset selected with --dataset.
+                      If omitted and the dataset metadata does not define it, preparation prompts in interactive mode.
   --iterations <N>    Number of iterations to run the agent (recommended more than 5).
                       For forked runs, omitting it keeps the source run's total iteration limit.
                       Providing it means N additional iterations from the fork point.
@@ -108,7 +108,7 @@ Operational Flags:
 
 Listing Flags (Run the script with only one of these):
   --list-models       List models available via the configured provider and exit.
-  --list-datasets     List all prepared datasets and exit.
+  --list-datasets     List available datasets and exit.
   --list-metrics      List all available validation metrics and exit.
 
 Environment:
@@ -173,6 +173,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         --task-type)
             require_opt_value "$1" "${2:-}"
+            AGENTOMICS_ARGS+=(--task-type "$2")
             TASK_TYPE="$2"
             shift 2
             ;;
@@ -345,6 +346,7 @@ if [ "$LOCAL_MODE" = true ]; then
     WORKSPACE_ROOT="$(dirname "$AGENTOMICS_DIR")/workspace"
     WORKSPACE_CACHE_DIR="$WORKSPACE_ROOT/cache"
     WORKSPACE_DIR="$WORKSPACE_ROOT/runs/$AGENT_ID"
+    WORKSPACE_TEST_DATASETS_DIR="$(pwd)/test_datasets"
     mkdir -p "$WORKSPACE_CACHE_DIR" "$(dirname "$WORKSPACE_DIR")"
     rm -rf "$WORKSPACE_DIR"
     mkdir -p "$WORKSPACE_DIR"
@@ -365,31 +367,6 @@ if [ "$LOCAL_MODE" = true ]; then
     echo -e "${RED}Running in local mode - this is only recommended if you run in a non-vulnerable environment!${NOCOLOR}"
     echo "For Docker mode (secure run), re-run without the --local flag."
     
-    if ! conda env list | grep -q "^agentomics-prepare-env "; then
-        conda env create -f envs/environment_prepare.yaml -q
-    else
-        conda env update -n agentomics-prepare-env -f envs/environment_prepare.yaml -q --prune
-    fi
-
-    mkdir -p prepared_datasets
-    if [ -n "$EFFECTIVE_DATASET_NAME" ]; then
-        PREPARE_ARGS=(
-            --dataset-dir "./datasets/${EFFECTIVE_DATASET_NAME}"
-            --prepared-datasets-dir "$(pwd)/prepared_datasets"
-            --prepared-test-sets-dir "$(pwd)/prepared_test_sets"
-        )
-        if [ -n "$TASK_TYPE" ]; then
-            PREPARE_ARGS+=(--task-type "$TASK_TYPE")
-        fi
-        conda run -n agentomics-prepare-env python src/prepare_datasets.py \
-            ${PREPARE_ARGS[@]+"${PREPARE_ARGS[@]}"}
-    else
-        conda run -n agentomics-prepare-env python src/prepare_datasets.py --prepare-all \
-            --datasets-dir "$(pwd)/datasets" \
-            --prepared-datasets-dir "$(pwd)/prepared_datasets" \
-            --prepared-test-sets-dir "$(pwd)/prepared_test_sets"
-    fi
-
     if ! conda env list | grep -q "^agent_start_env "; then
         conda env create -f envs/environment_agent.yaml -q
     fi
@@ -419,7 +396,7 @@ if [ "$LOCAL_MODE" = true ]; then
         export OPENROUTER_API_KEY="$TEMP_API_KEY"
     fi
 
-    AGENTOMICS_ARGS+=(--workspace-dir "$WORKSPACE_DIR" --prepared-datasets-dir "$(pwd)/prepared_datasets")
+    AGENTOMICS_ARGS+=(--workspace-dir "$WORKSPACE_DIR" --datasets-dir "$(pwd)/datasets")
 
     if [ -n "$FORK_FROM_RUN" ]; then
         FORK_FROM_RUN_ABS="$(cd "$FORK_FROM_RUN" && pwd)"
@@ -461,13 +438,15 @@ if [ "$LOCAL_MODE" = true ]; then
             die "Config not found: ${CONFIG_PATH}"
         fi
         export PYTHONPATH=./src
-        conda run -n agentomics-env python src/run_logging/test_evaluation.py --workspace-dir "$WORKSPACE_DIR" --prepared-test-sets-dir "$(pwd)/prepared_test_sets"
+        conda run -n agentomics-env python src/run_logging/test_evaluation.py \
+            --workspace-dir "$WORKSPACE_DIR" \
+            --test-datasets-dir "$WORKSPACE_TEST_DATASETS_DIR"
     else
         RUN_SUCCEEDED=false
     fi
 
     mkdir -p "outputs/${AGENT_ID}"
-    cp -r "${WORKSPACE_DIR}/." "outputs/${AGENT_ID}/"
+    tar -c --exclude='.conda' -C "${WORKSPACE_DIR}" . | tar -x -C "outputs/${AGENT_ID}/"
 
     if [[ "$RUN_SUCCEEDED" = true ]]; then
         PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python -m runtime.iteration_reports --agent-dir "outputs/${AGENT_ID}"
@@ -480,15 +459,14 @@ if [ "$LOCAL_MODE" = true ]; then
         write_outputs_readme "${AGENT_ID}"
         PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/runtime/generate_final_reports.py \
             --agent-dir "outputs/${AGENT_ID}" \
-            --prepared-datasets $(pwd)/prepared_datasets \
-            --prepared-tests $(pwd)/prepared_test_sets
+            --test-datasets-dir "$WORKSPACE_TEST_DATASETS_DIR"
 
         if [ "$ALL_ITERATIONS_TEST" = true ]; then
             echo "Running held-out test evaluation for all archived iterations"
             PYTHONPATH="$(pwd)/src" conda run -n agentomics-env \
                 python -m runtime.stealth_test_evaluation \
                 --agent-dir "outputs/${AGENT_ID}" \
-                --prepared-test-sets-dir "$(pwd)/prepared_test_sets"
+                --test-datasets-dir "$WORKSPACE_TEST_DATASETS_DIR"
         fi
 
         echo "PDF reports ready at: outputs/${AGENT_ID}/reports/pdf/"
@@ -526,15 +504,10 @@ else
     fi
 
     AGENTOMICS_IMAGE="agentomics_img"
-    PREPARE_IMAGE="agentomics_prepare_img"
 
     if [ "$BUILD_IMAGES" = true ]; then
         echo "Building the run image"
         docker build -t "$AGENTOMICS_IMAGE" -f Dockerfile ${DOCKER_BUILD_ARGS[@]+"${DOCKER_BUILD_ARGS[@]}"} .
-        echo "Build done"
-
-        echo "Building the data preparation image"
-        docker build -t "$PREPARE_IMAGE" -f Dockerfile.prepare .
         echo "Build done"
     else
         FM_TAG="NONE"
@@ -542,34 +515,12 @@ else
             FM_TAG="$(echo "$EFFECTIVE_FOUNDATION_MODELS_TYPE" | tr '[:lower:]' '[:upper:]')"
         fi
         AGENTOMICS_IMAGE="${DOCKERHUB_USERNAME}/agentomics:FM-${FM_TAG}-latest"
-        PREPARE_IMAGE="${DOCKERHUB_USERNAME}/agentomics-prepare:latest"
 
         echo "Pulling the run image"
         docker pull "$AGENTOMICS_IMAGE"
-        echo "Pulling the data preparation image"
-        docker pull "$PREPARE_IMAGE"
     fi
     AGENT_ID=$(docker run --rm -u $(id -u):$(id -g) -v "$(pwd)":/repository:ro --entrypoint \
                /opt/conda/envs/agentomics-env/bin/python "$AGENTOMICS_IMAGE" /repository/src/utils/agent_id.py)
-
-    PREPARE_ARGS=()
-    if [ -n "$EFFECTIVE_DATASET_NAME" ]; then
-        PREPARE_ARGS=(--dataset-dir "./datasets/${EFFECTIVE_DATASET_NAME}")
-        if [ -n "$TASK_TYPE" ]; then
-            PREPARE_ARGS+=(--task-type "$TASK_TYPE")
-        fi
-    else
-        PREPARE_ARGS=(--prepare-all)
-    fi
-
-    docker run \
-        -u $(id -u):$(id -g) \
-        --rm \
-        -it \
-        -e PYTHONWARNINGS=ignore \
-        --name agentomics_prepare_cont_${AGENT_ID} \
-        -v "$(pwd)":/repository \
-        "$PREPARE_IMAGE" ${PREPARE_ARGS[@]+"${PREPARE_ARGS[@]}"}
 
     printless_command docker volume create temp_agentomics_volume_${AGENT_ID}
     cleanup_volume_on_finish
@@ -637,7 +588,7 @@ else
         CODEX_DOCKER_FLAGS+=(-e "CODEX_MODELS_CACHE_FILE=/tmp/codex/models_cache.json")
     fi
 
-    AGENTOMICS_ARGS+=(--workspace-dir /workspace --prepared-datasets-dir /repository/prepared_datasets)
+    AGENTOMICS_ARGS+=(--workspace-dir /workspace --datasets-dir /repository/datasets)
     TEST_EXEC=(--entrypoint /opt/conda/envs/agentomics-env/bin/python "$AGENTOMICS_IMAGE" -m test.run_all_tests)
     RUN_EXEC=("$AGENTOMICS_IMAGE" "${AGENTOMICS_ARGS[@]}")
     if [[ ${#CODEX_DOCKER_FLAGS[@]} -gt 0 ]]; then
@@ -684,12 +635,11 @@ else
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/test":/repository/test:ro \
             -v "$(pwd)/scripts":/repository/scripts:ro \
-            -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
+            -v "$(pwd)/run.sh":/repository/run.sh:ro \
+            -v "$(pwd)/datasets":/repository/datasets:ro \
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
             ${TEST_EXEC[@]+"${TEST_EXEC[@]}"}
     else
-        AGENTOMICS_ARGS+=(--workspace-dir /workspace --prepared-datasets-dir /repository/prepared_datasets)
-
         if [ -n "$FORK_FROM_RUN" ]; then
             FORK_FROM_RUN_ABS="$(cd "$FORK_FROM_RUN" && pwd)"
             FORK_MOUNT_FLAGS=(-v "${FORK_FROM_RUN_ABS}:/fork_source:ro")
@@ -718,7 +668,7 @@ else
             ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
             ${CODEX_DOCKER_FLAGS[@]+"${CODEX_DOCKER_FLAGS[@]}"} \
             -v "$(pwd)/src":/repository/src:ro \
-            -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
+            -v "$(pwd)/datasets":/repository/datasets:ro \
             -v temp_agentomics_volume_${AGENT_ID}:/workspace \
             ${RUN_EXEC[@]+"${RUN_EXEC[@]}"}
         RUN_EXIT_CODE=$?
@@ -741,18 +691,19 @@ else
                 -e PYTHONWARNINGS=ignore \
                 ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
                 -v "$(pwd)/src":/repository/src:ro \
-                -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
-                -v "$(pwd)/prepared_test_sets":/repository/prepared_test_sets:ro \
+                -v "$(pwd)/test_datasets":/repository/test_datasets:ro \
                 -v temp_agentomics_volume_${AGENT_ID}:/workspace \
                 --entrypoint /opt/conda/envs/agentomics-env/bin/python \
-                "$AGENTOMICS_IMAGE" src/run_logging/test_evaluation.py --prepared-test-sets-dir /repository/prepared_test_sets
+                "$AGENTOMICS_IMAGE" src/run_logging/test_evaluation.py \
+                    --workspace-dir /workspace \
+                    --test-datasets-dir /repository/test_datasets
         else
             RUN_SUCCEEDED=false
         fi
 
         mkdir -p "outputs/${AGENT_ID}"
         docker run --rm -v temp_agentomics_volume_${AGENT_ID}:/workspace busybox chmod -R a+rX /workspace/ || true
-        docker run --rm -u $(id -u):$(id -g) -v temp_agentomics_volume_${AGENT_ID}:/source -v $(pwd)/outputs/${AGENT_ID}:/dest busybox cp -r /source/. /dest/
+        docker run --rm -v temp_agentomics_volume_${AGENT_ID}:/source busybox tar -c --exclude=.conda -C /source . | tar -x -C "outputs/${AGENT_ID}/"
 
         if [[ "$RUN_SUCCEEDED" = true ]]; then
             docker run --rm \
@@ -772,8 +723,8 @@ else
               -v "$(pwd)/outputs/${AGENT_ID}":/agent_out \
               --entrypoint /opt/conda/envs/agentomics-env/bin/python \
               "$AGENTOMICS_IMAGE" /repository/src/runtime/generate_final_reports.py \
-                --agent-dir /agent_out --prepared-datasets /repository/prepared_datasets \
-                --prepared-tests /repository/prepared_test_sets
+                --agent-dir /agent_out \
+                --test-datasets-dir /repository/test_datasets
 
             echo "PDF reports ready at: outputs/${AGENT_ID}/reports/pdf/"
 
@@ -800,13 +751,12 @@ else
                   -e PYTHONWARNINGS=ignore \
                   ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
                   -v "$(pwd)/src":/repository/src:ro \
-                  -v "$(pwd)/prepared_datasets":/repository/prepared_datasets:ro \
-                  -v "$(pwd)/prepared_test_sets":/repository/prepared_test_sets:ro \
+                  -v "$(pwd)/test_datasets":/repository/test_datasets:ro \
                   -v "$(pwd)/outputs/${AGENT_ID}":/agent_out \
                   --entrypoint /opt/conda/envs/agentomics-env/bin/python \
                   "$AGENTOMICS_IMAGE" -m runtime.stealth_test_evaluation \
                     --agent-dir /agent_out \
-                    --prepared-test-sets-dir /repository/prepared_test_sets
+                    --test-datasets-dir /repository/test_datasets
             fi
 
             write_outputs_readme "${AGENT_ID}"
