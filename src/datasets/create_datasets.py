@@ -1,11 +1,24 @@
 from pathlib import Path
+import json
 import os
-import pandas as pd
+import shutil
 import argparse
+import urllib.request
+import zipfile
 
-from datasets.csv_converter import convert_csv_dataset
+from datasets.data_contract import (
+    DATASET_DESCRIPTION_FILE_NAME,
+    ID_COLUMN_NAME,
+    INPUT_DIR_NAME,
+    LABEL_COLUMN_NAME,
+    LABELS_FILE_NAME,
+    METADATA_FILE_NAME,
+    TEST_SPLIT,
+    TRAIN_SPLIT,
+)
 
 REPO_PATH = Path(os.path.abspath(os.path.dirname(__file__))).parent.parent
+FREE_SPOKEN_DIGIT_DATASET_VERSION = "v1.0.10"
 
 MIRBENCH_DATASETS = {
     "AGO2_CLASH_Hejret2023": {
@@ -26,8 +39,43 @@ GENOMIC_BENCHMARKS_DATASETS = {
 
 LABEL_COLUMN = "target"
 
+def _reset_dataset_dir(dataset_name: str) -> Path:
+    local_dset_path = REPO_PATH / "datasets" / dataset_name
+    if local_dset_path.exists():
+        shutil.rmtree(local_dset_path)
+    local_dset_path.mkdir(parents=True)
+    return local_dset_path
+
+def _write_metadata(dataset_dir: Path, task_type: str) -> None:
+    (dataset_dir / METADATA_FILE_NAME).write_text(
+        json.dumps({"task_type": task_type}, indent=4),
+        encoding="utf-8",
+    )
+
+def _write_description(dataset_dir: Path, description: str) -> None:
+    (dataset_dir / DATASET_DESCRIPTION_FILE_NAME).write_text(description, encoding="utf-8")
+
+def _write_labels(split_dir: Path, rows: list[dict[str, str]]) -> None:
+    import pandas as pd
+
+    pd.DataFrame(rows, columns=[ID_COLUMN_NAME, LABEL_COLUMN_NAME]).to_csv(
+        split_dir / LABELS_FILE_NAME,
+        index=False,
+    )
+
+def _make_split_dirs(dataset_dir: Path, split_name: str, input_subdir: str | None = None) -> Path:
+    split_dir = dataset_dir / split_name
+    input_dir = split_dir / INPUT_DIR_NAME
+    if input_subdir:
+        input_dir = input_dir / input_subdir
+    input_dir.mkdir(parents=True, exist_ok=True)
+    return input_dir
+
 def generate_mirbench_files(dataset: str | None = None):
+    import pandas as pd
     from miRBench.dataset import download_dataset as mirbench_download_dataset
+
+    from datasets.csv_converter import convert_csv_dataset
 
     names = [dataset] if dataset is not None else list(MIRBENCH_DATASETS.keys())
 
@@ -53,7 +101,10 @@ def generate_mirbench_files(dataset: str | None = None):
         )
 
 def generate_genomic_benchmarks_files(dataset: str | None = None):
+    import pandas as pd
     from genomic_benchmarks.loc2seq import download_dataset
+
+    from datasets.csv_converter import convert_csv_dataset
 
     names = [dataset] if dataset is not None else list(GENOMIC_BENCHMARKS_DATASETS.keys())
 
@@ -86,25 +137,171 @@ def generate_genomic_benchmarks_files(dataset: str | None = None):
             local_dset_path, label_column=LABEL_COLUMN, splits=split_frames, task_type="classification",
         )
 
+def generate_breast_cancer_files(_dataset_name: str = "breast_cancer") -> None:
+    from sklearn.datasets import load_breast_cancer
+    from sklearn.model_selection import train_test_split
+
+    from datasets.csv_converter import convert_csv_dataset
+
+    dataset_dir = _reset_dataset_dir("breast_cancer")
+    data = load_breast_cancer(as_frame=True)
+    df = data.frame.copy()
+    df = df.rename(columns={"target": LABEL_COLUMN})
+    df[LABEL_COLUMN] = df[LABEL_COLUMN].map(lambda idx: data.target_names[int(idx)])
+    df[ID_COLUMN_NAME] = [f"sample_{idx:04d}" for idx in range(len(df))]
+
+    train_df, test_df = train_test_split(
+        df,
+        test_size=0.2,
+        random_state=42,
+        stratify=df[LABEL_COLUMN],
+    )
+
+    convert_csv_dataset(
+        dataset_dir,
+        label_column=LABEL_COLUMN,
+        splits={TRAIN_SPLIT: train_df, TEST_SPLIT: test_df},
+        id_column=ID_COLUMN_NAME,
+        task_type="classification",
+    )
+    _write_description(
+        dataset_dir,
+        "# Breast Cancer Wisconsin Diagnostic\n\n"
+        "Tabular binary classification dataset loaded with `sklearn.datasets.load_breast_cancer`.\n\n"
+        "`input/data.csv` contains one row per sample with 30 real-valued features. "
+        "`labels.csv` maps each `id` to the diagnosis label, where `malignant` and `benign` "
+        "come from the scikit-learn target names.",
+    )
+
+def generate_digits_images_files(_dataset_name: str = "digits_images") -> None:
+    import numpy as np
+    from PIL import Image
+    from sklearn.datasets import load_digits
+    from sklearn.model_selection import train_test_split
+
+    dataset_dir = _reset_dataset_dir("digits_images")
+    digits = load_digits()
+    indices = np.arange(len(digits.target))
+    train_indices, test_indices = train_test_split(
+        indices,
+        test_size=0.2,
+        random_state=42,
+        stratify=digits.target,
+    )
+
+    split_indices = {
+        TRAIN_SPLIT: train_indices,
+        TEST_SPLIT: test_indices,
+    }
+
+    for split_name, split_idx in split_indices.items():
+        images_dir = _make_split_dirs(dataset_dir, split_name, "images")
+        labels = []
+        for idx in sorted(split_idx):
+            sample_id = f"digit_{idx:04d}"
+            image = (digits.images[idx] / 16 * 255).astype(np.uint8)
+            Image.fromarray(image, mode="L").save(images_dir / f"{sample_id}.png")
+            labels.append({ID_COLUMN_NAME: sample_id, LABEL_COLUMN_NAME: str(digits.target[idx])})
+        _write_labels(dataset_dir / split_name, labels)
+
+    _write_metadata(dataset_dir, "classification")
+    _write_description(
+        dataset_dir,
+        "# Digits Images\n\n"
+        "Image classification dataset loaded with `sklearn.datasets.load_digits`.\n\n"
+        "`input/images/` contains one PNG file per 8x8 handwritten digit image. "
+        "Each row in `labels.csv` uses the image filename stem as `id` and the spoken/written "
+        "digit class as `label`.",
+    )
+
+def generate_spoken_digits_files(_dataset_name: str = "spoken_digits") -> None:
+    dataset_dir = _reset_dataset_dir("spoken_digits")
+    download_dir = REPO_PATH / ".free_spoken_digit_dataset"
+    download_dir.mkdir(exist_ok=True)
+    archive_path = download_dir / f"free-spoken-digit-dataset-{FREE_SPOKEN_DIGIT_DATASET_VERSION}.zip"
+    source_url = (
+        "https://github.com/Jakobovski/free-spoken-digit-dataset/"
+        f"archive/refs/tags/{FREE_SPOKEN_DIGIT_DATASET_VERSION}.zip"
+    )
+
+    if not archive_path.exists():
+        temp_archive_path = archive_path.with_suffix(".zip.tmp")
+        urllib.request.urlretrieve(source_url, temp_archive_path)
+        temp_archive_path.replace(archive_path)
+
+    recordings_dirs = sorted(download_dir.glob("free-spoken-digit-dataset-*/recordings"))
+    if not recordings_dirs:
+        with zipfile.ZipFile(archive_path) as zf:
+            zf.extractall(download_dir)
+        recordings_dirs = sorted(download_dir.glob("free-spoken-digit-dataset-*/recordings"))
+    if not recordings_dirs:
+        raise FileNotFoundError(f"No recordings directory found after extracting {archive_path}")
+
+    recordings_dir = recordings_dirs[-1]
+    split_labels = {TRAIN_SPLIT: [], TEST_SPLIT: []}
+    for wav_path in sorted(recordings_dir.glob("*.wav")):
+        label, _speaker, index = wav_path.stem.rsplit("_", 2)
+        split_name = TEST_SPLIT if int(index) < 5 else TRAIN_SPLIT
+        audio_dir = _make_split_dirs(dataset_dir, split_name, "audio")
+        destination = audio_dir / wav_path.name
+        shutil.copy2(wav_path, destination)
+        split_labels[split_name].append({
+            ID_COLUMN_NAME: wav_path.stem,
+            LABEL_COLUMN_NAME: label,
+        })
+
+    for split_name, labels in split_labels.items():
+        _write_labels(dataset_dir / split_name, labels)
+
+    _write_metadata(dataset_dir, "classification")
+    _write_description(
+        dataset_dir,
+        "# Spoken Digits\n\n"
+        "Audio classification dataset generated from the Free Spoken Digit Dataset "
+        f"({FREE_SPOKEN_DIGIT_DATASET_VERSION}).\n\n"
+        "`input/audio/` contains one mono 8 kHz WAV file per spoken digit. "
+        "Each row in `labels.csv` uses the WAV filename stem as `id` and the digit as `label`. "
+        "The test split follows the dataset README convention: recording indices 0 through 4 "
+        "are held out for test, while indices 5 through 49 are used for training.",
+    )
+
+DATASET_GENERATORS = {
+    **{dataset_name: generate_genomic_benchmarks_files for dataset_name in GENOMIC_BENCHMARKS_DATASETS},
+    **{dataset_name: generate_mirbench_files for dataset_name in MIRBENCH_DATASETS},
+    "breast_cancer": generate_breast_cancer_files,
+    "digits_images": generate_digits_images_files,
+    "spoken_digits": generate_spoken_digits_files,
+}
+
+def list_dataset_names() -> None:
+    print("Available example datasets:")
+    for dataset_name in sorted(DATASET_GENERATORS):
+        print(f"- {dataset_name}")
+
 def generate_dataset_files(dataset: str, download_all: bool = False):
     if download_all:
-        generate_genomic_benchmarks_files()
-        generate_mirbench_files()
-    else:
-        if dataset in GENOMIC_BENCHMARKS_DATASETS:
-            generate_genomic_benchmarks_files(dataset)
-        elif dataset in MIRBENCH_DATASETS:
-            generate_mirbench_files(dataset)
+        for dataset_name in sorted(DATASET_GENERATORS):
+            DATASET_GENERATORS[dataset_name](dataset_name)
+        return
+
+    if dataset not in DATASET_GENERATORS:
+        raise ValueError(f"Unknown dataset: {dataset}")
+    DATASET_GENERATORS[dataset](dataset)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Dataset downloader helper script parser")
-    parser.add_argument("--all", action="store_true", help="Download all datasets from the miRBench and GenomicBenchmarks collections (overrides --dataset)")
+    parser.add_argument("--all", action="store_true", help="Download all built-in, miRBench and GenomicBenchmarks datasets (overrides --dataset)")
+    parser.add_argument("--list", action="store_true", help="List available dataset names and exit")
     parser.add_argument(
         "--dataset", 
         default="AGO2_CLASH_Hejret2023",
-        choices=GENOMIC_BENCHMARKS_DATASETS.keys() | MIRBENCH_DATASETS.keys(),
+        choices=sorted(DATASET_GENERATORS),
         help="Specific single dataset to download. Defaults to AGO2_CLASH_Hejret2023"
     )
     args = parser.parse_args()
+
+    if args.list:
+        list_dataset_names()
+        raise SystemExit(0)
 
     generate_dataset_files(args.dataset, args.all)

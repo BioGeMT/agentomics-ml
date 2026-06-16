@@ -70,6 +70,12 @@ Download example dataset to try:
 ./scripts/download_example_dataset.sh
 ```
 
+List other available examples with:
+
+```bash
+./scripts/download_example_dataset.sh --list
+```
+
 ## What Happens Next
 
 The agent will:

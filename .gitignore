@@ -198,6 +198,7 @@ AGENTS.md
 # Folders
 .genomic_benchmarks
 .miRBench
+.free_spoken_digit_dataset
 prepared_datasets
 prepared_test_sets
 /datasets

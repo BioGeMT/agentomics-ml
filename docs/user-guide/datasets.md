@@ -280,11 +280,78 @@ kept in `metadata.json` through `label_to_scalar`.
 
 ## Example Datasets
 
-Download example datasets:
+List available example datasets:
+
+```bash
+./scripts/download_example_dataset.sh --list
+```
+
+Download one example dataset:
+
+```bash
+./scripts/download_example_dataset.sh --dataset digits_images
+```
+
+Download all registered examples:
 
 ```bash
 ./scripts/download_example_dataset.sh --all
 ```
+
+Useful small examples are available for different input types:
+
+- `breast_cancer` - tabular CSV input generated from scikit-learn
+- `digits_images` - PNG image files generated from scikit-learn digits
+- `spoken_digits` - WAV audio files from the Free Spoken Digit Dataset
+
+The files inside `input/` can use different formats. Agentomics asks the agent
+to inspect `input/` and generate loading code that maps each `labels.csv` `id`
+to its sample data.
+
+### Tabular Example
+
+Use one table with an ID column:
+
+```text
+train/
+├── input/
+│   └── data.csv
+└── labels.csv
+```
+
+`labels.csv.id` should match the `id` column in `input/data.csv`.
+
+### Image Example
+
+Use one file per sample inside an image subdirectory:
+
+```text
+train/
+├── input/
+│   └── images/
+│       ├── img_001.png
+│       └── img_002.png
+└── labels.csv
+```
+
+`labels.csv.id` should match the image filename stem, for example `img_001`
+maps to `input/images/img_001.png`.
+
+### Audio Example
+
+Use one file per sample inside an audio subdirectory:
+
+```text
+train/
+├── input/
+│   └── audio/
+│       ├── sample_001.wav
+│       └── sample_002.wav
+└── labels.csv
+```
+
+`labels.csv.id` should match the audio filename stem, for example `sample_001`
+maps to `input/audio/sample_001.wav`.
 
 ## Common Issues
 
