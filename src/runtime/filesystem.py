@@ -13,31 +13,6 @@ def remove_path(path: Path) -> None:
     if path.is_dir():
         shutil.rmtree(path)
 
-def copy_workspace_tree(
-    source_dir: Path,
-    destination_dir: Path,
-) -> None:
-    excluded_names = {
-        ".conda",
-        "__pycache__",
-        ".cache",
-    }
-
-    def ignore(directory: str, names: list[str]) -> set[str]:
-        ignored = set()
-        if Path(directory).resolve() == source_dir.resolve():
-            ignored.update(name for name in names if name in excluded_names)
-        return ignored
-
-    shutil.copytree(
-        source_dir,
-        destination_dir,
-        symlinks=False,
-        copy_function=shutil.copy2,
-        ignore=ignore,
-        dirs_exist_ok=False,
-    )
-
 def create_absolute_symlink(target: Path, link: Path) -> None:
     """Create a symlink at link pointing at the resolved absolute path of target."""
     os.symlink(Path(target).resolve(), link)

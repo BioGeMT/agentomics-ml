@@ -34,10 +34,9 @@ def fork_run(
     shutil.copytree(
         source_workspace_dir,
         target_workspace_dir,
-        symlinks=False,
+        symlinks=True,
         copy_function=shutil.copy2,
         ignore=shutil.ignore_patterns(".conda", "reports", "extras"),
-        ignore_dangling_symlinks=True,
         dirs_exist_ok=True,
     )
 

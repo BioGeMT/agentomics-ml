@@ -20,7 +20,7 @@ from agents.agent_utils import (
 )
 from rich.console import Console
 from runtime.conda_utils import export_shared_environment_descriptor
-from runtime.filesystem import chown_tree_to_root
+from runtime.filesystem import chown_tree_to_root, rewrite_symlinks_to_absolute
 from runtime.git_checkpoints import commit_step_checkpoint
 from runtime.read_write_utils import (
     get_new_rundir_files,
@@ -98,6 +98,7 @@ class RuntimeStep(ABC):
     def _archive_step_folder(self) -> None:
         step_dir = self.config.current_step_dir
         archived_dir = self.config.archived_step_dir(self.step_id)
+        rewrite_symlinks_to_absolute(step_dir)
         step_dir.rename(archived_dir)
         self._rewrite_paths_in_step_output(archived_dir, str(step_dir), str(archived_dir))
         if self.config.agent_user:
