@@ -471,7 +471,7 @@ if [ "$LOCAL_MODE" = true ]; then
 
         echo "PDF reports ready at: outputs/${AGENT_ID}/reports/pdf/"
         echo -e "${GREEN}Run finished. Report and files can be found in outputs/${AGENT_ID}${NOCOLOR}"
-        echo -e "${GREEN}To run inference on new data, use ./inference.sh --agent-dir outputs/${AGENT_ID} --input <path_to_input_folder> --output <path_to_output_csv>${NOCOLOR}"
+        echo -e "${GREEN}To run inference on new data, use ./scripts/inference.sh --agent-dir outputs/${AGENT_ID} --input <path_to_input_folder> --output <path_to_output_csv>${NOCOLOR}"
     else
         PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python -m runtime.iteration_reports --agent-dir "outputs/${AGENT_ID}"
         warn "Agent didn't produce any valid best iteration snapshot. Exported run artifacts to outputs/${AGENT_ID}."
@@ -762,7 +762,7 @@ else
             write_outputs_readme "${AGENT_ID}"
 
             echo -e "${GREEN}Run finished. Report and files can be found in outputs/${AGENT_ID}${NOCOLOR}"
-            echo -e "${GREEN}To run inference on new data, use ./inference.sh --agent-dir outputs/${AGENT_ID} --input <path_to_input_folder> --output <path_to_output_csv>${NOCOLOR}"
+            echo -e "${GREEN}To run inference on new data, use ./scripts/inference.sh --agent-dir outputs/${AGENT_ID} --input <path_to_input_folder> --output <path_to_output_csv>${NOCOLOR}"
         else
             docker run --rm \
               -u "$(id -u):$(id -g)" \
