@@ -214,7 +214,7 @@ outputs/${agent_id}/
 ## Running inference on new data
 
 \`\`\`bash
-./inference.sh --agent-dir outputs/${agent_id} --input <path_to_input_folder> --output <path_to_output_csv>
+./scripts/inference.sh --agent-dir outputs/${agent_id} --input <path_to_input_folder> --output <path_to_output_csv>
 \`\`\`
 
 Inference relies on:
