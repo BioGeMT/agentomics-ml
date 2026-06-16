@@ -29,6 +29,8 @@ cp .env.example .env
 
 # Download example dataset
 ./scripts/download_example_dataset.sh
+# To see all available examples:
+./scripts/download_example_dataset.sh --list
 
 ./run.sh
 ```
@@ -36,6 +38,8 @@ cp .env.example .env
 Recommended model: `gpt-5.1-codex-max`
 
 Outputs are saved to `outputs/<agent_id>/`, including PDF reports in `outputs/<agent_id>/reports/pdf`.
+
+For more dataset examples and input layouts, see [Datasets](docs/user-guide/datasets.md).
 
 ### Installation Requirements
 
