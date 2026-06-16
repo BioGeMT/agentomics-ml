@@ -1,3 +1,4 @@
+import json
 import shutil
 import subprocess
 import sys
@@ -101,31 +102,111 @@ def _export_destroy_recreate(
 
 
 class TestEnvironmentDescriptorExport(unittest.TestCase):
+    def setUp(self):
+        self._temp_dir = tempfile.TemporaryDirectory()
+        self.root = Path(self._temp_dir.name)
+        self.source_env = self.root / "source_env"
+        self.source_env.mkdir(parents=True)
+        self.descriptor_path = self.root / "environment.yml"
+
+    def tearDown(self):
+        self._temp_dir.cleanup()
+
     def test_export_strips_pip_local_version_labels(self):
         """PyPI's default index does not accept local version pins like torch==2.11.0+cpu."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(temp_dir)
-            source_env = root / "source_env"
-            source_env.mkdir(parents=True)
-            descriptor_path = root / "environment.yml"
+        with mock.patch.object(
+            conda_utils,
+            "_collect_environment_packages",
+            return_value=(
+                [("python", "3.12.0")],
+                [("torch", "2.11.0+cpu"), ("torchaudio", "2.11.0+cpu")],
+            ),
+        ):
+            export_environment_descriptor_to_path(
+                env_path=self.source_env, descriptor_path=self.descriptor_path,
+            )
 
-            with mock.patch.object(
-                conda_utils,
-                "_collect_environment_packages",
-                return_value=(
-                    [("python", "3.12.0")],
-                    [("torch", "2.11.0+cpu"), ("torchaudio", "2.11.0+cpu")],
-                ),
-            ):
-                export_environment_descriptor_to_path(
-                    env_path=source_env, descriptor_path=descriptor_path,
-                )
+        yml = self.descriptor_path.read_text(encoding="utf-8")
+        self.assertIn("  - pip\n", yml, "pip must be an explicit conda dependency")
+        self.assertIn("torch==2.11.0\n", yml)
+        self.assertIn("torchaudio==2.11.0\n", yml)
+        self.assertNotIn("+cpu", yml)
 
-            yml = descriptor_path.read_text(encoding="utf-8")
-            self.assertIn("  - pip\n", yml, "pip must be an explicit conda dependency")
-            self.assertIn("torch==2.11.0\n", yml)
-            self.assertIn("torchaudio==2.11.0\n", yml)
-            self.assertNotIn("+cpu", yml)
+    def test_export_uses_uv_list_for_python_packages(self):
+        (self.source_env / "bin").mkdir()
+        (self.source_env / "bin" / "python").touch()
+
+        uv_json = json.dumps([
+            {"name": "librosa", "version": "0.11.0"},
+            {"name": "torch", "version": "2.11.0+cpu"},
+        ])
+        with mock.patch.object(
+            conda_utils.subprocess,
+            "run",
+            return_value=subprocess.CompletedProcess(
+                args=[], returncode=0, stdout=uv_json, stderr="",
+            ),
+        ) as subprocess_run:
+            export_environment_descriptor_to_path(
+                env_path=self.source_env, descriptor_path=self.descriptor_path,
+            )
+
+        subprocess_run.assert_called_once_with(
+            [
+                "uv", "pip", "list", "--format=json",
+                "--python", str(self.source_env / "bin" / "python"),
+                "--exclude-editable",
+            ],
+            capture_output=True, text=True,
+        )
+        yml = self.descriptor_path.read_text(encoding="utf-8")
+        self.assertIn("librosa==0.11.0\n", yml)
+        self.assertIn("torch==2.11.0\n", yml)
+        self.assertNotIn("+cpu", yml)
+
+    def test_export_keeps_conda_owned_python_distributions_in_conda_section(self):
+        (self.source_env / "bin").mkdir()
+        (self.source_env / "bin" / "python").touch()
+        metadata_path = (
+            self.source_env
+            / "lib"
+            / "python3.12"
+            / "site-packages"
+            / "graphviz-0.21.dist-info"
+            / "METADATA"
+        )
+        metadata_path.parent.mkdir(parents=True)
+        metadata_path.write_text("Name: graphviz\nVersion: 0.21\n", encoding="utf-8")
+        conda_meta_dir = self.source_env / "conda-meta"
+        conda_meta_dir.mkdir()
+        (conda_meta_dir / "python-graphviz-0.21.json").write_text(
+            json.dumps({
+                "name": "python-graphviz",
+                "version": "0.21",
+                "files": [str(metadata_path.relative_to(self.source_env))],
+            }),
+            encoding="utf-8",
+        )
+
+        uv_json = json.dumps([
+            {"name": "graphviz", "version": "0.21"},
+            {"name": "librosa", "version": "0.11.0"},
+        ])
+        with mock.patch.object(
+            conda_utils.subprocess,
+            "run",
+            return_value=subprocess.CompletedProcess(
+                args=[], returncode=0, stdout=uv_json, stderr="",
+            ),
+        ):
+            export_environment_descriptor_to_path(
+                env_path=self.source_env, descriptor_path=self.descriptor_path,
+            )
+
+        yml = self.descriptor_path.read_text(encoding="utf-8")
+        self.assertIn("python-graphviz=0.21\n", yml)
+        self.assertIn("librosa==0.11.0\n", yml)
+        self.assertNotIn("graphviz==0.21\n", yml)
 
 
 @unittest.skipUnless(shutil.which("conda"), "conda not available")
