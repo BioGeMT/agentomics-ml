@@ -114,7 +114,11 @@ def interactive_dataset_selection(datasets: list[dict]) -> str | None:
 
 def select_task_type(train_labels: pd.DataFrame, interactive=False):
     if not interactive or not sys.stdin.isatty():
-        raise ValueError("Task type is required. Pass --task-type classification or --task-type regression.")
+        raise ValueError(
+            "Task type is required for non-interactive terminals. "
+            "Pass --task-type classification or --task-type regression, "
+            "or add 'task_type' to your metadata.json."
+        )
 
     print_label_summary(train_labels)
     print("Action needed: Select the task type for this dataset.")
