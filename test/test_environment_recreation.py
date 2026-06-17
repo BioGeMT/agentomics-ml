@@ -140,13 +140,14 @@ class TestEnvironmentDescriptorExport(unittest.TestCase):
             {"name": "librosa", "version": "0.11.0"},
             {"name": "torch", "version": "2.11.0+cpu"},
         ])
-        with mock.patch.object(
-            conda_utils.subprocess,
-            "run",
-            return_value=subprocess.CompletedProcess(
-                args=[], returncode=0, stdout=uv_json, stderr="",
-            ),
-        ) as subprocess_run:
+        with mock.patch.object(conda_utils, "_find_uv_binary", return_value="uv"), \
+             mock.patch.object(
+                conda_utils.subprocess,
+                "run",
+                return_value=subprocess.CompletedProcess(
+                    args=[], returncode=0, stdout=uv_json, stderr="",
+                ),
+             ) as subprocess_run:
             export_environment_descriptor_to_path(
                 env_path=self.source_env, descriptor_path=self.descriptor_path,
             )
@@ -192,13 +193,14 @@ class TestEnvironmentDescriptorExport(unittest.TestCase):
             {"name": "graphviz", "version": "0.21"},
             {"name": "librosa", "version": "0.11.0"},
         ])
-        with mock.patch.object(
-            conda_utils.subprocess,
-            "run",
-            return_value=subprocess.CompletedProcess(
-                args=[], returncode=0, stdout=uv_json, stderr="",
-            ),
-        ):
+        with mock.patch.object(conda_utils, "_find_uv_binary", return_value="uv"), \
+             mock.patch.object(
+                conda_utils.subprocess,
+                "run",
+                return_value=subprocess.CompletedProcess(
+                    args=[], returncode=0, stdout=uv_json, stderr="",
+                ),
+             ):
             export_environment_descriptor_to_path(
                 env_path=self.source_env, descriptor_path=self.descriptor_path,
             )

@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 from runtime.filesystem import remove_path
@@ -186,9 +188,10 @@ def _collect_uv_packages(env_path: Path) -> dict[str, tuple[str, str]]:
     python_bin = env_path / "bin" / "python"
     if not python_bin.exists():
         return {}
+    uv_bin = _find_uv_binary()
     result = subprocess.run(
         [
-            "uv", "pip", "list", "--format=json",
+            uv_bin, "pip", "list", "--format=json",
             "--python", str(python_bin),
             "--exclude-editable",
         ],
@@ -203,6 +206,19 @@ def _collect_uv_packages(env_path: Path) -> dict[str, tuple[str, str]]:
         if name and version:
             packages[_normalize_package_name(name)] = (name, version)
     return packages
+
+
+def _find_uv_binary() -> str:
+    on_path = shutil.which("uv")
+    if on_path:
+        return on_path
+    next_to_python = Path(sys.executable).parent / "uv"
+    if next_to_python.is_file():
+        return str(next_to_python)
+    raise FileNotFoundError(
+        "uv is required for environment export but was not found on PATH "
+        "or next to the running Python interpreter. Install it with: pip install uv"
+    )
 
 
 def _strip_local_version(version: str) -> str:
