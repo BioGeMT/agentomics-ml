@@ -39,14 +39,13 @@ from datasets.label_processing import (
     load_split_label_dfs,
     validate_single_label_classification,
 )
-from runtime.filesystem import create_absolute_symlink
+from runtime.filesystem import create_absolute_symlink, find_symlinks_in_dir
 from utils.task_types import TaskTypes
 
 console = Console()
 
 def _reject_symlinks_in_dir(directory: Path) -> None:
-    symlinks = [directory] if directory.is_symlink() else []
-    symlinks.extend(path for path in directory.rglob("*") if path.is_symlink())
+    symlinks = find_symlinks_in_dir(directory, include_root=True)
     if symlinks:
         raise ValueError(
             f"Symlinks in {directory} are not allowed. "

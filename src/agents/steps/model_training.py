@@ -19,6 +19,7 @@ from utils.task_types import TaskTypes
 from runtime.read_write_utils import does_file_contain_iteration_pattern, does_file_contain_string
 from runtime.step_outputs import require_step_output
 from runtime.system_resources import check_gpu_availability
+from runtime.filesystem import find_symlinks_in_dir
 from utils.text_processing_utils import collapse_repeated_lines, concise_output
 
 
@@ -79,11 +80,7 @@ class ModelTrainingStep(AgenticStep):
                 raise ModelRetry(f"Model file ({result.path_to_model_file}) must be inside the artifacts folder ({result.path_to_artifacts_dir})")
             if does_file_contain_iteration_pattern(result.path_to_train_file):
                 raise ModelRetry(f"Train file ({result.path_to_train_file}) contains path containing a forbidden string 'iteration_' or references an iteration folder, which will not accessible during final testing. If you want to re-use a file from a past iteration, copy it into the current working directory and use its path.")
-            artifact_symlinks = [
-                path.relative_to(result.path_to_artifacts_dir)
-                for path in Path(result.path_to_artifacts_dir).rglob("*")
-                if path.is_symlink()
-            ]
+            artifact_symlinks = [path.relative_to(result.path_to_artifacts_dir) for path in find_symlinks_in_dir(result.path_to_artifacts_dir)]
             if artifact_symlinks:
                 raise ModelRetry(
                     f"training_artifacts/ must contain training outputs, not symlinks: {artifact_symlinks[:10]}"
