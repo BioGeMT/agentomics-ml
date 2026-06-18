@@ -6,7 +6,7 @@ from pathlib import Path
 
 import wandb
 
-from datasets.data_contract import INPUT_DIR_NAME, LABELS_FILE_NAME, TEST_SPLIT
+from datasets.data_contract import INPUT_DIR_NAME, LABELS_FILE_NAME, TEST_SPLIT, NUMERIC_LABEL_COLUMN_NAME
 from datasets.dataset_preparation import prepare_test_dataset
 from run_logging.logging_helpers import is_wandb_active, log_test_inference_duration
 from run_logging.wandb_setup import resume_wandb_run
@@ -82,7 +82,7 @@ def run_test_evaluation(workspace_dir, test_datasets_dir: Path):
                 metrics = compute_metrics(
                     results_file=output_path,
                     labels_path=prepared_labels_path,
-                    numeric_label_col="numeric_label",
+                    numeric_label_col=NUMERIC_LABEL_COLUMN_NAME,
                     task_type=config.task_type,
                     evaluation_stage="test",
                 )
