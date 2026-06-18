@@ -210,6 +210,50 @@ class TestEnvironmentDescriptorExport(unittest.TestCase):
         self.assertIn("librosa==0.11.0\n", yml)
         self.assertNotIn("graphviz==0.21\n", yml)
 
+    def test_export_keeps_conda_package_with_placeholder_pip_version_in_conda_section(self):
+        """conda-pack ships dist-info with a placeholder '0.0.0' version that uv reports,
+        but PyPI has no such release. It must stay in the conda section at its real
+        conda version, not be misclassified as a pip package pinned to 0.0.0
+        (which makes `conda env create` fail at the pip step)."""
+        (self.source_env / "bin").mkdir()
+        (self.source_env / "bin" / "python").touch()
+        conda_meta_dir = self.source_env / "conda-meta"
+        conda_meta_dir.mkdir()
+        (conda_meta_dir / "conda-pack-0.9.1.json").write_text(
+            json.dumps({"name": "conda-pack", "version": "0.9.1"}),
+            encoding="utf-8",
+        )
+
+        uv_json = json.dumps([
+            {"name": "conda-pack", "version": "0.0.0"},
+            {"name": "requests", "version": "2.32.0"},
+        ])
+        with mock.patch.object(conda_utils, "_find_uv_binary", return_value="uv"), \
+             mock.patch.object(
+                conda_utils.subprocess,
+                "run",
+                return_value=subprocess.CompletedProcess(
+                    args=[], returncode=0, stdout=uv_json, stderr="",
+                ),
+             ):
+            export_environment_descriptor_to_path(
+                env_path=self.source_env, descriptor_path=self.descriptor_path,
+            )
+
+        yml = self.descriptor_path.read_text(encoding="utf-8")
+        self.assertIn(
+            "conda-pack=0.9.1\n", yml,
+            "conda-pack must stay in the conda section at its real version",
+        )
+        self.assertNotIn(
+            "conda-pack==0.0.0", yml,
+            "placeholder 0.0.0 must not leak into the pip section",
+        )
+        self.assertIn(
+            "requests==2.32.0\n", yml,
+            "real pip packages must still be exported",
+        )
+
 
 @unittest.skipUnless(shutil.which("conda"), "conda not available")
 class TestEnvironmentRecreation(unittest.TestCase):

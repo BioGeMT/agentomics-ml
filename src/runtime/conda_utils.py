@@ -102,6 +102,12 @@ def _collect_environment_packages(
     pip_owned: dict[str, tuple[str, str]] = {}
     conda_replaced_by_pip: set[str] = set()
     for norm, (name, version) in python_packages.items():
+        # Some conda packages (e.g. conda-pack) ship dist-info with a placeholder
+        # "0.0.0" version that uv reports but PyPI has no matching release. When conda
+        # manages the package, trust conda's version rather than misclassifying it as a
+        # pip package pinned to 0.0.0 (which makes recreation's pip step fail).
+        if version == "0.0.0" and (norm in conda_managed or norm in conda_python_distributions):
+            continue
         if norm in conda_managed and version == conda_managed[norm][1]:
             continue
         if norm in conda_python_distributions:
