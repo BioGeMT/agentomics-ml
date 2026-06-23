@@ -10,7 +10,10 @@ from datasets.data_contract import INPUT_DIR_NAME, LABELS_FILE_NAME, TEST_SPLIT,
 from datasets.dataset_preparation import prepare_test_dataset
 from run_logging.logging_helpers import is_wandb_active, log_test_inference_duration
 from run_logging.wandb_setup import resume_wandb_run
-from runtime.conda_utils import create_environment_from_descriptor
+from runtime.conda_utils import (
+    create_environment_from_descriptor,
+    get_best_iteration_snapshot_environment_path,
+)
 from runtime.filesystem import remove_path
 from runtime.inference_runner import compute_metrics, run_inference_script
 from runtime.read_write_utils import load_config_from_run_dir
@@ -64,11 +67,14 @@ def run_test_evaluation(workspace_dir, test_datasets_dir: Path):
                 inference_script_path = best_iteration_snapshot_dir / "model_inference" / "inference.py"
                 output_path = config.best_iteration_snapshot_dir / "eval_predictions_test.csv"
                 remove_path(output_path)
-                remove_path(test_eval_env_dir)
-                env_path = test_eval_env_dir / "env"
-                create_environment_from_descriptor(
-                    config.best_iteration_snapshot_dir / "environment.yml", env_path,
-                )
+                if config.conda_export_mode == "full":
+                    env_path = get_best_iteration_snapshot_environment_path(config)
+                else:
+                    remove_path(test_eval_env_dir)
+                    env_path = test_eval_env_dir / "env"
+                    create_environment_from_descriptor(
+                        config.best_iteration_snapshot_dir / "environment.yml", env_path,
+                    )
                 result = run_inference_script(
                     env_path=env_path,
                     script_path=inference_script_path,
