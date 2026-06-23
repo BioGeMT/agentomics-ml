@@ -19,6 +19,10 @@ def get_shared_environment_path(config: Config) -> Path:
     return get_shared_conda_root(config) / "envs" / f"{config.agent_id}_env"
 
 
+def get_best_iteration_snapshot_environment_path(config: Config) -> Path:
+    return config.best_iteration_snapshot_dir / ".conda" / "envs" / f"{config.agent_id}_env"
+
+
 def get_iteration_environment_descriptor_path(iteration_dir: Path) -> Path:
     return iteration_dir / "runtime_info" / "environment.yml"
 

@@ -79,6 +79,7 @@ class Config:
     foundation_models_type: str | None = None
     foundation_models_yaml: str | None = None
     disable_training_reporting: bool = False
+    conda_export_mode: str = "full"
 
     # Optional, default values can not be overwritten through the CLI
     max_steps: int = DEFAULT_MAX_STEPS

@@ -37,6 +37,7 @@ async def run_experiment(
     foundation_models_type: str | None = None,
     foundation_models_yaml: str | None = None,
     disable_training_reporting: bool = False,
+    conda_export_mode: str = "full"
 ):
     workspace_dir = Path(workspace_dir)
     datasets_dir = Path(datasets_dir)
@@ -70,6 +71,7 @@ async def run_experiment(
         foundation_models_yaml=foundation_models_yaml,
         agent_user=agent_user,
         disable_training_reporting=disable_training_reporting,
+        conda_export_mode=conda_export_mode
     )
     print_phase("Agentomics run started")
     initialize_run_directories(config)
