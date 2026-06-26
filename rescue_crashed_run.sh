@@ -89,7 +89,7 @@ echo "Copying workspace..."
 docker run --rm -v "${VOLUME_NAME}:/workspace" busybox chmod -R a+rX /workspace/ || true
 docker run --rm \
     -v "${VOLUME_NAME}:/source" \
-    busybox tar -c --exclude=.conda -C /source . | tar -x -C "${OUTPUT_DIR}/"
+    busybox tar -c --exclude='./run/shared/.conda' -C /source . | tar -x -C "${OUTPUT_DIR}/"
 
 # ── Best iteration snapshot (only present if at least one iteration completed) ─
 HAS_SNAPSHOT=false

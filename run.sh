@@ -101,6 +101,10 @@ Operational Flags:
   --spend-limit <N>   Only applies when --use-provisioning-key is passed. Spend limit for a temporary key (default: 10).
   --disable-training-reporting
                       Disable the TrainingReporter helper that emits structured best-effort training updates (enabled by default).
+  --conda-export-mode <full|yaml>
+                      How to capture the best-iteration environment. 'full' (default) copies the conda env into the
+                      snapshot and reuses it directly at test time (fast, large). 'yaml' stores only environment.yml
+                      and rebuilds the env at test time (portable, slower).
   --verbosity <summary|full>
                       Control how much agent interaction detail is printed during the run (default: full).
   --tags              (Optional) Space separated tags for Weights and Biases logging.
@@ -283,6 +287,11 @@ while [[ $# -gt 0 ]]; do
             AGENTOMICS_ARGS+=(--disable-training-reporting)
             shift
             ;;
+        --conda-export-mode)
+            require_opt_value "$1" "${2:-}"
+            AGENTOMICS_ARGS+=(--conda-export-mode "$2")
+            shift 2
+            ;;
         --cpu-only)
             CPU_ONLY=true
             shift
@@ -446,7 +455,7 @@ if [ "$LOCAL_MODE" = true ]; then
     fi
 
     mkdir -p "outputs/${AGENT_ID}"
-    tar -c --exclude='.conda' -C "${WORKSPACE_DIR}" . | tar -x -C "outputs/${AGENT_ID}/"
+    tar -c --exclude='./run/shared/.conda' -C "${WORKSPACE_DIR}" . | tar -x -C "outputs/${AGENT_ID}/"
 
     if [[ "$RUN_SUCCEEDED" = true ]]; then
         PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python -m runtime.iteration_reports --agent-dir "outputs/${AGENT_ID}"
@@ -703,7 +712,7 @@ else
 
         mkdir -p "outputs/${AGENT_ID}"
         docker run --rm -v temp_agentomics_volume_${AGENT_ID}:/workspace busybox chmod -R a+rX /workspace/ || true
-        docker run --rm -v temp_agentomics_volume_${AGENT_ID}:/source busybox tar -c --exclude=.conda -C /source . | tar -x -C "outputs/${AGENT_ID}/"
+        docker run --rm -v temp_agentomics_volume_${AGENT_ID}:/source busybox tar -c --exclude='./run/shared/.conda' -C /source . | tar -x -C "outputs/${AGENT_ID}/"
 
         if [[ "$RUN_SUCCEEDED" = true ]]; then
             docker run --rm \
