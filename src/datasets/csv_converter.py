@@ -99,6 +99,22 @@ def convert_csv_test_dataset_to_standard_raw_dataset(source_dir: Path, destinati
     return converted_source_dir
 
 
+def convert_inference_csv(
+    csv_path: Path,
+    output_split_dir: Path,
+    label_column: str | None = None,
+    id_column: str | None = None,
+) -> None:
+    df = pd.read_csv(csv_path)
+    _write_input_and_labels(
+        split_dir=Path(output_split_dir),
+        df=df,
+        label_column=label_column,
+        id_prefix="input",
+        id_column=id_column,
+    )
+
+
 def convert_csv_dataset(
     output_dir: Path,
     label_column: str,
@@ -182,20 +198,7 @@ def _link_optional_dataset_files(source_dir: Path, converted_source_dir: Path) -
         create_absolute_symlink(source_supp, converted_source_dir / SUPPLEMENTARY_DIR_NAME)
 
 
-def _write_split(
-    output_dir: Path,
-    split_name: str,
-    df: pd.DataFrame,
-    label_column: str,
-    id_column: str | None,
-) -> None:
-    if label_column not in df.columns:
-        raise ValueError(f"Label column '{label_column}' not found in {split_name} split.")
-
-    split_dir = output_dir / split_name
-    input_dir = split_dir / INPUT_DIR_NAME
-    input_dir.mkdir(parents=True, exist_ok=True)
-
+def _ensure_id_column(df: pd.DataFrame, id_column: str | None, id_prefix: str) -> pd.DataFrame:
     df = df.copy()
 
     if id_column and id_column not in df.columns:
@@ -205,14 +208,49 @@ def _write_split(
         if id_column != ID_COLUMN_NAME:
             df = df.drop(columns=[id_column])
     elif ID_COLUMN_NAME not in df.columns:
-        df.insert(0, ID_COLUMN_NAME, [f"{split_name}-{i}" for i in range(len(df))])
+        df.insert(0, ID_COLUMN_NAME, [f"{id_prefix}-{i}" for i in range(len(df))])
     else:
         df[ID_COLUMN_NAME] = df[ID_COLUMN_NAME].astype(str)
+    return df
 
-    labels = pd.DataFrame({
-        ID_COLUMN_NAME: df[ID_COLUMN_NAME],
-        LABEL_COLUMN_NAME: df[label_column].astype(str),
-    })
-    labels.to_csv(split_dir / LABELS_FILE_NAME, index=False)
 
-    df.drop(columns=[label_column]).to_csv(input_dir / TABULAR_INPUT_FILE_NAME, index=False)
+def _write_input_and_labels(
+    split_dir: Path,
+    df: pd.DataFrame,
+    label_column: str | None,
+    id_prefix: str,
+    id_column: str | None,
+) -> None:
+    if label_column is not None and label_column not in df.columns:
+        raise ValueError(f"Label column '{label_column}' not found. Available columns: {list(df.columns)}")
+
+    split_dir = Path(split_dir)
+    input_dir = split_dir / INPUT_DIR_NAME
+    input_dir.mkdir(parents=True, exist_ok=True)
+
+    df = _ensure_id_column(df, id_column, id_prefix)
+
+    if label_column is not None:
+        pd.DataFrame({
+            ID_COLUMN_NAME: df[ID_COLUMN_NAME],
+            LABEL_COLUMN_NAME: df[label_column].astype(str),
+        }).to_csv(split_dir / LABELS_FILE_NAME, index=False)
+        df = df.drop(columns=[label_column])
+
+    df.to_csv(input_dir / TABULAR_INPUT_FILE_NAME, index=False)
+
+
+def _write_split(
+    output_dir: Path,
+    split_name: str,
+    df: pd.DataFrame,
+    label_column: str,
+    id_column: str | None,
+) -> None:
+    _write_input_and_labels(
+        split_dir=output_dir / split_name,
+        df=df,
+        label_column=label_column,
+        id_prefix=split_name,
+        id_column=id_column,
+    )

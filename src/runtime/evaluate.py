@@ -1,25 +1,41 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import sys
 from pathlib import Path
 
-from datasets.normalize_dataset import normalize_input_dataset
+import pandas as pd
+
+from datasets.data_contract import (
+    LABEL_COLUMN_NAME,
+    NUMERIC_LABEL_COLUMN_NAME,
+    validate_and_read_labels,
+)
+from datasets.label_processing import convert_classification_labels, convert_regression_labels
 from runtime.evaluate_result import get_metrics
 from runtime.read_write_utils import load_config_from_run_dir
 from utils.config import Config
+from utils.task_types import TaskTypes
 
-NUMERIC_LABEL_COL = "numeric_label" #TODO get this from config?
+
+def _read_numeric_labels(labels_path: Path, config: Config) -> pd.DataFrame:
+    columns = list(pd.read_csv(labels_path, nrows=0).columns)
+    if NUMERIC_LABEL_COLUMN_NAME in columns:
+        return validate_and_read_labels(
+            labels_path, NUMERIC_LABEL_COLUMN_NAME, require_numeric_values=True
+        )
+    labels = validate_and_read_labels(labels_path, LABEL_COLUMN_NAME)
+    if config.task_type == TaskTypes.CLASSIFICATION:
+        return convert_classification_labels(labels, config.label_to_scalar, "eval")
+    return convert_regression_labels(labels, "eval")
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Compute evaluation metrics for a trained model's predictions.")
     ap.add_argument("--agent-dir", type=Path, required=True, help="Path to the run output dir (e.g. outputs/<agent_id>)")
     ap.add_argument("--predictions", type=Path, required=True, help="Inference output CSV (id + prediction + probability_* columns)")
-    ap.add_argument("--labeled-input", type=Path, required=True, help="CSV with the true label column and matching ids")
-    ap.add_argument("--label-col", required=True, help="Name of the true label column in --labeled-input")
+    ap.add_argument("--labels", type=Path, required=True, help="Contract labels.csv (id,label or id,numeric_label), aligned to predictions by id")
     ap.add_argument("--output", type=Path, default=None, help="Where to write the metrics JSON (default: <predictions dir>/metrics.json)")
     args = ap.parse_args()
 
@@ -27,26 +43,15 @@ def main() -> None:
     if config is None:
         sys.exit(f"Could not load run config under {args.agent_dir / Config.RUN_DIRNAME}")
 
-    with open(args.labeled_input, newline="") as f:
-        header = next(csv.reader(f), [])
-    if "id" not in header:
-        sys.exit(f"'id' column required in {args.labeled_input} to align with predictions")
-    if args.label_col not in header:
-        sys.exit(f"Label column '{args.label_col}' not found in {args.labeled_input}")
-
+    numeric_labels = _read_numeric_labels(args.labels, config)
     tmp_labeled = args.predictions.parent / "._eval_labeled.csv"
     try:
-        normalize_input_dataset(
-            args.labeled_input,
-            tmp_labeled,
-            label_col=args.label_col,
-            label_to_scalar=config.label_to_scalar,
-        )
+        numeric_labels.to_csv(tmp_labeled, index=False)
         metrics = get_metrics(
             results_file=args.predictions,
             test_file=tmp_labeled,
             task_type=config.task_type,
-            numeric_label_col=NUMERIC_LABEL_COL,
+            numeric_label_col=NUMERIC_LABEL_COLUMN_NAME,
         )
     finally:
         tmp_labeled.unlink(missing_ok=True)

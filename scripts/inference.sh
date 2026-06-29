@@ -13,9 +13,9 @@ show_help() {
     echo "Usage: $0 --agent-dir <agent_folder_path> --input <input_path> --output <output_path> [options]"
     echo "Options:"
     echo "  --agent-dir   Path to agent folder (required)"
-    echo "  --input       Path to input folder (required)"
+    echo "  --input       Path to the input CSV, or a contract split folder (input/ + optional labels.csv) (required)"
     echo "  --output      Path to output file (required)"
-    echo "  --label-col   Name of the true label column in --input. When set, metrics are computed against it and written to <output>.metrics.json next to --output (optional)"
+    echo "  --label-col   Label column in the input CSV. When set, labels are extracted and metrics are computed, written to <output>.metrics.json next to --output. Ignored when --input is a split folder (optional)"
     echo "  --code-path   Path to code files, points to best_iteration_snapshot by default, must be relative to --agent-dir and a child of --agent-dir (optional)"
     echo "  --all-iterations   Run inference for every run/iteration_N in --agent-dir against --input. Per-iteration predictions go to <output_dir>/<iteration>_predictions.csv (metrics to <iteration>_predictions.metrics.json when --label-col is set). Each iteration's env is rebuilt and removed in turn (optional)"
     echo "  --remove-conda-env   Remove the conda environment after inference (optional)"
@@ -97,7 +97,7 @@ if [[ -z "$OUTPUT_PATH" ]]; then
 fi
 
 [[ -d "$AGENT_DIR" ]] || die "--agent-dir does not exist: $AGENT_DIR"
-[[ -d "$INPUT_PATH" ]] || die "--input must be an input folder: $INPUT_PATH"
+[[ -f "$INPUT_PATH" || -d "$INPUT_PATH" ]] || die "--input not found: $INPUT_PATH"
 [[ -d "$(dirname "$OUTPUT_PATH")" ]] || die "--output directory does not exist: $(dirname "$OUTPUT_PATH")"
 
 # Resolve to absolute paths so they survive the cd into the inference workdir.
@@ -174,31 +174,37 @@ if [[ -z "$ENV_PATH" ]]; then
     conda env create -f "$DESCRIPTOR_PATH" -p "$ENV_PATH"
 fi
 echo "Using model env: $ENV_PATH"
-NORMALIZE_SCRIPT_ABS="$SCRIPT_DIR/../src/datasets/normalize_dataset.py"
-NORMALIZED_FILENAME=$(python "$NORMALIZE_SCRIPT_ABS" --input "$INPUT_PATH")
-if [[ -n "$NORMALIZED_FILENAME" ]]; then
-    trap "rm -f \"$(dirname "$INPUT_PATH")/$NORMALIZED_FILENAME\"" EXIT
-    INPUT_PATH="$(dirname "$INPUT_PATH")/$NORMALIZED_FILENAME"
+
+if [[ -d "$INPUT_PATH" ]]; then
+    [[ -d "$INPUT_PATH/input" ]] || die "--input folder must contain input/: $INPUT_PATH"
+    INPUT_SPLIT_DIR="$INPUT_PATH"
+else
+    ensure_conda_env "agentomics-env" "$SCRIPT_DIR/../envs/environment.yaml"
+    INPUT_SPLIT_DIR="$(mktemp -d)"
+    trap 'rm -rf "$INPUT_SPLIT_DIR"' EXIT
+    CONVERT_ARGS=(--input "$INPUT_PATH" --output-split "$INPUT_SPLIT_DIR")
+    [[ -n "$LABEL_COL" ]] && CONVERT_ARGS+=(--label-col "$LABEL_COL")
+    PYTHONPATH="$SCRIPT_DIR/../src" conda run -n agentomics-env \
+        python -m datasets.prepare_inference_input "${CONVERT_ARGS[@]}"
 fi
 
 echo "Running inference"
 cd "$INFERENCE_WORKDIR"
 conda run -p "$ENV_PATH" \
     python "$INFERENCE_PATH" \
-    --input "$INPUT_PATH" \
+    --input "$INPUT_SPLIT_DIR/input" \
     --output "$OUTPUT_PATH" \
     --artifacts-dir "$ARTIFACTS_PATH" ${ARGS[@]+"${ARGS[@]}"}
 echo "Inference done"
 
 METRICS_PATH="$(dirname "$OUTPUT_PATH")/$(basename "$OUTPUT_PATH" .csv).metrics.json"
-if [[ -n "$LABEL_COL" ]]; then
+if [[ -f "$INPUT_SPLIT_DIR/labels.csv" ]]; then
     ensure_conda_env "agentomics-env" "$SCRIPT_DIR/../envs/environment.yaml"
     echo "Computing metrics..."
     PYTHONPATH="$SCRIPT_DIR/../src" conda run -n agentomics-env python "$SCRIPT_DIR/../src/runtime/evaluate.py" \
         --agent-dir "$AGENT_DIR" \
         --predictions "$OUTPUT_PATH" \
-        --labeled-input "$INPUT_PATH" \
-        --label-col "$LABEL_COL" \
+        --labels "$INPUT_SPLIT_DIR/labels.csv" \
         --output "$METRICS_PATH"
 fi
 
