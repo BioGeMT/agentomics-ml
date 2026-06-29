@@ -302,25 +302,7 @@ if [[ "$(id -u)" -eq 0 ]]; then
     git config --system --add safe.directory '*'
 fi
 
-PREPARED_DATASETS_DIR="$AGENTOMICS_DIR/prepared_datasets"
-mkdir -p "$PREPARED_DATASETS_DIR"
-
-if [ -n "$EFFECTIVE_DATASET_NAME" ]; then
-    PREPARE_ARGS=(
-        --dataset-dir "$AGENTOMICS_DIR/datasets/$EFFECTIVE_DATASET_NAME"
-        --prepared-datasets-dir "$PREPARED_DATASETS_DIR"
-    )
-    if [ -n "$TASK_TYPE" ]; then
-        PREPARE_ARGS+=(--task-type "$TASK_TYPE")
-    fi
-    python src/prepare_datasets.py "${PREPARE_ARGS[@]}"
-else
-    python src/prepare_datasets.py --prepare-all \
-        --datasets-dir "$AGENTOMICS_DIR/datasets" \
-        --prepared-datasets-dir "$PREPARED_DATASETS_DIR"
-fi
-
-AGENTOMICS_ARGS+=(--prepared-datasets-dir "$PREPARED_DATASETS_DIR")
+AGENTOMICS_ARGS+=(--datasets-dir "$AGENTOMICS_DIR/datasets")
 
 if [[ ! -f "${START_ENV_PKG:-}" ]]; then
     AGENTOMICS_CACHE_DIR="$AGENTOMICS_DIR/.cache"
@@ -409,7 +391,7 @@ fi
 PYTHONPATH="$AGENTOMICS_DIR/src" python -m runtime.iteration_reports --agent-dir "$WORKSPACE_DIR" \
     || warn "Failed to generate iteration reports"
 PYTHONPATH="$AGENTOMICS_DIR/src" python src/runtime/generate_final_reports.py \
-    --agent-dir "$WORKSPACE_DIR" --prepared-datasets "$PREPARED_DATASETS_DIR" \
+    --agent-dir "$WORKSPACE_DIR" \
     || warn "Failed to generate PDF reports"
 
 write_outputs_readme "$WORKSPACE_DIR" "$AGENT_ID"
