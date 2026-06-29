@@ -826,7 +826,7 @@ def main() -> None:
     config.markdown_reports_dir.mkdir(parents=True, exist_ok=True)
     split_order = ["train", "validation"]
     for it in iterations:
-        inp = gather_iteration_inputs(config, dataset_meta, it)
+        inp = gather_iteration_inputs(config, it)
         report_path = inp.report_md
         if report_path is None:
             report_metrics = {
