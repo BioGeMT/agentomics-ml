@@ -129,6 +129,8 @@ def prepare_dataset(
     positive_class=None,
     negative_class=None,
     interactive=False,
+    label_to_scalar=None,
+    label_column=None,
 ) -> dict:
     """Prepare a dataset from source_dir into destination_dir.
 
@@ -152,6 +154,7 @@ def prepare_dataset(
             destination_dir=destination_dir,
             task_type=task_type,
             interactive=interactive,
+            label_column=label_column,
         )
     metadata_path = source_dir / METADATA_FILE_NAME
     source_metadata = json.loads(metadata_path.read_text()) if metadata_path.exists() else {}
@@ -179,7 +182,9 @@ def prepare_dataset(
     if resolved_task_type == TaskTypes.CLASSIFICATION:
         validate_single_label_classification(split_labels)
         has_cli_class_override = positive_class is not None or negative_class is not None
-        if "label_to_scalar" in source_metadata and not has_cli_class_override:
+        if label_to_scalar is not None:
+            label_to_scalar = {str(k): int(v) for k, v in label_to_scalar.items()}
+        elif "label_to_scalar" in source_metadata and not has_cli_class_override:
             label_to_scalar = {str(k): int(v) for k, v in source_metadata["label_to_scalar"].items()}
         else:
             unique_labels = pd.concat(

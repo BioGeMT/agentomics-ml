@@ -51,13 +51,14 @@ def convert_csv_dataset_to_standard_raw_dataset(
     destination_dir: Path,
     task_type: str | None = None,
     interactive: bool = False,
+    label_column: str | None = None,
 ) -> Path:
     source_dir = Path(source_dir)
     _validate_raw_csv_dataset_entries(source_dir, ALLOWED_PUBLIC_CSV_DATASET_ENTRIES)
 
     source_metadata = _load_metadata(source_dir)
     train_df = pd.read_csv(source_dir / TRAIN_CSV_FILE_NAME)
-    label_column, id_column = _resolve_csv_columns(source_metadata, train_df, interactive)
+    label_column, id_column = _resolve_csv_columns(source_metadata, train_df, interactive, label_column_override=label_column)
 
     splits = {TRAIN_SPLIT: train_df}
     validation_csv = source_dir / VALIDATION_CSV_FILE_NAME
@@ -165,8 +166,8 @@ def _validate_raw_csv_dataset_entries(source_dir: Path, allowed_entries: set[str
         )
 
 
-def _resolve_csv_columns(source_metadata: dict, train_df: pd.DataFrame, interactive: bool) -> tuple[str, str | None]:
-    label_column = source_metadata.get(CSV_LABEL_COLUMN_METADATA_KEY)
+def _resolve_csv_columns(source_metadata: dict, train_df: pd.DataFrame, interactive: bool, label_column_override: str | None = None) -> tuple[str, str | None]:
+    label_column = label_column_override or source_metadata.get(CSV_LABEL_COLUMN_METADATA_KEY)
     if label_column is None:
         if interactive and sys.stdin.isatty():
             from datasets.datasets_interactive import select_csv_label_column

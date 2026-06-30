@@ -7,22 +7,20 @@ CPU_ONLY=false
 ARGS=()
 
 show_help() {
-    echo "Usage: $0 --agent-dir <agent_folder_path> --train-data <train_split_path> --validation-data <validation_split_path> --artifacts-dir <artifacts_dir_path> [--cpu-only] [--local]"
+    echo "Usage: $0 --agent-dir <agent_folder_path> --dataset-dir <dataset_dir> --artifacts-dir <artifacts_dir_path> [--cpu-only]"
     echo "Options:"
     echo "  --agent-dir       Path to agent folder (required)"
-    echo "  --train-data      Path to training split folder with input/ and labels.csv (required)"
-    echo "  --validation-data Path to validation split folder with input/ and labels.csv (required)"
+    echo "  --dataset-dir     Path to a dataset folder with train/validation splits (split folders with input/+labels.csv, or train.csv/validation.csv + metadata.json). Prepared into the run's format (numeric labels via the run's trained mapping) before training (required)"
     echo "  --artifacts-dir   Path to directory where training artifacts will be saved (required)"
-    echo "  --label-col       Name of the label column in the raw --train-data/--validation-data. The data is converted to the prepared format (id + numeric_label, using the run's label mapping) before training (required)"
-    echo "  --code-path   Path to code files, points to best_iteration_snapshot by default, must be relative to --agent-dir and a child of --agent-dir (optional)"
+    echo "  --label-col       Label column name for CSV-form --dataset-dir (overrides metadata.json). Not needed for folder splits or when metadata.json declares it (optional)"
+    echo "  --code-path       Path to code files, points to best_iteration_snapshot by default, must be relative to --agent-dir and a child of --agent-dir (optional)"
     echo "  --cpu-only        Run without GPU (optional)"
     echo "  --help            Show this help message and exit"
     exit 0
 }
 
 AGENT_DIR=""
-TRAIN_DATA_PATH=""
-VALIDATION_DATA_PATH=""
+DATASET_DIR=""
 ARTIFACTS_DIR=""
 LABEL_COL=""
 
@@ -40,14 +38,9 @@ while [[ $# -gt 0 ]]; do
             AGENT_DIR="$2"
             shift 2
             ;;
-        --train-data)
+        --dataset-dir)
             require_opt_value "$1" "${2:-}"
-            TRAIN_DATA_PATH="$2"
-            shift 2
-            ;;
-        --validation-data)
-            require_opt_value "$1" "${2:-}"
-            VALIDATION_DATA_PATH="$2"
+            DATASET_DIR="$2"
             shift 2
             ;;
         --artifacts-dir)
@@ -83,22 +76,20 @@ done
 if [[ -z "$AGENT_DIR" ]]; then
       die "Missing required argument: --agent-dir. Run '$0 --help' for usage"
 fi
-if [[ -z "$TRAIN_DATA_PATH" ]]; then
-    die "Missing required argument: --train-data. Run '$0 --help' for usage"
-fi
-if [[ -z "$VALIDATION_DATA_PATH" ]]; then
-    die "Missing required argument: --validation-data. Run '$0 --help' for usage"
+if [[ -z "$DATASET_DIR" ]]; then
+    die "Missing required argument: --dataset-dir. Run '$0 --help' for usage"
 fi
 if [[ -z "$ARTIFACTS_DIR" ]]; then
     die "Missing required argument: --artifacts-dir. Run '$0 --help' for usage"
 fi
-if [[ -z "$LABEL_COL" ]]; then
-    die "Missing required argument: --label-col. Run '$0 --help' for usage"
-fi
 
 [[ -d "$AGENT_DIR" ]] || die "--agent-dir does not exist: $AGENT_DIR"
+[[ -d "$DATASET_DIR" ]] || die "--dataset-dir must be a directory: $DATASET_DIR"
+[[ -d "$(dirname "$ARTIFACTS_DIR")" ]] || die "--artifacts-dir parent directory does not exist: $(dirname "$ARTIFACTS_DIR")"
 
 AGENT_DIR="$(cd "$AGENT_DIR" && pwd)"
+DATASET_DIR="$(cd "$DATASET_DIR" && pwd)"
+ARTIFACTS_DIR="$(cd "$(dirname "$ARTIFACTS_DIR")" && pwd)/$(basename "$ARTIFACTS_DIR")"
 
 CODE_PATH=${CODE_PATH:-"best_iteration_snapshot"}
 CODE_ROOT="${AGENT_DIR}/${CODE_PATH}"
@@ -108,29 +99,22 @@ TRAIN_PATH="${CODE_ROOT}/model_training/train.py"
 TRAIN_WORKDIR="$(dirname "$TRAIN_PATH")"
 DESCRIPTOR_PATH="${CODE_ROOT}/environment.yml"
 
-[[ -d "$TRAIN_DATA_PATH" ]] || die "--train-data must be a split folder: $TRAIN_DATA_PATH"
-[[ -d "$VALIDATION_DATA_PATH" ]] || die "--validation-data must be a split folder: $VALIDATION_DATA_PATH"
-[[ -d "$TRAIN_DATA_PATH/input" ]] || die "--train-data must contain an input/ folder: $TRAIN_DATA_PATH"
-[[ -f "$TRAIN_DATA_PATH/labels.csv" ]] || die "--train-data must contain labels.csv: $TRAIN_DATA_PATH"
-[[ -d "$VALIDATION_DATA_PATH/input" ]] || die "--validation-data must contain an input/ folder: $VALIDATION_DATA_PATH"
-[[ -f "$VALIDATION_DATA_PATH/labels.csv" ]] || die "--validation-data must contain labels.csv: $VALIDATION_DATA_PATH"
 [[ -f "$TRAIN_PATH" ]] || die "train.py not found at: $TRAIN_PATH"
 [[ -f "$DESCRIPTOR_PATH" ]] || die "environment.yml not found at: $DESCRIPTOR_PATH"
-[[ -d "$(dirname "$ARTIFACTS_DIR")" ]] || die "--artifacts-dir parent directory does not exist: $(dirname "$ARTIFACTS_DIR")"
 
-TRAIN_DATA_PATH="$(cd "$(dirname "$TRAIN_DATA_PATH")" && pwd)/$(basename "$TRAIN_DATA_PATH")"
-VALIDATION_DATA_PATH="$(cd "$(dirname "$VALIDATION_DATA_PATH")" && pwd)/$(basename "$VALIDATION_DATA_PATH")"
-ARTIFACTS_DIR="$(cd "$(dirname "$ARTIFACTS_DIR")" && pwd)/$(basename "$ARTIFACTS_DIR")"
+ensure_conda_env "agentomics-env" "$SCRIPT_DIR/../envs/environment.yaml"
+PREP_ROOT="$(mktemp -d)"
+trap 'rm -rf "$PREP_ROOT"' EXIT
+PREPARED_DIR="$PREP_ROOT/prepared"
+PREP_ARGS=(--dataset-dir "$DATASET_DIR" --output-dir "$PREPARED_DIR" --agent-dir "$AGENT_DIR")
+[[ -n "$LABEL_COL" ]] && PREP_ARGS+=(--label-col "$LABEL_COL")
+PYTHONPATH="$SCRIPT_DIR/../src" conda run -n agentomics-env \
+    python -m runtime.prepare_training_data "${PREP_ARGS[@]}"
 
-CONFIG_PATH="$AGENT_DIR/run/shared/config.json"
-[[ -f "$CONFIG_PATH" ]] || die "Run config not found at $CONFIG_PATH (needed to map --label-col)"
-NORMALIZE_SCRIPT="$SCRIPT_DIR/../src/datasets/normalize_dataset.py"
-
-train_norm=$(python "$NORMALIZE_SCRIPT" --input "$TRAIN_DATA_PATH" --label-col "$LABEL_COL" --config-path "$CONFIG_PATH")
-val_norm=$(python "$NORMALIZE_SCRIPT" --input "$VALIDATION_DATA_PATH" --label-col "$LABEL_COL" --config-path "$CONFIG_PATH")
-TRAIN_DATA_PATH="$(dirname "$TRAIN_DATA_PATH")/$train_norm"
-VALIDATION_DATA_PATH="$(dirname "$VALIDATION_DATA_PATH")/$val_norm"
-trap "rm -f \"$TRAIN_DATA_PATH\" \"$VALIDATION_DATA_PATH\"" EXIT
+TRAIN_DATA_PATH="$PREPARED_DIR/train"
+VALIDATION_DATA_PATH="$PREPARED_DIR/validation"
+[[ -d "$TRAIN_DATA_PATH" ]] || die "Prepared train split not found (does --dataset-dir contain a train split?): $TRAIN_DATA_PATH"
+[[ -d "$VALIDATION_DATA_PATH" ]] || die "Prepared validation split not found (does --dataset-dir contain a validation split?): $VALIDATION_DATA_PATH"
 
 print_summary() {
     local artifacts_path="$1"
