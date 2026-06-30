@@ -9,7 +9,7 @@ SRC_PATH = REPO_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-from datasets.dataset_preparation import check_dataset_prepared, prepare_dataset, prepare_test_dataset
+from datasets.dataset_preparation import check_dataset_prepared, prepare_dataset
 
 DATASET_NAME = "publishing_dataset"
 
@@ -51,15 +51,6 @@ class DatasetPreparationPublishingTests(unittest.TestCase):
     def prepare(self):
         return prepare_dataset(source_dir=self.dataset_dir, destination_dir=self.prepared_dir)
 
-    def prepare_test(self, train_metadata):
-        prepare_test_dataset(
-            source_dir=self.test_dataset_dir,
-            destination_dir=self.prepared_test_dir,
-            task_type=train_metadata["task_type"],
-            input_structure=train_metadata["input_structure"],
-            label_to_scalar=train_metadata.get("label_to_scalar"),
-        )
-
     def test_public_dataset_is_prepared_to_destination(self):
         self.prepare()
 
@@ -71,26 +62,13 @@ class DatasetPreparationPublishingTests(unittest.TestCase):
         self.assertEqual({"negative": 0, "positive": 1}, metadata["label_to_scalar"])
         self.assertTrue(check_dataset_prepared(self.prepared_dir))
 
-    def test_hidden_test_dataset_prepared_to_destination(self):
-        train_metadata = self.prepare()
-        self.prepare_test(train_metadata)
-
-        test_labels_text = (self.prepared_test_dir / "test" / "labels.csv").read_text(encoding="utf-8")
-        test_metadata = json.loads((self.prepared_test_dir / "metadata.json").read_text(encoding="utf-8"))
-
-        self.assertIn("id,numeric_label", test_labels_text)
-        self.assertTrue(test_metadata["prepared"])
-        self.assertEqual({"negative": 0, "positive": 1}, test_metadata["label_to_scalar"])
-        self.assertFalse((self.test_dataset_dir / "metadata.json").exists())
-
     def test_public_test_split_is_rejected(self):
         write_raw_split(self.dataset_dir, "test")
 
         with self.assertRaises(ValueError) as raised:
             self.prepare()
 
-        self.assertIn("must not contain test/", str(raised.exception))
-        self.assertIn("test_datasets", str(raised.exception))
+        self.assertIn("unsupported top-level entries", str(raised.exception))
         self.assertFalse(check_dataset_prepared(self.prepared_dir))
 
     def test_symlinked_public_dataset_is_rejected_with_actionable_error(self):

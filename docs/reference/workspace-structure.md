@@ -50,12 +50,14 @@ test_datasets/my_dataset/
     └── labels.csv
 ```
 
-Each unprepared `labels.csv` must include `id` and `label` columns. Preparation
-rewrites labels in place with `id` and `numeric_label`, then writes
-`metadata.json` with `"prepared": true`. Only `train` and `validation` are
-supported under `datasets/`; only `test` is supported under `test_datasets/`.
-The `input/` interface is recorded at preparation time, must match across all
-splits, and must not be modified during a run.
+Each unprepared `labels.csv` must include `id` and `label` columns. Preparing a
+dataset under `datasets/` rewrites its split labels in place with `id` and
+`numeric_label`, then writes `metadata.json` with `"prepared": true`. Only
+`train` and `validation` are supported under `datasets/`; only `test` is
+supported under `test_datasets/`. The `input/` interface is recorded at
+preparation time, must match across all splits, and must not be modified during
+a run. `test_datasets/` is optional and is **not** prepared or evaluated by the
+run (see below).
 
 After preparation, the public dataset directory is the agent-facing dataset:
 
@@ -72,16 +74,18 @@ datasets/my_dataset/
 └── metadata.json           # includes "prepared": true
 ```
 
-Hidden test data is also prepared in place before final evaluation:
+`test_datasets/` holds optional held-out data the agent never sees during a run.
+The run no longer prepares or evaluates it automatically; to score the finished
+model on it, run `scripts/inference.sh` (or `scripts/train.sh`) against the split
+afterward — those prepare it on the fly. Its `labels.csv` stays in raw `id,label`
+form:
 
 ```text
 test_datasets/my_dataset/
 └── test/
     ├── input/
-    └── labels.csv          # id,numeric_label
+    └── labels.csv          # id,label
 ```
-
-The agent never sees `test_datasets/` during training.
 
 ## Active Workspace
 

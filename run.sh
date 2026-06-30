@@ -318,8 +318,7 @@ fi
 if [ "$TEST_MODE" = true ]; then
     set +e
     PYTHONPATH="$AGENTOMICS_DIR/src" python -m test.run_all_tests \
-        --workspace-dir "$WORKSPACE_DIR" \
-        --prepared-datasets-dir "$PREPARED_DATASETS_DIR"
+        --workspace-dir "$WORKSPACE_DIR"
     TEST_EXIT=$?
     set -e
     exit "$TEST_EXIT"

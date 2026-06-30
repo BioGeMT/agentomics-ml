@@ -34,7 +34,7 @@ def record_input_dir_structure(input_dir: Path) -> list[str]:
 
     Only the top-level interface is recorded: required top-level files like data.zip
     must be present in every split, while sample files inside matching top-level
-    directories may differ between train/validation/test.
+    directories may differ between train/validation.
     """
     return sorted(
         f"{item.name}/" if item.is_dir() else item.name for item in Path(input_dir).iterdir()
@@ -51,11 +51,6 @@ def validate_split_entries(split_path: Path, split_name: str) -> None:
         )
 
 def validate_public_dataset_entries(dataset_dir: Path) -> None:
-    if (dataset_dir / TEST_SPLIT).exists():
-        raise ValueError(
-            f"Public dataset {dataset_dir.name} must not contain test/ - "
-            f"hidden test data belongs under test_datasets/{dataset_dir.name}/test/."
-        )
     unsupported_entries = sorted(
         item.name for item in dataset_dir.iterdir()
         if item.name not in ALLOWED_PUBLIC_DATASET_ENTRIES

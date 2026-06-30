@@ -76,8 +76,10 @@ test_datasets/my_dataset/
     └── labels.csv
 ```
 
-The `datasets/` mount above already exposes it; run with `--dataset my_dataset`.
-See [Preparing Datasets](../user-guide/datasets.md) for details.
+This held-out data is optional and is **not** used automatically during a run —
+score the finished model on it afterward with `scripts/inference.sh` (see
+[Running Inference](../user-guide/inference.md)). Run training with
+`--dataset my_dataset`. See [Preparing Datasets](../user-guide/datasets.md) for details.
 
 ## Example Datasets
 

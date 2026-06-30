@@ -24,7 +24,6 @@ CSV_LABEL_COLUMN_METADATA_KEY = "label_column"
 CSV_ID_COLUMN_METADATA_KEY = "id_column"
 TRAIN_CSV_FILE_NAME = f"{TRAIN_SPLIT}.csv"
 VALIDATION_CSV_FILE_NAME = f"{VALIDATION_SPLIT}.csv"
-TEST_CSV_FILE_NAME = f"{TEST_SPLIT}.csv"
 CSV_CONVERTED_SOURCE_DIR_NAME = "_csv_converted_source"
 ALLOWED_PUBLIC_CSV_DATASET_ENTRIES = {
     TRAIN_CSV_FILE_NAME,
@@ -33,17 +32,11 @@ ALLOWED_PUBLIC_CSV_DATASET_ENTRIES = {
     METADATA_FILE_NAME,
     DATASET_DESCRIPTION_FILE_NAME,
 }
-ALLOWED_TEST_CSV_DATASET_ENTRIES = {TEST_CSV_FILE_NAME, METADATA_FILE_NAME}
 
 
 def is_public_csv_dataset(source_dir: Path) -> bool:
     source_dir = Path(source_dir)
     return not (source_dir / TRAIN_SPLIT).exists() and (source_dir / TRAIN_CSV_FILE_NAME).is_file()
-
-
-def is_test_csv_dataset(source_dir: Path) -> bool:
-    source_dir = Path(source_dir)
-    return not (source_dir / TEST_SPLIT).exists() and (source_dir / TEST_CSV_FILE_NAME).is_file()
 
 
 def convert_csv_dataset_to_standard_raw_dataset(
@@ -75,28 +68,6 @@ def convert_csv_dataset_to_standard_raw_dataset(
     )
     _write_preserved_metadata(converted_source_dir, source_metadata, task_type)
     _link_optional_dataset_files(source_dir, converted_source_dir)
-    return converted_source_dir
-
-
-def convert_csv_test_dataset_to_standard_raw_dataset(source_dir: Path, destination_dir: Path) -> Path:
-    source_dir = Path(source_dir)
-    _validate_raw_csv_dataset_entries(source_dir, ALLOWED_TEST_CSV_DATASET_ENTRIES)
-
-    source_metadata = _load_metadata(source_dir)
-    label_column = source_metadata.get(CSV_LABEL_COLUMN_METADATA_KEY)
-    if label_column is None:
-        raise ValueError("CSV test dataset requires 'label_column' in metadata.json.")
-    id_column = source_metadata.get(CSV_ID_COLUMN_METADATA_KEY)
-
-    converted_source_dir = _converted_source_dir(destination_dir)
-    remove_path(converted_source_dir)
-    _write_split(
-        output_dir=converted_source_dir,
-        split_name=TEST_SPLIT,
-        df=pd.read_csv(source_dir / TEST_CSV_FILE_NAME),
-        label_column=str(label_column),
-        id_column=str(id_column) if id_column is not None else None,
-    )
     return converted_source_dir
 
 

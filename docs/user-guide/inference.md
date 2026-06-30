@@ -13,9 +13,12 @@ also compute metrics against true labels, and evaluate every archived iteration.
 ```bash
 ./scripts/inference.sh \
   --agent-dir outputs/<agent_id> \
-  --input /path/to/input_folder \
+  --input /path/to/data.csv \
   --output /path/to/predictions.csv
 ```
+
+`--input` accepts either a **CSV file** or a **contract split folder** (`input/`
++ optional `labels.csv`). See [Input Data Format](#input-data-format).
 
 ## Arguments
 
@@ -24,14 +27,14 @@ also compute metrics against true labels, and evaluate every archived iteration.
 | Argument | Description |
 |----------|-------------|
 | `--agent-dir` | Path to completed agent output folder |
-| `--input` | Path to an input folder without labels |
+| `--input` | A CSV file, or a contract split folder (`input/` + optional `labels.csv`) |
 | `--output` | Path where predictions will be saved |
 
 ### Optional
 
 | Argument | Description |
 |----------|-------------|
-| `--label-col` | Name of the true label column in `--input`. When set, metrics are computed against it and written to `<output>.metrics.json` next to `--output` |
+| `--label-col` | Label column in the input **CSV** — when set, metrics are computed against it and written to `<output>.metrics.json`. Ignored for a split folder; there, metrics run only if the folder has a `labels.csv` |
 | `--code-path` | Code directory to use, relative to `--agent-dir` (default: `best_iteration_snapshot`) |
 | `--all-iterations` | Run inference for every `run/iteration_N` against `--input` (see below) |
 | `--remove-conda-env` | Remove the model conda environment after inference |
@@ -63,24 +66,33 @@ environment is reused from the run, or rebuilt from `environment.yml` under
 
 ## Input Data Format
 
-Your input folder should:
+`--input` can be either of two shapes:
 
-- Match the structure of the training split's `input/` folder
-- Contain the sample IDs needed by the generated `inference.py`
-- Not include `labels.csv` or target labels
-
-For a tabular dataset, the folder can contain a CSV file:
-
-```text
-new_samples/input/
-└── data.csv
-```
+**A CSV file** — the common case. It is converted into a contract split before
+inference. Provide the same feature columns the model was trained on. If the CSV
+also has a label column, pass `--label-col <name>` to compute metrics (the label
+is split out, not fed to the model); omit it for prediction-only.
 
 ```csv
-id,feature1,feature2,feature3
-sample-1,1.2,3.4,5.6
-sample-2,7.8,9.0,1.2
+feature1,feature2,feature3,label
+1.2,3.4,5.6,positive
+7.8,9.0,1.2,negative
 ```
+
+**A contract split folder** — `input/` (+ optional `labels.csv`), matching the
+structure of the training split's `input/`:
+
+```text
+new_samples/
+├── input/
+│   └── data.csv      # feature files (same top-level structure as training)
+└── labels.csv        # optional (id,label or id,numeric_label) -> enables metrics
+```
+
+For both shapes, `input/` must match the training split's top-level structure and
+carry the sample IDs the generated `inference.py` expects (a CSV without an `id`
+column gets sequential IDs assigned during conversion). Metrics are produced when
+labels are available — via `--label-col` (CSV) or a present `labels.csv` (folder).
 
 ## Output Format
 
