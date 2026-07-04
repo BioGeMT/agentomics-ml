@@ -27,13 +27,13 @@ After each iteration:
 At the end of the run:
 
 1. Best iteration's model is loaded
-2. Predictions made on test set (never seen during training)
-3. Final metrics reported
+2. Predictions made on each hidden test split (never seen during training)
+3. Final metrics reported for each hidden split
 4. Results saved to final report
 
 !!! note
-    Test evaluation only occurs if you provide a `test/` split with `input/`
-    and `labels.csv`.
+    Test evaluation only occurs for hidden split folders with `input/` and
+    `labels.csv`, such as `test/` or `leftout/`.
 
 ## Classification Metrics
 

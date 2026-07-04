@@ -28,17 +28,23 @@ def _make_config(tmp: Path, dataset_name: str = "test_dataset") -> SimpleNamespa
         label_to_scalar={"negative": 0, "positive": 1},
         input_structure=["examples.txt"],
         val_metric="ACC",
+        conda_export_mode="minimal",
     )
 
 
-def _write_test_dataset(test_datasets_dir: Path, dataset_name: str, rows: int = 2) -> None:
+def _write_test_dataset(
+    test_datasets_dir: Path,
+    dataset_name: str,
+    rows: int = 2,
+    split_name: str = "test",
+) -> None:
     dataset_dir = test_datasets_dir / dataset_name
     dataset_dir.mkdir(parents=True, exist_ok=True)
-    split_dir = dataset_dir / "test"
+    split_dir = dataset_dir / split_name
     (split_dir / "input").mkdir(parents=True)
     (split_dir / "input" / "examples.txt").write_text("example\n", encoding="utf-8")
     labels_list = ["negative", "positive"]
-    labels = ["id,label"] + [f"test-{i},{labels_list[i % 2]}" for i in range(rows)]
+    labels = ["id,label"] + [f"{split_name}-{i},{labels_list[i % 2]}" for i in range(rows)]
     (split_dir / "labels.csv").write_text("\n".join(labels) + "\n", encoding="utf-8")
 
 
@@ -127,6 +133,26 @@ class TestRunTestEvaluationFolderContract(unittest.TestCase):
             labels_path = metric_calls[0]["labels_path"]
             self.assertTrue(str(labels_path).endswith("labels.csv"), f"Expected labels.csv, got: {labels_path}")
             self.assertNotIn("input", str(labels_path))
+
+    def test_evaluates_all_hidden_test_split_directories(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = _make_config(root)
+            test_datasets_dir = root / "test_datasets"
+            _write_test_dataset(test_datasets_dir, config.dataset, split_name="test")
+            _write_test_dataset(test_datasets_dir, config.dataset, split_name="leftout")
+
+            mock_infer = self._run_with_mocks(root, test_datasets_dir, config)
+
+            self.assertEqual(2, mock_infer.call_count)
+            input_paths = [call.kwargs["input_path"] for call in mock_infer.call_args_list]
+            output_paths = [call.kwargs["output_path"] for call in mock_infer.call_args_list]
+            self.assertTrue(str(input_paths[0]).endswith("/test/input"))
+            self.assertTrue(str(input_paths[1]).endswith("/leftout/input"))
+            self.assertEqual(config.best_iteration_snapshot_dir / "eval_predictions_test.csv", output_paths[0])
+            self.assertEqual(config.best_iteration_snapshot_dir / "eval_predictions_leftout.csv", output_paths[1])
+            self.assertTrue((config.best_iteration_snapshot_dir / "test_metrics.json").is_file())
+            self.assertTrue((config.best_iteration_snapshot_dir / "leftout_metrics.json").is_file())
 
 
 if __name__ == "__main__":

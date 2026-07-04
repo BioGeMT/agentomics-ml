@@ -42,7 +42,10 @@ Hidden test data uses a matching separate root:
 
 ```text
 test_datasets/my_dataset/
-└── test/
+├── test/
+│   ├── input/
+│   └── labels.csv
+└── leftout/                 # Optional extra hidden test split
     ├── input/
     └── labels.csv
 ```
@@ -50,7 +53,8 @@ test_datasets/my_dataset/
 Each unprepared `labels.csv` must include `id` and `label` columns. Preparation
 rewrites labels in place with `id` and `numeric_label`, then writes
 `metadata.json` with `"prepared": true`. Only `train` and `validation` are
-supported under `datasets/`; only `test` is supported under `test_datasets/`.
+supported under `datasets/`; `test` plus optional sibling hidden test splits
+such as `leftout` are supported under `test_datasets/`.
 The `input/` interface is recorded at preparation time, must match across all
 splits, and must not be modified during a run.
 
@@ -73,7 +77,10 @@ Hidden test data is also prepared in place before final evaluation:
 
 ```text
 test_datasets/my_dataset/
-└── test/
+├── test/
+│   ├── input/
+│   └── labels.csv          # id,numeric_label
+└── leftout/
     ├── input/
     └── labels.csv          # id,numeric_label
 ```

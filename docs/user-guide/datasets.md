@@ -25,13 +25,17 @@ training:
 
 ```text
 test_datasets/my_dataset/
-└── test/
+├── test/
+│   ├── input/
+│   └── labels.csv
+└── leftout/                 # Optional extra hidden test split
     ├── input/
     └── labels.csv
 ```
 
-Only `train` and `validation` are supported in `datasets/`. Only `test` is
-supported in `test_datasets/`.
+Only `train` and `validation` are supported in `datasets/`. Under
+`test_datasets/`, `test/` is the conventional primary hidden split; additional
+hidden test split folders such as `leftout/` are also evaluated when present.
 
 ## Split Requirements
 
@@ -109,11 +113,12 @@ be part of the experiment.
 
 The top-level entries in `train/input/` are recorded at dataset preparation
 time and define the split interface. All splits must have matching top-level
-`input/` files and folders: `validation/input/` and `test_datasets/<name>/test/input/` are validated
-against `train/input/` during preparation, and the agent cannot add, remove, or
-rename top-level `input/` entries during the split step. Files inside matching
-top-level folders may differ between splits, which supports datasets where each
-split contains different sample files.
+`input/` files and folders: `validation/input/` and every
+`test_datasets/<name>/<split>/input/` hidden split are validated against
+`train/input/` during preparation, and the agent cannot add, remove, or rename
+top-level `input/` entries during the split step. Files inside matching top-level
+folders may differ between splits, which supports datasets where each split
+contains different sample files.
 
 For per-sample file datasets (images, audio, etc.), place files inside a
 subdirectory rather than directly under `input/`:
@@ -136,8 +141,10 @@ folders from `train/` during the run.
 ### test/ Optional
 
 The hidden test split is used only for final evaluation. Keep it under
-`test_datasets/<dataset>/test/`, not under `datasets/<dataset>/test/`.
-The agent does not get access to `test_datasets/` during training.
+`test_datasets/<dataset>/test/`, not under `datasets/<dataset>/test/`. Extra
+hidden test splits can be added as sibling folders such as
+`test_datasets/<dataset>/leftout/`. The agent does not get access to
+`test_datasets/` during training.
 
 ### metadata.json Optional
 

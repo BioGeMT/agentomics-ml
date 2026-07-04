@@ -245,12 +245,27 @@ def check_dataset_prepared(dataset_dir: Path) -> bool:
     return metadata.get("prepared") is True
 
 
+def discover_test_split_names(source_dir: Path) -> list[str]:
+    source_dir = Path(source_dir)
+    if not source_dir.is_dir():
+        return []
+    if is_test_csv_dataset(source_dir):
+        return [TEST_SPLIT]
+
+    split_names = sorted(item.name for item in source_dir.iterdir() if item.is_dir())
+    if TEST_SPLIT in split_names:
+        split_names.remove(TEST_SPLIT)
+        return [TEST_SPLIT, *split_names]
+    return split_names
+
+
 def prepare_test_dataset(
     source_dir: Path,
     destination_dir: Path,
     task_type: str,
     input_structure: list[str],
     label_to_scalar: dict[str, int] | None = None,
+    split_name: str = TEST_SPLIT,
 ) -> dict:
     """Prepare test dataset from source_dir into destination_dir using run metadata.
 
@@ -262,45 +277,45 @@ def prepare_test_dataset(
     destination_dir = Path(destination_dir)
 
     _reject_symlinks_in_dir(source_dir)
-    if is_test_csv_dataset(source_dir):
+    if split_name == TEST_SPLIT and is_test_csv_dataset(source_dir):
         source_dir = convert_csv_test_dataset_to_standard_raw_dataset(source_dir, destination_dir)
 
-    test_source = source_dir / TEST_SPLIT
+    test_source = source_dir / split_name
     if not test_source.is_dir():
-        raise FileNotFoundError(f"Required test/ split is missing: {test_source}")
+        raise FileNotFoundError(f"Required {split_name}/ split is missing: {test_source}")
 
-    validate_split_entries(test_source, TEST_SPLIT)
+    validate_split_entries(test_source, split_name)
 
-    test_labels = load_split_label_dfs({TEST_SPLIT: test_source})
+    test_labels = load_split_label_dfs({split_name: test_source})
 
     if task_type == TaskTypes.CLASSIFICATION:
         if not label_to_scalar:
             raise ValueError("label_to_scalar is required for classification test data preparation")
         validate_single_label_classification(test_labels)
         label_to_scalar = {str(k): int(v) for k, v in label_to_scalar.items()}
-        actual_labels = set(test_labels[TEST_SPLIT][LABEL_COLUMN_NAME].astype(str).unique())
+        actual_labels = set(test_labels[split_name][LABEL_COLUMN_NAME].astype(str).unique())
         unknown_labels = sorted(actual_labels - set(label_to_scalar))
         if unknown_labels:
             raise ValueError(
-                f"Test split contains labels not present in train: {unknown_labels}. "
+                f"{split_name} split contains labels not present in train: {unknown_labels}. "
                 f"Known labels: {sorted(label_to_scalar)}"
             )
-        numeric_labels = convert_classification_labels(test_labels[TEST_SPLIT], label_to_scalar, TEST_SPLIT)
+        numeric_labels = convert_classification_labels(test_labels[split_name], label_to_scalar, split_name)
     elif task_type == TaskTypes.REGRESSION:
-        numeric_labels = convert_regression_labels(test_labels[TEST_SPLIT], TEST_SPLIT)
+        numeric_labels = convert_regression_labels(test_labels[split_name], split_name)
     else:
         raise ValueError(f"Unknown task_type: {task_type}. Expected one of {TaskTypes}.")
 
-    dest_test = destination_dir / TEST_SPLIT
+    dest_test = destination_dir / split_name
     dest_test.mkdir(parents=True, exist_ok=True)
     create_absolute_symlink(test_source / INPUT_DIR_NAME, dest_test / INPUT_DIR_NAME)
     numeric_labels.to_csv(dest_test / LABELS_FILE_NAME, index=False)
 
-    validate_splits({TEST_SPLIT: dest_test}, input_structure)
+    validate_splits({split_name: dest_test}, input_structure)
 
     test_metadata = {
         "task_type": task_type,
-        "splits": {"test_rows": len(test_labels[TEST_SPLIT])},
+        "splits": {f"{split_name}_rows": len(test_labels[split_name])},
         "numeric_label_col": NUMERIC_LABEL_COLUMN_NAME,
         "input_structure": input_structure,
         "prepared": True,
@@ -310,5 +325,4 @@ def prepare_test_dataset(
     (destination_dir / METADATA_FILE_NAME).write_text(json.dumps(test_metadata, indent=4), encoding="utf-8")
 
     return test_metadata
-
 

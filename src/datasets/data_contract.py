@@ -54,7 +54,8 @@ def validate_public_dataset_entries(dataset_dir: Path) -> None:
     if (dataset_dir / TEST_SPLIT).exists():
         raise ValueError(
             f"Public dataset {dataset_dir.name} must not contain test/ - "
-            f"hidden test data belongs under test_datasets/{dataset_dir.name}/test/."
+            f"hidden test data belongs under test_datasets/{dataset_dir.name}/test/ "
+            f"or another sibling hidden split folder."
         )
     unsupported_entries = sorted(
         item.name for item in dataset_dir.iterdir()

@@ -19,8 +19,10 @@ outputs/<agent_id>/
 │   ├── runtime_info/
 │   │   └── iteration_metadata.json
 │   ├── environment.yml
-│   ├── eval_predictions_test.csv      # If a held-out test set was provided
-│   ├── test_metrics.json              # If final test evaluation succeeded
+│   ├── eval_predictions_test.csv      # If a held-out test split was provided
+│   ├── test_metrics.json              # Metrics for test/
+│   ├── eval_predictions_leftout.csv   # If a leftout/ hidden split was provided
+│   ├── leftout_metrics.json           # Metrics for leftout/
 │   └── .conda/
 ├── run/                      # All iterations + shared run state
 │   ├── shared/

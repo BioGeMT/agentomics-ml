@@ -9,7 +9,12 @@ SRC_PATH = REPO_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-from datasets.dataset_preparation import check_dataset_prepared, prepare_dataset, prepare_test_dataset
+from datasets.dataset_preparation import (
+    check_dataset_prepared,
+    discover_test_split_names,
+    prepare_dataset,
+    prepare_test_dataset,
+)
 
 DATASET_NAME = "publishing_dataset"
 
@@ -82,6 +87,30 @@ class DatasetPreparationPublishingTests(unittest.TestCase):
         self.assertTrue(test_metadata["prepared"])
         self.assertEqual({"negative": 0, "positive": 1}, test_metadata["label_to_scalar"])
         self.assertFalse((self.test_dataset_dir / "metadata.json").exists())
+
+    def test_named_hidden_test_dataset_prepared_to_destination(self):
+        write_raw_split(self.test_dataset_dir, "leftout")
+        train_metadata = self.prepare()
+        prepare_test_dataset(
+            source_dir=self.test_dataset_dir,
+            destination_dir=self.prepared_test_dir,
+            task_type=train_metadata["task_type"],
+            input_structure=train_metadata["input_structure"],
+            label_to_scalar=train_metadata.get("label_to_scalar"),
+            split_name="leftout",
+        )
+
+        leftout_labels_text = (self.prepared_test_dir / "leftout" / "labels.csv").read_text(encoding="utf-8")
+        test_metadata = json.loads((self.prepared_test_dir / "metadata.json").read_text(encoding="utf-8"))
+
+        self.assertIn("id,numeric_label", leftout_labels_text)
+        self.assertTrue((self.prepared_test_dir / "leftout" / "input").is_symlink())
+        self.assertEqual({"leftout_rows": 2}, test_metadata["splits"])
+
+    def test_discovers_test_split_first_then_extra_hidden_splits(self):
+        write_raw_split(self.test_dataset_dir, "leftout")
+
+        self.assertEqual(["test", "leftout"], discover_test_split_names(self.test_dataset_dir))
 
     def test_public_test_split_is_rejected(self):
         write_raw_split(self.dataset_dir, "test")

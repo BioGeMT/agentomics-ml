@@ -16,7 +16,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from agents.steps.validation_evaluation import ValidationEvaluationStep
-from datasets.dataset_preparation import prepare_test_dataset
+from datasets.dataset_preparation import discover_test_split_names, prepare_test_dataset
 from runtime.evaluate_result import get_metrics
 from runtime.step_outputs import load_step_output
 from utils.config import Config
@@ -244,6 +244,14 @@ def load_saved_metrics(metrics_path: Path) -> Dict[str, float]:
         raise ValueError(f"Expected JSON object at {metrics_path}.")
     return {str(metric_name): float(metric_value) for metric_name, metric_value in payload.items()}
 
+def test_predictions_path(snapshot_dir: Path, split_name: str) -> Path:
+    return snapshot_dir / f"eval_predictions_{split_name}.csv"
+
+def test_metrics_path(snapshot_dir: Path, split_name: str) -> Path:
+    if split_name == TEST_SPLIT:
+        return snapshot_dir / "test_metrics.json"
+    return snapshot_dir / f"{split_name}_metrics.json"
+
 def load_run_meta(config: Config) -> RunMeta:
     return RunMeta(
         agent_id=config.agent_id,
@@ -277,7 +285,7 @@ def _get_iteration_split_version(config: Config, iter_dir: Path) -> int | None:
 
 def gather_iteration_inputs(
     config: Config,
-    test_labels_path: Path | None,
+    test_labels_paths: Dict[str, Path],
     dataset_meta: DatasetMeta,
     iteration: int,
 ) -> IterationInputs:
@@ -291,12 +299,10 @@ def gather_iteration_inputs(
     split_version = _get_iteration_split_version(config, iter_dir)
     train_csv = _find_versioned_split_labels(config, TRAIN_SPLIT, split_version)
     val_csv = _find_versioned_split_labels(config, VALIDATION_SPLIT, split_version)
-    test_csv = test_labels_path
 
     validation_evaluation_dir = iter_dir / ValidationEvaluationStep.step_id
     train_preds = validation_evaluation_dir / "eval_predictions_train.csv"
     val_preds = validation_evaluation_dir / "eval_predictions_validation.csv"
-    test_preds = config.best_iteration_snapshot_dir / "eval_predictions_test.csv"
 
     splits: List[SplitArtifacts] = [
         SplitArtifacts("train", train_csv, train_preds, get_split_metrics(validation_metrics, "train")),
@@ -305,13 +311,17 @@ def gather_iteration_inputs(
 
     best_iter = load_best_iteration_snapshot_iteration(config)
     if best_iter is not None and iteration == best_iter:
-        test_metrics = load_saved_metrics(config.best_iteration_snapshot_dir / "test_metrics.json") or load_test_metrics(
-            test_csv,
-            test_preds,
-            dataset_meta,
-        )
-        if (test_csv and test_csv.exists()) or (test_preds and test_preds.exists()) or bool(test_metrics):
-            splits.append(SplitArtifacts("test", test_csv, test_preds, test_metrics))
+        for split_name, test_csv in test_labels_paths.items():
+            test_preds = test_predictions_path(config.best_iteration_snapshot_dir, split_name)
+            test_metrics = load_saved_metrics(
+                test_metrics_path(config.best_iteration_snapshot_dir, split_name)
+            ) or load_test_metrics(
+                test_csv,
+                test_preds,
+                dataset_meta,
+            )
+            if test_csv.exists() or test_preds.exists() or bool(test_metrics):
+                splits.append(SplitArtifacts(split_name, test_csv, test_preds, test_metrics))
 
     return IterationInputs(iteration=iteration, report_md=report_md, splits=splits)
 
@@ -866,25 +876,29 @@ def main() -> None:
     ensure_dir(out_dir)
     ensure_dir(plots_dir)
     config.markdown_reports_dir.mkdir(parents=True, exist_ok=True)
-    split_order = ["train", "validation", "test"]
+    hidden_test_split_names = discover_test_split_names(test_datasets_dir / config.dataset)
+    split_order = ["train", "validation", *hidden_test_split_names]
 
     with tempfile.TemporaryDirectory(prefix="report_test_data_") as temp_dir:
-        raw_test_split = test_datasets_dir / config.dataset / TEST_SPLIT
-        raw_labels = raw_test_split / LABELS_FILE_NAME
-        test_labels_path = None
-        if raw_test_split.is_dir() and raw_labels.is_file():
-            prepared_dir = Path(temp_dir) / config.dataset
+        test_labels_paths: Dict[str, Path] = {}
+        prepared_dir = Path(temp_dir) / config.dataset
+        for split_name in hidden_test_split_names:
+            raw_test_split = test_datasets_dir / config.dataset / split_name
+            raw_labels = raw_test_split / LABELS_FILE_NAME
+            if not raw_test_split.is_dir() or not raw_labels.is_file():
+                continue
             prepare_test_dataset(
                 source_dir=test_datasets_dir / config.dataset,
                 destination_dir=prepared_dir,
                 task_type=config.task_type,
                 input_structure=config.input_structure,
                 label_to_scalar=config.label_to_scalar,
+                split_name=split_name,
             )
-            test_labels_path = prepared_dir / TEST_SPLIT / LABELS_FILE_NAME
+            test_labels_paths[split_name] = prepared_dir / split_name / LABELS_FILE_NAME
 
         for it in iterations:
-            inp = gather_iteration_inputs(config, test_labels_path, dataset_meta, it)
+            inp = gather_iteration_inputs(config, test_labels_paths, dataset_meta, it)
             report_path = inp.report_md
             if report_path is None:
                 report_metrics = {
@@ -893,7 +907,7 @@ def main() -> None:
                     if split.split_name != "test"
                     for metric_name, metric_value in split.metrics.items()
                 }
-                test_metrics = next((split.metrics for split in inp.splits if split.split_name == "test"), None)
+                test_metrics = next((split.metrics for split in inp.splits if split.split_name == TEST_SPLIT), None)
                 report_path = write_iteration_report(
                     config,
                     iteration=it,
