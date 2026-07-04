@@ -23,6 +23,8 @@ FREE_SPOKEN_DIGIT_DATASET_VERSION = "v1.0.10"
 MIRBENCH_DATASETS = {
     "AGO2_CLASH_Hejret2023": {
         "splits": ["train", "test"],
+        "positive_class": "1",
+        "negative_class": "0",
         "description": "The AGO2 Hejret2023 dataset was adapted from [miRBench: novel benchmark datasets for microRNA binding site prediction that mitigate against prevalent microRNA Frequency Class Bias]. This dataset contains microRNA sequences and their corresponding binding sites, as identified via a CLASH (crosslinking, ligation, and sequencing of hybrids) experiment. There are two sequences in this dataset: gene and noncodingRNA. The gene sequences are 50nt fragments including a target site of the noncodingRNA. We expect that the targeting occurs via partial complementarity of the two sequences. Samples with label==1 are target sites retrieved from the CLASH experiment. For each of these positive samples, a negative sample (label==0) is created by matching the same noncodingRNA sequence with a randomly selected gene sequence.",
     }
 }
@@ -111,6 +113,12 @@ def generate_mirbench_files(dataset: str | None = None):
             test_output_dir=local_test_dset_path,
             task_type="classification",
         )
+
+        metadata_path = local_dset_path / METADATA_FILE_NAME
+        metadata = json.loads(metadata_path.read_text())
+        metadata["positive_class"] = info["positive_class"]
+        metadata["negative_class"] = info["negative_class"]
+        metadata_path.write_text(json.dumps(metadata, indent=4), encoding="utf-8")
 
 def generate_genomic_benchmarks_files(dataset: str | None = None):
     import pandas as pd
