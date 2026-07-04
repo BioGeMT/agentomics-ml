@@ -119,6 +119,8 @@ Environment:
   API keys read from 'src/utils/providers/configured_providers.yaml' must be set as
   environment variables in your host environment (e.g., in a shell session or .env file)
   to be injected into the Docker container.
+  W&B logging is enabled when WANDB_API_KEY, WANDB_PROJECT_NAME, and WANDB_ENTITY
+  are set in the host environment or .env file.
   For the 'codex' provider, run `codex login` on the host so `~/.codex/auth.json`
   is available to the launcher.
 
@@ -572,6 +574,22 @@ else
         DOCKER_API_KEY_ENV_VARS+=(-e "OPENROUTER_API_KEY=${OPENROUTER_API_KEY}")
     fi
 
+    DOCKER_WANDB_ENV_VARS=()
+    for KEY_NAME in WANDB_API_KEY WANDB_PROJECT_NAME WANDB_ENTITY WEAVE_DISABLE_NETRC_CHECK; do
+        if [ -n "${!KEY_NAME:-}" ]; then
+            DOCKER_WANDB_ENV_VARS+=(-e "$KEY_NAME=${!KEY_NAME}")
+            echo "Adding W&B env var to docker: $KEY_NAME"
+        fi
+    done
+
+    DOCKER_PROXY_ENV_VARS=()
+    for KEY_NAME in HTTP_PROXY HTTPS_PROXY NO_PROXY http_proxy https_proxy no_proxy; do
+        if [ -n "${!KEY_NAME:-}" ]; then
+            DOCKER_PROXY_ENV_VARS+=(-e "$KEY_NAME=${!KEY_NAME}")
+            echo "Adding proxy env var to docker: $KEY_NAME"
+        fi
+    done
+
     if [ "$LIST_MODE" = false ]; then
         if [ "$CPU_ONLY" = false ]; then
             if ! docker_has_gpu; then
@@ -640,6 +658,8 @@ else
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
             ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
+            ${DOCKER_WANDB_ENV_VARS[@]+"${DOCKER_WANDB_ENV_VARS[@]}"} \
+            ${DOCKER_PROXY_ENV_VARS[@]+"${DOCKER_PROXY_ENV_VARS[@]}"} \
             ${CODEX_DOCKER_FLAGS[@]+"${CODEX_DOCKER_FLAGS[@]}"} \
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/test":/repository/test:ro \
@@ -675,6 +695,8 @@ else
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
             ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
+            ${DOCKER_WANDB_ENV_VARS[@]+"${DOCKER_WANDB_ENV_VARS[@]}"} \
+            ${DOCKER_PROXY_ENV_VARS[@]+"${DOCKER_PROXY_ENV_VARS[@]}"} \
             ${CODEX_DOCKER_FLAGS[@]+"${CODEX_DOCKER_FLAGS[@]}"} \
             -v "$(pwd)/src":/repository/src:ro \
             -v "$(pwd)/datasets":/repository/datasets:ro \
@@ -699,6 +721,8 @@ else
                 -e PYTHONPATH=/repository/src \
                 -e PYTHONWARNINGS=ignore \
                 ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
+                ${DOCKER_WANDB_ENV_VARS[@]+"${DOCKER_WANDB_ENV_VARS[@]}"} \
+                ${DOCKER_PROXY_ENV_VARS[@]+"${DOCKER_PROXY_ENV_VARS[@]}"} \
                 -v "$(pwd)/src":/repository/src:ro \
                 -v "$(pwd)/test_datasets":/repository/test_datasets:ro \
                 -v temp_agentomics_volume_${AGENT_ID}:/workspace \
@@ -743,6 +767,8 @@ else
                   -u "$(id -u):$(id -g)" \
                   ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
                   ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
+                  ${DOCKER_WANDB_ENV_VARS[@]+"${DOCKER_WANDB_ENV_VARS[@]}"} \
+                  ${DOCKER_PROXY_ENV_VARS[@]+"${DOCKER_PROXY_ENV_VARS[@]}"} \
                   -e PYTHONPATH=/repository/src \
                   -v "$(pwd)/src":/repository/src:ro \
                   -v "$(pwd)/outputs/${AGENT_ID}":/agent_out \
@@ -759,6 +785,8 @@ else
                   -e PYTHONPATH=/repository/src \
                   -e PYTHONWARNINGS=ignore \
                   ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
+                  ${DOCKER_WANDB_ENV_VARS[@]+"${DOCKER_WANDB_ENV_VARS[@]}"} \
+                  ${DOCKER_PROXY_ENV_VARS[@]+"${DOCKER_PROXY_ENV_VARS[@]}"} \
                   -v "$(pwd)/src":/repository/src:ro \
                   -v "$(pwd)/test_datasets":/repository/test_datasets:ro \
                   -v "$(pwd)/outputs/${AGENT_ID}":/agent_out \
