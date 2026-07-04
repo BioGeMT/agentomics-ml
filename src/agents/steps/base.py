@@ -146,7 +146,8 @@ class AgenticStep(RuntimeStep):
             system_prompt=self.get_system_prompt(),
             tools=self.tools,
             model_settings=self.provider.get_reasoning_model_settings(
-                kwargs={"temperature": self.config.temperature}
+                kwargs={"temperature": self.config.temperature},
+                reasoning_effort="low",
             ),
             output_type=self.output_type,
             retries=self.config.max_validation_retries,
