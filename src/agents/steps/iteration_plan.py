@@ -86,7 +86,7 @@ class IterationPlanStep(AgenticStep):
         return Agent(
             model=self.iteration_plan_model,
             retries=self.config.max_validation_retries,
-            model_settings=self.provider.get_high_reasoning_model_settings(
+            model_settings=self.provider.get_reasoning_model_settings(
                 kwargs={"temperature": self.config.temperature}
             ),
             output_type=IterationPlanOutput,
