@@ -169,17 +169,17 @@ class ModelInferenceStep(AgenticStep):
             raise ModelRetry(f"Inference doesn't produce predictions. Stderr/stdout: {inference_summary}")
 
         try:
-            df = pd.read_csv(predictions_path, dtype=str, keep_default_na=False)
+            predictions_df = pd.read_csv(predictions_path, dtype=str, keep_default_na=False) #TODO better naming
         except Exception as error:
             traceback_summary = concise_output(collapse_repeated_lines(traceback.format_exc()))
             raise ModelRetry(f"Inference produced faulty predictions csv file. {error}\n{traceback_summary}") from error
 
         required_columns = {ID_COLUMN_NAME, PREDICTION_COLUMN_NAME}
-        missing_columns = required_columns - set(df.columns)
+        missing_columns = required_columns - set(predictions_df.columns)
         if missing_columns:
             raise ModelRetry(f"{predictions_path} is missing required columns: {sorted(missing_columns)}")
 
-        ids = df[ID_COLUMN_NAME].str.strip()
+        ids = predictions_df[ID_COLUMN_NAME].str.strip()
         if (ids == "").any():
             raise ModelRetry(f"{predictions_path} has an empty id")
 
@@ -193,18 +193,12 @@ class ModelInferenceStep(AgenticStep):
         expected_ids = pd.read_csv(labels_path, dtype={ID_COLUMN_NAME: str}, keep_default_na=False)[ID_COLUMN_NAME].tolist()
         prediction_ids = set(ids.tolist())
         expected_id_set = set(expected_ids)
-
-        if len(df) != len(expected_ids):
+        
+        missing = sorted(expected_id_set - prediction_ids)[:20]
+        if missing:
             raise ModelRetry(
-                "Inference script must produce prediction for each input sample. "
-                f"Input rows: {len(expected_ids)}. Predicted rows: {len(df)}"
-            )
-        if prediction_ids != expected_id_set:
-            missing = sorted(expected_id_set - prediction_ids)[:20]
-            extra = sorted(prediction_ids - expected_id_set)[:20]
-            raise ModelRetry(
-                "Inference script must keep the id column from the input data the same. "
-                f"First (up to 20) missing ids: {missing}. First (up to 20) extra ids: {extra}"
+                "Inference script must produce a prediction for every labeled sample. "
+                f"First (up to 20) label ids missing from predictions: {missing}"
             )
 
     def _compute_dry_run_metrics(
