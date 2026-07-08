@@ -15,7 +15,25 @@ def remove_path(path: Path) -> None:
 
 def create_absolute_symlink(target: Path, link: Path) -> None:
     """Create a symlink at link pointing at the resolved absolute path of target."""
-    os.symlink(Path(target).resolve(), link)
+    absolute_target = Path(target).resolve()
+    link.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        os.symlink(absolute_target, link)
+        return
+    except FileExistsError:
+        pass
+
+    if not link.is_symlink():
+        raise FileExistsError(
+            f"Cannot create symlink {link} -> {absolute_target}: path exists and is not a symlink"
+        )
+
+    if link.resolve(strict=False) == absolute_target:
+        return
+
+    link.unlink()
+    os.symlink(absolute_target, link)
 
 def find_symlinks_in_dir(root: Path, include_root: bool = False) -> list[Path]:
     root = Path(root)
