@@ -15,6 +15,7 @@ from agents.steps.base import AgenticStep, AgenticStepOutput
 from runtime.filesystem import (
     chown_tree_to_root,
     create_absolute_symlink,
+    remove_path,
     rewrite_symlinks_to_absolute,
     validate_symlinks_targets_in,
 )
@@ -197,7 +198,9 @@ class DataSplitStep(AgenticStep):
             if is_mini_train_only:
                 step_dir = self.config.current_step_dir
                 for split_name in [TRAIN_SPLIT, VALIDATION_SPLIT]:
-                    create_absolute_symlink(self.config.dataset_dir / split_name, step_dir / split_name)
+                    split_link = step_dir / split_name
+                    remove_path(split_link)
+                    create_absolute_symlink(self.config.dataset_dir / split_name, split_link)
                 result.train_path = str(step_dir / TRAIN_SPLIT)
                 result.val_path = str(step_dir / VALIDATION_SPLIT)
                 train_path = Path(result.train_path)
@@ -358,4 +361,3 @@ class DataSplitStep(AgenticStep):
             is_allowed=bool(iteration_state["full_split_allowed_at_start"]),
         )
         #TODO log if split has changed?
-
