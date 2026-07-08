@@ -1,23 +1,18 @@
 import math
+import os
 from pathlib import Path
 
 import wandb
-from wandb.errors import AuthenticationError, UsageError
 
 from utils.metrics import get_task_to_metrics_names
 from utils.config import Config
 
 
 def login_to_wandb(api_key):
-    try:
-        wandb.login(key=api_key, anonymous="allow", timeout=5)
-        return True
-    except (AuthenticationError, UsageError) as exc:
-        print(f"W&B login failed ({type(exc).__name__}): {exc}")
+    if not api_key:
         return False
-    except Exception as exc:
-        print(f"W&B login failed ({type(exc).__name__}): {exc}")
-        return False
+    os.environ["WANDB_API_KEY"] = api_key
+    return True
 
 def is_wandb_active():
     try:
