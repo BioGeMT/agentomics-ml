@@ -209,7 +209,8 @@ class DataSplitStep(AgenticStep):
             if train_path.parent != val_path.parent or train_path.parent != mini_train_path.parent:
                 raise ModelRetry("Train, validation, and mini_train split folders must be in the same directory.")
             if not train_path.is_relative_to(self.config.splits_dir) or not val_path.is_relative_to(self.config.splits_dir) or not mini_train_path.is_relative_to(self.config.splits_dir):
-                for split_path in [train_path, val_path, mini_train_path]:
+                split_paths_to_validate = [mini_train_path] if is_mini_train_only else [train_path, val_path, mini_train_path]
+                for split_path in split_paths_to_validate:
                     try:
                         validate_symlinks_targets_in(split_path, self.config.dataset_dir)
                     except ValueError as e:
