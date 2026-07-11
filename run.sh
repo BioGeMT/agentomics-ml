@@ -676,6 +676,7 @@ else
             build_setup_fork_args /fork_source /workspace "$AGENT_ID" "$FORK_FROM_STEP" "$FORK_FROM_ITERATION"
             docker run --rm \
                 -e PYTHONPATH=/repository/src \
+                ${DOCKER_PROXY_ENV_VARS[@]+"${DOCKER_PROXY_ENV_VARS[@]}"} \
                 ${FORK_MOUNT_FLAGS[@]+"${FORK_MOUNT_FLAGS[@]}"} \
                 -v "$(pwd)/src":/repository/src:ro \
                 -v temp_agentomics_volume_${AGENT_ID}:/workspace \
