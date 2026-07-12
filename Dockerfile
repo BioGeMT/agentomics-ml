@@ -39,7 +39,7 @@ RUN mamba env create -f environment_agent.yaml \
 RUN useradd -m -s /bin/bash agentomics-agent
 ENV AGENT_USER=agentomics-agent
 ENV AGENTOMICS_WORKSPACE_DIR=/workspace
-RUN mkdir -p /workspace
+RUN mkdir -p ${AGENTOMICS_WORKSPACE_DIR}
 
 # Bake the repository into the Docker image so users don't need a local clone.
 COPY . /repository
