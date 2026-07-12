@@ -13,11 +13,11 @@ show_help() {
     echo "Usage: $0 --agent-dir <agent_folder_path> --input <input_path> --output <output_path> [options]"
     echo "Options:"
     echo "  --agent-dir   Path to agent folder (required)"
-    echo "  --input       Path to the input CSV, or a contract split folder (input/ + optional labels.csv) (required)"
+    echo "  --input       Path to a split folder (input/ + optional labels.csv). If a labels.csv is present, also produces metrics.json. Alternatively, a csv file can be passed for csv datasets. (required)"
     echo "  --output      Path to output file (required)"
-    echo "  --label-col   Label column in the input CSV. When set, labels are extracted and metrics are computed, written to <output>.metrics.json next to --output. Ignored when --input is a split folder (optional)"
+    echo "  --label-col   Label column for a CSV dataset. When set, labels are extracted and metrics are computed, written to <output>.metrics.json next to --output. Ignored when --input is a split folder (optional)"
     echo "  --code-path   Path to code files, points to best_iteration_snapshot by default, must be relative to --agent-dir and a child of --agent-dir (optional)"
-    echo "  --all-iterations   Run inference for every run/iteration_N in --agent-dir against --input. Per-iteration predictions go to <output_dir>/<iteration>_predictions.csv (metrics to <iteration>_predictions.metrics.json when --label-col is set). Each iteration's env is rebuilt and removed in turn (optional)"
+    echo "  --all-iterations   Run inference for every run/iteration_N in --agent-dir against --input."
     echo "  --remove-conda-env   Remove the conda environment after inference (optional)"
     echo "  --cpu-only    Run without GPU (optional)"
     echo "  --help        Show this help message and exit"
@@ -127,6 +127,7 @@ if [[ "$ALL_ITERATIONS" == true ]]; then
         [[ "$CPU_ONLY" == true ]] && iter_args+=(--cpu-only)
         iter_args+=(--remove-conda-env)
 
+        #This recursively calls the inference.sh with iteration-specific arguments
         "$0" "${iter_args[@]}" ${ARGS[@]+"${ARGS[@]}"} \
             || warn "Inference failed for ${iter_name}; continuing"
     done
