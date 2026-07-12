@@ -59,6 +59,13 @@ cd Agentomics-ML
 docker build -t agentomics .
 ```
 
+The build uses the repository's `main` branch by default. To build the image
+from another branch, pass its name with `REPOSITORY_BRANCH`:
+
+```bash
+docker build --build-arg REPOSITORY_BRANCH=my-branch -t agentomics .
+```
+
 Then use `agentomics` in place of `biogemt/agentomics:latest` above.
 
 ---
