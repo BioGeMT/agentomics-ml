@@ -111,7 +111,13 @@ def convert_csv_dataset(
 
     for split_name, df in splits.items():
         split_output_dir = test_output_dir if split_name == TEST_SPLIT else output_dir
-        _write_split(split_output_dir, split_name, df, label_column, id_column)
+        _write_input_and_labels(
+            split_dir=split_output_dir / split_name,
+            df=df,
+            label_column=label_column,
+            id_prefix=split_name,
+            id_column=id_column,
+        )
 
     if task_type:
         metadata = {"task_type": task_type}
@@ -210,19 +216,3 @@ def _write_input_and_labels(
         df = df.drop(columns=[label_column])
 
     df.to_csv(input_dir / TABULAR_INPUT_FILE_NAME, index=False)
-
-
-def _write_split(
-    output_dir: Path,
-    split_name: str,
-    df: pd.DataFrame,
-    label_column: str,
-    id_column: str | None,
-) -> None:
-    _write_input_and_labels(
-        split_dir=output_dir / split_name,
-        df=df,
-        label_column=label_column,
-        id_prefix=split_name,
-        id_column=id_column,
-    )
