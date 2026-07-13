@@ -1,116 +1,197 @@
 # Agentomics
-NEWS:
-- *Agentomics has been published to Bioinformatics* 
-- *Agentomics now supports any data type and supplementary material*
 
-## Autonomous agentic system for supervised machine learning model development.
+**Autonomous ML development for supervised learning tasks**
 
-Made for biomedical data, Agentomics outperformed human experts and created new state-of-the-art models for problems in Protein Engineering, Drug Discovery, and Regulatory Genomics.
+Agentomics creates, tests, and evaluates machine learning models autonomously. Give it a dataset, and it explores various approaches, selects the best model, and produces training code, inference scripts, and evaluation reports.
 
+## How it works
 
-How it works
-1) Input is a folder-based dataset split + optional data description
-2) Agentomics autonomously experiments with various ML models and strategies
-3) Output is a trained model ready for inference and a detailed PDF report summarizing the development process and achieved metrics
+1. **Provide a dataset**: Folder-based splits with input files and labels
+2. **Autonomous iterations**: Agentomics experiments with models, features, and strategies
+3. **Get results**: Trained model, inference script, training code, and detailed PDF report
 
-For more details see: [preprint](https://www.biorxiv.org/content/10.64898/2026.01.27.702049v1)
+## Who it's for
 
-<p align="center">
-  <img src="docs/assets/agentomics-overview.png" alt="agentomics overview" width="50%">
-</p>
+Agentomics is designed for ML engineers and computational biologists working on supervised learning tasks. It supports:
 
-<!-- ## Try the DEMO -->
-<!-- [![Try in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1rxsGsIwxrE49E4rjzNh920s66UdG34xF?usp=sharing) -->
-## Quick Start
+- **Classification** (binary and multi-class)
+- **Regression**
+
+Originally built for biomedical data (protein engineering, drug discovery, regulatory genomics), it works with any data type through a generic folder-based contract.
+
+## Try it
+
+**Prerequisites:**
+- [Docker](https://www.docker.com/) installed and running
+- An API key from [OpenRouter](https://openrouter.ai/), [OpenAI](https://platform.openai.com/), [Anthropic](https://www.anthropic.com/), or a local Ollama installation
+
+**Note:** First use downloads a Docker container image (several GB) and an example dataset.
 
 ```bash
 git clone https://github.com/BioGeMT/agentomics-ml.git
 cd agentomics-ml
+
+# Configure provider credentials
 cp .env.example .env
-# Edit .env and set at least one supported provider credential
+# Edit .env and add your API key (OPENROUTER_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY)
 
 # Download example dataset
-./scripts/download_example_dataset.sh
-# To see all available examples:
-./scripts/download_example_dataset.sh --list
+./scripts/download_example_dataset.sh --dataset breast_cancer
 
+# Start interactive run
 ./run.sh
 ```
 
-Recommended model: `gpt-5.1-codex-max`
+The interactive wizard will prompt you to select:
+- **Model**: Choose from your configured provider's available models
+- **Dataset**: Select from downloaded datasets
+- **Iterations**: Number of development cycles (each iteration explores a different modeling approach)
 
-Outputs are saved to `outputs/<agent_id>/`, including PDF reports in `outputs/<agent_id>/reports/pdf`.
+## What you get
 
-For more dataset examples and input layouts, see [Datasets](docs/user-guide/datasets.md).
-
-### Installation Requirements
-
-Agentomics can be run either:
-- **(Recommended)** with [Docker](https://www.docker.com/)
-- **Locally** with [Conda](https://docs.conda.io/)
-
-### API Calls
-
-Agentomics can be run via:
-- your **local Codex subscription** via `codex login`
-- a **supported provider API key** such as OpenRouter, OpenAI, Anthropic, or a configured OpenAI-compatible provider
-- **local Ollama models** for offline/private runs
-
-## Documentation
-
-For more details visit **https://biogemt.github.io/agentomics-ml/**
-
-## Key Features
-- Generic: Agentomics can use folder-based inputs for classification and regression tasks.
-- Secure: Agents execute code securely in Docker with read-only mounts to your file system and are only allowed to write in a Docker Volume.
-- Reproducible: Outputs include models, scripts, and conda environments needed to run inference or re-train models with one bash command.
-- Trustworthy: If you provide a test set, Agentomics fully abstracts LLMs from accessing it, allowing you to rely on programmaticly computed and reported test set metrics.
-- Foundation models: Agentomics can leverage foundation models from huggingface for both embeddings and fine-tuning.
-- Various LLM providers: OpenAI, Anthropic, OpenRouter, local Codex auth, local models via Ollama, or custom OpenAI-compatible providers
-- Reliability: Thanks to our functional validators, Agentomics creates a working model 100% of the time (when using recommended settings).
-
-## Run Output Structure Example
-
-Each completed run is written to `outputs/<agent_id>/`. The key paths are:
+After a run completes, outputs appear in `outputs/<agent_id>/`:
 
 ```text
 outputs/<agent_id>/
 ├── best_iteration_snapshot/
 │   ├── model_training/
-│   │   ├── train.py
-│   │   └── training_artifacts/
+│   │   ├── train.py              # Reproduce training
+│   │   └── training_artifacts/   # Saved model weights
 │   ├── model_inference/
-│   │   └── inference.py
-│   ├── environment.yml
-│   └── runtime_info/
-├── run/
-│   ├── shared/
-│   │   ├── config.json
-│   │   └── splits/
-│   └── iteration_*/
+│   │   └── inference.py          # Use the model
+│   └── environment.yml            # Conda environment
 └── reports/
-    ├── markdown/
-    └── pdf/
+    ├── markdown/                  # Detailed iteration reports
+    └── pdf/                       # Final summary report
 ```
 
-Use `best_iteration_snapshot/` for inference or re-training. `run/` keeps the
-full iterative workspace, and `reports/` contains the human-readable summaries.
+Use `best_iteration_snapshot/model_inference/inference.py` for predictions on new data.
 
-## Roadmap
-Agentomics is in active development. We welcome any raised Issues and suggestions. You can also [Email Us](mailto:martinekvlastimil95@gmail.com).
+## Use your own data
 
-Features coming soon:
-- Better local model support and configuration
-- Remote GPU support for GCP
+Place your dataset in `datasets/<name>/` following the [dataset contract](docs/user-guide/datasets.md):
+
+**Folder-based layout** (for any data type):
+```text
+datasets/my_dataset/
+├── train/
+│   ├── input/              # Your data files (any format)
+│   └── labels.csv          # id,label
+├── validation/             # Optional
+│   ├── input/
+│   └── labels.csv
+└── metadata.json           # {"task_type": "classification"}
+```
+
+**Flat CSV layout** (for tabular data):
+```text
+datasets/my_dataset/
+├── train.csv               # Features + labels in one file
+├── validation.csv          # Optional
+└── metadata.json           # {"task_type": "classification", "label_column": "target"}
+```
+
+See [Preparing Datasets](docs/user-guide/datasets.md) for the complete technical specification and [Dataset Best Practices](docs/user-guide/dataset-best-practices.md) for guidance on preventing data leakage and ensuring scientific validity.
+
+## Privacy and execution
+
+**Data handling:**
+- Agentomics executes model training in a Docker container with read-only access to your datasets
+- Training code, features, dataset structure, and summary statistics may be sent to your configured LLM provider
+- Hidden test data remains isolated from the agent and LLM
+
+**Provider options:**
+- **External providers** (OpenAI, Anthropic, OpenRouter): Data-derived context leaves your machine. Review your organization's data governance policies before using with sensitive data.
+- **Local providers** (Ollama): LLM runs on your machine. Data-derived context stays local.
+
+**Important:** Docker isolation protects your filesystem but does not prevent data from reaching the configured LLM provider. Choose your provider based on your data sensitivity.
+
+## Installation options
+
+### Docker (recommended)
+
+Default mode using pre-built images:
+
+```bash
+./run.sh
+```
+
+Build images locally instead:
+
+```bash
+./run.sh --build-images
+```
+
+### Local mode (no Docker)
+
+For development or environments where Docker is unavailable:
+
+```bash
+./run.sh --local
+```
+
+**Security notice:** Local mode executes agent-generated code without containerization. Use only in secure environments.
+
+### Ollama (local LLMs)
+
+For privacy-focused or offline use:
+
+```bash
+# Ensure Ollama is running
+./run.sh --ollama --provider ollama --model <model-name> --dataset <dataset-name>
+```
+
+See [Installation Guide](docs/getting-started/installation.md) for complete setup instructions and [Provider Configuration](docs/configuration/providers.md) for all supported LLM providers.
+
+## Key features
+
+- **Generic**: Folder-based contract supports any data type (images, sequences, tabular, audio, etc.)
+- **Secure**: Docker containers with read-only dataset mounts and write-only output volumes
+- **Reproducible**: Outputs include training scripts, inference code, and Conda environments
+- **Trustworthy**: Hidden test sets remain agent-inaccessible; evaluation is programmatic
+- **Foundation models**: Leverage Hugging Face models for embeddings and fine-tuning
+- **Multiple providers**: OpenAI, Anthropic, OpenRouter, local Ollama, or custom OpenAI-compatible endpoints
+
+## Documentation
+
+- **Getting Started**
+  - [Quick Start](docs/getting-started/quick-start.md)
+  - [Installation](docs/getting-started/installation.md)
+- **User Guides**
+  - [Preparing Datasets](docs/user-guide/datasets.md) - Technical specification
+  - [Dataset Best Practices](docs/user-guide/dataset-best-practices.md) - Scientific guidance
+  - [Running the Agent](docs/user-guide/running-agent.md)
+  - [Understanding Outputs](docs/user-guide/outputs.md)
+- **Configuration**
+  - [CLI Options](docs/configuration/cli-options.md)
+  - [Provider Setup](docs/configuration/providers.md)
+- **Full documentation**: [https://biogemt.github.io/agentomics-ml/](https://biogemt.github.io/agentomics-ml/)
+
+## News
+
+- **Agentomics published in Bioinformatics** - Martinek *et al.* (2026)
+- Now supports any data type through supplementary materials and foundation models
 
 ## Citation
 
-If you use **Agentomics** in your work, please cite:
+If you use Agentomics in your work, please cite:
 
-Martinek *et al.* (2026). 
+Martinek *et al.* (2026).
 *Agentomics: An Agentic System that Autonomously Develops Novel State-of-the-Art Solutions for Biomedical Machine Learning Tasks*.
-Bioinformatics (https://doi.org/10.1093/bioinformatics/btag250)
+Bioinformatics ([https://doi.org/10.1093/bioinformatics/btag250](https://doi.org/10.1093/bioinformatics/btag250))
+
+Preprint: [https://www.biorxiv.org/content/10.64898/2026.01.27.702049v1](https://www.biorxiv.org/content/10.64898/2026.01.27.702049v1)
+
+## Contributing
+
+We welcome issues, suggestions, and contributions. Contact: [martinekvlastimil95@gmail.com](mailto:martinekvlastimil95@gmail.com)
+
+## Roadmap
+
+Features in development:
+- Improved local model support and configuration
+- Remote GPU support for GCP
 
 ## License
 
-MIT. See `LICENSE`.
+MIT. See [LICENSE](LICENSE).

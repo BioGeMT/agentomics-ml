@@ -1,63 +1,134 @@
 # Quick Start
 
-Get Agentomics-ML running in under 5 minutes using pre-built Docker images.
+Get your first Agentomics run started using Docker and an example dataset.
 
 ## Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) installed and running
-- An API key from a configured provider, such as [OpenRouter](https://openrouter.ai/) or [OpenAI](https://platform.openai.com/)
+- An API key from a supported provider:
+  - [OpenRouter](https://openrouter.ai/) (recommended for variety)
+  - [OpenAI](https://platform.openai.com/)
+  - [Anthropic](https://www.anthropic.com/)
+  - Or [Ollama](https://ollama.ai/) for local models
+
+**Note:** First use will download a Docker container image (several GB) and an example dataset.
 
 ## Steps
 
-### 1. Clone the Repository
+### 1. Clone the repository
 
 ```bash
-git clone https://github.com/BioGeMT/Agentomics-ML.git
-cd Agentomics-ML
+git clone https://github.com/BioGeMT/agentomics-ml.git
+cd agentomics-ml
 ```
 
-### 2. Create a .env File and Set a Key
+### 2. Configure provider credentials
 
-Docker mode requires a `.env` file in the repo root.
+Create a `.env` file with your API key:
 
 ```bash
 cp .env.example .env
-# Edit .env and set at least one provider key:
-# OPENROUTER_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY
+# Edit .env and add your provider key:
+# OPENROUTER_API_KEY=your-key-here
+# OPENAI_API_KEY=your-key-here
+# or ANTHROPIC_API_KEY=your-key-here
 ```
 
-### 3. Run the Agent
+**Privacy notice:** External providers (OpenRouter, OpenAI, Anthropic) will receive data-derived context including dataset structure, features, and code. For sensitive data, use local Ollama models instead. See [Privacy and execution](../../README.md#privacy-and-execution).
+
+### 3. Download an example dataset
+
+```bash
+./scripts/download_example_dataset.sh --dataset breast_cancer
+```
+
+List all available examples:
+
+```bash
+./scripts/download_example_dataset.sh --list
+```
+
+### 4. Run the agent
 
 ```bash
 ./run.sh
 ```
 
-### 4. Follow the Interactive Prompts
+### 5. Follow the interactive prompts
 
-The agent will prompt you to:
+The wizard will ask you to:
 
-1. **Select a model** - Choose from available LLMs
-2. **Select a dataset** - Use your own or download examples
-3. **Configure iterations** - How many optimization cycles to run
+1. **Select a provider and model** - Choose from your configured provider's available models
+2. **Select a dataset** - Pick from downloaded datasets (e.g., `breast_cancer`)
+3. **Configure iterations** - How many development cycles to run
 
-The validation metric defaults to `AUROC` for classification and `MAE` for regression. To choose one explicitly, pass `--val-metric`; see `./run.sh --list-metrics`.
+**What is an iteration?** Each iteration is an autonomous development cycle where Agentomics explores a different modeling approach, evaluates it, and compares it to previous attempts. More iterations give Agentomics more opportunities to find better solutions, but each iteration uses LLM tokens and compute time.
 
-## Using Your Own Dataset
+**Validation metric:** For classification, the default is AUROC. For regression, the default is MAE (mean absolute error). To choose a different metric, use `--val-metric <metric>` or see `./run.sh --list-metrics`.
 
-Place your data in `datasets/<your_dataset_name>/`:
+## What happens next
+
+Agentomics will:
+
+1. **Prepare your dataset**: Convert to internal format and validate structure
+2. **Run iterations**: Each iteration explores a different ML approach
+3. **Save the best model**: Selected by validation metric performance
+4. **Generate reports**: Markdown and PDF summaries
+
+Outputs appear in `outputs/<agent_id>/`:
+
+```text
+outputs/<agent_id>/
+├── best_iteration_snapshot/
+│   ├── model_training/
+│   │   ├── train.py              # Recreate training
+│   │   └── training_artifacts/   # Model weights
+│   ├── model_inference/
+│   │   └── inference.py          # Make predictions
+│   └── environment.yml            # Dependencies
+└── reports/
+    ├── markdown/                  # Iteration details
+    └── pdf/                       # Final summary
+```
+
+## Use the model for inference
+
+After a run completes, use the best model:
+
+```bash
+cd outputs/<agent_id>/best_iteration_snapshot/model_inference
+# Follow the README in that directory for inference instructions
+```
+
+## Using your own dataset
+
+Place your dataset in `datasets/<your_dataset_name>/`:
+
+**Folder-based layout** (for any data type):
 
 ```text
 datasets/my_dataset/
 ├── train/
-│   ├── input/          # Required: model input files
+│   ├── input/          # Your data files (images, CSVs, sequences, etc.)
 │   └── labels.csv      # Required: id,label
 ├── validation/         # Optional
 │   ├── input/
 │   └── labels.csv
-└── dataset_description.md
+└── metadata.json       # Required: {"task_type": "classification" or "regression"}
 ```
 
-(Optional) Put hidden test data under the matching `test_datasets/` folder:
+**Flat CSV layout** (for tabular data):
+
+```text
+datasets/my_dataset/
+├── train.csv           # Features + labels in one file
+├── validation.csv      # Optional
+└── metadata.json       # Required: {"task_type": "...", "label_column": "target"}
+```
+
+**Hidden test data** (optional, for final unbiased evaluation):
+
+Keep test data separate so the agent never sees it:
 
 ```text
 test_datasets/my_dataset/
@@ -66,34 +137,41 @@ test_datasets/my_dataset/
     └── labels.csv
 ```
 
-See [Preparing Datasets](../user-guide/datasets.md) for details.
+See [Preparing Datasets](../user-guide/datasets.md) for the complete technical contract and [Dataset Best Practices](../user-guide/dataset-best-practices.md) for scientific guidance on preventing data leakage.
 
-## Example Datasets
+## Troubleshooting
 
-Download example dataset to try:
-
+**Docker not found:**
 ```bash
-./scripts/download_example_dataset.sh
+# Install Docker from https://docs.docker.com/get-docker/
+# Ensure the daemon is running
+docker ps  # Should show running containers or empty list
 ```
 
-List other available examples with:
-
+**Permission denied (Docker):**
 ```bash
+# Add your user to the docker group (Linux)
+sudo usermod -aG docker $USER
+# Log out and log back in
+```
+
+**Missing dataset:**
+```bash
+# Download specific dataset
+./scripts/download_example_dataset.sh --dataset breast_cancer
+
+# Or list all available datasets
 ./scripts/download_example_dataset.sh --list
 ```
 
-## What Happens Next
+**Provider authentication failed:**
+- Verify your API key is correct in `.env`
+- Check that the provider variable name matches (e.g., `OPENROUTER_API_KEY`)
+- Ensure the `.env` file is in the repository root
 
-The agent will:
+## Next steps
 
-1. Prepare your dataset
-2. Run iterative ML development cycles
-3. Save the best model to `outputs/<agent_id>/`
-
-Results include trained models, inference scripts, markdown reports in `outputs/<agent_id>/reports/markdown/`, and PDF reports in `outputs/<agent_id>/reports/pdf/`.
-
-## Next Steps
-
-- [Installation Options](installation.md) - Docker build, local mode, Ollama
-- [Running the Agent](../user-guide/running-agent.md) - Advanced usage
+- [Installation Options](installation.md) - Docker build, local mode, Ollama setup
+- [Running the Agent](../user-guide/running-agent.md) - Advanced configuration
 - [CLI Options](../configuration/cli-options.md) - All available flags
+- [Provider Configuration](../configuration/providers.md) - Configure additional LLM providers
