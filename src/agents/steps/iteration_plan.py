@@ -88,7 +88,7 @@ class IterationPlanStep(AgenticStep):
             retries=self.config.max_validation_retries,
             model_settings=self.provider.get_reasoning_model_settings(
                 kwargs={"temperature": self.config.temperature},
-                reasoning_effort="ultra",
+                reasoning_effort="xhigh",
             ),
             output_type=IterationPlanOutput,
             deps_type=dict,
