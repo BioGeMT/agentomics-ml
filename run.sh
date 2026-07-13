@@ -23,6 +23,9 @@ VAL_METRIC=""
 LIST_MODE=false
 DOCTOR_MODE=false
 DOCTOR_JSON=false
+VALIDATE_DATASET_MODE=false
+VALIDATE_DATASET_NAME=""
+VALIDATE_VERBOSE=false
 FOUNDATION_MODELS_TYPE=""
 VERBOSITY="full"
 ALL_ITERATIONS_TEST=false
@@ -117,6 +120,12 @@ Diagnostic Flags:
                       Validates Docker/Conda, provider credentials, disk space, and dataset presence.
                       Use with --local, --cpu-only, --ollama to check specific configurations.
                       Add --json for machine-readable output.
+  --validate-dataset <name>
+                      Validate dataset structure and contract without starting a run or calling a provider.
+                      Reports blocking errors, warnings, and checks that cannot be automated.
+                      Add --task-type to specify task type.
+                      Add --json for machine-readable output.
+                      Add --verbose to show sample IDs in errors (use with caution for sensitive data).
 
 Listing Flags (Run the script with only one of these):
   --list-models       List models available via the configured provider and exit.
@@ -162,6 +171,16 @@ while [[ $# -gt 0 ]]; do
             ;;
         --json)
             DOCTOR_JSON=true
+            shift
+            ;;
+        --validate-dataset)
+            require_opt_value "$1" "${2:-}"
+            VALIDATE_DATASET_MODE=true
+            VALIDATE_DATASET_NAME="$2"
+            shift 2
+            ;;
+        --verbose)
+            VALIDATE_VERBOSE=true
             shift
             ;;
         --root-privileges)
@@ -391,6 +410,45 @@ output, exit_code = run_doctor(
 print(output)
 sys.exit(exit_code)
 DOCTOR_SCRIPT
+
+    exit $?
+fi
+
+# Run dataset validation if requested and exit early
+if [ "$VALIDATE_DATASET_MODE" = true ]; then
+    export PYTHONPATH="$(pwd)/src"
+
+    TASK_TYPE_ARG="None"
+    if [ -n "$TASK_TYPE" ]; then
+        TASK_TYPE_ARG="$TASK_TYPE"
+    fi
+
+    VERBOSE_ARG="False"
+    if [ "$VALIDATE_VERBOSE" = true ]; then
+        VERBOSE_ARG="True"
+    fi
+
+    JSON_ARG="False"
+    if [ "$DOCTOR_JSON" = true ]; then
+        JSON_ARG="True"
+    fi
+
+    python3 - "$VALIDATE_DATASET_NAME" "$TASK_TYPE_ARG" "$VERBOSE_ARG" "$JSON_ARG" << 'VALIDATOR_SCRIPT'
+import sys
+from pathlib import Path
+from datasets.validator import validate_dataset
+
+output, exit_code = validate_dataset(
+    dataset_name=sys.argv[1],
+    datasets_root=Path("datasets"),
+    test_datasets_root=Path("test_datasets"),
+    task_type=sys.argv[2] if sys.argv[2] != "None" else None,
+    verbose=sys.argv[3] == "True",
+    json_output=sys.argv[4] == "True"
+)
+print(output)
+sys.exit(exit_code)
+VALIDATOR_SCRIPT
 
     exit $?
 fi
