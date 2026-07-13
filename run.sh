@@ -557,6 +557,14 @@ else
     [[ -f "$ENV_FILE_PATH" ]] || die "Env file not found: $ENV_FILE_PATH (create it from .env.example)"
     ENV_FILE_ARGS=(--env-file "$ENV_FILE_PATH")
 
+    DOCKER_PROXY_ENV_VARS=()
+    for KEY_NAME in HTTP_PROXY HTTPS_PROXY NO_PROXY http_proxy https_proxy no_proxy; do
+        if [ -n "${!KEY_NAME:-}" ]; then
+            DOCKER_PROXY_ENV_VARS+=(-e "$KEY_NAME=${!KEY_NAME}")
+            echo "Adding proxy env var to docker: $KEY_NAME"
+        fi
+    done
+
     PROVIDERS_CONFIG_FILE="src/utils/providers/configured_providers.yaml"
     [[ -f "$PROVIDERS_CONFIG_FILE" ]] || die "Missing providers config: $PROVIDERS_CONFIG_FILE"
     API_KEY_NAMES=$(grep -E 'apikey:' "$PROVIDERS_CONFIG_FILE" | grep -o '\${[^}]*}' | tr -d '${}' | sort -u)
@@ -639,6 +647,7 @@ else
             ${EFFECTIVE_FOUNDATION_MODELS_TYPE:+-e FOUNDATION_MODELS_TYPE=${EFFECTIVE_FOUNDATION_MODELS_TYPE}} \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
+            ${DOCKER_PROXY_ENV_VARS[@]+"${DOCKER_PROXY_ENV_VARS[@]}"} \
             ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
             ${CODEX_DOCKER_FLAGS[@]+"${CODEX_DOCKER_FLAGS[@]}"} \
             -v "$(pwd)/src":/repository/src:ro \
@@ -655,7 +664,9 @@ else
 
             build_setup_fork_args /fork_source /workspace "$AGENT_ID" "$FORK_FROM_STEP" "$FORK_FROM_ITERATION"
             docker run --rm \
+                ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
                 -e PYTHONPATH=/repository/src \
+                ${DOCKER_PROXY_ENV_VARS[@]+"${DOCKER_PROXY_ENV_VARS[@]}"} \
                 ${FORK_MOUNT_FLAGS[@]+"${FORK_MOUNT_FLAGS[@]}"} \
                 -v "$(pwd)/src":/repository/src:ro \
                 -v temp_agentomics_volume_${AGENT_ID}:/workspace \
@@ -674,6 +685,7 @@ else
             -e PYTHONWARNINGS=ignore \
             ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
             ${OLLAMA_FLAGS[@]+"${OLLAMA_FLAGS[@]}"} \
+            ${DOCKER_PROXY_ENV_VARS[@]+"${DOCKER_PROXY_ENV_VARS[@]}"} \
             ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
             ${CODEX_DOCKER_FLAGS[@]+"${CODEX_DOCKER_FLAGS[@]}"} \
             -v "$(pwd)/src":/repository/src:ro \
@@ -698,6 +710,7 @@ else
                 ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
                 -e PYTHONPATH=/repository/src \
                 -e PYTHONWARNINGS=ignore \
+                ${DOCKER_PROXY_ENV_VARS[@]+"${DOCKER_PROXY_ENV_VARS[@]}"} \
                 ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
                 -v "$(pwd)/src":/repository/src:ro \
                 -v "$(pwd)/test_datasets":/repository/test_datasets:ro \
@@ -742,6 +755,7 @@ else
                 docker run --rm \
                   -u "$(id -u):$(id -g)" \
                   ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
+                  ${DOCKER_PROXY_ENV_VARS[@]+"${DOCKER_PROXY_ENV_VARS[@]}"} \
                   ${DOCKER_API_KEY_ENV_VARS[@]+"${DOCKER_API_KEY_ENV_VARS[@]}"} \
                   -e PYTHONPATH=/repository/src \
                   -v "$(pwd)/src":/repository/src:ro \
@@ -758,6 +772,7 @@ else
                   ${ENV_FILE_ARGS[@]+"${ENV_FILE_ARGS[@]}"} \
                   -e PYTHONPATH=/repository/src \
                   -e PYTHONWARNINGS=ignore \
+                  ${DOCKER_PROXY_ENV_VARS[@]+"${DOCKER_PROXY_ENV_VARS[@]}"} \
                   ${GPU_FLAGS[@]+"${GPU_FLAGS[@]}"} \
                   -v "$(pwd)/src":/repository/src:ro \
                   -v "$(pwd)/test_datasets":/repository/test_datasets:ro \
