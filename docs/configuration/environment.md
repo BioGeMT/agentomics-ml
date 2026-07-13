@@ -59,6 +59,8 @@ Enable experiment tracking and logging:
 | `WANDB_API_KEY` | Your W&B API key |
 | `WANDB_PROJECT_NAME` | Project name for runs |
 | `WANDB_ENTITY` | Team or username |
+| `WEAVE_DISABLE_NETRC_CHECK` | Optional; set to `true` to avoid Weave netrc checks in containerized runs |
+| `AGENTOMICS_ENABLE_WEAVE` | Optional; set to `true` to enable Weave tracing |
 
 ### Example
 
@@ -67,9 +69,14 @@ Enable experiment tracking and logging:
 WANDB_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxx
 WANDB_PROJECT_NAME=agentomics-experiments
 WANDB_ENTITY=my-team
+WEAVE_DISABLE_NETRC_CHECK=true
+# Optional: enable detailed model and agent-call tracing
+# AGENTOMICS_ENABLE_WEAVE=true
 ```
 
 Get your W&B API key at [wandb.ai/authorize](https://wandb.ai/authorize).
+Newer `wandb_...` API keys require `wandb>=0.22.3` and `weave>=0.52.17`;
+these versions are pinned in `envs/environment.yaml`.
 
 ## Proxy Settings
 
@@ -128,6 +135,8 @@ OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxx
 WANDB_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxx
 WANDB_PROJECT_NAME=agentomics
 WANDB_ENTITY=my-team
+WEAVE_DISABLE_NETRC_CHECK=true
+# AGENTOMICS_ENABLE_WEAVE=true
 
 # Proxy (optional)
 # HTTP_PROXY=http://proxy.company.com:8080
