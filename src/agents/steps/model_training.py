@@ -137,7 +137,9 @@ class ModelTrainingStep(AgenticStep):
         Your next task: implement training code and train your model.
         Training guidelines:
         - Train until validation performance stops improving, and output the best checkpoint.
-        - Save all artifacts needed for inference (model file, tokenizers, etc...).
+        - Save only artifacts needed for inference (model file, tokenizers, small preprocessing metadata, small copied source files needed by inference, etc...).
+        - Do not save regenerable training caches, full train/validation feature tensors, embedding arrays, PHACT tensor arrays, downloaded package caches, or prediction-diagnostic dumps in training_artifacts or leave them elsewhere in the step directory.
+        - If large intermediate arrays are needed during training, keep them in a temporary cache directory under the current step directory, outside training_artifacts, and delete that cache before the script exits. Do not leave directories/files such as _training_cache, rinalmo_embedding_cache_tmp, *embedding_cache*, train_*.npy, or val_*.npy in final step outputs.
         - If you failed to implement your intended model, when you call the final_result tool, put into unresolved issues what went wrong.
         {"- If your model can be accelerated by GPU, implement the code to use GPU." if check_gpu_availability() else ""}
         {reporting_requirement}
@@ -146,7 +148,7 @@ class ModelTrainingStep(AgenticStep):
         The train script should take the following parameters
         --train-data (a path to the training split folder. This folder contains input/ with the data files and labels.csv with labels keyed by id.)
         --validation-data (a path to the validation split folder. This folder contains input/ with the data files and labels.csv with labels keyed by id. For example for the purposes of early-stopping. If the training script doesn't need validation data, still include the argument for compatibility and don't use it.)
-        --artifacts-dir (path to a directory that will be populated by the training script with artifacts needed to use the trained model for predictions (e.g. produced model weights, produced tokenizers, ...). This directory should not contain any other external sources like imported scripts, conda packages, foundation models, etc..)
+        --artifacts-dir (path to a directory that will be populated by the training script with artifacts needed to use the trained model for predictions (e.g. produced model weights, produced tokenizers, ...). This directory should contain only final inference artifacts and must not contain training caches, full train/validation tensors, downloaded package caches, or other regenerable intermediate files. This directory should not contain any other external sources like imported scripts, conda packages, foundation models, etc..)
         The script must not accept any other parameters.
 
         Data paths:

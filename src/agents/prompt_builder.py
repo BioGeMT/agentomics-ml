@@ -75,6 +75,8 @@ def build_iteration_base_prompt(config: Config, iteration: int) -> str:
     Workspace rules:
     - Your current writable directory is: {config.current_step_dir}
     - Create and modify files only inside your current writable directory.
+    - Files left in your current writable directory are checkpointed after the step. Do not leave regenerable large caches, downloaded package/model caches, full-dataset tensors/embeddings, or large diagnostic dumps there.
+    - If you need temporary caches while working, keep them clearly named inside your current writable directory and delete them before final_result.
     - Previous step and iteration folders are read-only.
     - If you want to reuse earlier files, copy them into your current writable directory before modifying them.
     - Don't create or modify any folders or files starting with 'iteration_'.
