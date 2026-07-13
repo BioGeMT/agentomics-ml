@@ -21,12 +21,13 @@ from utils.user_input import get_user_input_for_int
 class Provider():
     """Parent provider class. All providers must extend this class."""
     console = Console()
-    
-    def __init__(self, name: str, base_url: str, api_key: Optional[str] = None, list_models_endpoint: Optional[str] = None):
+
+    def __init__(self, name: str, base_url: str, api_key: Optional[str] = None, list_models_endpoint: Optional[str] = None, privacy_classification: str = "unknown"):
         self.name = name
         self.api_key = api_key
         self.base_url = base_url
         self.list_models_endpoint = list_models_endpoint
+        self.privacy_classification = privacy_classification  # "local", "external", or "unknown"
         self.headers = {}
 
     @staticmethod
@@ -149,28 +150,29 @@ class Provider():
         """Factory method to create providers."""
         provider_config = Provider.get_provider_config(provider_name)
         base_url = provider_config["base_url"]
+        privacy_classification = provider_config.get("privacy_classification", "unknown")
         name_lower = provider_name.lower()
-        
+
         if name_lower == "openrouter":
             from .openrouter_provider import OpenRouterProvider
-            return OpenRouterProvider(api_key, base_url, provider_config["list_models_endpoint"])
+            return OpenRouterProvider(api_key, base_url, provider_config["list_models_endpoint"], privacy_classification)
         elif name_lower == "ollama":
             from .ollama_provider import OllamaProvider
-            return OllamaProvider(base_url, provider_config["list_models_endpoint"])
+            return OllamaProvider(base_url, provider_config["list_models_endpoint"], privacy_classification)
         elif name_lower == "anthropic":
             from .anthropic_provider import AnthropicProvider
-            return AnthropicProvider(api_key, base_url, provider_config["list_models_endpoint"])
+            return AnthropicProvider(api_key, base_url, provider_config["list_models_endpoint"], privacy_classification)
         elif name_lower == "openai":
             from .openai_provider import OpenAiProvider
-            return OpenAiProvider(api_key, base_url, provider_config["list_models_endpoint"])
+            return OpenAiProvider(api_key, base_url, provider_config["list_models_endpoint"], privacy_classification)
         elif name_lower == "codex":
             from .codex_provider import CodexProvider
-            return CodexProvider(base_url, provider_config["list_models_endpoint"])
+            return CodexProvider(base_url, provider_config["list_models_endpoint"], privacy_classification)
         # elif name_lower == "googleai": requires pydanticai version update
         #     from .googleai_provider import GoogleAiProvider
-        #     return GoogleAiProvider(api_key, base_url, list_models_endpoint)
+        #     return GoogleAiProvider(api_key, base_url, list_models_endpoint, privacy_classification)
         else: #user given provider, must be OpenAI compatible (https://ai.pydantic.dev/models/overview/#openai-compatible-providers)
-            return Provider(provider_name, api_key, base_url)
+            return Provider(provider_name, base_url, api_key=api_key, privacy_classification=privacy_classification)
         
 
 def get_provided_api_keys() -> Dict[str, str]:

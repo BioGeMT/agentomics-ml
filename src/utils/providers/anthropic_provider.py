@@ -11,8 +11,8 @@ from .provider import Provider
 
 
 class AnthropicProvider(Provider):
-    def __init__(self, api_key: str, base_url: str, list_models_endpoint: str):
-        super().__init__(name="Anthropic", api_key=api_key, base_url=base_url, list_models_endpoint=list_models_endpoint)
+    def __init__(self, api_key: str, base_url: str, list_models_endpoint: str, privacy_classification: str = "unknown"):
+        super().__init__(name="Anthropic", api_key=api_key, base_url=base_url, list_models_endpoint=list_models_endpoint, privacy_classification=privacy_classification)
         self.headers = {"x-api-key": api_key, "anthropic-version": "2023-06-01"}
     
     def display_models(self, models: List[Dict] = None) -> None:

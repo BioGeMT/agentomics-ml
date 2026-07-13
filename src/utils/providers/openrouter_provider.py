@@ -16,8 +16,8 @@ class OpenRouterProvider(Provider):
         "openai/gpt-5.1",
         "openai/gpt-5.1-codex-mini",
     }
-    def __init__(self, api_key: str, base_url: str, list_models_endpoint: str):
-        super().__init__(name="OpenRouter", api_key=api_key, base_url=base_url, list_models_endpoint=list_models_endpoint)
+    def __init__(self, api_key: str, base_url: str, list_models_endpoint: str, privacy_classification: str = "unknown"):
+        super().__init__(name="OpenRouter", api_key=api_key, base_url=base_url, list_models_endpoint=list_models_endpoint, privacy_classification=privacy_classification)
         self.headers = {"Authorization": f"Bearer {api_key}"}
 
     def is_byok_model(self, model: Dict) -> bool:

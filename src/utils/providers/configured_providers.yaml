@@ -3,26 +3,31 @@ providers:
     apikey: "${OPENAI_API_KEY}"
     base_url: "https://api.openai.com/v1"
     list_models_endpoint: "https://api.openai.com/v1/models"
+    privacy_classification: "external"  # Requests leave the local environment
 
   - name: "Codex"
     apikey: ""
     base_url: "https://chatgpt.com/backend-api/codex"
     list_models_endpoint: ""
-  
+    privacy_classification: "external"  # Requests leave the local environment
+
   - name: "Anthropic"
     apikey: "${ANTHROPIC_API_KEY}"
     base_url: "https://api.anthropic.com"
     list_models_endpoint: "https://api.anthropic.com/v1/models"
+    privacy_classification: "external"  # Requests leave the local environment
 
   - name: "OpenRouter"
     apikey: "${OPENROUTER_API_KEY}"
     base_url: "https://openrouter.ai/api/v1"
     list_models_endpoint: "https://openrouter.ai/api/v1/models"
+    privacy_classification: "external"  # Requests leave the local environment
 
   - name: "Ollama"
     apikey: ""
     base_url: "http://localhost:11434/v1"
     list_models_endpoint: "http://localhost:11434/api/tags"
+    privacy_classification: "local"  # Runs on user's local machine
 
   #Custom provider example
   # - name: "Vercel"

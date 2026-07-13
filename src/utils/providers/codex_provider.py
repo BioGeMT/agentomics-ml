@@ -104,8 +104,8 @@ class CodexResponsesModel(OpenAIResponsesModel):
 
 
 class CodexProvider(Provider):
-    def __init__(self, base_url: str, list_models_endpoint: str | None = None):
-        super().__init__(name="Codex", base_url=base_url, list_models_endpoint=list_models_endpoint)
+    def __init__(self, base_url: str, list_models_endpoint: str | None = None, privacy_classification: str = "unknown"):
+        super().__init__(name="Codex", base_url=base_url, list_models_endpoint=list_models_endpoint, privacy_classification=privacy_classification)
         self.auth_store = CodexAuthStore(proxy_url=self.get_proxy_url())
 
     def fetch_models(self) -> Optional[List[Dict]]:

@@ -13,8 +13,8 @@ from .provider import Provider
 
 
 class OllamaProvider(Provider):
-    def __init__(self, base_url: str, list_models_endpoint: str):
-        super().__init__(name="Ollama", base_url=base_url, list_models_endpoint=list_models_endpoint)
+    def __init__(self, base_url: str, list_models_endpoint: str, privacy_classification: str = "unknown"):
+        super().__init__(name="Ollama", base_url=base_url, list_models_endpoint=list_models_endpoint, privacy_classification=privacy_classification)
 
     def fetch_models(self) -> Optional[List[Dict]]:
         """Ovveriding method in Provider class. Fetch all models from Ollama API locally."""
