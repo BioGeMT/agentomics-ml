@@ -63,15 +63,32 @@ Pre-flight validation checks (optional but recommended for first-time setup):
 
 Both exit quickly without creating environments, modifying data, or contacting providers.
 
-### 5. Run the agent
+### 5. Quick demo run (recommended for first time)
+
+**For first-time users**, start with the demo preset to verify your setup with a minimal run:
+
+```bash
+./run.sh --preset demo --dataset breast_cancer
+```
+
+The demo preset:
+- Runs **2 iterations** (enough to verify setup and produce sample reports)
+- Uses **summary verbosity** (cleaner output)
+- Shows a warning that this is for verification, not scientific conclusions
 
 **Cost note:** Starting a run invokes the configured LLM. External providers may charge for usage, and each additional iteration generally uses more tokens and compute.
+
+Skip to step 7 if using the demo preset.
+
+### 6. Run the agent (standard)
+
+For production runs with custom configuration:
 
 ```bash
 ./run.sh
 ```
 
-### 6. Follow the interactive prompts
+### 7. Follow the interactive prompts
 
 The wizard will ask you to:
 

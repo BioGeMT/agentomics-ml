@@ -45,20 +45,25 @@ cp .env.example .env
 ./run.sh --doctor
 ./run.sh --validate-dataset breast_cancer
 
-# Start interactive run
+# Quick demo run (recommended for first time - 2 iterations)
+./run.sh --preset demo --dataset breast_cancer
+
+# Or: Start interactive run with custom configuration
 ./run.sh
 ```
-
-The interactive wizard will prompt you to select:
-- **Model**: Choose from your configured provider's available models
-- **Dataset**: Select from downloaded datasets
-- **Iterations**: Number of development cycles to run
 
 **Pre-flight validation:**
 - `./run.sh --doctor` - Check environment, provider credentials, disk space
 - `./run.sh --validate-dataset <name>` - Validate dataset structure, labels format, train/validation ID overlap
 
 Both commands exit quickly without creating environments, modifying data, or contacting providers.
+
+**Demo preset:** For first-time users, `--preset demo` runs 2 iterations with summary verbosity to verify setup and produce sample output. This is not sufficient for model comparison or scientific conclusions.
+
+**Interactive wizard:** Without the demo preset, the wizard will prompt you to select:
+- **Model**: Choose from your configured provider's available models
+- **Dataset**: Select from downloaded datasets
+- **Iterations**: Number of development cycles to run
 
 ## What you get
 

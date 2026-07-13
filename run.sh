@@ -26,6 +26,7 @@ DOCTOR_JSON=false
 VALIDATE_DATASET_MODE=false
 VALIDATE_DATASET_NAME=""
 VALIDATE_VERBOSE=false
+PRESET_MODE=""
 FOUNDATION_MODELS_TYPE=""
 VERBOSITY="full"
 ALL_ITERATIONS_TEST=false
@@ -90,6 +91,10 @@ Forking:
                           Defaults to the latest iteration containing the specified step or iteration end checkpoint.
 
 Operational Flags:
+  --preset <mode>     Use a preset configuration. Currently supported:
+                      'demo' - Quick smoke test with 2 iterations and summary verbosity.
+                               Verifies setup without expensive exploration.
+                               Not sufficient for model comparison or scientific conclusions.
   --local             Run the project using local Conda environments instead of Docker.
   --test              Run the project's integrated test suite.
                       (Note: Only supported in Docker mode, not in local Conda mode.)
@@ -256,6 +261,11 @@ while [[ $# -gt 0 ]]; do
             AGENTOMICS_ARGS+=(--user-prompt "$2")
             shift 2
             ;;
+        --preset)
+            require_opt_value "$1" "${2:-}"
+            PRESET_MODE="$2"
+            shift 2
+            ;;
         --verbosity)
             require_opt_value "$1" "${2:-}"
             VERBOSITY="$2"
@@ -342,6 +352,32 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# Apply preset defaults
+PRESET_APPLIED_ITERATIONS=false
+PRESET_APPLIED_VERBOSITY=false
+
+if [ -n "$PRESET_MODE" ]; then
+    if [ "$PRESET_MODE" = "demo" ]; then
+        # Apply demo preset defaults only if not explicitly set
+        # Demo preset: 2 iterations, summary verbosity
+
+        # Check if --iterations was explicitly provided
+        if ! printf '%s\n' "${BASH_ARGV[@]}" | grep -q -- "--iterations"; then
+            AGENTOMICS_ARGS+=(--iterations 2)
+            PRESET_APPLIED_ITERATIONS=true
+        fi
+
+        # Check if --verbosity was explicitly provided
+        if [ "$VERBOSITY" = "full" ]; then
+            # Default is "full", so if it's still full, it wasn't explicitly set
+            VERBOSITY="summary"
+            PRESET_APPLIED_VERBOSITY=true
+        fi
+    else
+        die "Invalid --preset '$PRESET_MODE'. Allowed: demo."
+    fi
+fi
 
 if ! is_valid_foundation_models_type "$FOUNDATION_MODELS_TYPE"; then
     die "Invalid --foundation-models-type '$FOUNDATION_MODELS_TYPE'. Allowed: dna, rna, molecule, protein, all."
@@ -466,6 +502,30 @@ if [ "$LOCAL_MODE" = true ]; then
         fi
     fi
 
+    # Demo preset: Check for breast_cancer dataset and provide download command if missing
+    if [ "$PRESET_MODE" = "demo" ]; then
+        # In interactive mode, suggest breast_cancer; in non-interactive mode, check if dataset exists
+        if [[ "$LIST_MODE" = false ]]; then
+            if [[ -n "$DATASET_NAME" ]]; then
+                # Dataset explicitly provided, check if it exists
+                if [[ ! -d "datasets/$DATASET_NAME" ]]; then
+                    echo "Error: Dataset '$DATASET_NAME' not found."
+                    echo ""
+                    echo "Download it with:"
+                    echo "  ./scripts/download_example_dataset.sh --dataset $DATASET_NAME"
+                    echo ""
+                    echo "Or list all available datasets:"
+                    echo "  ./scripts/download_example_dataset.sh --list"
+                    exit 1
+                fi
+            elif ! has_tty; then
+                # Non-interactive mode without dataset in demo preset
+                die "Demo preset in non-interactive mode requires --dataset breast_cancer"
+            fi
+            # Interactive mode without explicit dataset will prompt user later
+        fi
+    fi
+
     if ! conda env list | grep -q "agentomics-env"; then
         conda env create -f envs/environment.yaml -q
     else
@@ -538,6 +598,17 @@ if [ "$LOCAL_MODE" = true ]; then
         FORK_FROM_RUN_ABS="$(cd "$FORK_FROM_RUN" && pwd)"
         build_setup_fork_args "$FORK_FROM_RUN_ABS" "$WORKSPACE_DIR" "$AGENT_ID" "$FORK_FROM_STEP" "$FORK_FROM_ITERATION"
         PYTHONPATH="$(pwd)/src" conda run -n agentomics-env python src/runtime/setup_fork.py "${SETUP_FORK_ARGS[@]}"
+    fi
+
+    # Demo preset warning
+    if [ "$PRESET_MODE" = "demo" ]; then
+        echo ""
+        echo "────────────────────────────────────────────────────────────────"
+        echo "Demo preset: 2 iterations intended to verify setup and produce"
+        echo "sample output. This is not sufficient for model comparison or"
+        echo "scientific conclusions."
+        echo "────────────────────────────────────────────────────────────────"
+        echo ""
     fi
 
     RUN_EXIT_CODE=0
@@ -631,6 +702,29 @@ else
         fi
     fi
 
+    # Demo preset: Check for breast_cancer dataset and provide download command if missing
+    if [ "$PRESET_MODE" = "demo" ]; then
+        # In interactive mode, suggest breast_cancer; in non-interactive mode, check if dataset exists
+        if [[ "$LIST_MODE" = false ]]; then
+            if [[ -n "$DATASET_NAME" ]]; then
+                # Dataset explicitly provided, check if it exists
+                if [[ ! -d "datasets/$DATASET_NAME" ]]; then
+                    echo "Error: Dataset '$DATASET_NAME' not found."
+                    echo ""
+                    echo "Download it with:"
+                    echo "  ./scripts/download_example_dataset.sh --dataset $DATASET_NAME"
+                    echo ""
+                    echo "Or list all available datasets:"
+                    echo "  ./scripts/download_example_dataset.sh --list"
+                    exit 1
+                fi
+            elif ! has_tty; then
+                # Non-interactive mode without dataset in demo preset
+                die "Demo preset in non-interactive mode requires --dataset breast_cancer"
+            fi
+            # Interactive mode without explicit dataset will prompt user later
+        fi
+    fi
 
     DOCKER_BUILD_ARGS=()
     if [ -n "$EFFECTIVE_FOUNDATION_MODELS_TYPE" ]; then
@@ -788,6 +882,17 @@ else
                 -v temp_agentomics_volume_${AGENT_ID}:/workspace \
                 --entrypoint /opt/conda/envs/agentomics-env/bin/python \
                 "$AGENTOMICS_IMAGE" /repository/src/runtime/setup_fork.py "${SETUP_FORK_ARGS[@]}"
+        fi
+
+        # Demo preset warning
+        if [ "$PRESET_MODE" = "demo" ]; then
+            echo ""
+            echo "────────────────────────────────────────────────────────────────"
+            echo "Demo preset: 2 iterations intended to verify setup and produce"
+            echo "sample output. This is not sufficient for model comparison or"
+            echo "scientific conclusions."
+            echo "────────────────────────────────────────────────────────────────"
+            echo ""
         fi
 
         set +e
