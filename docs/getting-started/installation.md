@@ -7,8 +7,8 @@ Agentomics-ML supports multiple deployment options. Choose the one that best fit
 All installation methods require:
 
 ```bash
-git clone https://github.com/BioGeMT/Agentomics-ML.git
-cd Agentomics-ML
+git clone https://github.com/BioGeMT/agentomics-ml.git
+cd agentomics-ml
 ```
 
 ## Docker with Pre-built Images
@@ -140,13 +140,15 @@ Works with both Docker and local modes.
 
 ## Comparison Table
 
-| Mode | Docker Required | Build Time | Security | Best For |
-|------|-----------------|------------|----------|----------|
-| Docker + Pull Images | Yes | None | High | Quick start |
-| Docker + Local Build | Yes | ~5-10 min | High | Custom builds |
-| Local Mode | No | ~2 min | Low | Development, Colab |
-| Google Colab | No | None | Medium | Trying it out |
-| Ollama | Depends | Varies | High | Privacy, offline |
+| Mode | Docker Required | Build Time | Generated-code Isolation | Best For |
+|------|-----------------|------------|--------------------------|----------|
+| Docker + Pull Images | Yes | None | Container | Quick start |
+| Docker + Local Build | Yes | ~5-10 min | Container | Custom builds |
+| Local Mode | No | ~2 min | None | Development, Colab |
+| Google Colab | No | None | None | Trying it out |
+| Ollama | Depends | Varies | Varies | Privacy, offline |
+
+**Note on privacy:** Generated-code isolation (Docker vs local Conda) affects filesystem access. LLM provider choice (external vs local Ollama) affects where data-derived context is sent. Both are independent security decisions.
 
 ## Next Steps
 

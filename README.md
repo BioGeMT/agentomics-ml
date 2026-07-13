@@ -7,7 +7,7 @@ Agentomics creates, tests, and evaluates machine learning models autonomously. G
 ## How it works
 
 1. **Provide a dataset**: Folder-based splits with input files and labels
-2. **Autonomous iterations**: Agentomics experiments with models, features, and strategies
+2. **Autonomous iterations**: Agentomics experiments with models, features, and strategies (each iteration is one development cycle that proposes, trains, and evaluates a candidate method)
 3. **Get results**: Trained model, inference script, training code, and detailed PDF report
 
 ## Who it's for
@@ -23,9 +23,10 @@ Originally built for biomedical data (protein engineering, drug discovery, regul
 
 **Prerequisites:**
 - [Docker](https://www.docker.com/) installed and running
-- An API key from [OpenRouter](https://openrouter.ai/), [OpenAI](https://platform.openai.com/), [Anthropic](https://www.anthropic.com/), or a local Ollama installation
+- [Conda](https://docs.conda.io/en/latest/miniconda.html) for dataset preparation
+- An API key from [OpenRouter](https://openrouter.ai/), [OpenAI](https://platform.openai.com/), or [Anthropic](https://www.anthropic.com/)
 
-**Note:** First use downloads a Docker container image (several GB) and an example dataset.
+**Note:** First use downloads a Docker container image (several GB) and an example dataset. The example dataset download creates a temporary Conda environment.
 
 ```bash
 git clone https://github.com/BioGeMT/agentomics-ml.git
@@ -42,10 +43,12 @@ cp .env.example .env
 ./run.sh
 ```
 
+**Before running:** Starting a run invokes the configured LLM. External providers may charge for usage, and each additional iteration generally uses more tokens and compute.
+
 The interactive wizard will prompt you to select:
 - **Model**: Choose from your configured provider's available models
 - **Dataset**: Select from downloaded datasets
-- **Iterations**: Number of development cycles (each iteration explores a different modeling approach)
+- **Iterations**: Number of development cycles to run
 
 ## What you get
 
@@ -56,16 +59,25 @@ outputs/<agent_id>/
 ├── best_iteration_snapshot/
 │   ├── model_training/
 │   │   ├── train.py              # Reproduce training
-│   │   └── training_artifacts/   # Saved model weights
+│   │   └── training_artifacts/   # Trained model and related artifacts
 │   ├── model_inference/
-│   │   └── inference.py          # Use the model
+│   │   └── inference.py          # Inference implementation
 │   └── environment.yml            # Conda environment
 └── reports/
-    ├── markdown/                  # Detailed iteration reports
-    └── pdf/                       # Final summary report
+    ├── markdown/                  # Iteration reports
+    └── pdf/                       # PDF iteration reports and plots
 ```
 
-Use `best_iteration_snapshot/model_inference/inference.py` for predictions on new data.
+Use the inference wrapper for predictions on new data:
+
+```bash
+./scripts/inference.sh \
+  --agent-dir outputs/<agent_id> \
+  --input <input-folder> \
+  --output predictions.csv
+```
+
+See [Inference Guide](docs/user-guide/inference.md) for details.
 
 ## Use your own data
 
@@ -134,12 +146,7 @@ For development or environments where Docker is unavailable:
 
 ### Ollama (local LLMs)
 
-For privacy-focused or offline use:
-
-```bash
-# Ensure Ollama is running
-./run.sh --ollama --provider ollama --model <model-name> --dataset <dataset-name>
-```
+For privacy-focused or offline use with local models, see the [complete Ollama setup guide](docs/getting-started/installation.md#ollama-local-llms).
 
 See [Installation Guide](docs/getting-started/installation.md) for complete setup instructions and [Provider Configuration](docs/configuration/providers.md) for all supported LLM providers.
 

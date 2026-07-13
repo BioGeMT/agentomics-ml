@@ -5,13 +5,15 @@ Get your first Agentomics run started using Docker and an example dataset.
 ## Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) installed and running
+- [Conda](https://docs.conda.io/en/latest/miniconda.html) for dataset preparation
 - An API key from a supported provider:
   - [OpenRouter](https://openrouter.ai/) (recommended for variety)
   - [OpenAI](https://platform.openai.com/)
   - [Anthropic](https://www.anthropic.com/)
-  - Or [Ollama](https://ollama.ai/) for local models
 
-**Note:** First use will download a Docker container image (several GB) and an example dataset.
+For local models with Ollama, see the [Ollama installation section](installation.md#ollama-local-llms).
+
+**Note:** First use will download a Docker container image (several GB) and an example dataset. The example dataset download creates a temporary Conda environment.
 
 ## Steps
 
@@ -54,15 +56,17 @@ List all available examples:
 ./run.sh
 ```
 
+**Before running:** Starting a run invokes the configured LLM. External providers may charge for usage, and each additional iteration generally uses more tokens and compute.
+
 ### 5. Follow the interactive prompts
 
 The wizard will ask you to:
 
-1. **Select a provider and model** - Choose from your configured provider's available models
+1. **Select a model** - Agentomics uses the configured provider automatically (or asks you to choose when multiple providers are configured), then you select a model
 2. **Select a dataset** - Pick from downloaded datasets (e.g., `breast_cancer`)
 3. **Configure iterations** - How many development cycles to run
 
-**What is an iteration?** Each iteration is an autonomous development cycle where Agentomics explores a different modeling approach, evaluates it, and compares it to previous attempts. More iterations give Agentomics more opportunities to find better solutions, but each iteration uses LLM tokens and compute time.
+**What is an iteration?** An iteration is one autonomous development cycle in which Agentomics proposes, trains, and evaluates a candidate method. More iterations give Agentomics more opportunities to find better solutions, but each iteration uses LLM tokens and compute time.
 
 **Validation metric:** For classification, the default is AUROC. For regression, the default is MAE (mean absolute error). To choose a different metric, use `--val-metric <metric>` or see `./run.sh --list-metrics`.
 
@@ -82,23 +86,27 @@ outputs/<agent_id>/
 ├── best_iteration_snapshot/
 │   ├── model_training/
 │   │   ├── train.py              # Recreate training
-│   │   └── training_artifacts/   # Model weights
+│   │   └── training_artifacts/   # Trained model and related artifacts
 │   ├── model_inference/
-│   │   └── inference.py          # Make predictions
+│   │   └── inference.py          # Inference implementation
 │   └── environment.yml            # Dependencies
 └── reports/
-    ├── markdown/                  # Iteration details
-    └── pdf/                       # Final summary
+    ├── markdown/                  # Iteration reports
+    └── pdf/                       # PDF iteration reports and plots
 ```
 
 ## Use the model for inference
 
-After a run completes, use the best model:
+After a run completes, use the inference wrapper:
 
 ```bash
-cd outputs/<agent_id>/best_iteration_snapshot/model_inference
-# Follow the README in that directory for inference instructions
+./scripts/inference.sh \
+  --agent-dir outputs/<agent_id> \
+  --input <input-folder> \
+  --output predictions.csv
 ```
+
+The `inference.py` file is the underlying implementation called by this wrapper. See the [Inference Guide](../user-guide/inference.md) for details.
 
 ## Using your own dataset
 
