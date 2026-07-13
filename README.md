@@ -1,6 +1,7 @@
 # Agentomics
 NEWS:
-- *Agentomics has been published to Bioinformatics* 
+- *Agentomics to be presented at ISMB 2026*
+- *Agentomics has been published in Bioinformatics journal* [link to published paper](https://academic.oup.com/bioinformatics/article/42/Supplement_1/btag250/8726289)
 - *Agentomics now supports any data type and supplementary material*
 
 ## Autonomous agentic system for supervised machine learning model development.
