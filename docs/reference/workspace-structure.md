@@ -190,6 +190,8 @@ outputs/<agent_id>/
 │   ├── iteration_1/
 │   └── ...
 ├── reports/
+│   ├── best_iteration.md        # Selected iteration report
+│   ├── best_iteration.pdf       # Selected iteration PDF
 │   ├── markdown/
 │   │   ├── run_report_iter_0.md
 │   │   └── ...
