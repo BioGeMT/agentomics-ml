@@ -50,13 +50,18 @@ List all available examples:
 ./scripts/download_example_dataset.sh --list
 ```
 
-### 4. (Optional) Validate your setup
+### 4. (Optional) Validate your setup and dataset
 
 ```bash
 ./run.sh --doctor
+./run.sh --validate-dataset breast_cancer
 ```
 
-The doctor command checks your environment, provider credentials, disk space, and dataset presence. It exits quickly without creating environments or contacting providers. This is optional but recommended for first-time setup.
+Pre-flight validation checks (optional but recommended for first-time setup):
+- **doctor**: Environment, provider credentials, disk space, dataset presence
+- **validate-dataset**: Dataset structure, labels format, ID uniqueness, train/validation overlap
+
+Both exit quickly without creating environments, modifying data, or contacting providers.
 
 ### 5. Run the agent
 

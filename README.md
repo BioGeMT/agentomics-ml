@@ -41,8 +41,9 @@ cp .env.example .env
 # Download example dataset
 ./scripts/download_example_dataset.sh --dataset breast_cancer
 
-# Optional: Verify your setup before running
+# Optional: Validate setup and dataset before running
 ./run.sh --doctor
+./run.sh --validate-dataset breast_cancer
 
 # Start interactive run
 ./run.sh
@@ -53,7 +54,11 @@ The interactive wizard will prompt you to select:
 - **Dataset**: Select from downloaded datasets
 - **Iterations**: Number of development cycles to run
 
-**Setup validation:** Run `./run.sh --doctor` to check your environment, provider credentials, disk space, and dataset presence before starting a run. The doctor command exits quickly without creating environments or contacting providers.
+**Pre-flight validation:**
+- `./run.sh --doctor` - Check environment, provider credentials, disk space
+- `./run.sh --validate-dataset <name>` - Validate dataset structure, labels format, train/validation ID overlap
+
+Both commands exit quickly without creating environments, modifying data, or contacting providers.
 
 ## What you get
 
