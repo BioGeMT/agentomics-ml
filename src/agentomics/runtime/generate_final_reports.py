@@ -5,6 +5,8 @@ import json
 import math
 import os
 import re
+import shutil
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -891,6 +893,17 @@ def main() -> None:
             metrics_by_split=metrics_by_split,
             plot_groups=plot_groups,
             split_order=split_order,
+        )
+
+    best_iteration = load_best_iteration_snapshot_iteration(config)
+    if best_iteration in iterations:
+        shutil.copy2(
+            config.markdown_reports_dir / f"run_report_iter_{best_iteration}.md",
+            config.reports_dir / "best_iteration.md",
+        )
+        shutil.copy2(
+            config.pdf_reports_dir / f"iteration_{best_iteration}.pdf",
+            config.reports_dir / "best_iteration.pdf",
         )
 
 if __name__ == "__main__":

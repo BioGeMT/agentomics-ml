@@ -28,6 +28,8 @@ outputs/<agent_id>/
 │   ├── iteration_1/
 │   └── ...
 ├── reports/
+│   ├── best_iteration.md
+│   ├── best_iteration.pdf
 │   ├── markdown/
 │   │   ├── run_report_iter_0.md
 │   │   ├── run_report_iter_1.md
@@ -81,6 +83,9 @@ run/iteration_N/
 ```
 
 ## Reports
+
+`reports/best_iteration.md` and `reports/best_iteration.pdf` are copies of the
+selected iteration's reports and provide stable paths to the final result.
 
 ### Iteration Reports
 
