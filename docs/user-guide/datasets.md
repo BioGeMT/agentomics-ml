@@ -1,7 +1,9 @@
 # Preparing Datasets
 
-Agentomics-ML uses folder-based dataset splits. Each split has an `input/`
+Agentomics uses folder-based dataset splits. Each split has an `input/`
 folder with the data files and a `labels.csv` file with labels.
+
+For scientific best practices on preventing data leakage, privacy-safe identifiers, and split strategy, see [Dataset Best Practices](dataset-best-practices.md).
 
 ## Quick Setup
 
@@ -32,6 +34,8 @@ test_datasets/my_dataset/
 
 Only `train` and `validation` are supported in `datasets/`. Only `test` is
 supported in `test_datasets/`.
+
+**Important:** Source datasets must contain real files and directories. Symbolic links are rejected for security reasons.
 
 ## Split Requirements
 
@@ -141,14 +145,28 @@ The agent does not get access to `test_datasets/` during training.
 
 ### metadata.json Optional
 
-Preparation does not infer task type from generic input files. If you do not
-provide `metadata.json`, pass `--task-type classification` or
-`--task-type regression` during single-dataset preparation, or run single-dataset
-preparation interactively. For `--prepare-all`, every dataset must provide
-`metadata.json`. For classification datasets, Agentomics derives class IDs from
-`labels.csv` if `label_to_scalar` is absent.
+Preparation does not infer task type from generic input files. Task type can be specified through `metadata.json`, the `--task-type` flag, or an interactive prompt.
 
-Example:
+| Scenario | Interactive mode | Non-interactive mode |
+|----------|------------------|----------------------|
+| Folder dataset, no metadata.json | Prompted for task type | Must use `--task-type` flag |
+| Folder dataset with metadata.json | No prompt needed | No flag needed |
+| Flat CSV, public data | Prompted for label_column | metadata.json must specify `label_column` |
+| Flat CSV, hidden test data | N/A | metadata.json must specify `label_column` |
+
+For `--prepare-all`, every dataset must provide `metadata.json`.
+
+**Required field:**
+
+```json
+{
+  "task_type": "classification"
+}
+```
+
+Valid values: `"classification"` or `"regression"`.
+
+**Optional binary classification fields** (both required if used):
 
 ```json
 {
@@ -157,6 +175,8 @@ Example:
   "negative_class": "no_cancer"
 }
 ```
+
+For classification datasets, Agentomics derives class IDs from `labels.csv` if `label_to_scalar` is absent.
 
 ### dataset_description.md Optional
 
@@ -330,19 +350,49 @@ maps to `input/audio/sample_001.wav`.
 
 ### "Required split folder is missing or incomplete"
 
-Check that `train/input/` exists and that `train/labels.csv` is present.
+**Cause:** `train/input/` or `train/labels.csv` not found.
+
+**Fix:** Ensure `datasets/<name>/train/` contains both `input/` folder and `labels.csv`.
 
 ### "labels.csv is invalid"
 
-Check that `labels.csv` has `id` and `label` columns, no duplicate or empty
-IDs, and non-empty labels.
+**Cause:** Wrong column names, duplicate IDs, or empty values.
+
+**Fix:**
+- Verify columns are exactly `id` and `label` (not `ID`, `sample_id`, `target`, etc.)
+- Check for duplicate or empty IDs
+- Ensure all labels are non-empty
 
 ### "metadata.json is required"
 
-Pass `--task-type classification` or `--task-type regression`, or add a
-`metadata.json` file with `task_type`.
+**Cause:** Task type cannot be determined.
+
+**Fix:** Add `metadata.json` with `task_type` field, or use `--task-type` flag, or run interactively.
+
+### "Top-level input structure mismatch"
+
+**Cause:** Different top-level files or folders in `train/input/` vs `validation/input/`.
+
+**Fix:** Ensure all splits have identical top-level `input/` structure. For per-sample files, use a subdirectory:
+
+```text
+# Correct
+train/input/images/sample_001.png
+validation/input/images/sample_099.png
+
+# Wrong
+train/input/sample_001.png
+validation/input/sample_099.png
+```
+
+### Symlink rejected
+
+**Cause:** Source dataset contains symbolic links.
+
+**Fix:** Copy real files instead of using symlinks. Symlink support is not available for security reasons.
 
 ## Next Steps
 
+- [Dataset Best Practices](dataset-best-practices.md) - Scientific best practices for preventing data leakage and ensuring valid evaluation
 - [Running the Agent](running-agent.md) - Use your dataset
 - [Understanding Outputs](outputs.md) - See what the agent produces
