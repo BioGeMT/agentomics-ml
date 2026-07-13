@@ -23,7 +23,7 @@ def setup_logging(config: Config, dir=None):
         return None
     try:
         wandb.init(
-            dir=config.extras_dir / 'run_logs' if dir is None else dir,
+            dir=config.logs_dir / 'run_logs' if dir is None else dir,
             entity=wandb_entity,
             project=wandb_project_name,
             tags=config.tags,
@@ -55,7 +55,7 @@ def resume_wandb_run(config: Config, dir=None):
         return None        
     try:
         run = wandb.init(
-            dir=config.extras_dir / 'test_logs' if dir is None else dir,
+            dir=config.logs_dir / 'test_logs' if dir is None else dir,
             id=wandb_run_id,
             project=wandb_project_name,
             entity=wandb_entity,

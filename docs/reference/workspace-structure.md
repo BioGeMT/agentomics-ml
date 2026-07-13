@@ -14,7 +14,7 @@ agentomics-ml/
 ├── run/                      # Current run files
 ├── best_iteration_snapshot/  # Best iteration snapshot
 ├── reports/                  # Iteration reports
-├── extras/                   # Logs and extra artifacts
+├── logs/                     # Logs and metrics
 └── fallbacks/                # Reserved recovery area
 ```
 
@@ -160,10 +160,10 @@ of training data (at most 100 samples) used for quick script validation.
 Iteration reports are written here during runs. These are copied to
 `outputs/<agent_id>/reports/` after completion.
 
-### extras/
+### logs/
 
 Logs and auxiliary artifacts (metrics, run logs) are stored here and copied to
-`outputs/<agent_id>/extras/`.
+`outputs/<agent_id>/logs/`.
 
 ## outputs/
 
@@ -206,7 +206,7 @@ outputs/<agent_id>/
 │       ├── iteration_0.pdf
 │       ├── iteration_1.pdf
 │       └── plots/
-├── extras/                   # Additional files and logs
+├── logs/                     # Logs and metrics
 └── README.md                 # Run summary
 ```
 

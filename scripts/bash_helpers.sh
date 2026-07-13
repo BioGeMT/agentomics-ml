@@ -152,7 +152,7 @@ write_outputs_readme() {
 
 This directory contains the full results of one run (**AGENT_ID: ${agent_id}**).
 It includes: (1) the **best model chosen across iterations**, (2) per-iteration run artifacts,
-(3) reports, and (4) logs/extras.
+(3) reports, and (4) logs.
 
 ---
 
@@ -204,7 +204,7 @@ outputs/${agent_id}/
 │       └── plots/
 │           └── iter_<i>_<split>_*.png
 │
-├── extras/                         # Logs and debugging information
+├── logs/                           # Logs and debugging information
 │   └── run_logs/
 │
 └── README.md                       # This file

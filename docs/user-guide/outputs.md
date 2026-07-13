@@ -38,7 +38,7 @@ outputs/<agent_id>/
 │       ├── iteration_0.pdf
 │       ├── iteration_1.pdf
 │       └── plots/
-├── extras/                   # Additional files
+├── logs/                     # Run and evaluation logs
 └── README.md                 # Run summary
 ```
 
@@ -111,7 +111,7 @@ During execution, the agent uses a workspace:
 │   └── shared/splits/       # Versioned train/validation split folders
 ├── best_iteration_snapshot/    # Best iteration snapshot
 ├── reports/                 # Iteration reports
-├── extras/                  # Logs and metrics
+├── logs/                    # Logs and metrics
 └── fallbacks/               # Reserved recovery area
 ```
 

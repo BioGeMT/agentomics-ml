@@ -40,7 +40,7 @@ def evaluate_stealth_test_history(agent_dir: Path, test_datasets_dir: Path) -> N
             f"Expected input/ and labels.csv in {raw_test_split_path} for iteration test evaluation."
         )
 
-    run = resume_wandb_run(config, dir=config.extras_dir / "iteration_test_logs")
+    run = resume_wandb_run(config, dir=config.logs_dir / "iteration_test_logs")
     define_serial_metrics(STEALTH_TEST_METRIC_PREFIX, config.task_type, step_metric=STEALTH_TEST_STEP_METRIC)
     try:
         results = _evaluate_iterations(
@@ -55,7 +55,7 @@ def evaluate_stealth_test_history(agent_dir: Path, test_datasets_dir: Path) -> N
 
     remove_path(agent_dir / ITERATION_TEST_ENVS_DIRNAME)
 
-    results_path = config.extras_dir / STEALTH_TEST_METRICS_FILENAME
+    results_path = config.logs_dir / STEALTH_TEST_METRICS_FILENAME
     results_path.parent.mkdir(parents=True, exist_ok=True)
     results_path.write_text(json.dumps(results, indent=2), encoding="utf-8")
 
