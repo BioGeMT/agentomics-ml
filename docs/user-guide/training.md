@@ -42,7 +42,7 @@ identical — only the data changes.
 | Argument | Description |
 |----------|-------------|
 | `--label-col` | Label column name for **CSV-form** splits (overrides `metadata.json`). Not needed for folder splits, or when `metadata.json` declares `label_column` |
-| `--code-path` | Code directory to use, relative to `--agent-dir` (default: `best_iteration_snapshot`) |
+| `--iteration-dir` | Code directory to use, relative to `--agent-dir` (default: `best_iteration_snapshot`) |
 | `--cpu-only` | Run without GPU |
 | `--help` | Show help message |
 

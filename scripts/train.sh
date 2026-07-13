@@ -10,10 +10,10 @@ show_help() {
     echo "Usage: $0 --agent-dir <agent_folder_path> --dataset-dir <dataset_dir> --artifacts-dir <artifacts_dir_path> [--cpu-only]"
     echo "Options:"
     echo "  --agent-dir       Path to agent folder (required)"
-    echo "  --dataset-dir     Path to a dataset folder with train/validation splits (split folders with input/+labels.csv, or train.csv/validation.csv + metadata.json). Prepared into the run's format (numeric labels via the run's trained mapping) before training (required)"
+    echo "  --dataset-dir     Path to a dataset folder with train/validation splits (split folders with input/+labels.csv). (required)"
     echo "  --artifacts-dir   Path to directory where training artifacts will be saved (required)"
-    echo "  --label-col       Label column name for CSV-form --dataset-dir (overrides metadata.json). Not needed for folder splits or when metadata.json declares it (optional)"
-    echo "  --code-path       Path to code files, points to best_iteration_snapshot by default, must be relative to --agent-dir and a child of --agent-dir (optional)"
+    echo "  --label-col       Label column for a CSV dataset. Not needed for folder splits or when metadata.json declares it (optional)"
+    echo "  --iteration-dir   Path to code files, points to best_iteration_snapshot by default, must be relative to --agent-dir and a child of --agent-dir (optional)"
     echo "  --cpu-only        Run without GPU (optional)"
     echo "  --help            Show this help message and exit"
     exit 0
@@ -53,9 +53,9 @@ while [[ $# -gt 0 ]]; do
             LABEL_COL="$2"
             shift 2
             ;;
-        --code-path)
+        --iteration-dir)
             require_opt_value "$1" "${2:-}"
-            CODE_PATH="$2"
+            ITERATION_DIR="$2"
             shift 2
             ;;
         --cpu-only)
@@ -91,9 +91,9 @@ AGENT_DIR="$(cd "$AGENT_DIR" && pwd)"
 DATASET_DIR="$(cd "$DATASET_DIR" && pwd)"
 ARTIFACTS_DIR="$(cd "$(dirname "$ARTIFACTS_DIR")" && pwd)/$(basename "$ARTIFACTS_DIR")"
 
-CODE_PATH=${CODE_PATH:-"best_iteration_snapshot"}
-CODE_ROOT="${AGENT_DIR}/${CODE_PATH}"
-echo "Using code path: $CODE_PATH"
+ITERATION_DIR=${ITERATION_DIR:-"best_iteration_snapshot"}
+CODE_ROOT="${AGENT_DIR}/${ITERATION_DIR}"
+echo "Using iteration directory: $ITERATION_DIR"
 ENV_DIR="${CODE_ROOT}/.conda/envs"
 TRAIN_PATH="${CODE_ROOT}/model_training/train.py"
 TRAIN_WORKDIR="$(dirname "$TRAIN_PATH")"
