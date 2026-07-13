@@ -172,7 +172,6 @@ def parse_args():
     # Apply built-in defaults only for still-unset optional args on fresh runs.
     if args.tags is None:                      args.tags = []
     if args.split_allowed_iterations is None:  args.split_allowed_iterations = Config.DEFAULT_SPLIT_ALLOWED_ITERATIONS
-    if args.exploration_iterations is None:    args.exploration_iterations = Config.DEFAULT_EXPLORATION_ITERATIONS
     if args.run_python_timeout is None:        args.run_python_timeout = Config.DEFAULT_RUN_PYTHON_TOOL_TIMEOUT
     if args.user_prompt is None:               args.user_prompt = Config.DEFAULT_USER_PROMPT
 
@@ -207,8 +206,8 @@ def handle_list_modes(args, provider: Provider) -> int | None:
 def _is_tty_available() -> bool:
     return sys.stdin.isatty() and sys.stdout.isatty()
 
-def resolve_interactive_params(args, provider: Provider) -> tuple[str, str, int]:
-    """Prompt for dataset, model, and iterations if not provided via CLI. Returns (dataset, model, iterations)."""
+def resolve_interactive_params(args, provider: Provider) -> tuple[str, str, int, int]:
+    """Prompt for omitted interactive parameters and return their resolved values."""
     needs_interactive = not args.dataset or not args.model
     if needs_interactive and not _is_tty_available():
         console.print("Interactive terminal required for dataset/model selection but not available", style="red")
@@ -230,8 +229,11 @@ def resolve_interactive_params(args, provider: Provider) -> tuple[str, str, int]
         model = provider.interactive_model_selection(limit=50)
 
     iterations = args.iterations
-    if iterations is None:
+    exploration_iterations = args.exploration_iterations
+    if iterations is None or exploration_iterations is None:
         print_phase("Run Configuration")
+
+    if iterations is None:
         if _is_tty_available():
             iterations = get_user_input_for_int(
                 "Enter number of iterations to run (Recommended more than 5):",
@@ -240,7 +242,16 @@ def resolve_interactive_params(args, provider: Provider) -> tuple[str, str, int]
         else:
             iterations = Config.DEFAULT_ITERATIONS
 
-    return dataset, model, iterations
+    if exploration_iterations is None:
+        if _is_tty_available():
+            exploration_iterations = get_user_input_for_int(
+                "Enter number of initial exploration iterations:",
+                default=Config.DEFAULT_EXPLORATION_ITERATIONS,
+            )
+        else:
+            exploration_iterations = Config.DEFAULT_EXPLORATION_ITERATIONS
+
+    return dataset, model, iterations, exploration_iterations
 
 
 # ── Main entry point ─────────────────────────────────────────────────
@@ -263,7 +274,7 @@ def main():
             style="yellow",
         )
 
-    dataset, model, iterations = resolve_interactive_params(args, provider)
+    dataset, model, iterations, exploration_iterations = resolve_interactive_params(args, provider)
     iteration_plan_model = args.iteration_plan_model or model
 
     prepared_datasets_dir = args.workspace_dir / "prepared_datasets"
@@ -298,7 +309,7 @@ def main():
             user_prompt=args.user_prompt,
             provider=provider_name,
             split_allowed_iterations=split_allowed_iterations,
-            exploration_iterations=args.exploration_iterations,
+            exploration_iterations=exploration_iterations,
             timeout=args.timeout,
             split_timeout=args.split_timeout,
             run_python_timeout=args.run_python_timeout,

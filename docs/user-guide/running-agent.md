@@ -17,6 +17,7 @@ You'll be prompted to select:
 1. **LLM Model** - Choose from available models
 2. **Dataset** - Select a dataset
 3. **Iterations** - Number of optimization cycles (default prompt: 5)
+4. **Exploration Iterations** - Number of initial cycles focused on baseline/exploration models (default prompt: 4)
 
 The validation metric is not prompted interactively; pass `--val-metric` to override the task-based default (`AUROC` for classification, `MAE` for regression).
 
