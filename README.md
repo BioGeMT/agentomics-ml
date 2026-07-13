@@ -8,7 +8,7 @@ Agentomics creates, tests, and evaluates machine learning models autonomously. G
 
 1. **Provide a dataset**: Folder-based splits with input files and labels
 2. **Autonomous iterations**: Agentomics experiments with models, features, and strategies (each iteration is one development cycle that proposes, trains, and evaluates a candidate method)
-3. **Get results**: Trained model, inference script, training code, and detailed PDF report
+3. **Get results**: Trained model, inference script, training code, and detailed reports
 
 ## Who it's for
 
@@ -26,7 +26,9 @@ Originally built for biomedical data (protein engineering, drug discovery, regul
 - [Conda](https://docs.conda.io/en/latest/miniconda.html) for dataset preparation
 - An API key from [OpenRouter](https://openrouter.ai/), [OpenAI](https://platform.openai.com/), or [Anthropic](https://www.anthropic.com/)
 
-**Note:** First use downloads a Docker container image (several GB) and an example dataset. The example dataset download creates a temporary Conda environment.
+**Setup note:** First use downloads a Docker container image (several GB) and an example dataset. The example-data helper creates and reuses a dedicated Conda environment named `agentomics-datasets`.
+
+**Cost note:** Starting a run invokes the configured LLM. External providers may charge for usage, and each additional iteration generally uses more tokens and compute.
 
 ```bash
 git clone https://github.com/BioGeMT/agentomics-ml.git
@@ -39,16 +41,19 @@ cp .env.example .env
 # Download example dataset
 ./scripts/download_example_dataset.sh --dataset breast_cancer
 
+# Optional: Verify your setup before running
+./run.sh --doctor
+
 # Start interactive run
 ./run.sh
 ```
-
-**Before running:** Starting a run invokes the configured LLM. External providers may charge for usage, and each additional iteration generally uses more tokens and compute.
 
 The interactive wizard will prompt you to select:
 - **Model**: Choose from your configured provider's available models
 - **Dataset**: Select from downloaded datasets
 - **Iterations**: Number of development cycles to run
+
+**Setup validation:** Run `./run.sh --doctor` to check your environment, provider credentials, disk space, and dataset presence before starting a run. The doctor command exits quickly without creating environments or contacting providers.
 
 ## What you get
 
@@ -153,7 +158,7 @@ See [Installation Guide](docs/getting-started/installation.md) for complete setu
 ## Key features
 
 - **Generic**: Folder-based contract supports any data type (images, sequences, tabular, audio, etc.)
-- **Secure**: Docker containers with read-only dataset mounts and write-only output volumes
+- **Secure**: Docker containers with read-only dataset mounts and an isolated writable workspace
 - **Reproducible**: Outputs include training scripts, inference code, and Conda environments
 - **Trustworthy**: Hidden test sets remain agent-inaccessible; evaluation is programmatic
 - **Foundation models**: Leverage Hugging Face models for embeddings and fine-tuning

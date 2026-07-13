@@ -13,7 +13,7 @@ Get your first Agentomics run started using Docker and an example dataset.
 
 For local models with Ollama, see the [Ollama installation section](installation.md#ollama-local-llms).
 
-**Note:** First use will download a Docker container image (several GB) and an example dataset. The example dataset download creates a temporary Conda environment.
+**Setup note:** First use will download a Docker container image (several GB) and an example dataset. The example-data helper creates and reuses a dedicated Conda environment named `agentomics-datasets`.
 
 ## Steps
 
@@ -50,15 +50,23 @@ List all available examples:
 ./scripts/download_example_dataset.sh --list
 ```
 
-### 4. Run the agent
+### 4. (Optional) Validate your setup
+
+```bash
+./run.sh --doctor
+```
+
+The doctor command checks your environment, provider credentials, disk space, and dataset presence. It exits quickly without creating environments or contacting providers. This is optional but recommended for first-time setup.
+
+### 5. Run the agent
+
+**Cost note:** Starting a run invokes the configured LLM. External providers may charge for usage, and each additional iteration generally uses more tokens and compute.
 
 ```bash
 ./run.sh
 ```
 
-**Before running:** Starting a run invokes the configured LLM. External providers may charge for usage, and each additional iteration generally uses more tokens and compute.
-
-### 5. Follow the interactive prompts
+### 6. Follow the interactive prompts
 
 The wizard will ask you to:
 
@@ -75,7 +83,7 @@ The wizard will ask you to:
 Agentomics will:
 
 1. **Prepare your dataset**: Convert to internal format and validate structure
-2. **Run iterations**: Each iteration explores a different ML approach
+2. **Run iterations**: Each iteration proposes or refines a candidate ML approach
 3. **Save the best model**: Selected by validation metric performance
 4. **Generate reports**: Markdown and PDF summaries
 
@@ -122,7 +130,7 @@ datasets/my_dataset/
 ├── validation/         # Optional
 │   ├── input/
 │   └── labels.csv
-└── metadata.json       # Required: {"task_type": "classification" or "regression"}
+└── metadata.json       # Recommended: {"task_type": "classification"}
 ```
 
 **Flat CSV layout** (for tabular data):
@@ -131,8 +139,10 @@ datasets/my_dataset/
 datasets/my_dataset/
 ├── train.csv           # Features + labels in one file
 ├── validation.csv      # Optional
-└── metadata.json       # Required: {"task_type": "...", "label_column": "target"}
+└── metadata.json       # Recommended: {"task_type": "classification", "label_column": "target"}
 ```
+
+For regression, set `task_type` to `"regression"`. Interactive runs can prompt for missing task details, but metadata is recommended for repeatable, non-interactive runs.
 
 **Hidden test data** (optional, for final unbiased evaluation):
 
