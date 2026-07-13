@@ -112,8 +112,8 @@ class Config:
         return self.reports_dir / "pdf"
 
     @property
-    def extras_dir(self) -> Path:
-        return Path(self.workspace_dir) / "extras"
+    def logs_dir(self) -> Path:
+        return Path(self.workspace_dir) / "logs"
 
     @property
     def dataset_dir(self) -> Path:
