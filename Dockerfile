@@ -1,8 +1,7 @@
 FROM condaforge/mambaforge:24.9.2-0
 
-ARG REPOSITORY_BRANCH=main
-RUN git clone --depth 1 --branch "${REPOSITORY_BRANCH}" \
-    https://github.com/BioGeMT/Agentomics-ML.git /repository
+ARG REPOSITORY_SOURCE=https://github.com/BioGeMT/Agentomics-ML.git#main
+ADD ${REPOSITORY_SOURCE} /repository
 
 # Always set -y to conda install commands
 ENV CONDA_ALWAYS_YES=true 

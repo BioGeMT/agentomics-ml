@@ -60,10 +60,19 @@ docker build -t agentomics .
 ```
 
 The build uses the repository's `main` branch by default. To build the image
-from another branch, pass its name with `REPOSITORY_BRANCH`:
+from another branch, pass its Git URL and branch with `REPOSITORY_SOURCE`:
 
 ```bash
-docker build --build-arg REPOSITORY_BRANCH=my-branch -t agentomics .
+docker build \
+  --build-arg REPOSITORY_SOURCE=https://github.com/BioGeMT/Agentomics-ML.git#my-branch \
+  -t agentomics .
+```
+
+For quick development builds, use the current folder instead of cloning a
+branch:
+
+```bash
+docker build --build-arg REPOSITORY_SOURCE=. -t agentomics .
 ```
 
 Then use `agentomics` in place of `biogemt/agentomics:latest` above.
