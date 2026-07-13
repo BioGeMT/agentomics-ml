@@ -109,7 +109,7 @@ PREPARED_DIR="$PREP_ROOT/prepared"
 PREP_ARGS=(--dataset-dir "$DATASET_DIR" --output-dir "$PREPARED_DIR" --agent-dir "$AGENT_DIR")
 [[ -n "$LABEL_COL" ]] && PREP_ARGS+=(--label-col "$LABEL_COL")
 PYTHONPATH="$SCRIPT_DIR/../src" conda run -n agentomics-env \
-    python -m runtime.prepare_training_data "${PREP_ARGS[@]}"
+    python -m datasets.prepare_training_data "${PREP_ARGS[@]}"
 
 TRAIN_DATA_PATH="$PREPARED_DIR/train"
 VALIDATION_DATA_PATH="$PREPARED_DIR/validation"
