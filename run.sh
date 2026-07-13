@@ -21,6 +21,8 @@ DATASET_NAME=""
 TASK_TYPE=""
 VAL_METRIC=""
 LIST_MODE=false
+DOCTOR_MODE=false
+DOCTOR_JSON=false
 FOUNDATION_MODELS_TYPE=""
 VERBOSITY="full"
 ALL_ITERATIONS_TEST=false
@@ -110,6 +112,12 @@ Operational Flags:
   --tags              (Optional) Space separated tags for Weights and Biases logging.
   -h, --help          Show this help message and exit.
 
+Diagnostic Flags:
+  --doctor            Run pre-flight environment and provider checks without starting a run.
+                      Validates Docker/Conda, provider credentials, disk space, and dataset presence.
+                      Use with --local, --cpu-only, --ollama to check specific configurations.
+                      Add --json for machine-readable output.
+
 Listing Flags (Run the script with only one of these):
   --list-models       List models available via the configured provider and exit.
   --list-datasets     List available datasets and exit.
@@ -146,6 +154,14 @@ while [[ $# -gt 0 ]]; do
         --list-metrics)
             AGENTOMICS_ARGS+=(--list-metrics)
             LIST_MODE=true
+            shift
+            ;;
+        --doctor)
+            DOCTOR_MODE=true
+            shift
+            ;;
+        --json)
+            DOCTOR_JSON=true
             shift
             ;;
         --root-privileges)
@@ -324,6 +340,59 @@ fi
 
 if [[ -n "$FORK_FROM_RUN" && -n "$DATASET_NAME" && "$DATASET_NAME" != "$EFFECTIVE_DATASET_NAME" ]]; then
     warn "--dataset '$DATASET_NAME' is ignored for forked runs. Using '$EFFECTIVE_DATASET_NAME' from the source run config."
+fi
+
+# Run doctor checks if requested and exit early
+if [ "$DOCTOR_MODE" = true ]; then
+    DEPLOYMENT_MODE="docker"
+    if [ "$LOCAL_MODE" = true ]; then
+        DEPLOYMENT_MODE="local"
+    fi
+
+    export PYTHONPATH="$(pwd)/src"
+
+    DOCTOR_ARGS="--repo-root $(pwd) --deployment-mode $DEPLOYMENT_MODE"
+
+    if [ "$CPU_ONLY" = true ]; then
+        DOCTOR_ARGS="$DOCTOR_ARGS --cpu-only"
+    fi
+
+    if [ -n "$PREFERRED_PROVIDER" ]; then
+        DOCTOR_ARGS="$DOCTOR_ARGS --provider-name $PREFERRED_PROVIDER"
+    fi
+
+    PROVIDER_ARG="None"
+    if [ -n "$PREFERRED_PROVIDER" ]; then
+        PROVIDER_ARG="$PREFERRED_PROVIDER"
+    fi
+
+    CPU_ARG="False"
+    if [ "$CPU_ONLY" = true ]; then
+        CPU_ARG="True"
+    fi
+
+    JSON_ARG="False"
+    if [ "$DOCTOR_JSON" = true ]; then
+        JSON_ARG="True"
+    fi
+
+    python3 - "$DEPLOYMENT_MODE" "$PROVIDER_ARG" "$CPU_ARG" "$JSON_ARG" << 'DOCTOR_SCRIPT'
+import sys
+from pathlib import Path
+from utils.doctor import run_doctor
+
+output, exit_code = run_doctor(
+    repo_root=Path.cwd(),
+    deployment_mode=sys.argv[1],
+    provider_name=sys.argv[2] if sys.argv[2] != "None" else None,
+    cpu_only=sys.argv[3] == "True",
+    json_output=sys.argv[4] == "True"
+)
+print(output)
+sys.exit(exit_code)
+DOCTOR_SCRIPT
+
+    exit $?
 fi
 
 
