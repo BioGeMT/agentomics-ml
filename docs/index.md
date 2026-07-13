@@ -72,4 +72,4 @@ The agent will guide you through selecting a model, dataset, and run parameters 
 
 ## License
 
-MIT. See the [LICENSE](https://github.com/BioGeMT/Agentomics-ML/blob/main/LICENSE).
+MIT. See the [LICENSE](https://github.com/BioGeMT/agentomics-ml/blob/main/LICENSE).

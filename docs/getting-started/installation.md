@@ -11,6 +11,8 @@ git clone https://github.com/BioGeMT/agentomics-ml.git
 cd agentomics-ml
 ```
 
+Running Agentomics also requires a configured [LLM provider](../configuration/providers.md). External providers may charge for usage and receive data-derived context; use local Ollama when that context must stay on your machine.
+
 ## Docker with Pre-built Images
 
 **Default mode** - Downloads pre-built images from Docker Hub.
@@ -140,13 +142,13 @@ Works with both Docker and local modes.
 
 ## Comparison Table
 
-| Mode | Docker Required | Build Time | Generated-code Isolation | Best For |
-|------|-----------------|------------|--------------------------|----------|
-| Docker + Pull Images | Yes | None | Container | Quick start |
-| Docker + Local Build | Yes | ~5-10 min | Container | Custom builds |
-| Local Mode | No | ~2 min | None | Development, Colab |
-| Google Colab | No | None | None | Trying it out |
-| Ollama | Depends | Varies | Varies | Privacy, offline |
+| Mode | Docker Required | First-run work | Generated-code isolation | Best For |
+|------|-----------------|----------------|--------------------------|----------|
+| Docker + Pull Images | Yes | Downloads several-GB images | Container | Quick start |
+| Docker + Local Build | Yes | Builds images locally | Container | Custom builds |
+| Local Mode | No | Creates Conda environments | None | Development, Colab |
+| Google Colab | No | Notebook-managed setup | None | Trying it out |
+| Ollama | Depends | Downloads local models | Varies | Privacy, offline |
 
 **Note on privacy:** Generated-code isolation (Docker vs local Conda) affects filesystem access. LLM provider choice (external vs local Ollama) affects where data-derived context is sent. Both are independent security decisions.
 

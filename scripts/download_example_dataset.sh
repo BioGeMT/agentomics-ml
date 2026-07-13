@@ -1,14 +1,23 @@
 #!/usr/bin/env bash
+set -euo pipefail
+
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$REPO_DIR" || exit 1
+ENV_NAME="${AGENTOMICS_DATASETS_ENV_NAME:-agentomics-datasets}"
+cd "$REPO_DIR"
 
-for arg in "$@"; do
-    if [[ "$arg" == "--list" ]]; then
-        PYTHONPATH="$(pwd)/src" python src/datasets/create_datasets.py --list
-        exit $?
-    fi
-done
+if ! command -v conda >/dev/null 2>&1; then
+    echo "Error: Conda is required to prepare example datasets." >&2
+    echo "Install Miniconda: https://docs.conda.io/en/latest/miniconda.html" >&2
+    exit 1
+fi
 
-conda env remove -n agentomics-datasets -y 2>/dev/null || true
-conda env create -f envs/environment_datasets.yaml
-PYTHONPATH="$(pwd)/src" conda run -n agentomics-datasets python src/datasets/create_datasets.py "$@"
+if ! conda env list | grep -Eq "^${ENV_NAME}[[:space:]]"; then
+    echo "Creating Conda environment '${ENV_NAME}' for example datasets..."
+    conda env create -n "$ENV_NAME" -f envs/environment_datasets.yaml
+else
+    echo "Synchronizing Conda environment '${ENV_NAME}'..."
+    conda env update -n "$ENV_NAME" -f envs/environment_datasets.yaml --prune
+fi
+
+PYTHONNOUSERSITE=1 PYTHONPATH="$(pwd)/src" \
+    conda run -n "$ENV_NAME" python src/datasets/create_datasets.py "$@"
