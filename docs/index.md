@@ -48,6 +48,7 @@ remain available through Ollama running on the host.
 | `agentomics-run` | Run the full agent workflow |
 | `agentomics-train` | Re-train a model with new data |
 | `agentomics-inference` | Run predictions on new data |
+| `agentomics-check-dataset` | Validate a dataset's format before a run |
 
 ## Quick Example
 

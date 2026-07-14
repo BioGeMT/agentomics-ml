@@ -35,6 +35,7 @@ agentomics-download-dataset = "agentomics.cli.download_dataset:main"
 agentomics-run = "agentomics.cli.run:main"
 agentomics-inference = "agentomics.cli.inference:main"
 agentomics-train = "agentomics.cli.train:main"
+agentomics-check-dataset = "agentomics.cli.check_dataset:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -313,6 +313,17 @@ train/
 `labels.csv.id` should match the audio filename stem, for example `sample_001`
 maps to `input/audio/sample_001.wav`.
 
+## Validate Before a Run (Optional)
+
+Check that a dataset satisfies the format contract without launching a run.
+`agentomics-check-dataset` runs the same preparation and validation the agent
+would, on the host and without Docker, then reports the result. Your dataset is
+never modified.
+
+```bash
+agentomics-check-dataset --dataset-dir path/to/my_dataset
+```
+
 ## Common Issues
 
 ### "Required split folder is missing or incomplete"

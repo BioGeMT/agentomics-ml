@@ -1,6 +1,7 @@
 import json
 import math
 import sys
+import tempfile
 from pathlib import Path
 
 import pandas as pd
@@ -240,6 +241,44 @@ def prepare_dataset(
     (destination_dir / METADATA_FILE_NAME).write_text(json.dumps(output_metadata, indent=4), encoding="utf-8")
 
     return output_metadata
+
+
+def check_dataset(source_dir: Path) -> dict:
+    """Validate a dataset against the run contract without executing a run.
+
+    Mirrors the preparation a run performs (train/validation, plus the test split
+    when present) into a temporary directory that is discarded, so the user's
+    dataset is never modified. Returns the prepared train/validation metadata,
+    augmented with ``test_rows`` (the validated test-split row count, or None when
+    no test split is present). Raises ValueError / FileNotFoundError with a
+    descriptive message when the dataset does not satisfy the contract.
+    """
+    source_dir = Path(source_dir)
+    if not source_dir.is_dir():
+        raise NotADirectoryError(f"Dataset directory not found: {source_dir}")
+
+    with tempfile.TemporaryDirectory() as temporary_directory:
+        temporary_root = Path(temporary_directory)
+        metadata = prepare_dataset(
+            source_dir=source_dir,
+            destination_dir=temporary_root / "prepared",
+            interactive=False,
+        )
+        test_rows = None
+        has_test_split = (source_dir / TEST_SPLIT).is_dir() or is_test_csv_dataset(source_dir)
+        if has_test_split:
+            test_metadata = prepare_test_dataset(
+                source_dir=source_dir,
+                destination_dir=temporary_root / "prepared_test",
+                task_type=metadata["task_type"],
+                input_structure=metadata["input_structure"],
+                label_to_scalar=metadata.get("label_to_scalar"),
+            )
+            test_rows = test_metadata["splits"]["test_rows"]
+
+    summary = dict(metadata)
+    summary["test_rows"] = test_rows
+    return summary
 
 
 def check_dataset_prepared(dataset_dir: Path) -> bool:
