@@ -1,5 +1,6 @@
 import json
 import math
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -194,7 +195,11 @@ def prepare_dataset(
             ).dropna().unique()
             if len(unique_labels) == 2 or has_cli_class_override:
                 label_to_scalar = _build_binary_label_mapping(
-                    source_metadata, positive_class, negative_class, unique_labels, interactive,
+                    source_metadata,
+                    positive_class,
+                    negative_class,
+                    unique_labels,
+                    interactive,
                 )
             else:
                 sorted_labels = _sort_class_labels(unique_labels)
@@ -243,7 +248,7 @@ def prepare_dataset(
     return output_metadata
 
 
-def check_dataset(source_dir: Path) -> dict:
+def check_dataset(source_dir: Path, interactive: bool = False) -> dict:
     """Validate a dataset against the run contract without executing a run.
 
     Mirrors the preparation a run performs (train/validation, plus the test split
@@ -262,7 +267,7 @@ def check_dataset(source_dir: Path) -> dict:
         metadata = prepare_dataset(
             source_dir=source_dir,
             destination_dir=temporary_root / "prepared",
-            interactive=False,
+            interactive=interactive,
         )
         test_rows = None
         has_test_split = (source_dir / TEST_SPLIT).is_dir() or is_test_csv_dataset(source_dir)
@@ -273,6 +278,8 @@ def check_dataset(source_dir: Path) -> dict:
                 task_type=metadata["task_type"],
                 input_structure=metadata["input_structure"],
                 label_to_scalar=metadata.get("label_to_scalar"),
+                label_column=metadata.get("label_column"),
+                id_column=metadata.get("id_column"),
             )
             test_rows = test_metadata["splits"]["test_rows"]
 
@@ -295,6 +302,8 @@ def prepare_test_dataset(
     task_type: str,
     input_structure: list[str],
     label_to_scalar: dict[str, int] | None = None,
+    label_column: str | None = None,
+    id_column: str | None = None,
 ) -> dict:
     """Prepare test dataset from source_dir into destination_dir using run metadata.
 
@@ -306,8 +315,14 @@ def prepare_test_dataset(
     destination_dir = Path(destination_dir)
 
     _reject_symlinks_in_dir(source_dir)
-    if is_test_csv_dataset(source_dir):
-        source_dir = convert_csv_test_dataset_to_standard_raw_dataset(source_dir, destination_dir)
+    csv_test_dataset = is_test_csv_dataset(source_dir)
+    if csv_test_dataset:
+        source_dir = convert_csv_test_dataset_to_standard_raw_dataset(
+            source_dir,
+            destination_dir,
+            label_column=label_column,
+            id_column=id_column,
+        )
 
     test_source = source_dir / TEST_SPLIT
     if not test_source.is_dir():
@@ -337,7 +352,13 @@ def prepare_test_dataset(
 
     dest_test = destination_dir / TEST_SPLIT
     dest_test.mkdir(parents=True, exist_ok=True)
-    create_absolute_symlink(test_source / INPUT_DIR_NAME, dest_test / INPUT_DIR_NAME)
+    if csv_test_dataset:
+        shutil.copytree(test_source / INPUT_DIR_NAME, dest_test / INPUT_DIR_NAME)
+    else:
+        create_absolute_symlink(
+            test_source / INPUT_DIR_NAME,
+            dest_test / INPUT_DIR_NAME,
+        )
     numeric_labels.to_csv(dest_test / LABELS_FILE_NAME, index=False)
 
     validate_splits({TEST_SPLIT: dest_test}, input_structure)

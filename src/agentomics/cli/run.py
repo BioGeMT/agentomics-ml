@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
+import tempfile
 from pathlib import Path
 
 from agentomics.cli.docker_utils import (
@@ -11,6 +13,7 @@ from agentomics.cli.docker_utils import (
 )
 from agentomics.cli.inference import run_inference_in_docker
 from agentomics.cli.run_arguments import add_run_arguments
+from agentomics.datasets.dataset_preparation import prepare_test_dataset
 from agentomics.datasets.datasets_interactive import (
     get_all_datasets_info,
     interactive_dataset_selection,
@@ -238,17 +241,12 @@ def _run_agent_in_docker(
     )
 
 
-def _run_test_evaluation_in_docker(
+def _run_inference_on_test_input(
     image: str,
     cpu_only: bool,
     workspace_directory: Path,
-    dataset_directory: Path,
+    test_input: Path,
 ) -> None:
-    test_input = dataset_directory / "test"
-    if not test_input.is_dir():
-        print(f"No test split found at {test_input}; skipping test evaluation.")
-        return
-
     print(f"Evaluating the best iteration on {test_input}")
     run_inference_in_docker(
         argparse.Namespace(
@@ -267,6 +265,53 @@ def _run_test_evaluation_in_docker(
             cpu_only=cpu_only,
         )
     )
+
+
+def _run_test_evaluation_in_docker(
+    image: str,
+    cpu_only: bool,
+    workspace_directory: Path,
+    dataset_directory: Path,
+) -> None:
+    test_directory = dataset_directory / "test"
+    if test_directory.is_dir():
+        _run_inference_on_test_input(
+            image, cpu_only, workspace_directory, test_directory
+        )
+        return
+
+    test_csv = dataset_directory / "test.csv"
+    if not test_csv.is_file():
+        print(
+            f"No test split found at {test_directory} or {test_csv}; "
+            "skipping test evaluation."
+        )
+        return
+
+    metadata_path = (
+        workspace_directory
+        / "prepared_datasets"
+        / dataset_directory.name
+        / "metadata.json"
+    )
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    with tempfile.TemporaryDirectory() as temporary_directory:
+        prepared_directory = Path(temporary_directory) / dataset_directory.name
+        prepare_test_dataset(
+            source_dir=dataset_directory,
+            destination_dir=prepared_directory,
+            task_type=metadata["task_type"],
+            input_structure=metadata["input_structure"],
+            label_to_scalar=metadata.get("label_to_scalar"),
+            label_column=metadata.get("label_column"),
+            id_column=metadata.get("id_column"),
+        )
+        _run_inference_on_test_input(
+            image,
+            cpu_only,
+            workspace_directory,
+            prepared_directory / "test",
+        )
 
 
 def _run_reporting_in_docker(

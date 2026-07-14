@@ -29,11 +29,14 @@ CSV_CONVERTED_SOURCE_DIR_NAME = "_csv_converted_source"
 ALLOWED_PUBLIC_CSV_DATASET_ENTRIES = {
     TRAIN_CSV_FILE_NAME,
     VALIDATION_CSV_FILE_NAME,
+    TEST_CSV_FILE_NAME,
     SUPPLEMENTARY_DIR_NAME,
     METADATA_FILE_NAME,
     DATASET_DESCRIPTION_FILE_NAME,
 }
-ALLOWED_TEST_CSV_DATASET_ENTRIES = {TEST_CSV_FILE_NAME, METADATA_FILE_NAME}
+ALLOWED_TEST_CSV_DATASET_ENTRIES = (
+    ALLOWED_PUBLIC_CSV_DATASET_ENTRIES | {TEST_CSV_FILE_NAME}
+)
 
 
 def is_public_csv_dataset(source_dir: Path) -> bool:
@@ -72,20 +75,34 @@ def convert_csv_dataset_to_standard_raw_dataset(
         splits=splits,
         id_column=id_column,
     )
-    _write_preserved_metadata(converted_source_dir, source_metadata, task_type)
+    _write_preserved_metadata(
+        converted_source_dir,
+        source_metadata,
+        task_type,
+        label_column,
+        id_column,
+    )
     _link_optional_dataset_files(source_dir, converted_source_dir)
     return converted_source_dir
 
 
-def convert_csv_test_dataset_to_standard_raw_dataset(source_dir: Path, destination_dir: Path) -> Path:
+def convert_csv_test_dataset_to_standard_raw_dataset(
+    source_dir: Path,
+    destination_dir: Path,
+    label_column: str | None = None,
+    id_column: str | None = None,
+) -> Path:
     source_dir = Path(source_dir)
     _validate_raw_csv_dataset_entries(source_dir, ALLOWED_TEST_CSV_DATASET_ENTRIES)
 
     source_metadata = _load_metadata(source_dir)
-    label_column = source_metadata.get(CSV_LABEL_COLUMN_METADATA_KEY)
+    label_column = label_column or source_metadata.get(
+        CSV_LABEL_COLUMN_METADATA_KEY
+    )
     if label_column is None:
         raise ValueError("CSV test dataset requires 'label_column' in metadata.json.")
-    id_column = source_metadata.get(CSV_ID_COLUMN_METADATA_KEY)
+    if id_column is None:
+        id_column = source_metadata.get(CSV_ID_COLUMN_METADATA_KEY)
 
     converted_source_dir = _converted_source_dir(destination_dir)
     remove_path(converted_source_dir)
@@ -175,8 +192,19 @@ def _resolve_csv_columns(source_metadata: dict, train_df: pd.DataFrame, interact
     return str(label_column), str(id_column) if id_column is not None else None
 
 
-def _write_preserved_metadata(converted_source_dir: Path, source_metadata: dict, task_type: str | None) -> None:
-    converted_metadata = {**source_metadata}
+def _write_preserved_metadata(
+    converted_source_dir: Path,
+    source_metadata: dict,
+    task_type: str | None,
+    label_column: str,
+    id_column: str | None,
+) -> None:
+    converted_metadata = {
+        **source_metadata,
+        CSV_LABEL_COLUMN_METADATA_KEY: label_column,
+    }
+    if id_column is not None:
+        converted_metadata[CSV_ID_COLUMN_METADATA_KEY] = id_column
     if task_type is not None:
         converted_metadata["task_type"] = task_type
     if converted_metadata:
