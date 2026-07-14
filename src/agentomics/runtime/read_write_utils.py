@@ -14,6 +14,7 @@ from agentomics.runtime.filesystem import (
     remove_path,
 )
 from agentomics.utils.config import Config
+from agentomics.utils.versioning import check_run_compatible
 
 def initialize_run_directories(config: Config) -> None:
     config.markdown_reports_dir.mkdir(parents=True, exist_ok=True)
@@ -37,6 +38,7 @@ def load_config(config_path: Path | str, missing_ok: bool = False) -> Config | N
     payload = json.loads(config_path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise ValueError(f"Expected a JSON object at {config_path}.")
+    check_run_compatible(payload["agentomics_version"])
     return Config(**payload)
 
 def load_config_from_run_dir(run_dir: Path | str, missing_ok: bool = False) -> Config | None:

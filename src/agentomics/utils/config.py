@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from agentomics.runtime.system_resources import get_resources_summary
+from agentomics.utils.versioning import get_version
 
 
 @dataclass(kw_only=True)
@@ -66,6 +67,7 @@ class Config:
     agent_id: str
     task_type: str
     input_structure: list[str]
+    agentomics_version: str = get_version()
 
     # Optional, default values can be overwritten through the CLI
     user_prompt: str = DEFAULT_USER_PROMPT

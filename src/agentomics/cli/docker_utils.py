@@ -5,8 +5,10 @@ import os
 import shutil
 import subprocess
 
+from agentomics.utils.versioning import get_version
 
-DEFAULT_IMAGE = "biogemt/agentomics:latest"
+
+DEFAULT_IMAGE = f"biogemt/agentomics:{get_version()}"
 CONTAINER_PYTHON = "/opt/conda/envs/agentomics-env/bin/python"
 
 def create_parser(description: str) -> argparse.ArgumentParser:
