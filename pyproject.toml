@@ -40,9 +40,12 @@ agentomics-check-dataset = "agentomics.cli.check_dataset:main"
 [tool.setuptools.dynamic]
 version = { attr = "agentomics.__version__" }
 
-[tool.setuptools.packages.find]
-where = ["src"]
-include = ["agentomics*"]
-
-[tool.setuptools.package-data]
-"agentomics.utils.providers" = ["configured_providers.yaml"]
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = [
+    "agentomics",
+    "agentomics.cli",
+    "agentomics.datasets",
+    "agentomics.runtime",
+    "agentomics.utils",
+]
