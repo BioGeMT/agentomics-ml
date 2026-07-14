@@ -229,14 +229,17 @@ def _run_agent_in_docker(
     docker_arguments = _docker_environment_arguments(agent_id)
     if arguments.provider == "ollama":
         docker_arguments.extend(["--network", "host"])
-    run_python_in_docker(
+    # A non-zero exit is an expected outcome (for example, no best-iteration
+    # snapshot); the workflow already reports it, so return the code instead of
+    # raising and let the caller skip post-run steps cleanly.
+    return run_python_in_docker(
         image=arguments.image,
         cpu_only=arguments.cpu_only,
         mounts=mounts,
         python_arguments=container_arguments,
         docker_arguments=docker_arguments,
+        check=False,
     )
-    return 0
 
 
 def _run_test_evaluation_in_docker(
@@ -330,7 +333,7 @@ def main() -> int:
         agent_id,
         dataset_mounts,
     )
-    if _is_agent_run(arguments):
+    if _is_agent_run(arguments) and exit_code == 0:
         try:
             _run_test_evaluation_in_docker(
                 image=arguments.image,

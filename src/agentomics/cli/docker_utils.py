@@ -28,7 +28,8 @@ def run_python_in_docker(
     mounts: list[str],
     python_arguments: list[str],
     docker_arguments: list[str] | None = None,
-) -> None:
+    check: bool = True,
+) -> int:
     if shutil.which("docker") is None:
         raise RuntimeError("Missing required command: docker")
 
@@ -51,4 +52,4 @@ def run_python_in_docker(
         command.extend(["--mount", mount])
     command.extend(["--entrypoint", CONTAINER_PYTHON, image])
     command.extend(python_arguments)
-    subprocess.run(command, check=True)
+    return subprocess.run(command, check=check).returncode
