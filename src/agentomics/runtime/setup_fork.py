@@ -5,10 +5,13 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from runtime.conda_utils import ensure_environment_from_descriptor
-from runtime.git_checkpoints import create_and_checkout_branch_at_checkpoint
-from runtime.read_write_utils import load_config_from_run_dir, replace_string_in_tree_files
-from utils.config import Config
+from agentomics.runtime.conda_utils import (
+    ensure_environment_from_descriptor,
+    get_iteration_environment_descriptor_path,
+)
+from agentomics.runtime.git_checkpoints import create_and_checkout_branch_at_checkpoint
+from agentomics.runtime.read_write_utils import load_config_from_run_dir, replace_string_in_tree_files
+from agentomics.utils.config import Config
 
 
 def fork_run(
@@ -57,12 +60,14 @@ def fork_run(
 
     # 4. Rebuild the untracked Conda envs from the checked-out descriptors.
     ensure_environment_from_descriptor(
-        target_run_dir / "shared" / "environment.yml",
-        target_run_dir / "shared" / ".conda" / "envs" / f"{target_agent_id}_env",
+        target_run_dir / Config.SHARED_DIRNAME / Config.ENVIRONMENT_DESCRIPTOR_FILENAME,
+        target_run_dir / Config.SHARED_DIRNAME / ".conda" / "envs" / f"{target_agent_id}_env",
     )
     if (target_workspace_dir / Config.BEST_ITERATION_SNAPSHOT_DIRNAME / Config.RUNTIME_INFO_DIRNAME / Config.ITERATION_METADATA_FILENAME).exists():
         ensure_environment_from_descriptor(
-            target_workspace_dir / Config.BEST_ITERATION_SNAPSHOT_DIRNAME / "environment.yml",
+            get_iteration_environment_descriptor_path(
+                target_workspace_dir / Config.BEST_ITERATION_SNAPSHOT_DIRNAME
+            ),
             target_workspace_dir / Config.BEST_ITERATION_SNAPSHOT_DIRNAME / ".conda" / "envs" / f"{target_agent_id}_env",
         )
 

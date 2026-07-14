@@ -8,12 +8,12 @@ from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Any
 
-from runtime.conda_utils import export_shared_environment_descriptor
-from runtime.filesystem import (
+from agentomics.runtime.conda_utils import export_shared_environment_descriptor
+from agentomics.runtime.filesystem import (
     chown_tree_to_root,
     remove_path,
 )
-from utils.config import Config
+from agentomics.utils.config import Config
 
 def initialize_run_directories(config: Config) -> None:
     config.markdown_reports_dir.mkdir(parents=True, exist_ok=True)
@@ -52,9 +52,12 @@ def initialize_current_iteration_workspace(config: Config) -> None:
 
 def archive_current_iteration(config: Config, iteration: int) -> None:
     export_shared_environment_descriptor(config)
-    shared_environment_path = config.shared_dir / "environment.yml"
+    shared_environment_path = config.shared_dir / Config.ENVIRONMENT_DESCRIPTOR_FILENAME
     if shared_environment_path.exists():
-        shutil.copy2(shared_environment_path, config.current_iteration_runtime_info_dir / "environment.yml")
+        shutil.copy2(
+            shared_environment_path,
+            config.current_iteration_runtime_info_dir / Config.ENVIRONMENT_DESCRIPTOR_FILENAME,
+        )
 
     current_iteration_dir = config.current_iteration_dir
     archived_iteration_dir = config.iteration_dir(iteration)

@@ -12,11 +12,11 @@ SRC_PATH = REPO_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-from agents.steps.data_split import DataSplitOutput, DataSplitStep
-from agents.steps.validation_evaluation import ValidationEvaluationOutput, ValidationEvaluationStep
-from runtime.best_iteration_snapshot import update_best_iteration_snapshot
-from runtime.generate_final_reports import gather_iteration_inputs
-from runtime.read_write_utils import (
+from agentomics.agents.steps.data_split import DataSplitOutput, DataSplitStep
+from agentomics.agents.steps.validation_evaluation import ValidationEvaluationOutput, ValidationEvaluationStep
+from agentomics.runtime.best_iteration_snapshot import update_best_iteration_snapshot
+from agentomics.runtime.generate_final_reports import gather_iteration_inputs
+from agentomics.runtime.read_write_utils import (
     initialize_current_iteration_metadata,
     initialize_current_iteration_state,
     initialize_current_iteration_workspace,
@@ -25,8 +25,8 @@ from runtime.read_write_utils import (
     save_config,
     update_current_iteration_state,
 )
-from runtime.filesystem import rewrite_symlinks_to_absolute, validate_symlinks_targets_in
-from utils.config import Config
+from agentomics.runtime.filesystem import rewrite_symlinks_to_absolute, validate_symlinks_targets_in
+from agentomics.utils.config import Config
 
 
 def _write_split_folder(split_path: Path, row_id: str = "row-1") -> None:
@@ -122,7 +122,7 @@ class TestBestIterationSnapshot(unittest.TestCase):
         conda_env = self.config.shared_dir / ".conda" / "envs" / f"{self.config.agent_id}_env"
         conda_env.mkdir(parents=True, exist_ok=True)
 
-        with patch("runtime.best_iteration_snapshot.export_environment_descriptor_to_path"):
+        with patch("agentomics.runtime.best_iteration_snapshot.export_environment_descriptor_to_path"):
             update_best_iteration_snapshot(self.config, iteration=1)
 
         self.assertTrue((self.config.best_iteration_snapshot_dir / "inference.py").exists())
@@ -486,7 +486,7 @@ class TestFinalReportSplitLabels(unittest.TestCase):
         (snapshot_dir / Config.RUNTIME_INFO_DIRNAME / Config.ITERATION_METADATA_FILENAME).write_text(
             json.dumps({"iteration": 0}), encoding="utf-8"
         )
-        # Artifacts written post-run by scripts/inference.sh into the snapshot.
+        # Artifacts written by the post-run test evaluation into the snapshot.
         (snapshot_dir / "eval_predictions_test.csv").write_text(
             "id,prediction,probability_1\nt-0,1,0.9\n", encoding="utf-8"
         )

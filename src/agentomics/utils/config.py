@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import ClassVar
 
-from runtime.system_resources import get_resources_summary
+from agentomics.runtime.system_resources import get_resources_summary
 
 
 @dataclass(kw_only=True)
@@ -20,6 +20,7 @@ class Config:
     SYSTEM_PROMPT_FILENAME: ClassVar[str] = "system_prompt.txt"
     ITERATION_METADATA_FILENAME: ClassVar[str] = "iteration_metadata.json"
     ITERATION_STATE_FILENAME: ClassVar[str] = "iteration_state.json"
+    ENVIRONMENT_DESCRIPTOR_FILENAME: ClassVar[str] = "environment.yml"
     STEP_OUTPUT_FILENAME: ClassVar[str] = "output.json"
 
     DEFAULT_ITERATIONS: ClassVar[int] = 5
