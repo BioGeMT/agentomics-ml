@@ -9,7 +9,7 @@ SRC_PATH = REPO_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-from datasets.dataset_preparation import check_dataset_prepared, prepare_dataset, prepare_test_dataset
+from agentomics.datasets.dataset_preparation import check_dataset_prepared, prepare_dataset, prepare_test_dataset
 
 DATASET_NAME = "publishing_dataset"
 

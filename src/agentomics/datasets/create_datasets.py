@@ -1,4 +1,5 @@
 from pathlib import Path
+import gzip
 import json
 import os
 import shutil
@@ -6,7 +7,7 @@ import argparse
 import urllib.request
 import zipfile
 
-from datasets.data_contract import (
+from agentomics.datasets.data_contract import (
     DATASET_DESCRIPTION_FILE_NAME,
     ID_COLUMN_NAME,
     INPUT_DIR_NAME,
@@ -17,8 +18,9 @@ from datasets.data_contract import (
     TRAIN_SPLIT,
 )
 
-REPO_PATH = Path(os.path.abspath(os.path.dirname(__file__))).parent.parent
+REPO_PATH = Path.cwd()
 FREE_SPOKEN_DIGIT_DATASET_VERSION = "v1.0.10"
+MIRBENCH_ZENODO_RECORD_ID = "20540907"
 
 MIRBENCH_DATASETS = {
     "AGO2_CLASH_Hejret2023": {
@@ -73,9 +75,8 @@ def _make_split_dirs(dataset_dir: Path, split_name: str, input_subdir: str | Non
 
 def generate_mirbench_files(dataset: str | None = None):
     import pandas as pd
-    from miRBench.dataset import download_dataset as mirbench_download_dataset
 
-    from datasets.csv_converter import convert_csv_dataset
+    from agentomics.datasets.csv_converter import convert_csv_dataset
 
     names = [dataset] if dataset is not None else list(MIRBENCH_DATASETS.keys())
 
@@ -91,8 +92,19 @@ def generate_mirbench_files(dataset: str | None = None):
         for split in info["splits"]:
             download_path = REPO_PATH / ".miRBench"
             os.makedirs(download_path, exist_ok=True)
-            mirbench_download_dataset(dataset_name, download_path=download_path / 'miRBench', split=split)
-            df = pd.read_csv(download_path / 'miRBench', sep="\t")
+            archive_path = download_path / f"{dataset_name}_{split}.tsv.gz"
+            dataset_path = archive_path.with_suffix("")
+            if not dataset_path.exists():
+                if not archive_path.exists():
+                    url = (
+                        f"https://zenodo.org/records/{MIRBENCH_ZENODO_RECORD_ID}/files/"
+                        f"{archive_path.name}?download=1"
+                    )
+                    urllib.request.urlretrieve(url, archive_path)
+                with gzip.open(archive_path, "rb") as source:
+                    with open(dataset_path, "wb") as destination:
+                        shutil.copyfileobj(source, destination)
+            df = pd.read_csv(dataset_path, sep="\t")
             df = df.rename(columns={"label": LABEL_COLUMN})
             split_frames[split] = df
 
@@ -107,7 +119,7 @@ def generate_genomic_benchmarks_files(dataset: str | None = None):
     import pandas as pd
     from genomic_benchmarks.loc2seq import download_dataset
 
-    from datasets.csv_converter import convert_csv_dataset
+    from agentomics.datasets.csv_converter import convert_csv_dataset
 
     names = [dataset] if dataset is not None else list(GENOMIC_BENCHMARKS_DATASETS.keys())
 
@@ -147,7 +159,7 @@ def generate_breast_cancer_files(_dataset_name: str = "breast_cancer") -> None:
     from sklearn.datasets import load_breast_cancer
     from sklearn.model_selection import train_test_split
 
-    from datasets.csv_converter import convert_csv_dataset
+    from agentomics.datasets.csv_converter import convert_csv_dataset
 
     dataset_dir = _reset_dataset_dir(_dataset_name)
     data = load_breast_cancer(as_frame=True)

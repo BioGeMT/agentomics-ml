@@ -10,7 +10,7 @@ SRC_PATH = REPO_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-from datasets.csv_converter import convert_csv_dataset
+from agentomics.datasets.csv_converter import convert_csv_dataset
 
 
 class CsvConverterTest(unittest.TestCase):
