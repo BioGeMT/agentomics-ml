@@ -29,6 +29,7 @@ def run_python_in_docker(
     python_arguments: list[str],
     docker_arguments: list[str] | None = None,
     check: bool = True,
+    timeout_seconds: int | None = None,
 ) -> int:
     if shutil.which("docker") is None:
         raise RuntimeError("Missing required command: docker")
@@ -52,4 +53,6 @@ def run_python_in_docker(
         command.extend(["--mount", mount])
     command.extend(["--entrypoint", CONTAINER_PYTHON, image])
     command.extend(python_arguments)
+    if timeout_seconds is not None:
+        command = ["timeout", str(timeout_seconds), *command]
     return subprocess.run(command, check=check).returncode
