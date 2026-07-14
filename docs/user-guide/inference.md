@@ -40,7 +40,7 @@ agentomics-inference \
 | `--all-iterations` | Run inference for every `run/iteration_N` against `--input` (see below) |
 | `--remove-conda-env` | Remove the model conda environment after inference |
 | `--cpu-only` | Run without GPU |
-| `--image` | Docker image to use (default: `biogemt/agentomics:latest`) |
+| `--image` | Docker image to use (default: `biogemt/agentomics:<installed-package-version>`; use this option for an explicit override) |
 | `--help` | Show help message |
 
 ## Docker Execution
@@ -62,7 +62,8 @@ environment is reused from the run, or rebuilt from
 `runtime_info/environment.yml` if absent. Pass `--remove-conda-env` to discard
 it afterward.
 
-Use another image with `--image <name>`.
+Use `--image <name>` to select another image explicitly, such as a local
+development build.
 
 ## Input Data Format
 

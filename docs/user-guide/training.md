@@ -45,7 +45,7 @@ agentomics-train \
 | `--label-col` | Label column name for **CSV-form** splits (overrides `metadata.json`). Not needed for folder splits, or when `metadata.json` declares `label_column` |
 | `--iteration-dir` | Code directory to use, relative to `--agent-dir` (default: `best_iteration_snapshot`) |
 | `--cpu-only` | Run without GPU |
-| `--image` | Docker image to use (default: `biogemt/agentomics:latest`) |
+| `--image` | Docker image to use (default: `biogemt/agentomics:<installed-package-version>`; use this option for an explicit override) |
 | `--help` | Show help message |
 
 ## Data Format

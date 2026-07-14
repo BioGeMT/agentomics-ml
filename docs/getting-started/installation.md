@@ -38,8 +38,9 @@ The launcher takes care of the container plumbing for you:
   [GPU Settings](../developer/gpu-settings.md)).
 - For the `codex` provider, `~/.codex` is mounted read-only automatically.
 
-By default the launcher uses `biogemt/agentomics:latest`. Override it with
-`--image <name>` to test a locally built image.
+By default the launcher uses the image matching the installed package version:
+`biogemt/agentomics:<installed-package-version>`. Use `--image <name>` only to
+select another image explicitly, such as a locally built development image.
 
 ### Building the image yourself
 
