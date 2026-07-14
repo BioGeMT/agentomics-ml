@@ -204,7 +204,7 @@ outputs/${agent_id}/
 │       └── plots/
 │           └── iter_<i>_<split>_*.png
 │
-├── logs/                           # Logs and debugging information
+├── logs/                           # Logs and metrics
 │   └── run_logs/
 │
 └── README.md                       # This file
