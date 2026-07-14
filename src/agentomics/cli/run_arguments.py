@@ -4,12 +4,7 @@ import argparse
 from pathlib import Path
 
 
-def create_run_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="Run the Agentomics model-development workflow.",
-        allow_abbrev=False,
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
+def add_run_arguments(parser: argparse.ArgumentParser) -> None:
     run_arguments = parser.add_argument_group("run configuration")
     run_arguments.add_argument(
         "--model",
@@ -206,5 +201,4 @@ def create_run_parser() -> argparse.ArgumentParser:
         "~/.codex. By default, results are written under ./outputs and datasets "
         "are read from ./datasets."
     )
-    return parser
 

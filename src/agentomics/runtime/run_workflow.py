@@ -10,7 +10,7 @@ from pathlib import Path
 
 import wandb
 
-from agentomics.cli.run_arguments import create_run_parser
+from agentomics.cli.run_arguments import add_run_arguments
 from agentomics.run_agent_interactive import run_agent_interactive
 from agentomics.run_logging.wandb_setup import resume_wandb_run
 from agentomics.runtime.filesystem import restore_host_ownership
@@ -196,7 +196,13 @@ def run_workflow(arguments: argparse.Namespace) -> int:
 
 
 def main() -> int:
-    return run_workflow(create_run_parser().parse_args())
+    parser = argparse.ArgumentParser(
+        description="Run the Agentomics model-development workflow.",
+        allow_abbrev=False,
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    add_run_arguments(parser)
+    return run_workflow(parser.parse_args())
 
 
 if __name__ == "__main__":

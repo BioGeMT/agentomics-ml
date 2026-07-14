@@ -6,11 +6,11 @@ import sys
 from pathlib import Path
 
 from agentomics.cli.docker_utils import (
-    DEFAULT_IMAGE,
+    create_parser,
     run_python_in_docker,
 )
 from agentomics.cli.inference import run_inference_in_docker
-from agentomics.cli.run_arguments import create_run_parser
+from agentomics.cli.run_arguments import add_run_arguments
 from agentomics.datasets.datasets_interactive import (
     get_all_datasets_info,
     interactive_dataset_selection,
@@ -39,12 +39,8 @@ PUBLIC_DATASET_ENTRY_NAMES = (
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = create_run_parser()
-    parser.add_argument(
-        "--image",
-        default=DEFAULT_IMAGE,
-        help="Docker image used for the worker",
-    )
+    parser = create_parser("Run the Agentomics model-development workflow.")
+    add_run_arguments(parser)
     return parser
 
 
