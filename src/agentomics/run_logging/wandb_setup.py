@@ -1,15 +1,13 @@
 import wandb
-import dotenv
 import os
 
 from wandb.errors import CommError
-from run_logging.logging_helpers import login_to_wandb
-from utils.config import Config
+from agentomics.run_logging.logging_helpers import login_to_wandb
+from agentomics.utils.config import Config
 import weave
 
 
 def setup_logging(config: Config, dir=None):
-    dotenv.load_dotenv()
     api_key = os.getenv("WANDB_API_KEY")
     wandb_project_name = os.getenv("WANDB_PROJECT_NAME")
     wandb_entity = os.getenv("WANDB_ENTITY")
@@ -38,8 +36,6 @@ def setup_logging(config: Config, dir=None):
         return None
 
 def resume_wandb_run(config: Config, dir=None):
-    dotenv.load_dotenv()  # env handling consistent
-
     api_key = os.getenv("WANDB_API_KEY")
     wandb_project_name = os.getenv("WANDB_PROJECT_NAME")
     wandb_entity = os.getenv("WANDB_ENTITY")

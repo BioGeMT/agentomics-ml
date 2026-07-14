@@ -10,11 +10,10 @@ if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
 WORKSPACE_DIR = "/workspace"
-PREPARED_DATASETS_DIR = str(REPO_ROOT / "prepared_datasets")
 
-from tools.tool_registry import create_tools
-from utils.config import Config
-from runtime.read_write_utils import (
+from agentomics.tools.tool_registry import create_tools
+from agentomics.utils.config import Config
+from agentomics.runtime.read_write_utils import (
     initialize_current_iteration_workspace,
     initialize_run_directories,
     save_config,
@@ -72,7 +71,6 @@ def get_shared_test_resources():
             'write_python_tool': tools_by_name['write_python'],
             'run_python_tool': tools_by_name['run_python'],
             'replace_tool': tools_by_name['replace'],
-            'test_datasets_dir': Path('../repository/test_datasets').resolve(),
         }
 
     return _shared_test_resources
@@ -91,4 +89,3 @@ class BaseAgentTest(unittest.TestCase):
         cls.write_python_tool = resources['write_python_tool']
         cls.run_python_tool = resources['run_python_tool']
         cls.replace_tool = resources['replace_tool']
-        cls.test_datasets_dir = resources['test_datasets_dir']

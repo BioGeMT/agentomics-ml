@@ -8,7 +8,6 @@
 
 set -e
 AGENTOMICS_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-source "$AGENTOMICS_DIR/scripts/bash_helpers.sh"
 
 cd "$AGENTOMICS_DIR"
 
@@ -53,7 +52,10 @@ fi
 
 AGENTOMICS_IMAGE="${USERNAME}/agentomics:${VERSION}"
 
-need_cmd docker
+if ! command -v docker >/dev/null 2>&1; then
+    echo "Error: Missing required command: docker" >&2
+    exit 1
+fi
 
 # Recreate buildx builder to ensure current proxy settings are applied
 docker buildx rm multiplatform 2>/dev/null || true

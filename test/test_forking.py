@@ -14,15 +14,15 @@ SRC_PATH = REPO_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-from runtime.setup_fork import fork_run
-from runtime.read_write_utils import replace_string_in_tree_files
-from runtime.git_checkpoints import (
+from agentomics.runtime.setup_fork import fork_run
+from agentomics.runtime.read_write_utils import replace_string_in_tree_files
+from agentomics.runtime.git_checkpoints import (
     build_iteration_end_commit_message,
     build_step_commit_message,
     _find_checkpoint_commit,
 )
-from runtime.read_write_utils import initialize_run_directories, save_config
-from utils.config import Config
+from agentomics.runtime.read_write_utils import initialize_run_directories, save_config
+from agentomics.utils.config import Config
 
 
 def _git(repo_dir: Path, args: list[str]) -> subprocess.CompletedProcess[str]:
@@ -177,12 +177,15 @@ class TestForkRun(unittest.TestCase):
 
         script = run_dir / "shared" / "train.py"
         script.write_text(f'data = "{self.source_workspace}/{Config.RUN_DIRNAME}/shared/data.csv"', encoding="utf-8")
-        (run_dir / "shared" / "environment.yml").write_text("name: fork-test\n", encoding="utf-8")
+        (run_dir / Config.SHARED_DIRNAME / Config.ENVIRONMENT_DESCRIPTOR_FILENAME).write_text(
+            "name: fork-test\n",
+            encoding="utf-8",
+        )
         (run_dir / "shared" / ".conda" / "envs" / f"{run_id}_env").mkdir(parents=True)
 
         _commit(self.source_workspace, f"agentomics/{run_id}/start", "init.txt")
 
-        current_iter = run_dir / "current_iteration" / "runtime_info"
+        current_iter = run_dir / "current_iteration" / Config.RUNTIME_INFO_DIRNAME
         current_iter.mkdir(parents=True)
         (current_iter / "iteration_metadata.json").write_text('{"iteration": 0}', encoding="utf-8")
         (current_iter / "iteration_state.json").write_text('{"status": "running"}', encoding="utf-8")
@@ -199,9 +202,11 @@ class TestForkRun(unittest.TestCase):
         best_snapshot_runtime_info = self.source_workspace / Config.BEST_ITERATION_SNAPSHOT_DIRNAME / Config.RUNTIME_INFO_DIRNAME
         best_snapshot_runtime_info.mkdir(parents=True, exist_ok=True)
         (best_snapshot_runtime_info / Config.ITERATION_METADATA_FILENAME).write_text('{"iteration": 0}', encoding="utf-8")
-        (best_snapshot_runtime_info / "environment.yml").write_text("name: fork-test\n", encoding="utf-8")
+        (best_snapshot_runtime_info / Config.ENVIRONMENT_DESCRIPTOR_FILENAME).write_text(
+            "name: fork-test\n",
+            encoding="utf-8",
+        )
         (self.source_workspace / Config.BEST_ITERATION_SNAPSHOT_DIRNAME / "snapshot_marker.txt").write_text("best", encoding="utf-8")
-        (self.source_workspace / Config.BEST_ITERATION_SNAPSHOT_DIRNAME / "environment.yml").write_text("name: fork-test\n", encoding="utf-8")
         (self.source_workspace / Config.BEST_ITERATION_SNAPSHOT_DIRNAME / ".conda" / "envs" / f"{run_id}_env").mkdir(parents=True)
         (self.source_workspace / "reports" / "markdown").mkdir(parents=True, exist_ok=True)
         (self.source_workspace / "reports" / "markdown" / "run_report_iter_0.md").write_text("report", encoding="utf-8")
@@ -211,7 +216,7 @@ class TestForkRun(unittest.TestCase):
 
     def _fork(self, source_run_id: str, target_run_id: str, **kwargs):
         self._build_source_run(source_run_id)
-        with patch("runtime.setup_fork.ensure_environment_from_descriptor") as ensure_environment:
+        with patch("agentomics.runtime.setup_fork.ensure_environment_from_descriptor") as ensure_environment:
             fork_run(
                 source_workspace_dir=self.source_workspace,
                 target_agent_id=target_run_id,
@@ -250,8 +255,16 @@ class TestForkRun(unittest.TestCase):
         self.assertFalse((self.target_workspace / "reports").exists())
         self.assertFalse((self.target_workspace / "extras").exists())
         ensure_environment.assert_called_once_with(
-            self.target_workspace / Config.RUN_DIRNAME / "shared" / "environment.yml",
-            self.target_workspace / Config.RUN_DIRNAME / "shared" / ".conda" / "envs" / "tgt_run_env",
+            self.target_workspace
+            / Config.RUN_DIRNAME
+            / Config.SHARED_DIRNAME
+            / Config.ENVIRONMENT_DESCRIPTOR_FILENAME,
+            self.target_workspace
+            / Config.RUN_DIRNAME
+            / Config.SHARED_DIRNAME
+            / ".conda"
+            / "envs"
+            / "tgt_run_env",
         )
 
     def test_syncs_shared_and_snapshot_environments_from_descriptors(self):
@@ -263,11 +276,11 @@ class TestForkRun(unittest.TestCase):
         self.assertFalse((target_snapshot_dir / ".conda").exists())
         ensure_environment.assert_has_calls([
             call(
-                target_run_dir / "shared" / "environment.yml",
-                target_run_dir / "shared" / ".conda" / "envs" / f"{target_run_id}_env",
+                target_run_dir / Config.SHARED_DIRNAME / Config.ENVIRONMENT_DESCRIPTOR_FILENAME,
+                target_run_dir / Config.SHARED_DIRNAME / ".conda" / "envs" / f"{target_run_id}_env",
             ),
             call(
-                target_snapshot_dir / "environment.yml",
+                target_snapshot_dir / Config.RUNTIME_INFO_DIRNAME / Config.ENVIRONMENT_DESCRIPTOR_FILENAME,
                 target_snapshot_dir / ".conda" / "envs" / f"{target_run_id}_env",
             ),
         ])
@@ -279,7 +292,7 @@ class TestForkRun(unittest.TestCase):
         (self.target_workspace / "stale.txt").write_text("stale", encoding="utf-8")
 
         with self.assertRaises(FileExistsError):
-            with patch("runtime.setup_fork.ensure_environment_from_descriptor"):
+            with patch("agentomics.runtime.setup_fork.ensure_environment_from_descriptor"):
                 fork_run(
                     source_workspace_dir=self.source_workspace,
                     target_agent_id="tgt_run",
@@ -333,12 +346,15 @@ class TestForkRun(unittest.TestCase):
             encoding="utf-8",
         )
         run_dir = source_config.run_dir
-        (run_dir / "shared" / "environment.yml").write_text("name: fork-test\n", encoding="utf-8")
+        (run_dir / Config.SHARED_DIRNAME / Config.ENVIRONMENT_DESCRIPTOR_FILENAME).write_text(
+            "name: fork-test\n",
+            encoding="utf-8",
+        )
         (run_dir / "shared" / ".conda" / "envs" / f"{run_id}_env").mkdir(parents=True)
         _commit(self.source_workspace, f"agentomics/{run_id}/start", "init.txt")
         _commit(self.source_workspace, build_iteration_end_commit_message(run_id, 0), "iter_end.txt")
 
-        with patch("runtime.setup_fork.ensure_environment_from_descriptor"):
+        with patch("agentomics.runtime.setup_fork.ensure_environment_from_descriptor"):
             fork_run(
                 source_workspace_dir=self.source_workspace,
                 target_agent_id="tgt_run",
@@ -366,7 +382,7 @@ class TestForkRun(unittest.TestCase):
         dangling.parent.mkdir(parents=True, exist_ok=True)
         dangling.symlink_to("/nonexistent/container/path/debug.log")
 
-        with patch("runtime.setup_fork.ensure_environment_from_descriptor"):
+        with patch("agentomics.runtime.setup_fork.ensure_environment_from_descriptor"):
             fork_run(
                 source_workspace_dir=self.source_workspace,
                 target_agent_id="tgt_run",
@@ -383,7 +399,7 @@ class TestForkRun(unittest.TestCase):
         tracked_file = self.source_workspace / "model_training_marker.txt"
         tracked_file.write_text("modified after commit", encoding="utf-8")
 
-        with patch("runtime.setup_fork.ensure_environment_from_descriptor"):
+        with patch("agentomics.runtime.setup_fork.ensure_environment_from_descriptor"):
             fork_run(
                 source_workspace_dir=self.source_workspace,
                 target_agent_id="tgt_run",
@@ -391,38 +407,6 @@ class TestForkRun(unittest.TestCase):
                 fork_from_step="data_split",
                 fork_from_iteration=0,
             )
-
-
-class TestBashHelpers(unittest.TestCase):
-    def _run_bash(self, snippet: str) -> subprocess.CompletedProcess[str]:
-        return subprocess.run(
-            ["bash", "-c", f"set -euo pipefail; source scripts/bash_helpers.sh; {snippet}"],
-            cwd=REPO_ROOT,
-            capture_output=True,
-            text=True,
-        )
-
-    def test_build_setup_fork_args_includes_optional_args_when_provided(self):
-        result = self._run_bash(
-            "build_setup_fork_args /src /tgt agent123 data_split 2; "
-            'printf "%s\\n" "${SETUP_FORK_ARGS[@]}"'
-        )
-        self.assertEqual(result.returncode, 0, msg=result.stderr)
-        args = result.stdout.splitlines()
-        self.assertIn("--fork-from-step", args)
-        self.assertIn("data_split", args)
-        self.assertIn("--fork-from-iteration", args)
-        self.assertIn("2", args)
-
-    def test_build_setup_fork_args_omits_optional_args_when_empty(self):
-        result = self._run_bash(
-            "build_setup_fork_args /src /tgt agent123; "
-            'printf "%s\\n" "${SETUP_FORK_ARGS[@]}"'
-        )
-        self.assertEqual(result.returncode, 0, msg=result.stderr)
-        args = result.stdout.splitlines()
-        self.assertNotIn("--fork-from-step", args)
-        self.assertNotIn("--fork-from-iteration", args)
 
 
 if __name__ == "__main__":

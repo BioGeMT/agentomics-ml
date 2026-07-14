@@ -1,8 +1,9 @@
 # CLI Options
 
-Complete reference for `run.sh` command-line options.
+Complete reference for `agentomics-run` command-line options.
 
-In Docker mode, pass these after the image name (`docker run ... biogemt/agentomics:latest <options>`); in local mode, after `./run.sh`. See [Installation](../getting-started/installation.md).
+The command launches the Agentomics Docker image and forwards these options to
+the container. See [Installation](../getting-started/installation.md).
 
 ## Basic Options
 
@@ -26,8 +27,11 @@ The run stops when either the iteration count is reached or the timeout expires.
 |--------|-------------|
 | `--cpu-only` | Disable GPU acceleration |
 | `--test` | Run the integrated test suite |
+| `--image <name>` | Docker image to launch (default: `biogemt/agentomics:latest`) |
+| `--datasets-dir <path>` | Host directory to read datasets from (default: `./datasets`) |
+| `--workspace-dir <path>` | Host directory for this run's output (default: `./outputs/<agent_id>`) |
 
-For Docker vs local mode and Ollama setup, see [Installation](../getting-started/installation.md).
+For Docker and Ollama setup, see [Installation](../getting-started/installation.md).
 
 ## Listing Options
 
@@ -51,6 +55,7 @@ For Docker vs local mode and Ollama setup, see [Installation](../getting-started
 | `--split-allowed-iterations <n>` | Iterations that can modify train/val split (default 1) |
 | `--exploration-iterations <n>` | Baseline exploration iterations (default 4) |
 | `--tags <tag...>` | Space-separated tags for W&B logging |
+| `--conda-export-mode <full\|yaml>` | Best-iteration environment format: `full` copies the environment for fast reuse; `yaml` stores a portable `environment.yml` (default: `full`) |
 
 ## Forking
 
@@ -69,38 +74,38 @@ See [Forking a Run](../user-guide/forking.md) for a full guide and examples.
 ### Basic Run
 
 ```bash
-./run.sh --model openai/gpt-5.1-codex-max --dataset breast_cancer --iterations 10
+agentomics-run --model openai/gpt-5.1-codex-max --dataset breast_cancer --iterations 10
 ```
 
 ### Interactive Run
 
 ```bash
-./run.sh
+agentomics-run
 ```
 
 ### With Time Limit
 
 ```bash
-./run.sh --timeout 3600 --model openai/gpt-5.1-codex-max --dataset my_data
+agentomics-run --timeout 3600 --model openai/gpt-5.1-codex-max --dataset my_data
 ```
 
 ### Custom Optimization Goal
 
 ```bash
-./run.sh --user-prompt "Focus on interpretable models only" --model openai/gpt-5.1-codex-max
+agentomics-run --user-prompt "Focus on interpretable models only" --model openai/gpt-5.1-codex-max
 ```
 
 ### Using Ollama
 
 ```bash
 export OLLAMA_BASE_URL=http://localhost:11434/v1
-./run.sh --provider ollama --model llama3.1 --dataset my_data
+agentomics-run --provider ollama --model llama3.1 --dataset my_data
 ```
 
 ### CPU Only
 
 ```bash
-./run.sh --cpu-only --model openai/gpt-5.1-codex-max --dataset my_data
+agentomics-run --cpu-only --model openai/gpt-5.1-codex-max --dataset my_data
 ```
 
 ## Validation Metrics

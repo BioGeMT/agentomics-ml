@@ -7,8 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from runtime.filesystem import remove_path
-from utils.config import Config
+from agentomics.utils.config import Config
 
 
 def get_shared_conda_root(config: Config) -> Path:
@@ -24,25 +23,55 @@ def get_best_iteration_snapshot_environment_path(config: Config) -> Path:
 
 
 def get_iteration_environment_descriptor_path(iteration_dir: Path) -> Path:
-    return iteration_dir / "runtime_info" / "environment.yml"
+    return iteration_dir / Config.RUNTIME_INFO_DIRNAME / Config.ENVIRONMENT_DESCRIPTOR_FILENAME
 
 
 def get_iteration_test_environment_path(agent_dir: Path, iteration_dir: Path) -> Path:
     return agent_dir / "_iteration_test_envs" / iteration_dir.name / "env"
 
 
-def remove_environment(env_path: Path) -> None:
-    remove_path(env_path)
+def ensure_iteration_conda_environment(iteration_root: Path) -> Path:
+    if shutil.which("conda") is None:
+        raise RuntimeError("Missing required command: conda")
+    descriptor_path = get_iteration_environment_descriptor_path(iteration_root)
+    environment_root = iteration_root / ".conda" / "envs"
+    existing_environments = sorted(
+        path for path in environment_root.glob("*") if path.is_dir()
+    )
+    if existing_environments:
+        return existing_environments[0]
+
+    environment_path = environment_root / "model_env"
+    print(
+        f"No model conda env found under {environment_root}; "
+        f"creating one from {descriptor_path}"
+    )
+    environment_path.parent.mkdir(parents=True, exist_ok=True)
+    create_environment_from_descriptor(
+        descriptor_path,
+        env_path=environment_path,
+    )
+    return environment_path
 
 
-def create_environment_from_descriptor(descriptor_path: Path, env_path: Path) -> None:
-    if not descriptor_path.exists():
+def create_environment_from_descriptor(
+    descriptor_path: Path,
+    env_path: Path,
+) -> None:
+    if not descriptor_path.is_file():
         raise FileNotFoundError(f"Missing environment descriptor at {descriptor_path}.")
 
-    remove_environment(env_path)
-    env_path.parent.mkdir(parents=True, exist_ok=True)
     subprocess.run(
-        ["conda", "env", "create", "-p", str(env_path), "-f", str(descriptor_path), "-q"],
+        [
+            "conda",
+            "env",
+            "create",
+            "-p",
+            str(env_path),
+            "-f",
+            str(descriptor_path),
+            "-q",
+        ],
         check=True,
     )
 
@@ -51,7 +80,17 @@ def update_environment_from_descriptor(descriptor_path: Path, env_path: Path) ->
         raise FileNotFoundError(f"Missing environment descriptor at {descriptor_path}.")
 
     subprocess.run(
-        ["conda", "env", "update", "-p", str(env_path), "-f", str(descriptor_path), "-q", "--prune"],
+        [
+            "conda",
+            "env",
+            "update",
+            "-p",
+            str(env_path),
+            "-f",
+            str(descriptor_path),
+            "-q",
+            "--prune",
+        ],
         check=True,
     )
 
@@ -59,13 +98,38 @@ def ensure_environment_from_descriptor(descriptor_path: Path, env_path: Path) ->
     if env_path.exists():
         update_environment_from_descriptor(descriptor_path, env_path)
         return
-    create_environment_from_descriptor(descriptor_path, env_path)
+    env_path.parent.mkdir(parents=True, exist_ok=True)
+    create_environment_from_descriptor(
+        descriptor_path,
+        env_path=env_path,
+    )
+
+def run_python_in_environment(
+    environment_path: Path,
+    script_path: Path,
+    arguments: list[str],
+    capture_output: bool = True,
+    check: bool = False,
+    environment: dict[str, str] | None = None,
+):
+    command = [
+        "conda", "run", "-p", str(environment_path),
+        "python", str(script_path),
+    ]
+    command.extend(arguments)
+    return subprocess.run(
+        command,
+        capture_output=capture_output,
+        cwd=script_path.parent,
+        check=check,
+        env=environment,
+    )
 
 def export_shared_environment_descriptor(config: Config) -> None:
     conda_env = get_shared_environment_path(config)
     export_environment_descriptor_to_path(
         env_path=conda_env,
-        descriptor_path=config.shared_dir / "environment.yml",
+        descriptor_path=config.shared_dir / Config.ENVIRONMENT_DESCRIPTOR_FILENAME,
     )
 
 def export_environment_descriptor_to_path(env_path: Path, descriptor_path: Path) -> None:

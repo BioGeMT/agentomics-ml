@@ -1,7 +1,6 @@
 # Quick Start
 
-Get Agentomics-ML running in a few minutes with the pre-built Docker image. For
-a Conda-based setup, see [Local mode](installation.md#local-mode-no-docker).
+Get Agentomics-ML running in a few minutes with the pre-built Docker image.
 
 ## Prerequisites
 
@@ -10,42 +9,33 @@ a Conda-based setup, see [Local mode](installation.md#local-mode-no-docker).
 
 ## Steps
 
-### 1. Get the Repository and an Example Dataset
+### 1. Install the CLI and an Example Dataset
 
-Clone the repo and download a single example dataset to try
-(`AGO2_CLASH_Hejret2023`). The download script creates a small conda
-environment and writes the data to `datasets/`:
+Install the package from PyPI, then download a single example dataset to try
+(`AGO2_CLASH_Hejret2023`). No repository clone is required:
 
 ```bash
-git clone https://github.com/BioGeMT/Agentomics-ML.git
-cd Agentomics-ML
-
-./scripts/download_example_dataset.sh --dataset AGO2_CLASH_Hejret2023
+python3 -m pip install agentomics
+agentomics-download-dataset --dataset AGO2_CLASH_Hejret2023
 ```
 
 ### 2. Set a Provider Key
 
+Export at least one provider key (or put it in a `.env` file in the current
+directory):
+
 ```bash
-cp .env.example .env
-# Edit .env and set at least one provider key:
-# OPENROUTER_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY
+export OPENROUTER_API_KEY=...   # or OPENAI_API_KEY / ANTHROPIC_API_KEY
 ```
 
 ### 3. Run the Agent
 
-Mount your `datasets/` folder and a fresh directory for this run's results:
-
 ```bash
-mkdir -p outputs/my_run_1
-
-docker run --rm -it \
-  --env-file .env \
-  -v "$(pwd)/datasets:/repository/datasets" \
-  -v "$(pwd)/outputs/my_run_1:/workspace" \
-  -e HOST_UID=$(id -u) -e HOST_GID=$(id -g) \
-  biogemt/agentomics:latest \
-  --dataset AGO2_CLASH_Hejret2023
+agentomics-run --dataset AGO2_CLASH_Hejret2023
 ```
+
+`agentomics-run` launches the Agentomics Docker image for you, reads datasets
+from `./datasets`, and writes this run's results to `./outputs/<agent_id>/`.
 
 Drop `--dataset AGO2_CLASH_Hejret2023` to pick a model,
 dataset, and iteration count interactively instead.
@@ -64,35 +54,30 @@ datasets/my_dataset/
 ├── validation/         # Optional
 │   ├── input/
 │   └── labels.csv
+├── test/               # Optional; hidden from the agent and evaluated afterward
+│   ├── input/
+│   └── labels.csv
 └── dataset_description.md
 ```
 
-(Optional) Put hidden test data under the matching `test_datasets/` folder:
-
-```text
-test_datasets/my_dataset/
-└── test/
-    ├── input/
-    └── labels.csv
-```
-
-This held-out data is optional and is **not** used automatically during a run —
-score the finished model on it afterward with `scripts/inference.sh` (see
-[Running Inference](../user-guide/inference.md)). Run training with
-`--dataset my_dataset`. See [Preparing Datasets](../user-guide/datasets.md) for details.
+The held-out test split is optional. It is not mounted into the agent worker.
+After a successful run, Agentomics starts a separate evaluation container with
+read-only access to the test split, evaluates the best iteration, and includes
+the results in reports. Run training with `--dataset my_dataset`. See
+[Preparing Datasets](../user-guide/datasets.md) for details.
 
 ## Example Datasets
 
 Download example dataset to try:
 
 ```bash
-./scripts/download_example_dataset.sh
+agentomics-download-dataset
 ```
 
 List other available examples with:
 
 ```bash
-./scripts/download_example_dataset.sh --list
+agentomics-download-dataset --list
 ```
 
 ## What Happens Next
@@ -101,12 +86,12 @@ The agent will:
 
 1. Prepare your dataset
 2. Run iterative ML development cycles
-3. Save the best model to the mounted output directory (`outputs/my_run_1/`)
+3. Save the best model to the run's output directory (`outputs/<agent_id>/`)
 
 Results include trained models, inference scripts, markdown reports in `reports/markdown/`, and PDF reports in `reports/pdf/`.
 
 ## Next Steps
 
-- [Installation Options](installation.md) - Docker mode, local mode, Ollama
+- [Installation](installation.md) - Docker and Ollama setup
 - [Running the Agent](../user-guide/running-agent.md) - Advanced usage
 - [CLI Options](../configuration/cli-options.md) - All available flags

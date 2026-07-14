@@ -1,7 +1,7 @@
 # Re-training Models
 
 After the agent completes a run, you can re-train its model on new data using
-`scripts/train.sh`. The script reuses the run's training script, conda
+`agentomics-train`. The command reuses the run's training script, conda
 environment, and trained label mapping, so the model and preprocessing stay
 identical — only the data changes.
 
@@ -13,12 +13,13 @@ identical — only the data changes.
 ## Requirements
 
 - A completed agent output directory (a finished `outputs/<agent_id>` run)
-- [Docker](https://docs.docker.com/get-docker/) **or** [Conda](https://docs.conda.io/en/latest/miniconda.html)
+- The Agentomics package (`python3 -m pip install agentomics`)
+- [Docker](https://docs.docker.com/get-docker/)
 
 ## Basic Usage
 
 ```bash
-./scripts/train.sh \
+agentomics-train \
   --agent-dir outputs/<agent_id> \
   --dataset-dir /path/to/dataset \
   --artifacts-dir /path/to/output_artifacts
@@ -44,6 +45,7 @@ identical — only the data changes.
 | `--label-col` | Label column name for **CSV-form** splits (overrides `metadata.json`). Not needed for folder splits, or when `metadata.json` declares `label_column` |
 | `--iteration-dir` | Code directory to use, relative to `--agent-dir` (default: `best_iteration_snapshot`) |
 | `--cpu-only` | Run without GPU |
+| `--image` | Docker image to use (default: `biogemt/agentomics:latest`) |
 | `--help` | Show help message |
 
 ## Data Format
@@ -81,27 +83,21 @@ Label *values* are mapped to numbers using the **run's own mapping**, so your
 classes must match those the run was trained on — you don't encode them yourself.
 A class the model never saw is rejected with an error.
 
-## Docker Mode
+## Docker Execution
 
-To re-train inside the container, override the image entrypoint to run
-`train.sh`, and mount the run and your dataset. Writing artifacts into the
-already-mounted run directory avoids a separate output mount:
+The command mounts the agent directory,
+dataset, and artifact output directory automatically:
 
 ```bash
-docker run --rm --gpus all \
-  -v "$(pwd)/outputs/my_run_1:/agent" \
-  -v "$(pwd)/new_dataset:/data:ro" \
-  -e HOST_UID=$(id -u) -e HOST_GID=$(id -g) \
-  --entrypoint /repository/scripts/train.sh \
-  biogemt/agentomics:latest \
-  --agent-dir /agent \
-  --dataset-dir /data \
-  --artifacts-dir /agent/retrained_artifacts
+agentomics-train \
+  --agent-dir outputs/my_run_1 \
+  --dataset-dir new_dataset \
+  --artifacts-dir outputs/my_run_1/retrained_artifacts
 ```
 
 The retrained artifacts appear under `outputs/my_run_1/retrained_artifacts/`.
-Drop `--gpus all` (or add `--cpu-only` after the image) to train on CPU. No API
-key is needed — re-training does not call an LLM.
+Add `--cpu-only` to train without GPU access. No API key is needed — re-training
+does not call an LLM.
 
 ## How It Works
 
@@ -109,15 +105,14 @@ key is needed — re-training does not call an LLM.
    `input/` + a numeric `labels.csv` — using the run's task type and trained
    label mapping. CSV-form splits are converted to this shape automatically;
    folder-form splits are used as-is (only their labels are numericized).
-2. Reuses the model's conda environment under the code path's `.conda/envs/`,
-   recreating it from `environment.yml` if it's missing.
+2. Reuses the model's conda environment under the iteration directory's
+   `.conda/envs/`, recreating it from `runtime_info/environment.yml` if missing.
 3. Runs the run's `model_training/train.py` on the prepared `train`/`validation`.
 4. Writes artifacts to `--artifacts-dir` and prints a summary.
 
 ## GPU Support
 
-GPU is used automatically if available. Disable it with `--cpu-only` (local), or
-by omitting `--gpus` (Docker).
+GPU access is enabled by default. Disable it with `--cpu-only`.
 
 ## Output
 
@@ -146,7 +141,7 @@ The dataset folder contains files other than the splits. Keep only `train`/
 
 ### "environment.yml not found"
 
-The code path must contain `environment.yml` (or `runtime_info/environment.yml`).
+The iteration directory must contain `runtime_info/environment.yml`.
 Check that the run completed and produced a model.
 
 ### "labels.csv contains labels absent from label_to_scalar"

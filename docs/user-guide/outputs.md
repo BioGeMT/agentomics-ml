@@ -17,8 +17,8 @@ outputs/<agent_id>/
 │   │   ├── eval_predictions_validation.csv
 │   │   └── output.json
 │   ├── runtime_info/
-│   │   └── iteration_metadata.json
-│   ├── environment.yml
+│   │   ├── iteration_metadata.json
+│   │   └── environment.yml
 │   └── .conda/                        # Model conda environment (if present)
 ├── run/                      # All iterations + shared run state
 │   ├── shared/
@@ -50,13 +50,16 @@ The most important directory - contains the best-performing iteration's artifact
 | `model_training/train.py` | Script that trained the model |
 | `model_training/training_artifacts/` | Trained model files (format varies) |
 | `runtime_info/iteration_metadata.json` | Which iteration produced the snapshot |
-| `environment.yml` | Export of the conda env used |
+| `runtime_info/environment.yml` | Export of the conda env used |
 | `.conda/` | Bundled Conda environment for execution |
+| `eval_predictions_test.csv` | Best-model predictions for the optional test split |
+| `eval_predictions_test.numeric_labels.csv` | Numeric test labels used for metrics |
+| `eval_predictions_test.metrics.json` | Metrics for the optional test split |
 
 ### Using the Best Model
 
 ```bash
-./scripts/inference.sh --agent-dir outputs/<agent_id> --input data/input --output predictions.csv
+agentomics-inference --agent-dir outputs/<agent_id> --input data/input --output predictions.csv
 ```
 
 ## Iteration Directories
@@ -97,16 +100,15 @@ run/iteration_N/
 Metrics are tracked for each iteration:
 
 Metrics depend on the selected validation metric and task type. See
-`./run.sh --list-metrics` for the current list.
+`agentomics-run --list-metrics` for the current list.
 
 ## Where Outputs Are Stored
 
 The agent writes directly to the run workspace as it works — there is no
 separate staging area or temporary volume:
 
-- **Local mode:** `outputs/<agent_id>/`
-- **Docker mode:** the host directory you mount at `/workspace` (it receives the
-  single run's contents shown above).
+- The host workspace defaults to `outputs/<agent_id>/` and is mounted at
+  `/workspace` in the container.
 
 ## W&B Logging
 

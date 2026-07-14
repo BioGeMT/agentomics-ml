@@ -13,39 +13,39 @@ Without customization, the agent uses:
 ### Command Line
 
 ```bash
-./run.sh --user-prompt "Your custom instructions here"
+agentomics-run --user-prompt "Your custom instructions here"
 ```
 
 ### Examples
 
 **Simple models only:**
 ```bash
-./run.sh --user-prompt "Only create simple ML models like logistic regression and shallow decision trees"
+agentomics-run --user-prompt "Only create simple ML models like logistic regression and shallow decision trees"
 ```
 
 **Focus on interpretability:**
 ```bash
-./run.sh --user-prompt "Prioritize model interpretability over performance. Use models where feature importance can be easily explained."
+agentomics-run --user-prompt "Prioritize model interpretability over performance. Use models where feature importance can be easily explained."
 ```
 
 **Specific model type:**
 ```bash
-./run.sh --user-prompt "Use gradient boosting models like XGBoost or LightGBM"
+agentomics-run --user-prompt "Use gradient boosting models like XGBoost or LightGBM"
 ```
 
 **Handle imbalanced data:**
 ```bash
-./run.sh --user-prompt "The dataset is highly imbalanced. Use appropriate techniques like SMOTE, class weights, or focal loss."
+agentomics-run --user-prompt "The dataset is highly imbalanced. Use appropriate techniques like SMOTE, class weights, or focal loss."
 ```
 
 **Neural networks:**
 ```bash
-./run.sh --user-prompt "Focus on deep learning approaches. Design custom neural network architectures."
+agentomics-run --user-prompt "Focus on deep learning approaches. Design custom neural network architectures."
 ```
 
 **Quick iterations:**
 ```bash
-./run.sh --user-prompt "Keep models simple and training fast. Avoid complex architectures that take long to train."
+agentomics-run --user-prompt "Keep models simple and training fast. Avoid complex architectures that take long to train."
 ```
 
 ## What Custom Prompts Affect
@@ -69,7 +69,7 @@ Validation evaluation itself is deterministic: it runs the generated inference s
 Custom prompts work with all other options:
 
 ```bash
-./run.sh \
+agentomics-run \
   --user-prompt "Use only sklearn models, no neural networks" \
   --model openai/gpt-5.1-codex-max \
   --dataset my_data \

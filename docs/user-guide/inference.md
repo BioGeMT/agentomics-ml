@@ -1,17 +1,18 @@
 # Running Inference
 
-Use a trained model to predict on new data with `scripts/inference.sh`. It can
+Use a trained model to predict on new data with `agentomics-inference`. It can
 also compute metrics against true labels, and evaluate every archived iteration.
 
 ## Requirements
 
 - A completed agent output directory (a finished `outputs/<agent_id>` run)
-- [Docker](https://docs.docker.com/get-docker/) **or** [Conda](https://docs.conda.io/en/latest/miniconda.html)
+- The Agentomics package (`python3 -m pip install agentomics`)
+- [Docker](https://docs.docker.com/get-docker/)
 
 ## Basic Usage
 
 ```bash
-./scripts/inference.sh \
+agentomics-inference \
   --agent-dir outputs/<agent_id> \
   --input /path/to/data.csv \
   --output /path/to/predictions.csv
@@ -35,34 +36,33 @@ also compute metrics against true labels, and evaluate every archived iteration.
 | Argument | Description |
 |----------|-------------|
 | `--label-col` | Label column in the input **CSV** — when set, metrics are computed against it and written to `<output>.metrics.json`. Ignored for a split folder; there, metrics run only if the folder has a `labels.csv` |
-| `--code-path` | Code directory to use, relative to `--agent-dir` (default: `best_iteration_snapshot`) |
+| `--iteration-dir` | Iteration directory to use, relative to `--agent-dir` (default: `best_iteration_snapshot`) |
 | `--all-iterations` | Run inference for every `run/iteration_N` against `--input` (see below) |
 | `--remove-conda-env` | Remove the model conda environment after inference |
 | `--cpu-only` | Run without GPU |
+| `--image` | Docker image to use (default: `biogemt/agentomics:latest`) |
 | `--help` | Show help message |
 
-## Docker Mode
+## Docker Execution
 
-Override the image entrypoint to run `inference.sh`, mounting the run and a
-directory holding your input (and receiving the output):
+Docker is the default execution mode. The command mounts the agent directory,
+input, and output directory into the configured image automatically:
 
 ```bash
-docker run --rm --gpus all \
-  -v "$(pwd)/outputs/my_run_1:/agent" \
-  -v "$(pwd)/data:/data" \
-  -e HOST_UID=$(id -u) -e HOST_GID=$(id -g) \
-  --entrypoint /repository/scripts/inference.sh \
-  biogemt/agentomics:latest \
-  --agent-dir /agent \
-  --input /data/new.csv \
-  --output /data/predictions.csv \
+agentomics-inference \
+  --agent-dir outputs/my_run_1 \
+  --input data/new.csv \
+  --output data/predictions.csv \
   --label-col label
 ```
 
-Predictions (and metrics, when `--label-col` is set) appear in `./data`. Drop
-`--gpus all` (or add `--cpu-only` after the image) to run on CPU. The model
-environment is reused from the run, or rebuilt from `environment.yml` under
-`/agent` if absent — pass `--remove-conda-env` to discard it afterwards.
+Predictions (and metrics, when `--label-col` is set) appear in `./data`. Add
+`--cpu-only` to run without GPU access. The model
+environment is reused from the run, or rebuilt from
+`runtime_info/environment.yml` if absent. Pass `--remove-conda-env` to discard
+it afterward.
+
+Use another image with `--image <name>`.
 
 ## Input Data Format
 
@@ -106,7 +106,7 @@ label mapping, aligned to predictions by `id`, and written to
 `<output>.metrics.json` next to `--output`.
 
 ```bash
-./scripts/inference.sh \
+agentomics-inference \
   --agent-dir outputs/<agent_id> \
   --input labeled_data.csv \
   --output predictions.csv \
@@ -119,13 +119,17 @@ label mapping, aligned to predictions by `id`, and written to
 `--all-iterations` runs inference on each `run/iteration_N` snapshot in turn:
 
 ```bash
-./scripts/inference.sh \
+agentomics-inference \
   --agent-dir outputs/<agent_id> \
   --input labeled_data.csv \
   --output preds/out.csv \
   --label-col label \
   --all-iterations
 ```
+
+The command reports the number of successful and failed iterations. Individual
+failures do not stop the remaining iterations, but the command exits with an
+error if every iteration fails.
 
 Per-iteration predictions are written to `preds/<iteration>_predictions.csv`
 (and `<iteration>_predictions.metrics.json` when `--label-col` is set). Each
@@ -142,23 +146,22 @@ outputs/<agent_id>/best_iteration_snapshot/
 │   ├── train.py            # Training script
 │   └── training_artifacts/ # Model files (format varies)
 ├── runtime_info/
-│   └── iteration_metadata.json
-├── environment.yml
+│   ├── iteration_metadata.json
+│   └── environment.yml
 ├── .conda/                 # Model conda environment (if present)
 └── ...                     # Other artifacts (tokenizers, etc.)
 ```
 
 ## GPU Support
 
-GPU is used automatically when the container can see it. Pass `--gpus all` to the
-`docker run` command (Docker), and it works out of the box in local mode. To
-force CPU, add `--cpu-only` or omit `--gpus`.
+GPU is used automatically when the container can see it. To force CPU, add
+`--cpu-only`.
 
 ## Troubleshooting
 
 ### "environment.yml not found"
 
-The code path must contain `environment.yml` (or `runtime_info/environment.yml`).
+The iteration directory must contain `runtime_info/environment.yml`.
 Check that the run completed and produced a model.
 
 ### "Column mismatch"

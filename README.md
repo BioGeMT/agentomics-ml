@@ -17,35 +17,32 @@ For more details see: [preprint](https://www.biorxiv.org/content/10.64898/2026.0
   <img src="docs/assets/agentomics-overview.png" alt="agentomics overview" width="50%">
 </p>
 
-<!-- ## Try the DEMO -->
-<!-- [![Try in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1rxsGsIwxrE49E4rjzNh920s66UdG34xF?usp=sharing) -->
 ## Quick Start
 
+Install [Docker](https://www.docker.com/), then:
+
 ```bash
-git clone https://github.com/BioGeMT/agentomics-ml.git
-cd agentomics-ml
-cp .env.example .env
-# Edit .env and set at least one supported provider credential
+python3 -m pip install agentomics
 
-# Download example dataset
-./scripts/download_example_dataset.sh
+# Set at least one supported provider credential
+export OPENROUTER_API_KEY=...   # or OPENAI_API_KEY / ANTHROPIC_API_KEY
+
+# Download an example dataset into ./datasets
+agentomics-download-dataset
 # To see all available examples:
-./scripts/download_example_dataset.sh --list
+agentomics-download-dataset --list
 
-./run.sh
+agentomics-run
 ```
 
 Recommended model: `gpt-5.1-codex-max`
 
 Outputs are saved to `outputs/<agent_id>/`, including PDF reports in `outputs/<agent_id>/reports/pdf`.
 
-For more dataset examples and input layouts, see [Datasets](docs/user-guide/datasets.md).
-
-### Installation Requirements
-
-Agentomics can be run either:
-- **(Recommended)** with [Docker](https://www.docker.com/)
-- **Locally** with [Conda](https://docs.conda.io/)
+See [Installation](docs/getting-started/installation.md),
+[Datasets](docs/user-guide/datasets.md),
+[CLI Options](docs/configuration/cli-options.md), and
+[Running Inference](docs/user-guide/inference.md) for details.
 
 ### API Calls
 
@@ -79,8 +76,8 @@ outputs/<agent_id>/
 │   │   └── training_artifacts/
 │   ├── model_inference/
 │   │   └── inference.py
-│   ├── environment.yml
 │   └── runtime_info/
+│       └── environment.yml
 ├── run/
 │   ├── shared/
 │   │   ├── config.json

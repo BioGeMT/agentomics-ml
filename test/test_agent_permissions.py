@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 from test.test_utils import BaseAgentTest
-from utils.config import Config
+from agentomics.utils.config import Config
 
 class TestAgentPermissions(BaseAgentTest):
     """Test suite for agent isolation and security."""
@@ -63,17 +63,27 @@ class TestAgentPermissions(BaseAgentTest):
         self.assertNotIn("Command failed", result, "ls command should succeed")
     
     def test_agent_access_to_datasets(self):
-        """Test that agent can access all files in datasets and not the ones in test_datasets."""
-        for file in self.config.dataset_dir.iterdir():
-            if file.is_dir():
-                result = self.bash_tool.function(f"ls {self.config.dataset_dir}/{file.name} 2>&1")
-            else:
-                result = self.bash_tool.function(f"head -5 {self.config.dataset_dir}/{file.name} 2>&1")
-            self.assertNotIn("Permission denied", result, f"Agent should access the {file.name} file in datasets")
+        """Agent reads every entry exposed in its dataset directory, and the
+        co-located hidden ``test`` split is never handed to it.
 
-        test_set_dir = self.test_datasets_dir / self.config.dataset
-        result = self.bash_tool.function(f"ls {test_set_dir} 2>&1")
-        self.assertIn("No such file or directory", result, "Agent should not have access to test_datasets directory")
+        Production keeps the ``test`` split away from the agent by not mounting
+        it (see DatasetMountContractTest); the agent-visible dataset directory
+        must therefore never contain a ``test`` entry.
+        """
+        for entry in self.config.dataset_dir.iterdir():
+            if entry.is_dir():
+                result = self.bash_tool.function(f"ls {self.config.dataset_dir}/{entry.name} 2>&1")
+            else:
+                result = self.bash_tool.function(f"head -5 {self.config.dataset_dir}/{entry.name} 2>&1")
+            self.assertNotIn("Permission denied", result, f"Agent should access the {entry.name} entry in its dataset")
+
+        hidden_test_split = self.config.dataset_dir / "test"
+        result = self.bash_tool.function(f"ls {hidden_test_split} 2>&1")
+        self.assertIn(
+            "No such file or directory",
+            result,
+            "The co-located test split must not be exposed to the agent",
+        )
 
     def test_agent_access_to_repository_datasets(self):
         self.assertTrue(Path("/repository/datasets/").is_dir())

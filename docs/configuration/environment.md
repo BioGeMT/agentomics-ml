@@ -8,7 +8,7 @@ Configure Agentomics-ML using environment variables or a `.env` file.
 
 ```bash
 export OPENROUTER_API_KEY="your-key-here"
-./run.sh
+agentomics-run
 ```
 
 ### Option 2: .env File
@@ -20,9 +20,8 @@ cp .env.example .env
 # Edit .env with your values
 ```
 
-In Docker mode, env vars are not auto-loaded from a file — pass them to
-`docker run` with `--env-file .env` or `-e VAR=value`. In local mode, a `.env`
-file in the repo root is loaded automatically.
+The Python launcher forwards exported provider variables and automatically
+passes a `.env` file from the current directory to Docker.
 
 ## LLM Provider Keys
 
@@ -97,7 +96,7 @@ See [Proxy Settings](../developer/proxy-settings.md) for Docker proxy configurat
 
 Set `OLLAMA_BASE_URL` to make the Ollama provider selectable (e.g.
 `http://localhost:11434/v1`). The actual server URL is read from the `Ollama`
-entry's `base_url` in `src/utils/providers/configured_providers.yaml` — if your
+entry's `base_url` in `src/agentomics/utils/providers/configured_providers.yaml` — if your
 Ollama server is not at the default `http://localhost:11434/v1`, edit that entry
 to match.
 
@@ -136,7 +135,7 @@ WANDB_ENTITY=my-team
 # NO_PROXY=localhost,127.0.0.1
 
 # Ollama (optional) — enables the Ollama provider; set the server URL in
-# src/utils/providers/configured_providers.yaml if it differs from the default
+# src/agentomics/utils/providers/configured_providers.yaml if it differs from the default
 # OLLAMA_BASE_URL=http://localhost:11434/v1
 ```
 

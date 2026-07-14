@@ -6,6 +6,42 @@ import subprocess
 from pathlib import Path
 
 
+def resolve_existing_path(path: Path) -> Path:
+    path = path.expanduser()
+    if not path.exists():
+        raise FileNotFoundError(f"Path does not exist: {path}")
+    return path.resolve()
+
+def resolve_existing_directory(path: Path) -> Path:
+    path = resolve_existing_path(path)
+    if not path.is_dir():
+        raise NotADirectoryError(f"Expected a directory: {path}")
+    return path
+
+def resolve_output_path(path: Path) -> Path:
+    path = path.expanduser()
+    if not path.parent.is_dir():
+        raise FileNotFoundError(
+            f"Output parent directory does not exist: {path.parent}"
+        )
+    return path.parent.resolve() / path.name
+
+def require_empty_directory(path: Path) -> None:
+    if path.exists() and not path.is_dir():
+        raise NotADirectoryError(f"Expected a directory: {path}")
+    if path.is_dir() and any(path.iterdir()):
+        raise ValueError(f"Expected an empty directory: {path}")
+
+def resolve_iteration_root(agent_directory: Path, iteration_directory: Path) -> Path:
+    agent_root = agent_directory.resolve()
+    iteration_root = (agent_root / iteration_directory).resolve()
+    if iteration_directory.is_absolute() or not iteration_root.is_relative_to(agent_root):
+        raise ValueError(
+            "Iteration directory must be relative to and contained within "
+            "the agent directory"
+        )
+    return iteration_root
+
 def remove_path(path: Path) -> None:
     if path.is_symlink() or path.is_file():
         path.unlink(missing_ok=True)
@@ -60,3 +96,15 @@ def chown_tree_to_root(path: Path) -> None:
     """
     subprocess.run(["chown", "-R", "root:root", str(path)], check=True)
     subprocess.run(["chmod", "-R", "u=rwX,go=rX", str(path)], check=True)
+
+def restore_host_ownership(path: Path) -> None:
+    host_user_id = os.environ.get("HOST_UID")
+    if host_user_id is None or not path.exists():
+        return
+
+    command = ["chown"]
+    if path.is_dir():
+        command.append("-R")
+    host_group_id = os.environ.get("HOST_GID", host_user_id)
+    command.extend([f"{host_user_id}:{host_group_id}", str(path)])
+    subprocess.run(command, check=True)

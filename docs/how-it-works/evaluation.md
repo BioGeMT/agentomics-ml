@@ -23,10 +23,17 @@ After each iteration:
 
 ## Evaluating on a Held-out Test Set
 
-Test evaluation is not performed automatically during a run. To score the
-finished model on a labeled held-out set, run inference with `--label-col` after
-the run — metrics are computed by the bundled evaluator and written next to the
-predictions. See [Running Inference](../user-guide/inference.md#computing-metrics).
+The agent never sees the held-out `test/` split — it is withheld from the
+agent's mounts. If a dataset includes a co-located `test/` split, `agentomics-run`
+automatically evaluates the best iteration on it **after** the run, in a separate
+read-only evaluation container, and saves the predictions and metrics into the
+best-iteration snapshot (`eval_predictions_test.csv`,
+`eval_predictions_test.metrics.json`). Datasets without a `test/` split simply
+skip this step.
+
+To score the finished model on any other labeled set, run inference with
+`--label-col` — metrics are computed by the bundled evaluator and written next to
+the predictions. See [Running Inference](../user-guide/inference.md#computing-metrics).
 
 ## Classification Metrics
 
@@ -78,7 +85,7 @@ predictions. See [Running Inference](../user-guide/inference.md#computing-metric
 Choose with `--val-metric`:
 
 ```bash
-./run.sh --val-metric AUROC
+agentomics-run --val-metric AUROC
 ```
 
 The agent optimizes for this metric when selecting the best iteration.
@@ -162,7 +169,7 @@ If configured, metrics are logged to Weights & Biases:
 For advanced use, modify metric definitions in:
 
 ```
-src/utils/metrics.py
+src/agentomics/utils/metrics.py
 ```
 
 ## Next Steps

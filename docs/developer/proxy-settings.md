@@ -80,17 +80,21 @@ docker build \
 
 ## Running with Proxy
 
-In Docker mode, pass proxy settings to the container with `-e`:
+`agentomics-run` forwards the exported `HTTP_PROXY`, `HTTPS_PROXY`, and
+`ALL_PROXY` variables (and their lowercase forms) into the container:
 
 ```bash
-docker run --rm \
-  -e HTTP_PROXY=$HTTP_PROXY \
-  -e HTTPS_PROXY=$HTTPS_PROXY \
-  -e NO_PROXY=$NO_PROXY \
-  --env-file .env \
-  -v "$(pwd)/datasets:/repository/datasets" \
-  -v "$(pwd)/outputs/my_run_1:/workspace" \
-  biogemt/agentomics:latest --dataset my_dataset
+export HTTP_PROXY=http://proxy.company.com:8080
+export HTTPS_PROXY=http://proxy.company.com:8080
+agentomics-run --dataset my_dataset
+```
+
+To pass any other proxy variable (for example `NO_PROXY`), add it to your `.env`
+file — the launcher forwards the whole `.env` to the container:
+
+```bash
+# .env
+NO_PROXY=localhost,127.0.0.1,.internal
 ```
 
 ## Checking Proxy Variables
@@ -159,10 +163,6 @@ Check that the proxy allows connections to:
 - `openrouter.ai`
 
 Add to `NO_PROXY` if these should bypass the proxy.
-
-## Local Mode
-
-In local mode, proxy settings are inherited from your shell environment automatically.
 
 ## Related
 

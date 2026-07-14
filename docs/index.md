@@ -35,38 +35,29 @@ Agentomics-ML works like an ML engineer:
 | **Secure Execution** | Docker containers with read-only access to code and isolated execution |
 | **Reproducible** | Outputs include trained models, scripts, and conda environments |
 
-## Deployment Options
+## Deployment
 
-Choose the setup that works best for you:
+Agentomics runs in Docker. The Python commands launch the pre-built image and
+mount only the files needed by each workflow. [Local LLMs](configuration/providers.md#ollama-local-models)
+remain available through Ollama running on the host.
 
-| Mode | Description | Best For |
-|------|-------------|----------|
-| [Docker](getting-started/installation.md#docker-mode) | Run the pre-built image; everything runs in the container | Recommended default |
-| [Local Mode](getting-started/installation.md#local-mode-no-docker) | No Docker, uses conda directly | Development, Google Colab |
-| [Local LLMs](configuration/providers.md#ollama-local-models) | Run with Ollama | Privacy, offline use |
+## Main Commands
 
-## Main Scripts
-
-| Script | Purpose |
+| Command | Purpose |
 |--------|---------|
-| `run.sh` | Run the full agent workflow |
-| `scripts/train.sh` | Re-train a model with new data |
-| `scripts/inference.sh` | Run predictions on new data |
+| `agentomics-run` | Run the full agent workflow |
+| `agentomics-train` | Re-train a model with new data |
+| `agentomics-inference` | Run predictions on new data |
 
 ## Quick Example
 
 ```bash
-# Local mode: set your API key and run with conda
 export OPENROUTER_API_KEY="your-key-here"
 
-./run.sh
+agentomics-run
 ```
 
-The agent will guide you through selecting a model, dataset, and run parameters interactively. To run in a container instead, see [Docker mode](getting-started/installation.md#docker-mode).
-
-## Try It Now
-
-[:material-google: Google Colab Demo](https://colab.research.google.com/drive/1rxsGsIwxrE49E4rjzNh920s66UdG34xF?usp=sharing){ .md-button .md-button--primary }
+The agent will guide you through selecting a model, dataset, and run parameters interactively.
 
 ## License
 

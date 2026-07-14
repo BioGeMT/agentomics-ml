@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 
-from runtime.evaluate_result import get_metrics
-from runtime.filesystem import remove_path
-from utils.exceptions import AgentScriptFailed
-from datasets.data_contract import INPUT_DIR_NAME
+from agentomics.runtime.evaluate_result import get_metrics
+from agentomics.runtime.conda_utils import run_python_in_environment
+from agentomics.runtime.filesystem import remove_path
+from agentomics.utils.exceptions import AgentScriptFailed
+from agentomics.datasets.data_contract import INPUT_DIR_NAME
 
 
 def run_inference_script(
@@ -16,18 +16,20 @@ def run_inference_script(
     output_path: Path,
     artifacts_dir: Path,
     check: bool = False,
+    capture_output: bool = True,
+    environment: dict[str, str] | None = None,
 ):
-    return subprocess.run(
+    return run_python_in_environment(
+        env_path,
+        script_path,
         [
-            "conda", "run", "-p", str(env_path),
-            "python", str(script_path),
             "--input", str(input_path),
             "--output", str(output_path),
             "--artifacts-dir", str(artifacts_dir),
         ],
-        capture_output=True,
-        cwd=script_path.parent,
+        capture_output=capture_output,
         check=check,
+        environment=environment,
     )
 def run_inference_on_split(
     split_path: Path,

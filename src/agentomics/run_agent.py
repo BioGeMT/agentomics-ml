@@ -5,14 +5,14 @@ from pathlib import Path
 import wandb
 from timeout_function_decorator import timeout as timeout_decorator
 
-from run_logging.wandb_setup import setup_logging
-from runtime.git_checkpoints import initialize_repo_if_needed
-from runtime.read_write_utils import initialize_run_directories, load_dataset_metadata, save_config
-from runtime.run_lifecycle import run_agentomics
-from utils.config import Config
-from run_logging.env_utils import are_wandb_vars_available
-from utils.printing_utils import print_phase
-from utils.providers.provider import get_provider_from_string
+from agentomics.run_logging.wandb_setup import setup_logging
+from agentomics.runtime.git_checkpoints import initialize_repo_if_needed
+from agentomics.runtime.read_write_utils import initialize_run_directories, load_dataset_metadata, save_config
+from agentomics.runtime.run_lifecycle import run_agentomics
+from agentomics.utils.config import Config
+from agentomics.run_logging.env_utils import are_wandb_vars_available
+from agentomics.utils.printing_utils import print_phase
+from agentomics.utils.providers.provider import get_provider_from_string
 
 
 async def run_experiment(
@@ -95,7 +95,6 @@ async def run_experiment(
         )
     except TimeoutError:
         print("Timeout reached")
-        raise SystemExit(0)
 
     if config.wandb_run_id is not None:
         wandb.finish()

@@ -10,34 +10,19 @@ Forking lets you branch off from a completed checkpoint in an existing run and c
 
 ## Basic Usage
 
-In local mode, point `--fork-from-run` at an `outputs/<run_id>` directory:
+Point `--fork-from-run` at an `outputs/<run_id>` directory. The launcher mounts
+the source workspace read-only in the container:
 
 ```bash
-./run.sh \
+agentomics-run \
   --fork-from-run outputs/my_source_run \
   --model openai/gpt-5.1-codex-max \
   --iterations 3
 ```
 
-The fork starts from the latest checkpoint in that run and continues for 3 more iterations.
-
-### Forking in Docker Mode
-
-In Docker mode, `--fork-from-run` must point to a path **inside the container**.
-Mount the source run read-only and give the fork its own fresh output mount:
-
-```bash
-mkdir -p outputs/fork_1
-
-docker run --rm -it \
-  --env-file .env \
-  -v "$(pwd)/datasets:/repository/datasets" \
-  -v "$(pwd)/outputs/my_source_run:/source_run:ro" \
-  -v "$(pwd)/outputs/fork_1:/workspace" \
-  -e HOST_UID=$(id -u) -e HOST_GID=$(id -g) \
-  biogemt/agentomics:latest \
-  --fork-from-run /source_run --iterations 3
-```
+The fork starts from the latest checkpoint in that run and continues for 3 more
+iterations. The launcher mounts the source run read-only and writes the fork to
+a new `outputs/<agent_id>/` directory, leaving the source run untouched.
 
 ## Choosing a Checkpoint
 
@@ -45,10 +30,10 @@ By default, the fork starts from the latest checkpoint (the end of the last comp
 
 ```bash
 # Fork from the end of iteration 2
-./run.sh --fork-from-run outputs/my_run --fork-from-iteration 2
+agentomics-run --fork-from-run outputs/my_run --fork-from-iteration 2
 
 # Fork from after the data_split step in iteration 1
-./run.sh --fork-from-run outputs/my_run \
+agentomics-run --fork-from-run outputs/my_run \
   --fork-from-iteration 1 \
   --fork-from-step data_split
 ```
@@ -97,13 +82,14 @@ The forked run then continues from that state exactly as if the original run had
 
 **Note on supplementary materials**: Forked runs reference the same dataset directory as the source run. Any changes to dataset files (including `supplementary/`) will be visible to the fork.
 
-**Note on Docker exports**: When a Docker run is exported to `outputs/`, the split directories contain symbolic links pointing to the container-internal path `/repository/datasets/...`. These symlinks do not resolve on the host, and forked runs using local mode will be broken. When forking from a finished Docker run, make sure to use docker mode as well for the fork.  The forked container mounts `datasets/` at the same `/repository/datasets` path, so the symlinks resolve correctly inside the container.
+Split directories may contain symbolic links pointing to container paths. Forks
+run in the same Docker layout, so those links continue to resolve.
 
 ## Example: Extend a Completed Run
 
 ```bash
 # Original run finished after 5 iterations
-./run.sh \
+agentomics-run \
   --fork-from-run outputs/finished_run \
   --iterations 5   # run 5 more, for a total of 10
 ```
@@ -112,14 +98,14 @@ The forked run then continues from that state exactly as if the original run had
 
 ```bash
 # Fork A: aggressive regularization
-./run.sh \
+agentomics-run \
   --fork-from-run outputs/base_run \
   --fork-from-iteration 3 \
   --user-prompt "Focus on heavily regularized models to reduce overfitting" \
   --iterations 4
 
 # Fork B: ensemble approach
-./run.sh \
+agentomics-run \
   --fork-from-run outputs/base_run \
   --fork-from-iteration 3 \
   --user-prompt "Try ensemble methods combining multiple base learners" \
