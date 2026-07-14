@@ -21,9 +21,13 @@ class RunLauncherContainerContractTest(unittest.TestCase):
         self.assertIn('AGENTOMICS_ARGS+=(--datasets-dir "$AGENTOMICS_DIR/datasets")', self.script)
         self.assertNotIn("--prepared-datasets-dir", self.script)
 
-    def test_no_hidden_test_handling(self):
+    def test_test_evaluation_wired_via_inference_sh(self):
+        # The old separate hidden-test tree and flag are gone.
         self.assertNotIn("test_datasets", self.script)
         self.assertNotIn("--test-datasets-dir", self.script)
+        # Test evaluation now runs the best model on the co-located test split via inference.sh.
+        self.assertIn("scripts/inference.sh", self.script)
+        self.assertIn("datasets/$TEST_DATASET_NAME/test", self.script)
 
     def test_help_text_has_no_prepared_datasets_user_concept(self):
         help_block = self._block("show_help()", "EOF")

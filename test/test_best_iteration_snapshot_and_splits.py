@@ -15,7 +15,7 @@ if str(SRC_PATH) not in sys.path:
 from agents.steps.data_split import DataSplitOutput, DataSplitStep
 from agents.steps.validation_evaluation import ValidationEvaluationOutput, ValidationEvaluationStep
 from runtime.best_iteration_snapshot import update_best_iteration_snapshot
-from runtime.generate_final_reports import DatasetMeta, gather_iteration_inputs
+from runtime.generate_final_reports import gather_iteration_inputs
 from runtime.read_write_utils import (
     initialize_current_iteration_metadata,
     initialize_current_iteration_state,
@@ -436,8 +436,6 @@ class TestFinalReportSplitLabels(unittest.TestCase):
 
         inputs = gather_iteration_inputs(
             config=self.config,
-            test_labels_path=None,
-            dataset_meta=DatasetMeta(task_type="classification", numeric_label_col="numeric_label"),
             iteration=0,
         )
 
@@ -472,8 +470,6 @@ class TestFinalReportSplitLabels(unittest.TestCase):
 
         inputs = gather_iteration_inputs(
             config=self.config,
-            test_labels_path=None,
-            dataset_meta=DatasetMeta(task_type="classification", numeric_label_col="numeric_label"),
             iteration=0,
         )
 
@@ -482,6 +478,32 @@ class TestFinalReportSplitLabels(unittest.TestCase):
         self.assertIsNotNone(labels_by_split["validation"])
         self.assertTrue(labels_by_split["train"].exists())
         self.assertTrue(labels_by_split["validation"].exists())
+
+    def test_iteration_inputs_include_test_artifacts_from_snapshot(self):
+        # The best iteration snapshot points at iteration 0.
+        snapshot_dir = self.config.best_iteration_snapshot_dir
+        (snapshot_dir / Config.RUNTIME_INFO_DIRNAME).mkdir(parents=True, exist_ok=True)
+        (snapshot_dir / Config.RUNTIME_INFO_DIRNAME / Config.ITERATION_METADATA_FILENAME).write_text(
+            json.dumps({"iteration": 0}), encoding="utf-8"
+        )
+        # Artifacts written post-run by scripts/inference.sh into the snapshot.
+        (snapshot_dir / "eval_predictions_test.csv").write_text(
+            "id,prediction,probability_1\nt-0,1,0.9\n", encoding="utf-8"
+        )
+        (snapshot_dir / "eval_predictions_test.numeric_labels.csv").write_text(
+            "id,numeric_label\nt-0,1\n", encoding="utf-8"
+        )
+        (snapshot_dir / "eval_predictions_test.metrics.json").write_text(
+            json.dumps({"ACC": 1.0}), encoding="utf-8"
+        )
+
+        inputs = gather_iteration_inputs(config=self.config, iteration=0)
+
+        test_split = next((s for s in inputs.splits if s.split_name == "test"), None)
+        self.assertIsNotNone(test_split)
+        self.assertEqual(snapshot_dir / "eval_predictions_test.numeric_labels.csv", test_split.labeled_csv)
+        self.assertEqual(snapshot_dir / "eval_predictions_test.csv", test_split.preds_csv)
+        self.assertEqual({"ACC": 1.0}, test_split.metrics)
 
 
 class TestSplitSymlinkHelpers(unittest.TestCase):

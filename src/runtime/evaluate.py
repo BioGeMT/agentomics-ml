@@ -44,17 +44,14 @@ def main() -> None:
         sys.exit(f"Could not load run config under {args.agent_dir / Config.RUN_DIRNAME}")
 
     numeric_labels = _read_numeric_labels(args.labels, config)
-    tmp_labeled = args.predictions.parent / "._eval_labeled.csv"
-    try:
-        numeric_labels.to_csv(tmp_labeled, index=False)
-        metrics = get_metrics(
-            results_file=args.predictions,
-            test_file=tmp_labeled,
-            task_type=config.task_type,
-            numeric_label_col=NUMERIC_LABEL_COLUMN_NAME,
-        )
-    finally:
-        tmp_labeled.unlink(missing_ok=True)
+    labeled_path = args.predictions.parent / f"{args.predictions.stem}.numeric_labels.csv"
+    numeric_labels.to_csv(labeled_path, index=False)
+    metrics = get_metrics(
+        results_file=args.predictions,
+        test_file=labeled_path,
+        task_type=config.task_type,
+        numeric_label_col=NUMERIC_LABEL_COLUMN_NAME,
+    )
 
     print(json.dumps(metrics, indent=2))
     output_path = args.output or (args.predictions.parent / "metrics.json")

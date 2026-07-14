@@ -22,6 +22,7 @@ DATASET_DESCRIPTION_FILE_NAME = "dataset_description.md"
 ALLOWED_PUBLIC_DATASET_ENTRIES = {
     TRAIN_SPLIT,
     VALIDATION_SPLIT,
+    TEST_SPLIT,
     SUPPLEMENTARY_DIR_NAME,
     METADATA_FILE_NAME,
     DATASET_DESCRIPTION_FILE_NAME,
@@ -34,7 +35,7 @@ def record_input_dir_structure(input_dir: Path) -> list[str]:
 
     Only the top-level interface is recorded: required top-level files like data.zip
     must be present in every split, while sample files inside matching top-level
-    directories may differ between train/validation.
+    directories may differ between train/validation/test.
     """
     return sorted(
         f"{item.name}/" if item.is_dir() else item.name for item in Path(input_dir).iterdir()

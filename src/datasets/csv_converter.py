@@ -24,6 +24,7 @@ CSV_LABEL_COLUMN_METADATA_KEY = "label_column"
 CSV_ID_COLUMN_METADATA_KEY = "id_column"
 TRAIN_CSV_FILE_NAME = f"{TRAIN_SPLIT}.csv"
 VALIDATION_CSV_FILE_NAME = f"{VALIDATION_SPLIT}.csv"
+TEST_CSV_FILE_NAME = f"{TEST_SPLIT}.csv"
 CSV_CONVERTED_SOURCE_DIR_NAME = "_csv_converted_source"
 ALLOWED_PUBLIC_CSV_DATASET_ENTRIES = {
     TRAIN_CSV_FILE_NAME,
@@ -32,12 +33,17 @@ ALLOWED_PUBLIC_CSV_DATASET_ENTRIES = {
     METADATA_FILE_NAME,
     DATASET_DESCRIPTION_FILE_NAME,
 }
+ALLOWED_TEST_CSV_DATASET_ENTRIES = {TEST_CSV_FILE_NAME, METADATA_FILE_NAME}
 
 
 def is_public_csv_dataset(source_dir: Path) -> bool:
     source_dir = Path(source_dir)
     return not (source_dir / TRAIN_SPLIT).exists() and (source_dir / TRAIN_CSV_FILE_NAME).is_file()
 
+
+def is_test_csv_dataset(source_dir: Path) -> bool:
+    source_dir = Path(source_dir)
+    return not (source_dir / TEST_SPLIT).exists() and (source_dir / TEST_CSV_FILE_NAME).is_file()
 
 def convert_csv_dataset_to_standard_raw_dataset(
     source_dir: Path,
@@ -71,6 +77,28 @@ def convert_csv_dataset_to_standard_raw_dataset(
     return converted_source_dir
 
 
+def convert_csv_test_dataset_to_standard_raw_dataset(source_dir: Path, destination_dir: Path) -> Path:
+    source_dir = Path(source_dir)
+    _validate_raw_csv_dataset_entries(source_dir, ALLOWED_TEST_CSV_DATASET_ENTRIES)
+
+    source_metadata = _load_metadata(source_dir)
+    label_column = source_metadata.get(CSV_LABEL_COLUMN_METADATA_KEY)
+    if label_column is None:
+        raise ValueError("CSV test dataset requires 'label_column' in metadata.json.")
+    id_column = source_metadata.get(CSV_ID_COLUMN_METADATA_KEY)
+
+    converted_source_dir = _converted_source_dir(destination_dir)
+    remove_path(converted_source_dir)
+    _write_input_and_labels(
+        split_dir=converted_source_dir / TEST_SPLIT,
+        df=pd.read_csv(source_dir / TEST_CSV_FILE_NAME),
+        label_column=str(label_column),
+        id_prefix=TEST_SPLIT,
+        id_column=str(id_column) if id_column is not None else None,
+    )
+    return converted_source_dir
+
+
 def convert_inference_csv(
     csv_path: Path,
     output_split_dir: Path,
@@ -91,28 +119,19 @@ def convert_csv_dataset(
     output_dir: Path,
     label_column: str,
     splits: dict[str, pd.DataFrame],
-    test_output_dir: Path | None = None,
     id_column: str | None = None,
     task_type: str | None = None,
 ) -> None:
     """Convert tabular DataFrames into the folder-based dataset format."""
     if TRAIN_SPLIT not in splits:
         raise ValueError(f"A '{TRAIN_SPLIT}' split is required.")
-    if TEST_SPLIT in splits and test_output_dir is None:
-        raise ValueError(f"test_output_dir is required when a '{TEST_SPLIT}' split is provided.")
 
     output_dir = Path(output_dir)
-    test_output_dir = Path(test_output_dir) if test_output_dir is not None else None
-    if test_output_dir is not None and output_dir.resolve(strict=False) == test_output_dir.resolve(strict=False):
-        raise ValueError("test_output_dir must be different from output_dir.")
     output_dir.mkdir(parents=True, exist_ok=True)
-    if test_output_dir is not None:
-        test_output_dir.mkdir(parents=True, exist_ok=True)
 
     for split_name, df in splits.items():
-        split_output_dir = test_output_dir if split_name == TEST_SPLIT else output_dir
         _write_input_and_labels(
-            split_dir=split_output_dir / split_name,
+            split_dir=output_dir / split_name,
             df=df,
             label_column=label_column,
             id_prefix=split_name,

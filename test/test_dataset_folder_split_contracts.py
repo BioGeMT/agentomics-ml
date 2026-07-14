@@ -14,6 +14,7 @@ from datasets.data_contract import NUMERIC_LABEL_COLUMN_NAME, validate_and_read_
 from datasets.dataset_preparation import (
     check_dataset_prepared,
     prepare_dataset,
+    prepare_test_dataset,
 )
 from datasets.datasets_interactive import _get_single_dataset_info
 from utils.config import Config
@@ -145,6 +146,37 @@ class DatasetFolderSplitContractTest(unittest.TestCase):
 
             prepared_labels = (dest / "train" / "labels.csv").read_text(encoding="utf-8").splitlines()
             self.assertEqual(["id,numeric_label", "001,0", "002,1"], prepared_labels)
+
+    def test_prepare_test_dataset_rejects_unknown_test_labels(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            raw_dataset_dir = root / "datasets" / DATASET_NAME
+            dest = root / "prepared" / DATASET_NAME
+            raw_test_dataset_dir = root / "test_datasets" / DATASET_NAME
+            dest_test = root / "prepared_test" / DATASET_NAME
+            raw_dataset_dir.mkdir(parents=True)
+            raw_test_dataset_dir.mkdir(parents=True)
+            write_split(raw_dataset_dir, "train")
+            write_split(raw_test_dataset_dir, "test")
+            (raw_test_dataset_dir / "test" / "labels.csv").write_text(
+                "id,label\ntest-0,7\n",
+                encoding="utf-8",
+            )
+            train_metadata = prepare_dataset(
+                source_dir=raw_dataset_dir,
+                destination_dir=dest,
+                task_type="classification",
+            )
+
+            with self.assertRaises(ValueError) as ctx:
+                prepare_test_dataset(
+                    source_dir=raw_test_dataset_dir,
+                    destination_dir=dest_test,
+                    task_type=train_metadata["task_type"],
+                    input_structure=train_metadata["input_structure"],
+                    label_to_scalar=train_metadata.get("label_to_scalar"),
+                )
+            self.assertIn("not present in train", str(ctx.exception))
 
     def test_prepare_dataset_leaves_absent_validation_split_absent(self):
         with TemporaryDirectory() as tmp:

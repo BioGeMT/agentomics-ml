@@ -37,6 +37,10 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 from datasets.data_contract import LABELS_FILE_NAME, NUMERIC_LABEL_COLUMN_NAME, TRAIN_SPLIT, VALIDATION_SPLIT
 
+TEST_PREDICTIONS_FILENAME = "eval_predictions_test.csv"
+TEST_NUMERIC_LABELS_FILENAME = "eval_predictions_test.numeric_labels.csv"
+TEST_METRICS_FILENAME = "eval_predictions_test.metrics.json"
+
 
 # Data models
 @dataclass(frozen=True)
@@ -57,7 +61,7 @@ class RunMeta:
 
 @dataclass
 class SplitArtifacts:
-    split_name: str  # train/validation
+    split_name: str  # train/validation/test
     labeled_csv: Optional[Path]
     preds_csv: Optional[Path]
     metrics: Dict[str, float]
@@ -218,6 +222,14 @@ def get_split_metrics(metrics: Dict[str, float], split_name: str) -> Dict[str, f
         if metric_name.startswith(split_prefix)
     }
 
+def load_saved_metrics(metrics_path: Path) -> Dict[str, float]:
+    if not metrics_path.exists():
+        return {}
+    payload = json.loads(metrics_path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"Expected JSON object at {metrics_path}.")
+    return {str(metric_name): float(metric_value) for metric_name, metric_value in payload.items()}
+
 def load_run_meta(config: Config) -> RunMeta:
     return RunMeta(
         agent_id=config.agent_id,
@@ -264,7 +276,6 @@ def gather_iteration_inputs(
     train_csv = _find_versioned_split_labels(config, TRAIN_SPLIT, split_version)
     val_csv = _find_versioned_split_labels(config, VALIDATION_SPLIT, split_version)
 
-
     validation_evaluation_dir = iter_dir / ValidationEvaluationStep.step_id
     train_preds = validation_evaluation_dir / "eval_predictions_train.csv"
     val_preds = validation_evaluation_dir / "eval_predictions_validation.csv"
@@ -273,6 +284,15 @@ def gather_iteration_inputs(
         SplitArtifacts("train", train_csv, train_preds, get_split_metrics(validation_metrics, "train")),
         SplitArtifacts("validation", val_csv, val_preds, get_split_metrics(validation_metrics, "validation")),
     ]
+
+    best_iter = load_best_iteration_snapshot_iteration(config)
+    if best_iter is not None and iteration == best_iter:
+        snapshot_dir = config.best_iteration_snapshot_dir
+        test_preds = snapshot_dir / TEST_PREDICTIONS_FILENAME
+        test_labeled = snapshot_dir / TEST_NUMERIC_LABELS_FILENAME
+        test_metrics = load_saved_metrics(snapshot_dir / TEST_METRICS_FILENAME)
+        if test_preds.exists() or test_labeled.exists() or bool(test_metrics):
+            splits.append(SplitArtifacts("test", test_labeled, test_preds, test_metrics))
 
     return IterationInputs(iteration=iteration, report_md=report_md, splits=splits)
 
@@ -591,7 +611,7 @@ def plots_compare_splits_page_flowables(
     flows.append(Paragraph(f"Plots comparison (Iteration {iteration})", styles["H1"]))
     flows.append(
         Paragraph(
-            "Columns are dataset splits (train / validation). "
+            "Columns are dataset splits (train / validation / test if exists). "
             "Rows correspond to the same plot type across splits.",
             styles["Muted"],
         )
@@ -824,7 +844,8 @@ def main() -> None:
     ensure_dir(out_dir)
     ensure_dir(plots_dir)
     config.markdown_reports_dir.mkdir(parents=True, exist_ok=True)
-    split_order = ["train", "validation"]
+    split_order = ["train", "validation", "test"]
+
     for it in iterations:
         inp = gather_iteration_inputs(config, it)
         report_path = inp.report_md

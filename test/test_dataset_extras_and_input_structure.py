@@ -10,7 +10,7 @@ SRC_PATH = REPO_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-from datasets.dataset_preparation import prepare_dataset
+from datasets.dataset_preparation import prepare_dataset, prepare_test_dataset
 from datasets.data_contract import _validate_input_structure, record_input_dir_structure
 
 DATASET_NAME = "extras_test_dataset"
@@ -236,14 +236,25 @@ class PrepareDatasetSplitEntryTest(unittest.TestCase):
             root = Path(tmp)
             raw = root / "raw" / DATASET_NAME
             dest = root / "prepared" / DATASET_NAME
+            raw_test = root / "raw_tests" / DATASET_NAME
             raw.mkdir(parents=True)
+            raw_test.mkdir(parents=True)
             write_split(raw, "train", input_files={"images/train-0.png": "fake train image"})
             write_split(raw, "validation", input_files={"images/validation-0.png": "fake validation image"})
+            write_split(raw_test, "test", input_files={"images/test-0.png": "fake test image"})
 
-            prepare_dataset(
+            train_metadata = prepare_dataset(
                 source_dir=raw,
                 destination_dir=dest,
                 task_type="classification",
+            )
+            dest_test = root / "prepared_test" / DATASET_NAME
+            prepare_test_dataset(
+                source_dir=raw_test,
+                destination_dir=dest_test,
+                task_type=train_metadata["task_type"],
+                input_structure=train_metadata["input_structure"],
+                label_to_scalar=train_metadata.get("label_to_scalar"),
             )
 
             metadata = json.loads((dest / "metadata.json").read_text())
