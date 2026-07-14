@@ -38,10 +38,11 @@ RUN mamba env create -f /repository/envs/environment_agent.yaml \
 # Create a restricted user for sandboxed agent tool execution.
 # The runtime (root) owns the workspace; only current_step_dir is chowned to this user per step.
 RUN useradd -m -s /bin/bash agentomics-agent
+RUN git config --system --add safe.directory /workspace
 ENV AGENT_USER=agentomics-agent
-ENV AGENTOMICS_WORKSPACE_DIR=/workspace
-RUN mkdir -p ${AGENTOMICS_WORKSPACE_DIR}
+ENV PYTHONPATH=/repository/src
+RUN mkdir -p /workspace
 
 WORKDIR /repository
 
-ENTRYPOINT ["/repository/run.sh"]
+ENTRYPOINT ["/opt/conda/envs/agentomics-env/bin/python", "-m", "agentomics.runtime.run_workflow", "--workspace-dir", "/workspace", "--datasets-dir", "/repository/datasets"]
