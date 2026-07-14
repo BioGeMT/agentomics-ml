@@ -22,16 +22,18 @@ For more details see: [preprint](https://www.biorxiv.org/content/10.64898/2026.0
 Install [Docker](https://www.docker.com/), then:
 
 ```bash
-python3 -m pip install agentomics
-
+pip install agentomics
+```
+```bash
 # Set at least one supported provider credential
 export OPENROUTER_API_KEY=...   # or OPENAI_API_KEY / ANTHROPIC_API_KEY
-
+```
+```bash
 # Download an example dataset into ./datasets
 agentomics-download-dataset
-# To see all available examples:
-agentomics-download-dataset --list
-
+# To see all available examples add the --list option
+```
+```bash
 agentomics-run
 ```
 
