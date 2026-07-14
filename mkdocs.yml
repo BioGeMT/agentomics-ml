@@ -57,6 +57,7 @@ nav:
     - Metrics: reference/metrics.md
     - Workspace Structure: reference/workspace-structure.md
   - Developer Guide:
+    - Releasing: developer/releasing.md
     - Proxy Settings: developer/proxy-settings.md
     - GPU Settings: developer/gpu-settings.md
 
