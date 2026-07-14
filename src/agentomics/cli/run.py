@@ -235,7 +235,6 @@ def _run_agent_in_docker(
         python_arguments=container_arguments,
         docker_arguments=docker_arguments,
         check=False,
-        timeout_seconds=arguments.timeout,
     )
 
 
