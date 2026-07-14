@@ -45,7 +45,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cpu-only", action="store_true", help="Disable GPU access")
     return parser
 
-def _run_in_docker(arguments: argparse.Namespace) -> None:
+def run_inference_in_docker(arguments: argparse.Namespace) -> None:
     resolve_inference_paths(arguments)
     container_input = "/inference-input"
     python_arguments = [
@@ -82,7 +82,7 @@ def _run_in_docker(arguments: argparse.Namespace) -> None:
 
 def main() -> int:
     arguments = build_parser().parse_args()
-    _run_in_docker(arguments)
+    run_inference_in_docker(arguments)
     return 0
 
 if __name__ == "__main__":

@@ -9,8 +9,16 @@ from agentomics.cli.docker_utils import (
     DEFAULT_IMAGE,
     run_python_in_docker,
 )
+from agentomics.cli.inference import run_inference_in_docker
 from agentomics.cli.run_arguments import create_run_parser
+from agentomics.datasets.datasets_interactive import (
+    get_all_datasets_info,
+    interactive_dataset_selection,
+    print_datasets_table,
+)
+from agentomics.runtime.read_write_utils import load_config_from_run_dir
 from agentomics.utils.agent_id import create_agent_id
+from agentomics.utils.config import Config
 
 
 DEFAULT_DATASETS_DIRECTORY = Path("datasets")
@@ -19,6 +27,15 @@ CONTAINER_CODEX_DIRECTORY = Path("/mnt/codex-host")
 CONTAINER_DATASETS_DIRECTORY = Path("/datasets")
 CONTAINER_FORK_SOURCE_DIRECTORY = Path("/fork-source")
 CONTAINER_WORKSPACE_DIRECTORY = Path("/workspace")
+PUBLIC_DATASET_ENTRY_NAMES = (
+    "train",
+    "train.csv",
+    "validation",
+    "validation.csv",
+    "supplementary",
+    "metadata.json",
+    "dataset_description.md",
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -105,21 +122,79 @@ def _docker_environment_arguments(agent_id: str) -> list[str]:
         docker_arguments.append("-it")
     return docker_arguments
 
+
+def _resolve_dataset(
+    arguments: argparse.Namespace,
+    datasets_directory: Path,
+) -> Path:
+    if arguments.fork_from_run is not None:
+        fork_config = load_config_from_run_dir(
+            arguments.fork_from_run.expanduser().resolve() / Config.RUN_DIRNAME
+        )
+        if (
+            arguments.dataset is not None
+            and arguments.dataset != fork_config.dataset
+        ):
+            print(
+                f"Warning: --dataset is ignored for forked runs. "
+                f"Using '{fork_config.dataset}' from the source run config.",
+                file=sys.stderr,
+            )
+        arguments.dataset = fork_config.dataset
+
+    if arguments.dataset is None:
+        if not (sys.stdin.isatty() and sys.stdout.isatty()):
+            raise RuntimeError(
+                "Non-interactive runs require --dataset or --fork-from-run"
+            )
+        arguments.dataset = interactive_dataset_selection(
+            get_all_datasets_info(datasets_directory)
+        )
+    if arguments.dataset is None:
+        raise RuntimeError("No dataset selected")
+
+    dataset_directory = (datasets_directory / arguments.dataset).resolve()
+    if dataset_directory.parent != datasets_directory:
+        raise ValueError(
+            f"Dataset must be a direct child of {datasets_directory}: "
+            f"{dataset_directory}"
+        )
+    if not dataset_directory.is_dir():
+        raise NotADirectoryError(f"Dataset not found: {dataset_directory}")
+    arguments.dataset = dataset_directory.name
+    return dataset_directory
+
+
+def _build_dataset_mounts(
+    dataset_directory: Path | None,
+) -> list[str]:
+    mounts = [f"type=tmpfs,dst={CONTAINER_DATASETS_DIRECTORY}"]
+    if dataset_directory is None:
+        return mounts
+
+    for entry_name in PUBLIC_DATASET_ENTRY_NAMES:
+        source_entry = dataset_directory / entry_name
+        if not source_entry.exists():
+            continue
+        if source_entry.is_symlink():
+            raise ValueError(
+                f"Dataset entries may not be symlinks: {source_entry}"
+            )
+        mounts.append(
+            f"type=bind,src={source_entry.resolve()},"
+            f"dst={CONTAINER_DATASETS_DIRECTORY / dataset_directory.name / entry_name},"
+            "readonly"
+        )
+    return mounts
+
+
 def _run_agent_in_docker(
     arguments: argparse.Namespace,
     workspace_directory: Path,
     agent_id: str,
+    dataset_mounts: list[str],
 ) -> int:
-    datasets_directory = (
-        arguments.datasets_dir or Path.cwd() / DEFAULT_DATASETS_DIRECTORY
-    ).expanduser().resolve()
-    if not datasets_directory.is_dir():
-        raise NotADirectoryError(f"Datasets directory not found: {datasets_directory}")
-
-    mounts = [
-        f"type=bind,src={datasets_directory},"
-        f"dst={CONTAINER_DATASETS_DIRECTORY},readonly"
-    ]
+    mounts = list(dataset_mounts)
     container_arguments = _build_container_arguments(arguments)
     container_arguments.extend(
         ["--datasets-dir", str(CONTAINER_DATASETS_DIRECTORY)]
@@ -164,6 +239,37 @@ def _run_agent_in_docker(
     return 0
 
 
+def _run_test_evaluation_in_docker(
+    image: str,
+    cpu_only: bool,
+    workspace_directory: Path,
+    dataset_directory: Path,
+) -> None:
+    test_input = dataset_directory / "test"
+    if not test_input.is_dir():
+        print(f"No test split found at {test_input}; skipping test evaluation.")
+        return
+
+    print(f"Evaluating the best iteration on {test_input}")
+    run_inference_in_docker(
+        argparse.Namespace(
+            image=image,
+            agent_dir=workspace_directory,
+            input_path=test_input,
+            output=(
+                workspace_directory
+                / Config.BEST_ITERATION_SNAPSHOT_DIRNAME
+                / "eval_predictions_test.csv"
+            ),
+            label_col=None,
+            iteration_dir=Path(Config.BEST_ITERATION_SNAPSHOT_DIRNAME),
+            all_iterations=False,
+            remove_conda_env=False,
+            cpu_only=cpu_only,
+        )
+    )
+
+
 def _run_reporting_in_docker(
     image: str,
     workspace_directory: Path,
@@ -188,7 +294,7 @@ def _run_reporting_in_docker(
 
 
 def _is_agent_run(arguments: argparse.Namespace) -> bool:
-    #TODO can be simplified? have explicit list/module 
+    # TODO: Replace this implicit check with explicit command modes.
     return not (
         arguments.test
         or arguments.list_models
@@ -198,12 +304,48 @@ def _is_agent_run(arguments: argparse.Namespace) -> bool:
 
 def main() -> int:
     arguments = build_parser().parse_args()
+    datasets_directory = (
+        arguments.datasets_dir or Path.cwd() / DEFAULT_DATASETS_DIRECTORY
+    ).expanduser().resolve()
+    if not datasets_directory.is_dir():
+        raise NotADirectoryError(
+            f"Datasets directory not found: {datasets_directory}"
+        )
+
+    if arguments.list_datasets:
+        print_datasets_table(get_all_datasets_info(datasets_directory))
+        return 0
+
+    dataset_directory = (
+        _resolve_dataset(arguments, datasets_directory)
+        if _is_agent_run(arguments)
+        else None
+    )
     agent_id = create_agent_id()
     workspace_directory = _resolve_workspace(arguments.workspace_dir, agent_id)
-    exit_code = _run_agent_in_docker(arguments, workspace_directory, agent_id)
+    dataset_mounts = _build_dataset_mounts(dataset_directory)
+    exit_code = _run_agent_in_docker(
+        arguments,
+        workspace_directory,
+        agent_id,
+        dataset_mounts,
+    )
     if _is_agent_run(arguments):
-        _run_reporting_in_docker(arguments.image, workspace_directory, agent_id)
+        try:
+            _run_test_evaluation_in_docker(
+                image=arguments.image,
+                cpu_only=arguments.cpu_only,
+                workspace_directory=workspace_directory,
+                dataset_directory=dataset_directory,
+            )
+        finally:
+            _run_reporting_in_docker(
+                arguments.image,
+                workspace_directory,
+                agent_id,
+            )
     return exit_code
+
 
 if __name__ == "__main__":
     sys.exit(main())
