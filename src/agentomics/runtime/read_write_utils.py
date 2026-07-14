@@ -19,7 +19,7 @@ from agentomics.utils.versioning import check_run_compatible
 def initialize_run_directories(config: Config) -> None:
     config.markdown_reports_dir.mkdir(parents=True, exist_ok=True)
     config.pdf_reports_dir.mkdir(parents=True, exist_ok=True)
-    config.extras_dir.mkdir(parents=True, exist_ok=True)
+    config.logs_dir.mkdir(parents=True, exist_ok=True)
     config.run_dir.mkdir(parents=True, exist_ok=True)
     config.shared_dir.mkdir(parents=True, exist_ok=True)
     config.best_iteration_snapshot_dir.mkdir(parents=True, exist_ok=True)

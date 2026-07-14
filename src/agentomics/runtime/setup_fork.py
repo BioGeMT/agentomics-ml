@@ -39,7 +39,7 @@ def fork_run(
         target_workspace_dir,
         symlinks=True,
         copy_function=shutil.copy2,
-        ignore=shutil.ignore_patterns(".conda", "reports", "extras"),
+        ignore=shutil.ignore_patterns(".conda", "reports", "logs"),
         dirs_exist_ok=True,
     )
 

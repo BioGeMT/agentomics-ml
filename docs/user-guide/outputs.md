@@ -36,7 +36,7 @@ outputs/<agent_id>/
 │       ├── iteration_0.pdf
 │       ├── iteration_1.pdf
 │       └── plots/
-├── extras/                   # Additional files
+├── logs/                     # Logs and metrics
 └── README.md                 # Run summary
 ```
 

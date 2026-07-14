@@ -210,8 +210,8 @@ class TestForkRun(unittest.TestCase):
         (self.source_workspace / Config.BEST_ITERATION_SNAPSHOT_DIRNAME / ".conda" / "envs" / f"{run_id}_env").mkdir(parents=True)
         (self.source_workspace / "reports" / "markdown").mkdir(parents=True, exist_ok=True)
         (self.source_workspace / "reports" / "markdown" / "run_report_iter_0.md").write_text("report", encoding="utf-8")
-        (self.source_workspace / "extras" / "run_logs").mkdir(parents=True, exist_ok=True)
-        (self.source_workspace / "extras" / "run_logs" / "latest.log").write_text("log", encoding="utf-8")
+        (self.source_workspace / "logs" / "run_logs").mkdir(parents=True, exist_ok=True)
+        (self.source_workspace / "logs" / "run_logs" / "latest.log").write_text("log", encoding="utf-8")
         _commit(self.source_workspace, build_iteration_end_commit_message(run_id, 0), "iteration_end_marker.txt")
 
     def _fork(self, source_run_id: str, target_run_id: str, **kwargs):
@@ -240,7 +240,7 @@ class TestForkRun(unittest.TestCase):
         self.assertFalse((target_run_dir / "current_iteration").exists())
         self.assertTrue((self.target_workspace / Config.BEST_ITERATION_SNAPSHOT_DIRNAME / "snapshot_marker.txt").exists())
         self.assertTrue((self.target_workspace / "reports" / "markdown" / "run_report_iter_0.md").exists())
-        self.assertTrue((self.target_workspace / "extras" / "run_logs" / "latest.log").exists())
+        self.assertTrue((self.target_workspace / "logs" / "run_logs" / "latest.log").exists())
 
     def test_rewrites_workspace_paths(self):
         self._fork("src_run", "tgt_run", fork_from_step="data_split", fork_from_iteration=0)
@@ -253,7 +253,7 @@ class TestForkRun(unittest.TestCase):
 
         self.assertFalse((self.target_workspace / Config.BEST_ITERATION_SNAPSHOT_DIRNAME).exists())
         self.assertFalse((self.target_workspace / "reports").exists())
-        self.assertFalse((self.target_workspace / "extras").exists())
+        self.assertFalse((self.target_workspace / "logs").exists())
         ensure_environment.assert_called_once_with(
             self.target_workspace
             / Config.RUN_DIRNAME
@@ -378,7 +378,7 @@ class TestForkRun(unittest.TestCase):
         # Regression: wandb creates debug-core.log as a symlink to a path inside the container
         # (/root/.cache/wandb/...) which is dangling on the host. copytree must not raise.
         self._build_source_run("src_run")
-        dangling = self.source_workspace / "extras" / "run_logs" / "debug-core.log"
+        dangling = self.source_workspace / "logs" / "run_logs" / "debug-core.log"
         dangling.parent.mkdir(parents=True, exist_ok=True)
         dangling.symlink_to("/nonexistent/container/path/debug.log")
 

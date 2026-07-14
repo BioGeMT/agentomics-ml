@@ -1,5 +1,8 @@
 # Agentomics
-NEWS: *Agentomics has been accepted into the ISMB 2026 Proceedings*
+NEWS:
+- *Agentomics to be presented at ISMB 2026*
+- *Agentomics has been published in Bioinformatics journal* [link to published paper](https://academic.oup.com/bioinformatics/article/42/Supplement_1/btag250/8726289)
+- *Agentomics now supports any data type and supplementary material*
 
 ## Autonomous agentic system for supervised machine learning model development.
 
@@ -11,7 +14,7 @@ How it works
 2) Agentomics autonomously experiments with various ML models and strategies
 3) Output is a trained model ready for inference and a detailed PDF report summarizing the development process and achieved metrics
 
-For more details see: [preprint](https://www.biorxiv.org/content/10.64898/2026.01.27.702049v1)
+For more details see: [link to published paper](https://academic.oup.com/bioinformatics/article/42/Supplement_1/btag250/8726289)
 
 <p align="center">
   <img src="docs/assets/agentomics-overview.png" alt="agentomics overview" width="50%">
@@ -52,7 +55,6 @@ Agentomics can be run via:
 - your **local Codex subscription** via `codex login`
 - a **supported provider API key** such as OpenRouter, OpenAI, Anthropic, or a configured OpenAI-compatible provider
 - **local Ollama models** for offline/private runs
-
 
 ## Documentation
 
@@ -97,12 +99,8 @@ full iterative workspace, and `reports/` contains the human-readable summaries.
 Agentomics is in active development. We welcome any raised Issues and suggestions. You can also [Email Us](mailto:martinekvlastimil95@gmail.com).
 
 Features coming soon:
-- Run forking and continuing
 - Better local model support and configuration
 - Remote GPU support for GCP
-
-## Reproducing publication results
-See the [ismb_submission branch](https://github.com/BioGeMT/agentomics-ml/tree/ismb_post_review) README for instructions.
 
 ## Citation
 
@@ -110,7 +108,7 @@ If you use **Agentomics** in your work, please cite:
 
 Martinek *et al.* (2026). 
 *Agentomics: An Agentic System that Autonomously Develops Novel State-of-the-Art Solutions for Biomedical Machine Learning Tasks*.
-bioRxiv (preprint) https://www.biorxiv.org/content/10.64898/2026.01.27.702049v1
+Bioinformatics (https://doi.org/10.1093/bioinformatics/btag250)
 
 ## License
 
