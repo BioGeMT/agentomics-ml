@@ -17,7 +17,7 @@ How it works
 For more details see: [link to published paper](https://academic.oup.com/bioinformatics/article/42/Supplement_1/btag250/8726289)
 
 <p align="center">
-  <img src="docs/assets/agentomics-overview.png" alt="agentomics overview" width="50%">
+  <img src="https://raw.githubusercontent.com/BioGeMT/Agentomics-ML/main/docs/assets/agentomics-overview.png" alt="agentomics overview" width="50%">
 </p>
 
 ## Quick Start
@@ -27,15 +27,18 @@ Install [Docker](https://www.docker.com/), then:
 ```bash
 pip install agentomics
 ```
+Set at least one supported provider credential. For example:
+OPENROUTER_API_KEY or OPENAI_API_KEY or ANTHROPIC_API_KEY
 ```bash
-# Set at least one supported provider credential
-export OPENROUTER_API_KEY=...   # or OPENAI_API_KEY / ANTHROPIC_API_KEY
+export OPENROUTER_API_KEY=...   
 ```
+Download an example dataset into ./datasets
+
+To see all available examples add the --list option
 ```bash
-# Download an example dataset into ./datasets
 agentomics-download-dataset
-# To see all available examples add the --list option
 ```
+Start an Agentomics run and follow instructions
 ```bash
 agentomics-run
 ```
@@ -44,10 +47,10 @@ Recommended model: `gpt-5.1-codex-max`
 
 Outputs are saved to `outputs/<agent_id>/`, including PDF reports in `outputs/<agent_id>/reports/pdf`.
 
-See [Installation](docs/getting-started/installation.md),
-[Datasets](docs/user-guide/datasets.md),
-[CLI Options](docs/configuration/cli-options.md), and
-[Running Inference](docs/user-guide/inference.md) for details.
+See [Installation](https://biogemt.github.io/agentomics-ml/getting-started/installation/),
+[Datasets](https://biogemt.github.io/agentomics-ml/user-guide/datasets/),
+[CLI Options](https://biogemt.github.io/agentomics-ml/configuration/cli-options/), and
+[Running Inference](https://biogemt.github.io/agentomics-ml/user-guide/inference/) for details.
 
 ### API Calls
 
