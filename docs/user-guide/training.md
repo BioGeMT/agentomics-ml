@@ -1,7 +1,7 @@
 # Re-training Models
 
 After the agent completes a run, you can re-train its model on new data using
-`agentomics-train`. The command reuses the run's training script, conda
+`agentomics-retrain`. The command reuses the run's training script, conda
 environment, and trained label mapping, so the model and preprocessing stay
 identical — only the data changes.
 
@@ -19,7 +19,7 @@ identical — only the data changes.
 ## Basic Usage
 
 ```bash
-agentomics-train \
+agentomics-retrain \
   --agent-dir outputs/<agent_id> \
   --dataset-dir /path/to/dataset \
   --artifacts-dir /path/to/output_artifacts
@@ -89,7 +89,7 @@ The command mounts the agent directory,
 dataset, and artifact output directory automatically:
 
 ```bash
-agentomics-train \
+agentomics-retrain \
   --agent-dir outputs/my_run_1 \
   --dataset-dir new_dataset \
   --artifacts-dir outputs/my_run_1/retrained_artifacts

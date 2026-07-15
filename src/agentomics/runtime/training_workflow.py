@@ -116,7 +116,7 @@ def run_training_workflow(arguments: Namespace) -> None:
 
 
 def main() -> int:
-    from agentomics.cli.train import build_parser
+    from agentomics.cli.retrain import build_parser
 
     run_training_workflow(build_parser().parse_args())
     return 0
