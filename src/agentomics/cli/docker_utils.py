@@ -24,6 +24,30 @@ def create_parser(description: str) -> argparse.ArgumentParser:
     )
     return parser
 
+def validate_docker_gpu_access(image: str) -> None:
+    if shutil.which("docker") is None:
+        raise RuntimeError("Missing required command: docker")
+
+    result = subprocess.run(
+        [
+            "docker",
+            "run",
+            "--rm",
+            "--gpus",
+            "all",
+            "--entrypoint",
+            "/bin/true",
+            image,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            "GPU is enabled by default, but Docker could not allocate a GPU. "
+            "Use --cpu-only to run without GPU access."
+        )
+
 def run_python_in_docker(
     image: str,
     cpu_only: bool,

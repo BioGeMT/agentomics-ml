@@ -10,6 +10,7 @@ from pathlib import Path
 from agentomics.cli.docker_utils import (
     create_parser,
     run_python_in_docker,
+    validate_docker_gpu_access,
 )
 from agentomics.cli.inference import run_inference_in_docker
 from agentomics.cli.run_arguments import add_run_arguments
@@ -359,6 +360,13 @@ def main() -> int:
     if arguments.list_datasets:
         print_datasets_table(get_all_datasets_info(datasets_directory))
         return 0
+
+    if not arguments.cpu_only:
+        try:
+            validate_docker_gpu_access(arguments.image)
+        except RuntimeError as error:
+            print(f"Error: {error}", file=sys.stderr)
+            return 1
 
     dataset_directory = (
         _resolve_dataset(arguments, datasets_directory)
