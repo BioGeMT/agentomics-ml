@@ -15,9 +15,9 @@ if str(SRC_PATH) not in sys.path:
 
 from pydantic_ai.messages import ModelRequest, SystemPromptPart, UserPromptPart
 
-from src.utils.providers.codex_auth import CodexAuthStore
-from src.utils.providers.codex_provider import CodexProvider, CodexResponsesModel
-from src.utils.providers.provider import get_provided_api_keys
+from agentomics.utils.providers.codex_auth import CodexAuthStore
+from agentomics.utils.providers.codex_provider import CodexProvider, CodexResponsesModel
+from agentomics.utils.providers.provider import get_provided_api_keys
 
 
 def make_jwt(payload: dict) -> str:
@@ -174,7 +174,7 @@ class TestCodexRefresh(CodexTestCase, unittest.IsolatedAsyncioTestCase):
         http_client_cm.__aenter__.return_value = http_client
         http_client_cm.__aexit__.return_value = None
 
-        with patch("src.utils.providers.codex_auth.httpx.AsyncClient", return_value=http_client_cm):
+        with patch("agentomics.utils.providers.codex_auth.httpx.AsyncClient", return_value=http_client_cm):
             store = CodexAuthStore(auth_path=self.auth_path)
             access_token = await store.get_access_token()
 

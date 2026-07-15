@@ -12,11 +12,11 @@ SRC_PATH = REPO_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-from agents.steps.data_split import DataSplitOutput, DataSplitStep
-from agents.steps.validation_evaluation import ValidationEvaluationOutput, ValidationEvaluationStep
-from runtime.best_iteration_snapshot import update_best_iteration_snapshot
-from runtime.generate_final_reports import DatasetMeta, gather_iteration_inputs
-from runtime.read_write_utils import (
+from agentomics.agents.steps.data_split import DataSplitOutput, DataSplitStep
+from agentomics.agents.steps.validation_evaluation import ValidationEvaluationOutput, ValidationEvaluationStep
+from agentomics.runtime.best_iteration_snapshot import update_best_iteration_snapshot
+from agentomics.runtime.generate_final_reports import gather_iteration_inputs
+from agentomics.runtime.read_write_utils import (
     initialize_current_iteration_metadata,
     initialize_current_iteration_state,
     initialize_current_iteration_workspace,
@@ -25,8 +25,8 @@ from runtime.read_write_utils import (
     save_config,
     update_current_iteration_state,
 )
-from runtime.filesystem import rewrite_symlinks_to_absolute, validate_symlinks_targets_in
-from utils.config import Config
+from agentomics.runtime.filesystem import rewrite_symlinks_to_absolute, validate_symlinks_targets_in
+from agentomics.utils.config import Config
 
 
 def _write_split_folder(split_path: Path, row_id: str = "row-1") -> None:
@@ -122,7 +122,7 @@ class TestBestIterationSnapshot(unittest.TestCase):
         conda_env = self.config.shared_dir / ".conda" / "envs" / f"{self.config.agent_id}_env"
         conda_env.mkdir(parents=True, exist_ok=True)
 
-        with patch("runtime.best_iteration_snapshot.export_environment_descriptor_to_path"):
+        with patch("agentomics.runtime.best_iteration_snapshot.export_environment_descriptor_to_path"):
             update_best_iteration_snapshot(self.config, iteration=1)
 
         self.assertTrue((self.config.best_iteration_snapshot_dir / "inference.py").exists())
@@ -436,8 +436,6 @@ class TestFinalReportSplitLabels(unittest.TestCase):
 
         inputs = gather_iteration_inputs(
             config=self.config,
-            test_labels_path=None,
-            dataset_meta=DatasetMeta(task_type="classification", numeric_label_col="numeric_label"),
             iteration=0,
         )
 
@@ -472,8 +470,6 @@ class TestFinalReportSplitLabels(unittest.TestCase):
 
         inputs = gather_iteration_inputs(
             config=self.config,
-            test_labels_path=None,
-            dataset_meta=DatasetMeta(task_type="classification", numeric_label_col="numeric_label"),
             iteration=0,
         )
 
@@ -482,6 +478,32 @@ class TestFinalReportSplitLabels(unittest.TestCase):
         self.assertIsNotNone(labels_by_split["validation"])
         self.assertTrue(labels_by_split["train"].exists())
         self.assertTrue(labels_by_split["validation"].exists())
+
+    def test_iteration_inputs_include_test_artifacts_from_snapshot(self):
+        # The best iteration snapshot points at iteration 0.
+        snapshot_dir = self.config.best_iteration_snapshot_dir
+        (snapshot_dir / Config.RUNTIME_INFO_DIRNAME).mkdir(parents=True, exist_ok=True)
+        (snapshot_dir / Config.RUNTIME_INFO_DIRNAME / Config.ITERATION_METADATA_FILENAME).write_text(
+            json.dumps({"iteration": 0}), encoding="utf-8"
+        )
+        # Artifacts written by the post-run test evaluation into the snapshot.
+        (snapshot_dir / "eval_predictions_test.csv").write_text(
+            "id,prediction,probability_1\nt-0,1,0.9\n", encoding="utf-8"
+        )
+        (snapshot_dir / "eval_predictions_test.numeric_labels.csv").write_text(
+            "id,numeric_label\nt-0,1\n", encoding="utf-8"
+        )
+        (snapshot_dir / "eval_predictions_test.metrics.json").write_text(
+            json.dumps({"ACC": 1.0}), encoding="utf-8"
+        )
+
+        inputs = gather_iteration_inputs(config=self.config, iteration=0)
+
+        test_split = next((s for s in inputs.splits if s.split_name == "test"), None)
+        self.assertIsNotNone(test_split)
+        self.assertEqual(snapshot_dir / "eval_predictions_test.numeric_labels.csv", test_split.labeled_csv)
+        self.assertEqual(snapshot_dir / "eval_predictions_test.csv", test_split.preds_csv)
+        self.assertEqual({"ACC": 1.0}, test_split.metrics)
 
 
 class TestSplitSymlinkHelpers(unittest.TestCase):

@@ -2,23 +2,23 @@
 
 How Agentomics-ML organizes files during and after execution.
 
-## Directory Overview
+A run's files live in a single host workspace directory, mounted at
+`/workspace` in the container.
+
+## Repository Layout
 
 ```text
 agentomics-ml/
-├── datasets/                 # Public train/validation datasets
-├── test_datasets/            # Hidden test datasets
+├── datasets/                 # Train/validation datasets and optional test splits
 └── outputs/                  # Final results
 
-../workspace/runs/<agent_id>/ # Local-mode active workspace
+outputs/<agent_id>/          # Active run workspace
 ├── run/                      # Current run files
 ├── best_iteration_snapshot/  # Best iteration snapshot
 ├── reports/                  # Iteration reports
-├── logs/                     # Logs and metrics
+├── logs/                     # Logs
 └── fallbacks/                # Reserved recovery area
 ```
-
-Docker mode uses an internal temporary workspace volume with the same layout and copies it to `outputs/<agent_id>/` when the run ends.
 
 ## datasets/
 
@@ -32,57 +32,50 @@ datasets/my_dataset/
 ├── validation/             # Optional
 │   ├── input/
 │   └── labels.csv
+├── test/                   # Optional; hidden from the agent
+│   ├── input/
+│   └── labels.csv
 ├── supplementary/          # Optional: dataset-level source materials
 │   └── README.md           # Optional: describes the supplementary materials
 ├── metadata.json           # Optional if task type is supplied at preparation
 └── dataset_description.md  # Optional domain information
 ```
 
-Hidden test data uses a matching separate root:
+Each unprepared `labels.csv` must include `id` and `label` columns. Your source
+`datasets/<name>/` folder is mounted read-only and is never modified. When a run
+starts, Agentomics copies its public splits into the run workspace and converts
+their labels to `id,numeric_label`. The `input/` interface is recorded at
+preparation time, must match across all splits, and must not be modified during
+a run. The optional source `test/` split is excluded from the agent worker's
+mounts and remains outside the agent-facing prepared data.
+
+The prepared, agent-facing splits are written to the run workspace (never back
+into `datasets/`):
 
 ```text
-test_datasets/my_dataset/
-└── test/
-    ├── input/
-    └── labels.csv
-```
-
-Each unprepared `labels.csv` must include `id` and `label` columns. Preparation
-rewrites labels in place with `id` and `numeric_label`, then writes
-`metadata.json` with `"prepared": true`. Only `train` and `validation` are
-supported under `datasets/`; only `test` is supported under `test_datasets/`.
-The `input/` interface is recorded at preparation time, must match across all
-splits, and must not be modified during a run.
-
-After preparation, the public dataset directory is the agent-facing dataset:
-
-```text
-datasets/my_dataset/
+outputs/<agent_id>/run/shared/splits/split_0/
 ├── train/
 │   ├── input/
 │   └── labels.csv          # id,numeric_label
-├── validation/
-│   ├── input/
-│   └── labels.csv          # id,numeric_label
-├── supplementary/          # Dataset-level source materials, if provided
-├── dataset_description.md
-└── metadata.json           # includes "prepared": true
-```
-
-Hidden test data is also prepared in place before final evaluation:
-
-```text
-test_datasets/my_dataset/
-└── test/
+└── validation/
     ├── input/
     └── labels.csv          # id,numeric_label
 ```
 
-The agent never sees `test_datasets/` during training.
+After a successful run, Agentomics mounts the optional held-out split read-only
+in a separate evaluation container, runs the best iteration against it, and
+saves its artifacts in the best-iteration snapshot. The source labels remain
+in raw `id,label` form:
+
+```text
+datasets/my_dataset/test/
+├── input/
+└── labels.csv          # id,label
+```
 
 ## Active Workspace
 
-Active execution area. In local mode this is `../workspace/runs/<agent_id>/`; in Docker mode it is the temporary `/workspace` volume.
+The active host workspace is mounted at `/workspace` in the container.
 
 ### run/
 
@@ -115,7 +108,7 @@ Best iteration snapshot:
 ├── model_inference/
 │   └── inference.py
 ├── runtime_info/
-├── environment.yml
+│   └── environment.yml
 └── .conda/
 ```
 
@@ -178,7 +171,7 @@ outputs/<agent_id>/
 │   ├── model_inference/
 │   │   └── inference.py
 │   ├── runtime_info/
-│   ├── environment.yml
+│   │   └── environment.yml
 │   └── .conda/
 ├── run/                      # All iterations + data splits
 │   ├── shared/
@@ -200,15 +193,30 @@ outputs/<agent_id>/
 ├── reports/
 │   ├── markdown/
 │   │   ├── run_report_iter_0.md
-│   │   ├── run_report_iter_1.md
 │   │   └── ...
 │   └── pdf/
 │       ├── iteration_0.pdf
-│       ├── iteration_1.pdf
 │       └── plots/
-├── logs/                     # Logs and metrics
+├── logs/                   # Additional files and logs
 └── README.md                 # Run summary
 ```
+
+### run/
+
+The working directory. `shared/` holds the run config, the shared conda
+environment, the prepared dataset copy, and the train/validation splits.
+`current_iteration/` is the active iteration while the run is in progress;
+completed iterations are archived as `iteration_N/`.
+
+### best_iteration_snapshot/
+
+The best iteration's exported model, scripts, and environment — updated whenever
+a new best iteration is achieved. Use it for inference and re-training.
+
+### reports/ and extras/
+
+Per-iteration markdown and PDF reports, plus logs and auxiliary artifacts,
+written directly to the workspace as the run progresses.
 
 ## File Notes
 
@@ -219,36 +227,22 @@ per-run details.
 
 ## Cleanup
 
-### Remove Specific Run
-
 ```bash
+# Remove a specific run
 rm -rf outputs/<agent_id>
-```
 
-### Clean Workspace
-
-```bash
-rm -rf ../workspace/runs/<agent_id>
-```
-
-### Clean Everything
-
-```bash
+# Clean everything
 rm -rf outputs/*
-rm -rf ../workspace/*
-rm -rf datasets/*
-rm -rf test_datasets/*
 ```
 
-## Docker Volumes
+## Docker Execution
 
-In Docker mode, workspace is mounted as a volume:
-
-- Code repository: read-only
-- Workspace: Read-write
-- Outputs: Read-write
-
-This isolates agent execution from the host system.
+`agentomics-run` launches the container for you. The repository is baked into
+the image; the launcher mounts only the selected dataset's public entries (the
+`test/` split is withheld) and mounts the host workspace at `/workspace` to
+receive the run's output. The agent runs entirely inside the container,
+isolating execution from the host. See
+[Installation](../getting-started/installation.md).
 
 ## Related
 

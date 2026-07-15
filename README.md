@@ -17,38 +17,40 @@ How it works
 For more details see: [link to published paper](https://academic.oup.com/bioinformatics/article/42/Supplement_1/btag250/8726289)
 
 <p align="center">
-  <img src="docs/assets/agentomics-overview.png" alt="agentomics overview" width="50%">
+  <img src="https://raw.githubusercontent.com/BioGeMT/Agentomics-ML/main/docs/assets/agentomics-overview.png" alt="agentomics overview" width="50%">
 </p>
 
-<!-- ## Try the DEMO -->
-<!-- [![Try in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1rxsGsIwxrE49E4rjzNh920s66UdG34xF?usp=sharing) -->
 ## Quick Start
 
+Install [Docker](https://www.docker.com/), then:
+
 ```bash
-git clone https://github.com/BioGeMT/agentomics-ml.git
-cd agentomics-ml
-cp .env.example .env
-# Edit .env and set at least one supported provider credential
+pip install agentomics
+```
+Set at least one supported provider credential. For example:
+OPENROUTER_API_KEY or OPENAI_API_KEY or ANTHROPIC_API_KEY
+```bash
+export OPENROUTER_API_KEY=...   
+```
+Download an example dataset into ./datasets
 
-# Download example dataset
-./scripts/download_example_dataset.sh
-# To see all available examples:
-./scripts/download_example_dataset.sh --list
-
-./run.sh
+To see all available examples add the --list option
+```bash
+agentomics-download-dataset
+```
+Start an Agentomics run and follow instructions
+```bash
+agentomics-run
 ```
 
 Recommended model: `gpt-5.1-codex-max`
 
 Outputs are saved to `outputs/<agent_id>/`, including PDF reports in `outputs/<agent_id>/reports/pdf`.
 
-For more dataset examples and input layouts, see [Datasets](docs/user-guide/datasets.md).
-
-### Installation Requirements
-
-Agentomics can be run either:
-- **(Recommended)** with [Docker](https://www.docker.com/)
-- **Locally** with [Conda](https://docs.conda.io/)
+See [Installation](https://biogemt.github.io/agentomics-ml/getting-started/installation/),
+[Datasets](https://biogemt.github.io/agentomics-ml/user-guide/datasets/),
+[CLI Options](https://biogemt.github.io/agentomics-ml/configuration/cli-options/), and
+[Running Inference](https://biogemt.github.io/agentomics-ml/user-guide/inference/) for details.
 
 ### API Calls
 
@@ -66,8 +68,7 @@ For more details visit **https://biogemt.github.io/agentomics-ml/**
 - Secure: Agents execute code securely in Docker with read-only mounts to your file system and are only allowed to write in a Docker Volume.
 - Reproducible: Outputs include models, scripts, and conda environments needed to run inference or re-train models with one bash command.
 - Trustworthy: If you provide a test set, Agentomics fully abstracts LLMs from accessing it, allowing you to rely on programmaticly computed and reported test set metrics.
-- Foundation models: Agentomics can leverage foundation models from huggingface for both embeddings and fine-tuning.
-- Various LLM providers: OpenAI, Anthropic, OpenRouter, local Codex auth, local models via Ollama, or custom OpenAI-compatible providers
+- Various LLM providers: OpenAI, OpenRouter, or local models via Ollama
 - Reliability: Thanks to our functional validators, Agentomics creates a working model 100% of the time (when using recommended settings).
 
 ## Run Output Structure Example
@@ -82,8 +83,8 @@ outputs/<agent_id>/
 │   │   └── training_artifacts/
 │   ├── model_inference/
 │   │   └── inference.py
-│   ├── environment.yml
 │   └── runtime_info/
+│       └── environment.yml
 ├── run/
 │   ├── shared/
 │   │   ├── config.json

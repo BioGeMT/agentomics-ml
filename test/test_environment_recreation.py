@@ -12,12 +12,16 @@ SRC_PATH = REPO_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-from runtime.conda_utils import (
+from agentomics.runtime.conda_utils import (
     create_environment_from_descriptor,
     export_environment_descriptor_to_path,
-    remove_environment,
 )
-from runtime import conda_utils
+from agentomics.runtime import conda_utils
+
+
+def _remove_environment(env_path: Path) -> None:
+    # Mirrors how the runtime discards an environment (an inline rmtree).
+    shutil.rmtree(env_path, ignore_errors=True)
 
 
 def _pip_in_env(env_path: Path) -> str:
@@ -96,7 +100,7 @@ def _export_destroy_recreate(
 ) -> None:
     export_environment_descriptor_to_path(env_path=source_env, descriptor_path=descriptor_path)
     test.assertTrue(descriptor_path.exists(), "environment.yml should be created by export")
-    remove_environment(source_env)
+    _remove_environment(source_env)
     create_environment_from_descriptor(descriptor_path=descriptor_path, env_path=recreated_env)
     test.assertTrue(recreated_env.exists(), "Recreated env directory should exist")
 
@@ -266,8 +270,8 @@ class TestEnvironmentRecreation(unittest.TestCase):
         self.recreated_env = self.root / "recreated_env"
 
     def tearDown(self):
-        remove_environment(self.source_env)
-        remove_environment(self.recreated_env)
+        _remove_environment(self.source_env)
+        _remove_environment(self.recreated_env)
         self._temp_dir.cleanup()
 
     def test_mixed_conda_and_pip_packages_survive_export_recreation(self):

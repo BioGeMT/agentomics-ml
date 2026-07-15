@@ -10,14 +10,14 @@ SRC_PATH = REPO_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-from datasets.data_contract import NUMERIC_LABEL_COLUMN_NAME, validate_and_read_labels
-from datasets.dataset_preparation import (
+from agentomics.datasets.data_contract import NUMERIC_LABEL_COLUMN_NAME, validate_and_read_labels
+from agentomics.datasets.dataset_preparation import (
     check_dataset_prepared,
     prepare_dataset,
     prepare_test_dataset,
 )
-from datasets.datasets_interactive import _get_single_dataset_info
-from utils.config import Config
+from agentomics.datasets.datasets_interactive import _get_single_dataset_info
+from agentomics.utils.config import Config
 
 DATASET_NAME = "folder_contract_dataset"
 

@@ -20,16 +20,16 @@ Agentomics-ML supports multiple LLM providers out of the box.
 
 ```bash
 export OPENROUTER_API_KEY="sk-or-v1-xxxxxxxxxxxx"
-./run.sh
+agentomics-run
 ```
 
 ### Available Models
 
 ```bash
-./run.sh --list-models
+agentomics-run --list-models
 ```
 
-Model availability depends on your provider and API plan. Use `./run.sh --list-models`
+Model availability depends on your provider and API plan. Use `agentomics-run --list-models`
 to see what is available.
 
 ### Provisioning Key
@@ -37,7 +37,7 @@ to see what is available.
 For temporary access without your own key:
 
 ```bash
-./run.sh --use-provisioning-key
+agentomics-run --use-provisioning-key
 ```
 
 This requires `PROVISIONING_OPENROUTER_API_KEY` in your `.env`.
@@ -52,12 +52,12 @@ Direct access to OpenAI models.
 
 ```bash
 export OPENAI_API_KEY="sk-xxxxxxxxxxxx"
-./run.sh
+agentomics-run
 ```
 
 ### Available Models
 
-Use `./run.sh --list-models` to see what your API key can access.
+Use `agentomics-run --list-models` to see what your API key can access.
 
 ---
 
@@ -69,7 +69,7 @@ Direct access to Anthropic models.
 
 ```bash
 export ANTHROPIC_API_KEY="sk-ant-xxxxxxxxxxxx"
-./run.sh --provider anthropic --list-models
+agentomics-run --provider anthropic --list-models
 ```
 
 Use `--provider anthropic` explicitly when other provider keys are also set.
@@ -91,12 +91,15 @@ codex login
 Then run Agentomics with the `codex` provider:
 
 ```bash
-./run.sh --provider codex --list-models
-./run.sh --provider codex --model gpt-5.4 --dataset my_data
+agentomics-run --provider codex --list-models
+agentomics-run --provider codex --model gpt-5.4 --dataset my_data
 ```
 
 This provider reads your local Codex auth state from `~/.codex/auth.json` and
 uses the ChatGPT Codex backend instead of `OPENAI_API_KEY`.
+
+`agentomics-run` automatically mounts your host `~/.codex` login into the
+container (read-only), so no extra setup is needed beyond `codex login`.
 
 If you are also setting `OPENAI_API_KEY` or `OPENROUTER_API_KEY`, pass
 `--provider codex` explicitly for non-interactive runs.
@@ -111,30 +114,20 @@ Run models locally for privacy or offline use.
 
 1. Install [Ollama](https://ollama.ai/)
 2. Pull a model: `ollama pull <model-name>`
+3. Set `OLLAMA_BASE_URL` so Agentomics considers Ollama available:
+   `export OLLAMA_BASE_URL=http://localhost:11434/v1`
 
-### Docker Mode (Recommended)
-
-Set `OLLAMA_BASE_URL` so Agentomics considers Ollama available, then run with:
-
-```bash
-export OLLAMA_BASE_URL=http://localhost:11434/v1
-./run.sh --ollama --provider ollama --model <ollama-model> --dataset <dataset>
-```
-
-Docker mode connects to the Ollama base URL defined in
-`src/utils/providers/configured_providers.yaml`
-(default: `http://localhost:11434/v1`) and uses host networking when `--ollama` is passed.
-Ensure your Ollama server is reachable from the host at `:11434`.
-
-### Local Mode
-
-For local mode, set the Ollama base URL in `src/utils/providers/configured_providers.yaml`
-to `http://localhost:11434/v1`, then run:
+The launcher enables host networking so the container can reach Ollama:
 
 ```bash
 export OLLAMA_BASE_URL=http://localhost:11434/v1
-./run.sh --local --provider ollama --model <ollama-model> --dataset <dataset>
+agentomics-run --provider ollama --model <ollama-model> --dataset <dataset>
 ```
+
+The server URL Agentomics connects to is the `Ollama` entry's `base_url` in
+`src/agentomics/utils/providers/configured_providers.yaml` (default
+`http://localhost:11434/v1`); edit it if your server differs. See
+[Ollama Configuration](environment.md#ollama-configuration).
 
 ### Popular Models
 
@@ -144,7 +137,7 @@ Run `ollama list` to see available models.
 
 ## Custom Providers
 
-Add custom providers in `src/utils/providers/configured_providers.yaml`:
+Add custom providers in `src/agentomics/utils/providers/configured_providers.yaml`:
 
 ```yaml
 providers:
@@ -160,7 +153,7 @@ export MY_PROVIDER_API_KEY="your-key"
 
 For custom providers, use `--model` explicitly:
 ```bash
-./run.sh --model my-custom-model
+agentomics-run --model my-custom-model
 ```
 
 ---
@@ -170,7 +163,7 @@ For custom providers, use `--model` explicitly:
 When multiple providers are configured, they're all available. Use `--list-models` to see all options:
 
 ```bash
-./run.sh --list-models
+agentomics-run --list-models
 ```
 
 The interactive mode groups models by provider for easy selection.
@@ -199,7 +192,7 @@ echo $OPENROUTER_API_KEY  # Should show your key
 
 Check available models:
 ```bash
-./run.sh --list-models
+agentomics-run --list-models
 ```
 
 ### "Rate limit exceeded"
@@ -215,4 +208,4 @@ Ensure Ollama is running:
 ollama list  # Should show pulled models
 ```
 
-For Docker mode, run with `--ollama` so the container uses host networking, and verify the configured Ollama URL is reachable on the host.
+For Docker mode, run with `--network host` so the container can reach the host's Ollama server, and verify the configured Ollama URL is reachable.

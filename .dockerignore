@@ -27,12 +27,31 @@ coverage.xml
 .hypothesis
 
 # Exclude large directories that aren't needed in container
-runs/
-outputs/
-logs/
-temp/
-tmp/
+/.venv/
+/.genomic_benchmarks/
+/.miRBench/
+/.free_spoken_digit_dataset/
+/datasets/
+/test_datasets/
+/cache/
+/wandb/
+/cleanup_wandb_logs/
+/runs/
+/outputs/
+/logs/
+/temp/
+/tmp/
+/build/
+/dist/
+/site/
+*.egg-info/
 *.tmp
+
+# Exclude local development tools
+/.claude/
+/.codex/
+/.logfire/
+/.agents/
 
 # Exclude IDE files
 .vscode/

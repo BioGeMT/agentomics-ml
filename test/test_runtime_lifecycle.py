@@ -10,8 +10,8 @@ SRC_PATH = REPO_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-from agents.steps.data_split import DataSplitOutput
-from runtime.read_write_utils import (
+from agentomics.agents.steps.data_split import DataSplitOutput
+from agentomics.runtime.read_write_utils import (
     archive_current_iteration,
     get_last_successful_iteration,
     get_next_iteration_index,
@@ -23,13 +23,13 @@ from runtime.read_write_utils import (
     save_config,
     update_current_iteration_state,
 )
-from runtime.step_outputs import (
+from agentomics.runtime.step_outputs import (
     _deserialize_step_output_record,
     load_step_output,
     load_step_outputs,
     save_step_output,
 )
-from utils.config import Config
+from agentomics.utils.config import Config
 
 
 class TestStepOutputRoundtrip(unittest.TestCase):
