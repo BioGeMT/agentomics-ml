@@ -3,11 +3,12 @@ from __future__ import annotations
 import argparse
 import shutil
 import subprocess
+from dataclasses import replace
 from pathlib import Path
 
 from agentomics.runtime.conda_utils import (
     ensure_environment_from_descriptor,
-    get_iteration_environment_descriptor_path,
+    get_shared_environment_path,
 )
 from agentomics.runtime.git_checkpoints import create_and_checkout_branch_at_checkpoint
 from agentomics.runtime.read_write_utils import load_config_from_run_dir, replace_string_in_tree_files
@@ -58,18 +59,17 @@ def fork_run(
     # 3. Fix absolute paths in stored step outputs that still point at the source workspace.
     replace_string_in_tree_files(target_workspace_dir, str(source_workspace_dir), str(target_workspace_dir), skip_dirs={".conda", ".git"})
 
-    # 4. Rebuild the untracked Conda envs from the checked-out descriptors.
+    # Rebuild the checkpoint's dependencies on container-local Linux storage.
+    target_config = replace(
+        source_config,
+        agent_id=target_agent_id,
+        workspace_dir=str(target_workspace_dir),
+    )
     ensure_environment_from_descriptor(
         target_run_dir / Config.SHARED_DIRNAME / Config.ENVIRONMENT_DESCRIPTOR_FILENAME,
-        target_run_dir / Config.SHARED_DIRNAME / ".conda" / "envs" / f"{target_agent_id}_env",
+        get_shared_environment_path(target_config),
     )
-    if (target_workspace_dir / Config.BEST_ITERATION_SNAPSHOT_DIRNAME / Config.RUNTIME_INFO_DIRNAME / Config.ITERATION_METADATA_FILENAME).exists():
-        ensure_environment_from_descriptor(
-            get_iteration_environment_descriptor_path(
-                target_workspace_dir / Config.BEST_ITERATION_SNAPSHOT_DIRNAME
-            ),
-            target_workspace_dir / Config.BEST_ITERATION_SNAPSHOT_DIRNAME / ".conda" / "envs" / f"{target_agent_id}_env",
-        )
+
 
 def _validate_fork_args(fork_from_run: Path) -> None:
     if not fork_from_run.is_dir():

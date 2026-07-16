@@ -38,7 +38,6 @@ agentomics-inference \
 | `--label-col` | Label column in the input **CSV** — when set, metrics are computed against it and written to `<output>.metrics.json`. Ignored for a split folder; there, metrics run only if the folder has a `labels.csv` |
 | `--iteration-dir` | Iteration directory to use, relative to `--agent-dir` (default: `best_iteration_snapshot`) |
 | `--all-iterations` | Run inference for every `run/iteration_N` against `--input` (see below) |
-| `--remove-conda-env` | Remove the model conda environment after inference |
 | `--cpu-only` | Run without GPU |
 | `--image` | Docker image to use (default: `biogemt/agentomics:<installed-package-version>`; use this option for an explicit override) |
 | `--help` | Show help message |
@@ -57,10 +56,9 @@ agentomics-inference \
 ```
 
 Predictions (and metrics, when `--label-col` is set) appear in `./data`. Add
-`--cpu-only` to run without GPU access. The model
-environment is reused from the run, or rebuilt from
-`runtime_info/environment.yml` if absent. Pass `--remove-conda-env` to discard
-it afterward.
+`--cpu-only` to run without GPU access. The model environment is restored inside
+the container from `runtime_info/environment.tar.gz`, or rebuilt from
+`runtime_info/environment.yml` when no usable archive is available.
 
 Use `--image <name>` to select another image explicitly, such as a local
 development build.
@@ -148,8 +146,8 @@ outputs/<agent_id>/best_iteration_snapshot/
 │   └── training_artifacts/ # Model files (format varies)
 ├── runtime_info/
 │   ├── iteration_metadata.json
-│   └── environment.yml
-├── .conda/                 # Model conda environment (if present)
+│   ├── environment.yml
+│   └── environment.tar.gz  # Present with --conda-export-mode full
 └── ...                     # Other artifacts (tokenizers, etc.)
 ```
 

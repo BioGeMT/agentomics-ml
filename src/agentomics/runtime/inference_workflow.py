@@ -9,7 +9,7 @@ from pathlib import Path
 
 from agentomics.datasets.csv_converter import convert_inference_csv
 from agentomics.datasets.data_contract import INPUT_DIR_NAME, LABELS_FILE_NAME
-from agentomics.runtime.conda_utils import ensure_iteration_conda_environment
+from agentomics.runtime.conda_utils import restore_iteration_environment
 from agentomics.runtime.evaluate import evaluate_predictions
 from agentomics.runtime.filesystem import (
     resolve_existing_directory,
@@ -66,46 +66,46 @@ def _run_single_inference(arguments: Namespace) -> None:
     if not inference_script.is_file():
         raise FileNotFoundError(f"inference.py not found at: {inference_script}")
 
-    environment_path = ensure_iteration_conda_environment(iteration_root)
     artifacts_path = iteration_root / "model_training" / "training_artifacts"
     print(f"Using iteration directory: {arguments.iteration_dir}")
-    print(f"Using model env: {environment_path}")
 
-    try:
-        with tempfile.TemporaryDirectory() as temporary_directory:
-            input_split = prepare_inference_input(
-                input_path=arguments.input_path,
-                output_split_dir=Path(temporary_directory),
-                label_column=arguments.label_col,
-            )
-            environment = os.environ.copy()
-            if arguments.cpu_only:
-                print("Running in CPU-only mode")
-                environment["CUDA_VISIBLE_DEVICES"] = ""
+    with tempfile.TemporaryDirectory() as temporary_directory:
+        temporary_root = Path(temporary_directory)
+        environment_path = restore_iteration_environment(
+            iteration_root,
+            temporary_root / "model_env",
+        )
+        print(f"Using temporary model env: {environment_path}")
+        input_split = prepare_inference_input(
+            input_path=arguments.input_path,
+            output_split_dir=temporary_root / "input",
+            label_column=arguments.label_col,
+        )
+        environment = os.environ.copy()
+        if arguments.cpu_only:
+            print("Running in CPU-only mode")
+            environment["CUDA_VISIBLE_DEVICES"] = ""
 
-            print("Running inference")
-            run_inference_script(
-                env_path=environment_path,
-                script_path=inference_script,
-                input_path=input_split / INPUT_DIR_NAME,
-                output_path=arguments.output,
-                artifacts_dir=artifacts_path,
-                check=True,
-                capture_output=False,
-                environment=environment,
+        print("Running inference")
+        run_inference_script(
+            env_path=environment_path,
+            script_path=inference_script,
+            input_path=input_split / INPUT_DIR_NAME,
+            output_path=arguments.output,
+            artifacts_dir=artifacts_path,
+            check=True,
+            capture_output=False,
+            environment=environment,
+        )
+        if not arguments.output.is_file():
+            raise FileNotFoundError(
+                f"Inference completed without creating the prediction output: {arguments.output}"
             )
-            if not arguments.output.is_file():
-                raise FileNotFoundError(
-                    f"Inference completed without creating the prediction output: {arguments.output}"
-                )
-            print("Inference done")
-            metrics_path = _compute_metrics(arguments.agent_dir, input_split, arguments.output)
-            restore_host_ownership(arguments.output)
-            if metrics_path is not None:
-                restore_host_ownership(metrics_path)
-    finally:
-        if arguments.remove_conda_env:
-            shutil.rmtree(environment_path, ignore_errors=True)
+        print("Inference done")
+        metrics_path = _compute_metrics(arguments.agent_dir, input_split, arguments.output)
+        restore_host_ownership(arguments.output)
+        if metrics_path is not None:
+            restore_host_ownership(metrics_path)
 
 def _run_all_iterations(arguments: Namespace) -> None:
     run_directory = arguments.agent_dir / Config.RUN_DIRNAME
@@ -135,7 +135,6 @@ def _run_all_iterations(arguments: Namespace) -> None:
             iteration_arguments = Namespace(**vars(arguments))
             iteration_arguments.iteration_dir = Path(Config.RUN_DIRNAME) / iteration_name
             iteration_arguments.output = arguments.output.parent / f"{iteration_name}_predictions.csv"
-            iteration_arguments.remove_conda_env = True
             _run_single_inference(iteration_arguments)
             successful_iterations += 1
         except Exception as error:

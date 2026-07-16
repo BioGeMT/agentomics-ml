@@ -10,49 +10,55 @@ from pathlib import Path
 from agentomics.utils.config import Config
 
 
-def get_shared_conda_root(config: Config) -> Path:
-    return config.shared_dir / ".conda"
-
+ENVIRONMENT_ARCHIVE_FILENAME = "environment.tar.gz"
 
 def get_shared_environment_path(config: Config) -> Path:
-    return get_shared_conda_root(config) / "envs" / f"{config.agent_id}_env"
-
-
-def get_best_iteration_snapshot_environment_path(config: Config) -> Path:
-    return config.best_iteration_snapshot_dir / ".conda" / "envs" / f"{config.agent_id}_env"
-
+    return Path("/tmp/agentomics/envs") / f"{config.agent_id}_env"
 
 def get_iteration_environment_descriptor_path(iteration_dir: Path) -> Path:
     return iteration_dir / Config.RUNTIME_INFO_DIRNAME / Config.ENVIRONMENT_DESCRIPTOR_FILENAME
 
 
-def get_iteration_test_environment_path(agent_dir: Path, iteration_dir: Path) -> Path:
-    return agent_dir / "_iteration_test_envs" / iteration_dir.name / "env"
+def get_iteration_environment_archive_path(iteration_dir: Path) -> Path:
+    return iteration_dir / Config.RUNTIME_INFO_DIRNAME / ENVIRONMENT_ARCHIVE_FILENAME
 
+def restore_iteration_environment(
+    iteration_root: Path,
+    environment_path: Path,
+) -> Path:
+    archive_path = get_iteration_environment_archive_path(iteration_root)
+    if archive_path.is_file():
+        try:
+            environment_path.mkdir(parents=True)
+            subprocess.run(
+                ["tar", "-xf", str(archive_path), "-C", str(environment_path)],
+                check=True,
+            )
+            subprocess.run(
+                [str(environment_path / "bin" / "conda-unpack")],
+                check=True,
+            )
+            return environment_path
+        except (OSError, subprocess.CalledProcessError):
+            shutil.rmtree(environment_path, ignore_errors=True)
 
-def ensure_iteration_conda_environment(iteration_root: Path) -> Path:
-    if shutil.which("conda") is None:
-        raise RuntimeError("Missing required command: conda")
-    descriptor_path = get_iteration_environment_descriptor_path(iteration_root)
-    environment_root = iteration_root / ".conda" / "envs"
-    existing_environments = sorted(
-        path for path in environment_root.glob("*") if path.is_dir()
-    )
-    if existing_environments:
-        return existing_environments[0]
-
-    environment_path = environment_root / "model_env"
-    print(
-        f"No model conda env found under {environment_root}; "
-        f"creating one from {descriptor_path}"
-    )
-    environment_path.parent.mkdir(parents=True, exist_ok=True)
     create_environment_from_descriptor(
-        descriptor_path,
+        get_iteration_environment_descriptor_path(iteration_root),
         env_path=environment_path,
     )
     return environment_path
 
+def export_environment_archive(env_path: Path, archive_path: Path) -> None:
+    archive_path.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        [
+            str(env_path / "bin" / "conda-pack"),
+            "-p", str(env_path),
+            "-o", str(archive_path),
+            "--force",
+        ],
+        check=True,
+    )
 
 def create_environment_from_descriptor(
     descriptor_path: Path,

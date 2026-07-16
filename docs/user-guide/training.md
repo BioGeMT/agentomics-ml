@@ -105,8 +105,9 @@ does not call an LLM.
    `input/` + a numeric `labels.csv` — using the run's task type and trained
    label mapping. CSV-form splits are converted to this shape automatically;
    folder-form splits are used as-is (only their labels are numericized).
-2. Reuses the model's conda environment under the iteration directory's
-   `.conda/envs/`, recreating it from `runtime_info/environment.yml` if missing.
+2. Restores a temporary container-local environment from
+   `runtime_info/environment.tar.gz` when re-training the best snapshot in
+   `full` mode; otherwise it rebuilds the environment from `environment.yml`.
 3. Runs the run's `model_training/train.py` on the prepared `train`/`validation`.
 4. Writes artifacts to `--artifacts-dir` and prints a summary.
 

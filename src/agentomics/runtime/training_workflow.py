@@ -10,7 +10,7 @@ from pathlib import Path
 from agentomics.datasets.data_contract import TRAIN_SPLIT, VALIDATION_SPLIT
 from agentomics.datasets.dataset_preparation import prepare_dataset
 from agentomics.runtime.conda_utils import (
-    ensure_iteration_conda_environment,
+    restore_iteration_environment,
     run_python_in_environment,
 )
 from agentomics.runtime.filesystem import (
@@ -56,12 +56,16 @@ def run_training_workflow(arguments: Namespace) -> None:
     if not training_script.is_file():
         raise FileNotFoundError(f"train.py not found at: {training_script}")
 
-    environment_path = ensure_iteration_conda_environment(iteration_root)
     print(f"Using iteration directory: {arguments.iteration_dir}")
-    print(f"Using model env: {environment_path}")
 
     with tempfile.TemporaryDirectory() as temporary_directory:
-        prepared_directory = Path(temporary_directory) / "prepared"
+        temporary_root = Path(temporary_directory)
+        environment_path = restore_iteration_environment(
+            iteration_root,
+            temporary_root / "model_env",
+        )
+        print(f"Using temporary model env: {environment_path}")
+        prepared_directory = temporary_root / "prepared"
         config = load_config_from_run_dir(
             arguments.agent_dir / Config.RUN_DIRNAME,
             missing_ok=True,

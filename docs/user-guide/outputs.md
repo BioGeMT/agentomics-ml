@@ -16,10 +16,10 @@ outputs/<agent_id>/
 │   │   ├── eval_predictions_train.csv
 │   │   ├── eval_predictions_validation.csv
 │   │   └── output.json
-│   ├── runtime_info/
-│   │   ├── iteration_metadata.json
-│   │   └── environment.yml
-│   └── .conda/                        # Model conda environment (if present)
+│   └── runtime_info/
+│       ├── iteration_metadata.json
+│       ├── environment.yml
+│       └── environment.tar.gz         # Present in full export mode
 ├── run/                      # All iterations + shared run state
 │   ├── shared/
 │   │   ├── config.json
@@ -50,8 +50,8 @@ The most important directory - contains the best-performing iteration's artifact
 | `model_training/train.py` | Script that trained the model |
 | `model_training/training_artifacts/` | Trained model files (format varies) |
 | `runtime_info/iteration_metadata.json` | Which iteration produced the snapshot |
-| `runtime_info/environment.yml` | Export of the conda env used |
-| `.conda/` | Bundled Conda environment for execution |
+| `runtime_info/environment.yml` | Portable definition of the Conda environment used |
+| `runtime_info/environment.tar.gz` | Packed environment for fast container-local restoration in `full` mode |
 | `eval_predictions_test.csv` | Best-model predictions for the optional test split |
 | `eval_predictions_test.numeric_labels.csv` | Numeric test labels used for metrics |
 | `eval_predictions_test.metrics.json` | Metrics for the optional test split |

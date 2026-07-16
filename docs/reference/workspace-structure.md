@@ -84,7 +84,6 @@ Current run working directory:
 ```text
 <workspace_root>/run/
 ├── shared/
-│   ├── .conda/                  # Shared Conda environment
 │   ├── config.json
 │   ├── environment.yml
 │   └── splits/
@@ -107,9 +106,9 @@ Best iteration snapshot:
 │   └── training_artifacts/
 ├── model_inference/
 │   └── inference.py
-├── runtime_info/
-│   └── environment.yml
-└── .conda/
+└── runtime_info/
+    ├── environment.yml
+    └── environment.tar.gz
 ```
 
 Updated whenever a new best iteration is achieved.
@@ -170,9 +169,9 @@ outputs/<agent_id>/
 │   │   └── training_artifacts/
 │   ├── model_inference/
 │   │   └── inference.py
-│   ├── runtime_info/
-│   │   └── environment.yml
-│   └── .conda/
+│   └── runtime_info/
+│       ├── environment.yml
+│       └── environment.tar.gz   # Present in full export mode
 ├── run/                      # All iterations + data splits
 │   ├── shared/
 │   │   ├── config.json

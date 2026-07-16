@@ -55,7 +55,7 @@ For Docker and Ollama setup, see [Installation](../getting-started/installation.
 | `--split-allowed-iterations <n>` | Iterations that can modify train/val split (default 1) |
 | `--exploration-iterations <n>` | Baseline exploration iterations (default 4) |
 | `--tags <tag...>` | Space-separated tags for W&B logging |
-| `--conda-export-mode <full\|yaml>` | Best-iteration environment format: `full` copies the environment for fast reuse; `yaml` stores a portable `environment.yml` (default: `full`) |
+| `--conda-export-mode <full\|yaml>` | Best-iteration environment format: `full` stores `environment.yml` plus a packed `environment.tar.gz`; `yaml` stores only the portable YAML definition (default: `full`) |
 
 ## Forking
 

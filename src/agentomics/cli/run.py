@@ -262,7 +262,6 @@ def _run_inference_on_test_input(
             label_col=None,
             iteration_dir=Path(Config.BEST_ITERATION_SNAPSHOT_DIRNAME),
             all_iterations=False,
-            remove_conda_env=False,
             cpu_only=cpu_only,
         )
     )

@@ -38,10 +38,6 @@ def build_parser() -> argparse.ArgumentParser:
         "--all-iterations", action="store_true",
         help="Run every archived iteration",
     )
-    parser.add_argument(
-        "--remove-conda-env", action="store_true",
-        help="Remove the model environment afterward",
-    )
     parser.add_argument("--cpu-only", action="store_true", help="Disable GPU access")
     return parser
 
@@ -64,8 +60,6 @@ def run_inference_in_docker(arguments: argparse.Namespace) -> None:
         python_arguments.extend(["--label-col", arguments.label_col])
     if arguments.all_iterations:
         python_arguments.append("--all-iterations")
-    if arguments.remove_conda_env:
-        python_arguments.append("--remove-conda-env")
     if arguments.cpu_only:
         python_arguments.append("--cpu-only")
 

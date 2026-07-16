@@ -158,8 +158,9 @@ def add_run_arguments(parser: argparse.ArgumentParser) -> None:
         choices=("full", "yaml"),
         default="full",
         help=(
-            "Best-iteration environment format: 'full' copies the environment for "
-            "fast reuse; 'yaml' stores a portable environment definition"
+            "Best-iteration environment format: 'full' stores YAML plus a packed "
+            "archive for fast reuse; 'yaml' stores only the portable environment "
+            "definition"
         ),
     )
     operational_arguments.add_argument(
