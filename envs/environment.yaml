@@ -3,6 +3,7 @@ channels:
   - conda-forge
 dependencies:
   - python==3.12
+  - conda-pack==0.9.1
   - pandas==2.3.1
   - matplotlib==3.8.4
   - pydantic-ai==1.53.0

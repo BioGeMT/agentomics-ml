@@ -32,7 +32,8 @@ RUN mamba env create -f /repository/envs/environment_agent.yaml \
        > /opt/conda/envs/agent_start_env/etc/conda/activate.d/preload_libgomp.sh \
     && mamba clean -afy \
     && rm -rf /tmp/conda-pkgs \
-    && conda run -n agent_start_env conda-pack -o ${START_ENV_PKG} \
+    && conda run -n agentomics-env conda-pack \
+       -p /opt/conda/envs/agent_start_env -o ${START_ENV_PKG} \
     && conda env remove -n agent_start_env
 
 # Create a restricted user for sandboxed agent tool execution.

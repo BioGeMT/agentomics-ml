@@ -52,7 +52,7 @@ def export_environment_archive(env_path: Path, archive_path: Path) -> None:
     archive_path.parent.mkdir(parents=True, exist_ok=True)
     subprocess.run(
         [
-            str(env_path / "bin" / "conda-pack"),
+            str(Path(sys.executable).parent / "conda-pack"),
             "-p", str(env_path),
             "-o", str(archive_path),
             "--force",
