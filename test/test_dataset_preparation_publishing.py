@@ -9,7 +9,7 @@ SRC_PATH = REPO_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-from datasets.dataset_preparation import check_dataset_prepared, prepare_dataset, prepare_test_dataset
+from agentomics.datasets.dataset_preparation import check_dataset_prepared, prepare_dataset, prepare_test_dataset
 
 DATASET_NAME = "publishing_dataset"
 
@@ -83,15 +83,15 @@ class DatasetPreparationPublishingTests(unittest.TestCase):
         self.assertEqual({"negative": 0, "positive": 1}, test_metadata["label_to_scalar"])
         self.assertFalse((self.test_dataset_dir / "metadata.json").exists())
 
-    def test_public_test_split_is_rejected(self):
+    def test_colocated_test_split_is_allowed_and_ignored_by_training_prep(self):
         write_raw_split(self.dataset_dir, "test")
 
-        with self.assertRaises(ValueError) as raised:
-            self.prepare()
+        self.prepare()
 
-        self.assertIn("must not contain test/", str(raised.exception))
-        self.assertIn("test_datasets", str(raised.exception))
-        self.assertFalse(check_dataset_prepared(self.prepared_dir))
+        # test/ is permitted inside the dataset folder but is not part of the
+        # prepared training output (it is prepared separately at eval time).
+        self.assertTrue(check_dataset_prepared(self.prepared_dir))
+        self.assertFalse((self.prepared_dir / "test").exists())
 
     def test_symlinked_public_dataset_is_rejected_with_actionable_error(self):
         external_file = self.root / "external_reference.txt"

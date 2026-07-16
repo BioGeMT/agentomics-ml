@@ -1,6 +1,9 @@
 # CLI Options
 
-Complete reference for `run.sh` command-line options.
+Complete reference for `agentomics-run` command-line options.
+
+The command launches the Agentomics Docker image and forwards these options to
+the container. See [Installation](../getting-started/installation.md).
 
 ## Basic Options
 
@@ -18,16 +21,17 @@ Complete reference for `run.sh` command-line options.
 
 The run stops when either the iteration count is reached or the timeout expires.
 
-## Deployment Options
+## Execution Options
 
 | Option | Description |
 |--------|-------------|
-| `--build-images` | Build Docker images locally |
-| `--local` | Run without Docker (uses conda) |
 | `--cpu-only` | Disable GPU acceleration |
-| `--ollama` | Enable Docker host networking for a host Ollama server |
-| `--test` | Run the integrated test suite in Docker mode |
-| `--all-iterations-test` | Evaluate every archived iteration on the held-out test set after the run |
+| `--test` | Run the integrated test suite |
+| `--image <name>` | Docker image to launch (default: `biogemt/agentomics:<installed-package-version>`; use this option for an explicit override) |
+| `--datasets-dir <path>` | Host directory to read datasets from (default: `./datasets`) |
+| `--workspace-dir <path>` | Host directory for this run's output (default: `./outputs/<agent_id>`) |
+
+For Docker and Ollama setup, see [Installation](../getting-started/installation.md).
 
 ## Listing Options
 
@@ -44,7 +48,6 @@ The run stops when either the iteration count is reached or the timeout expires.
 |--------|-------------|
 | `--user-prompt <text>` | Custom prompt for the agent |
 | `--iteration-plan-model <name>` | LLM model used for generating the iteration plan (defaults to `--model`) |
-| `--foundation-models-type <type>` | Enable foundation models (`dna`, `rna`, `protein`, `molecule`, `all`) |
 | `--use-provisioning-key` | Use OpenRouter temporary API key |
 | `--spend-limit <n>` | Spend limit for provisioning key (requires `--use-provisioning-key`) |
 | `--verbosity <summary\|full>` | How much agent interaction detail is printed during the run (default: `full`) |
@@ -52,6 +55,7 @@ The run stops when either the iteration count is reached or the timeout expires.
 | `--split-allowed-iterations <n>` | Iterations that can modify train/val split (default 1) |
 | `--exploration-iterations <n>` | Baseline exploration iterations (default 4) |
 | `--tags <tag...>` | Space-separated tags for W&B logging |
+| `--conda-export-mode <full\|yaml>` | Best-iteration environment format: `full` stores `environment.yml` plus a packed `environment.tar.gz`; `yaml` stores only the portable YAML definition (default: `full`) |
 
 ## Forking
 
@@ -70,56 +74,38 @@ See [Forking a Run](../user-guide/forking.md) for a full guide and examples.
 ### Basic Run
 
 ```bash
-./run.sh --model openai/gpt-4 --dataset breast_cancer --iterations 10
+agentomics-run --model openai/gpt-5.1-codex-max --dataset breast_cancer --iterations 10
 ```
 
-### Quick Start with Pre-built Images
+### Interactive Run
 
 ```bash
-./run.sh
-```
-
-### Local Mode
-
-```bash
-./run.sh --local --model openai/gpt-4 --dataset my_data
+agentomics-run
 ```
 
 ### With Time Limit
 
 ```bash
-./run.sh --timeout 3600 --model openai/gpt-4 --dataset my_data
+agentomics-run --timeout 3600 --model openai/gpt-5.1-codex-max --dataset my_data
 ```
 
 ### Custom Optimization Goal
 
 ```bash
-./run.sh --user-prompt "Focus on interpretable models only" --model openai/gpt-4
+agentomics-run --user-prompt "Focus on interpretable models only" --model openai/gpt-5.1-codex-max
 ```
 
 ### Using Ollama
 
 ```bash
 export OLLAMA_BASE_URL=http://localhost:11434/v1
-./run.sh --ollama --provider ollama --model llama3.1 --dataset my_data
+agentomics-run --provider ollama --model llama3.1 --dataset my_data
 ```
 
 ### CPU Only
 
 ```bash
-./run.sh --cpu-only --model openai/gpt-4 --dataset my_data
-```
-
-### Enable Foundation Models
-
-```bash
-./run.sh --foundation-models-type protein --model openai/gpt-4 --dataset my_data
-```
-
-### Run with locally built Docker images
-
-```bash
-./run.sh --build-images 
+agentomics-run --cpu-only --model openai/gpt-5.1-codex-max --dataset my_data
 ```
 
 ## Validation Metrics

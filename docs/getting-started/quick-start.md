@@ -1,6 +1,6 @@
 # Quick Start
 
-Get Agentomics-ML running in under 5 minutes using pre-built Docker images.
+Get Agentomics-ML running in a few minutes with the pre-built Docker image.
 
 ## Prerequisites
 
@@ -9,38 +9,38 @@ Get Agentomics-ML running in under 5 minutes using pre-built Docker images.
 
 ## Steps
 
-### 1. Clone the Repository
+### 1. Install the CLI and an Example Dataset
+
+Install the package from PyPI, then download a single example dataset to try
+(`AGO2_CLASH_Hejret2023`). No repository clone is required:
 
 ```bash
-git clone https://github.com/BioGeMT/Agentomics-ML.git
-cd Agentomics-ML
+python3 -m pip install agentomics
+agentomics-download-dataset --dataset AGO2_CLASH_Hejret2023
 ```
 
-### 2. Create a .env File and Set a Key
+### 2. Set a Provider Key
 
-Docker mode requires a `.env` file in the repo root.
+Export at least one provider key (or put it in a `.env` file in the current
+directory):
 
 ```bash
-cp .env.example .env
-# Edit .env and set at least one provider key:
-# OPENROUTER_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY
+export OPENROUTER_API_KEY=...   # or OPENAI_API_KEY / ANTHROPIC_API_KEY
 ```
 
 ### 3. Run the Agent
 
 ```bash
-./run.sh
+agentomics-run --dataset AGO2_CLASH_Hejret2023
 ```
 
-### 4. Follow the Interactive Prompts
+`agentomics-run` launches the Agentomics Docker image for you, reads datasets
+from `./datasets`, and writes this run's results to `./outputs/<agent_id>/`.
 
-The agent will prompt you to:
+Drop `--dataset AGO2_CLASH_Hejret2023` to pick a model,
+dataset, and iteration count interactively instead.
 
-1. **Select a model** - Choose from available LLMs
-2. **Select a dataset** - Use your own or download examples
-3. **Configure iterations** - How many optimization cycles to run
-
-The validation metric defaults to `AUROC` for classification and `MAE` for regression. To choose one explicitly, pass `--val-metric`; see `./run.sh --list-metrics`.
+The validation metric defaults to `AUROC` for classification and `MAE` for regression. To choose one explicitly, pass `--val-metric`; list options with `--list-metrics` in place of the run arguments.
 
 ## Using Your Own Dataset
 
@@ -54,32 +54,30 @@ datasets/my_dataset/
 ├── validation/         # Optional
 │   ├── input/
 │   └── labels.csv
+├── test/               # Optional; hidden from the agent and evaluated afterward
+│   ├── input/
+│   └── labels.csv
 └── dataset_description.md
 ```
 
-(Optional) Put hidden test data under the matching `test_datasets/` folder:
-
-```text
-test_datasets/my_dataset/
-└── test/
-    ├── input/
-    └── labels.csv
-```
-
-See [Preparing Datasets](../user-guide/datasets.md) for details.
+The held-out test split is optional. It is not mounted into the agent worker.
+After a successful run, Agentomics starts a separate evaluation container with
+read-only access to the test split, evaluates the best iteration, and includes
+the results in reports. Run training with `--dataset my_dataset`. See
+[Preparing Datasets](../user-guide/datasets.md) for details.
 
 ## Example Datasets
 
 Download example dataset to try:
 
 ```bash
-./scripts/download_example_dataset.sh
+agentomics-download-dataset
 ```
 
 List other available examples with:
 
 ```bash
-./scripts/download_example_dataset.sh --list
+agentomics-download-dataset --list
 ```
 
 ## What Happens Next
@@ -88,12 +86,12 @@ The agent will:
 
 1. Prepare your dataset
 2. Run iterative ML development cycles
-3. Save the best model to `outputs/<agent_id>/`
+3. Save the best model to the run's output directory (`outputs/<agent_id>/`)
 
-Results include trained models, inference scripts, markdown reports in `outputs/<agent_id>/reports/markdown/`, and PDF reports in `outputs/<agent_id>/reports/pdf/`.
+Results include trained models, inference scripts, markdown reports in `reports/markdown/`, and PDF reports in `reports/pdf/`.
 
 ## Next Steps
 
-- [Installation Options](installation.md) - Docker build, local mode, Ollama
+- [Installation](installation.md) - Docker and Ollama setup
 - [Running the Agent](../user-guide/running-agent.md) - Advanced usage
 - [CLI Options](../configuration/cli-options.md) - All available flags

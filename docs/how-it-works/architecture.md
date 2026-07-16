@@ -136,7 +136,6 @@ The agent has access to these tools:
 | **Write Python** | Create Python files |
 | **Run Python** | Execute Python scripts |
 | **Replace** | Modify code sections |
-| **Foundation Models Info** | Get domain model information |
 
 ## How Decisions Are Made
 
@@ -168,7 +167,6 @@ Iteration 1-N (Refinement)
 
 Final
 ├── Select best iteration
-├── Evaluate on test set
 └── Generate reports
 ```
 
@@ -179,11 +177,11 @@ The agent tracks the best-performing iteration:
 - After each iteration, metrics are compared
 - If better than previous best, a snapshot is saved
 - Snapshots include model, scripts, and environment
-- Final evaluation uses the best snapshot
+- The best snapshot is exported to `best_iteration_snapshot/` for inference and re-training
 
 ## Configuration
 
-Key architecture parameters in `src/utils/config.py`:
+Key architecture parameters in `src/agentomics/utils/config.py`:
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|

@@ -11,7 +11,6 @@ Models are evaluated at multiple stages:
 | **Dry Run** | Prepared training data without labels | Validate inference script shape and metrics compatibility |
 | **Validation** | Validation set | Guide optimization |
 | **Train** | Training set | Detect overfitting |
-| **Test** | Hidden test set | Final unbiased evaluation |
 
 ## Validation Evaluation
 
@@ -22,18 +21,19 @@ After each iteration:
 3. Compared to previous iterations
 4. Best iteration snapshot updated if improved
 
-## Test Evaluation
+## Evaluating on a Held-out Test Set
 
-At the end of the run:
+The agent never sees the held-out `test/` split — it is withheld from the
+agent's mounts. If a dataset includes a co-located `test/` split, `agentomics-run`
+automatically evaluates the best iteration on it **after** the run, in a separate
+read-only evaluation container, and saves the predictions and metrics into the
+best-iteration snapshot (`eval_predictions_test.csv`,
+`eval_predictions_test.metrics.json`). Datasets without a `test/` split simply
+skip this step.
 
-1. Best iteration's model is loaded
-2. Predictions made on test set (never seen during training)
-3. Final metrics reported
-4. Results saved to final report
-
-!!! note
-    Test evaluation only occurs if you provide a `test/` split with `input/`
-    and `labels.csv`.
+To score the finished model on any other labeled set, run inference with
+`--label-col` — metrics are computed by the bundled evaluator and written next to
+the predictions. See [Running Inference](../user-guide/inference.md#computing-metrics).
 
 ## Classification Metrics
 
@@ -85,7 +85,7 @@ At the end of the run:
 Choose with `--val-metric`:
 
 ```bash
-./run.sh --val-metric AUROC
+agentomics-run --val-metric AUROC
 ```
 
 The agent optimizes for this metric when selecting the best iteration.
@@ -154,7 +154,6 @@ outputs/<agent_id>/reports/pdf/iteration_N.pdf
 Contains:
 - All iteration metrics
 - Best iteration details
-- Test set results
 - Metric comparisons
 
 ### In W&B
@@ -170,7 +169,7 @@ If configured, metrics are logged to Weights & Biases:
 For advanced use, modify metric definitions in:
 
 ```
-src/utils/metrics.py
+src/agentomics/utils/metrics.py
 ```
 
 ## Next Steps

@@ -16,12 +16,10 @@ outputs/<agent_id>/
 │   │   ├── eval_predictions_train.csv
 │   │   ├── eval_predictions_validation.csv
 │   │   └── output.json
-│   ├── runtime_info/
-│   │   └── iteration_metadata.json
-│   ├── environment.yml
-│   ├── eval_predictions_test.csv      # If a held-out test set was provided
-│   ├── test_metrics.json              # If final test evaluation succeeded
-│   └── .conda/
+│   └── runtime_info/
+│       ├── iteration_metadata.json
+│       ├── environment.yml
+│       └── environment.tar.gz         # Present in full export mode
 ├── run/                      # All iterations + shared run state
 │   ├── shared/
 │   │   ├── config.json
@@ -52,13 +50,16 @@ The most important directory - contains the best-performing iteration's artifact
 | `model_training/train.py` | Script that trained the model |
 | `model_training/training_artifacts/` | Trained model files (format varies) |
 | `runtime_info/iteration_metadata.json` | Which iteration produced the snapshot |
-| `environment.yml` | Export of the conda env used |
-| `.conda/` | Bundled Conda environment for execution |
+| `runtime_info/environment.yml` | Portable definition of the Conda environment used |
+| `runtime_info/environment.tar.gz` | Packed environment for fast container-local restoration in `full` mode |
+| `eval_predictions_test.csv` | Best-model predictions for the optional test split |
+| `eval_predictions_test.numeric_labels.csv` | Numeric test labels used for metrics |
+| `eval_predictions_test.metrics.json` | Metrics for the optional test split |
 
 ### Using the Best Model
 
 ```bash
-./scripts/inference.sh --agent-dir outputs/<agent_id> --input data/input --output predictions.csv
+agentomics-inference --agent-dir outputs/<agent_id> --input data/input --output predictions.csv
 ```
 
 ## Iteration Directories
@@ -99,23 +100,15 @@ run/iteration_N/
 Metrics are tracked for each iteration:
 
 Metrics depend on the selected validation metric and task type. See
-`./run.sh --list-metrics` for the current list.
+`agentomics-run --list-metrics` for the current list.
 
-## Workspace Structure
+## Where Outputs Are Stored
 
-During execution, the agent uses a workspace:
+The agent writes directly to the run workspace as it works — there is no
+separate staging area or temporary volume:
 
-```
-<workspace_root>/
-├── run/                     # Active run directory
-│   └── shared/splits/       # Versioned train/validation split folders
-├── best_iteration_snapshot/    # Best iteration snapshot
-├── reports/                 # Iteration reports
-├── logs/                    # Logs and metrics
-└── fallbacks/               # Reserved recovery area
-```
-
-In Docker mode, this is an internal temporary volume. In local mode, it lives under `../workspace/runs/<agent_id>/`. After completion, the run workspace is copied to `outputs/<agent_id>/`.
+- The host workspace defaults to `outputs/<agent_id>/` and is mounted at
+  `/workspace` in the container.
 
 ## W&B Logging
 
@@ -148,12 +141,6 @@ rm -rf outputs/<agent_id>
 
 # Remove all runs (careful!)
 rm -rf outputs/*
-```
-
-In Docker mode, the temporary workspace volume is removed after a run. In local mode, you can manually remove the active workspace:
-
-```bash
-rm -rf ../workspace/runs/<agent_id>
 ```
 
 ## Next Steps

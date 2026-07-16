@@ -15,23 +15,18 @@ datasets/my_dataset/
 ├── validation/             # Optional
 │   ├── input/
 │   └── labels.csv
+├── test/                   # Optional; held out from the agent
+│   ├── input/
+│   └── labels.csv
 ├── supplementary/          # Optional: dataset-level source materials
 ├── metadata.json           # Optional if --task-type is provided
 └── dataset_description.md  # Optional domain context
 ```
 
-Hidden test data belongs in a separate root so the agent never sees it during
-training:
-
-```text
-test_datasets/my_dataset/
-└── test/
-    ├── input/
-    └── labels.csv
-```
-
-Only `train` and `validation` are supported in `datasets/`. Only `test` is
-supported in `test_datasets/`.
+The optional `test/` split is stored with the dataset, but is excluded from the
+agent worker's mounts and agent-facing prepared data. After model development,
+Agentomics mounts it read-only in a separate evaluation container, prepares it
+in a temporary directory, and evaluates only the best iteration against it.
 
 ## Split Requirements
 
@@ -109,7 +104,7 @@ be part of the experiment.
 
 The top-level entries in `train/input/` are recorded at dataset preparation
 time and define the split interface. All splits must have matching top-level
-`input/` files and folders: `validation/input/` and `test_datasets/<name>/test/input/` are validated
+`input/` files and folders: `validation/input/` and `test/input/` are validated
 against `train/input/` during preparation, and the agent cannot add, remove, or
 rename top-level `input/` entries during the split step. Files inside matching
 top-level folders may differ between splits, which supports datasets where each
@@ -136,17 +131,16 @@ folders from `train/` during the run.
 ### test/ Optional
 
 The hidden test split is used only for final evaluation. Keep it under
-`test_datasets/<dataset>/test/`, not under `datasets/<dataset>/test/`.
-The agent does not get access to `test_datasets/` during training.
+`datasets/<dataset>/test/`. The run excludes it from the agent-facing prepared
+dataset, then automatically evaluates the best iteration on it after training.
 
 ### metadata.json Optional
 
-Preparation does not infer task type from generic input files. If you do not
+Agentomics does not infer task type from generic input files. If you do not
 provide `metadata.json`, pass `--task-type classification` or
-`--task-type regression` during single-dataset preparation, or run single-dataset
-preparation interactively. For `--prepare-all`, every dataset must provide
-`metadata.json`. For classification datasets, Agentomics derives class IDs from
-`labels.csv` if `label_to_scalar` is absent.
+`--task-type regression` to `agentomics-run`, or select the task type when
+prompted in an interactive run. For classification datasets, Agentomics derives
+class IDs from `labels.csv` if `label_to_scalar` is absent.
 
 Example:
 
@@ -196,12 +190,9 @@ the run workspace when the run starts; your source CSV files are not modified.
 datasets/my_dataset/
 ├── train.csv
 ├── validation.csv          # optional
+├── test.csv                # optional, held out from the agent
 ├── metadata.json
 └── dataset_description.md  # optional
-
-test_datasets/my_dataset/
-├── test.csv
-└── metadata.json           # label_column, optional id_column
 ```
 
 Only these CSV names are auto-detected: `train.csv`, optional `validation.csv`,
@@ -218,9 +209,8 @@ For CSV datasets, `metadata.json` should identify the label column and task type
 ```
 
 `id_column` is optional. If it is absent, Agentomics generates sample IDs. In
-interactive runs, Agentomics can ask for the public dataset `label_column`; in
-non-interactive runs, add it to `metadata.json`. Hidden test CSV datasets must
-provide `label_column` in `test_datasets/<name>/metadata.json`.
+interactive runs, Agentomics can ask for the dataset `label_column`; in
+non-interactive runs, add it to `metadata.json`.
 
 The label column in the source CSV can have any name. During conversion it is
 written as `label` in `labels.csv`, which is the required column name for the
@@ -228,47 +218,44 @@ folder-based format.
 
 ## Prepared Dataset Structure
 
-After preparation, the same dataset directory contains numeric labels:
+Your source `datasets/<name>/` folder is mounted read-only and is never
+modified. When a run starts, Agentomics prepares the public `train` and
+`validation` splits into the run workspace, converting labels to
+`id,numeric_label`:
 
 ```text
-datasets/my_dataset/
+outputs/<agent_id>/run/shared/splits/split_0/
 ├── train/
 │   ├── input/
 │   └── labels.csv          # id,numeric_label
-├── validation/
-│   ├── input/
-│   └── labels.csv          # id,numeric_label
-├── supplementary/          # Dataset-level source materials, if provided
-├── dataset_description.md
-└── metadata.json           # includes "prepared": true
-
-test_datasets/my_dataset/
-└── test/
+└── validation/
     ├── input/
     └── labels.csv          # id,numeric_label
 ```
 
-Prepared `labels.csv` files contain `id,numeric_label`; original label values are
-kept in `metadata.json` through `label_to_scalar`.
+The original label values are preserved through `label_to_scalar` in the run
+config. The held-out `test/` split is not part of this prepared data — it is
+excluded from the agent's mounts and prepared separately in a temporary
+directory only for the post-run evaluation.
 
 ## Example Datasets
 
 List available example datasets:
 
 ```bash
-./scripts/download_example_dataset.sh --list
+agentomics-download-dataset --list
 ```
 
 Download one example dataset:
 
 ```bash
-./scripts/download_example_dataset.sh --dataset digits_images
+agentomics-download-dataset --dataset digits_images
 ```
 
 Download all registered examples:
 
 ```bash
-./scripts/download_example_dataset.sh --all
+agentomics-download-dataset --all
 ```
 
 Useful small examples are available for different input types:
@@ -325,6 +312,17 @@ train/
 
 `labels.csv.id` should match the audio filename stem, for example `sample_001`
 maps to `input/audio/sample_001.wav`.
+
+## Validate Before a Run (Optional)
+
+Check that a dataset satisfies the format contract without launching a run.
+`agentomics-check-dataset` runs the same preparation and validation the agent
+would, on the host and without Docker, then reports the result. Your dataset is
+never modified.
+
+```bash
+agentomics-check-dataset --dataset-dir path/to/my_dataset
+```
 
 ## Common Issues
 

@@ -10,14 +10,19 @@ Forking lets you branch off from a completed checkpoint in an existing run and c
 
 ## Basic Usage
 
+Point `--fork-from-run` at an `outputs/<run_id>` directory. The launcher mounts
+the source workspace read-only in the container:
+
 ```bash
-./run.sh \
+agentomics-run \
   --fork-from-run outputs/my_source_run \
-  --model openai/gpt-4 \
+  --model openai/gpt-5.1-codex-max \
   --iterations 3
 ```
 
-Point `--fork-from-run` at an `outputs/<run_id>` directory. The fork starts from the latest checkpoint in that run and continues for 3 more iterations.
+The fork starts from the latest checkpoint in that run and continues for 3 more
+iterations. The launcher mounts the source run read-only and writes the fork to
+a new `outputs/<agent_id>/` directory, leaving the source run untouched.
 
 ## Choosing a Checkpoint
 
@@ -25,10 +30,10 @@ By default, the fork starts from the latest checkpoint (the end of the last comp
 
 ```bash
 # Fork from the end of iteration 2
-./run.sh --fork-from-run outputs/my_run --fork-from-iteration 2
+agentomics-run --fork-from-run outputs/my_run --fork-from-iteration 2
 
 # Fork from after the data_split step in iteration 1
-./run.sh --fork-from-run outputs/my_run \
+agentomics-run --fork-from-run outputs/my_run \
   --fork-from-iteration 1 \
   --fork-from-step data_split
 ```
@@ -58,7 +63,6 @@ Most run options are **optional** when forking — omitting them reuses the valu
 | `--timeout` | Not inherited — no run timeout unless passed (applies only to the forked run's own runtime) |
 | `--split-timeout` | Not inherited — no split timeout unless passed (applies only to the forked run's own runtime) |
 | `--user-prompt` | Inherited if omitted |
-| `--foundation-models-type` | Inherited if omitted |
 | `--tags` | Inherited if omitted |
 | `--dataset` | **Always inherited, cannot be changed** |
 | `--val-metric` | **Always inherited, cannot be changed** |
@@ -72,19 +76,20 @@ When a fork is set up, the following happens before the new run starts:
 1. The source workspace state is copied, excluding generated reports/logs and untracked Conda environments.
 2. The git history in the run directory is checked out at the requested checkpoint — files added in later commits are removed.
 3. Absolute paths stored in step outputs are rewritten to point to the new workspace.
-4. The shared conda environment is renamed for the new run ID and updated from the stored `environment.yml`.
+4. The shared Conda environment is rebuilt from the checkpoint's `environment.yml` using the new run ID.
 
 The forked run then continues from that state exactly as if the original run had stopped there.
 
 **Note on supplementary materials**: Forked runs reference the same dataset directory as the source run. Any changes to dataset files (including `supplementary/`) will be visible to the fork.
 
-**Note on Docker exports**: When a Docker run is exported to `outputs/`, the split directories contain symbolic links pointing to the container-internal path `/repository/datasets/...`. These symlinks do not resolve on the host, and forked runs using local mode will be broken. When forking from a finished Docker run, make sure to use docker mode as well for the fork.  The forked container mounts `datasets/` at the same `/repository/datasets` path, so the symlinks resolve correctly inside the container.
+Split directories may contain symbolic links pointing to container paths. Forks
+run in the same Docker layout, so those links continue to resolve.
 
 ## Example: Extend a Completed Run
 
 ```bash
 # Original run finished after 5 iterations
-./run.sh \
+agentomics-run \
   --fork-from-run outputs/finished_run \
   --iterations 5   # run 5 more, for a total of 10
 ```
@@ -93,14 +98,14 @@ The forked run then continues from that state exactly as if the original run had
 
 ```bash
 # Fork A: aggressive regularization
-./run.sh \
+agentomics-run \
   --fork-from-run outputs/base_run \
   --fork-from-iteration 3 \
   --user-prompt "Focus on heavily regularized models to reduce overfitting" \
   --iterations 4
 
 # Fork B: ensemble approach
-./run.sh \
+agentomics-run \
   --fork-from-run outputs/base_run \
   --fork-from-iteration 3 \
   --user-prompt "Try ensemble methods combining multiple base learners" \

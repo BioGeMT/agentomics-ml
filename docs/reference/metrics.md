@@ -218,13 +218,13 @@ Rank correlation between predictions and true values.
 ### CLI
 
 ```bash
-./run.sh --val-metric AUROC
+agentomics-run --val-metric AUROC
 ```
 
 ### Listing Available Metrics
 
 ```bash
-./run.sh --list-metrics
+agentomics-run --list-metrics
 ```
 
 ---

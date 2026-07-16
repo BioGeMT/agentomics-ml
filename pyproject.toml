@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentomics"
+dynamic = ["version"]
+description = "Package for running Agentomics - an autonomous agentic system for ML model development"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "genomic-benchmarks==1.0.0",
+    "hrid>=0.3.0",
+    "numpy>=1.26",
+    "pandas>=2.0",
+    "Pillow==12.0.0",
+    "scikit-learn>=1.5",
+    "scipy>=1.11",
+    "rich>=14.0",
+]
+license = { file = "LICENSE" }
+authors = [
+    { name = "Vlastimil Martinek" },
+]
+maintainers = [
+    { name = "Vlastimil Martinek", email = "martinekvlastimil95@gmail.com" },
+]
+
+[project.urls]
+Documentation = "https://biogemt.github.io/agentomics-ml/"
+Repository = "https://github.com/BioGeMT/Agentomics-ML"
+
+[project.scripts]
+agentomics-download-dataset = "agentomics.cli.download_dataset:main"
+agentomics-run = "agentomics.cli.run:main"
+agentomics-inference = "agentomics.cli.inference:main"
+agentomics-retrain = "agentomics.cli.retrain:main"
+agentomics-check-dataset = "agentomics.cli.check_dataset:main"
+
+[tool.setuptools.dynamic]
+version = { attr = "agentomics.__version__" }
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = [
+    "agentomics",
+    "agentomics.cli",
+    "agentomics.datasets",
+    "agentomics.runtime",
+    "agentomics.utils",
+]

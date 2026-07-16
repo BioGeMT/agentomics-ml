@@ -55,9 +55,9 @@ nav:
     - Evaluation: how-it-works/evaluation.md
   - Reference:
     - Metrics: reference/metrics.md
-    - Foundation Models: reference/foundation-models.md
     - Workspace Structure: reference/workspace-structure.md
   - Developer Guide:
+    - Releasing: developer/releasing.md
     - Proxy Settings: developer/proxy-settings.md
     - GPU Settings: developer/gpu-settings.md
 

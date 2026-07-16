@@ -6,14 +6,13 @@ Configure NVIDIA GPU support for accelerated training.
 
 GPU acceleration significantly speeds up:
 - Neural network training
-- Foundation model embeddings
 - Large dataset processing
 
 ## Requirements
 
 - NVIDIA GPU with CUDA support
 - NVIDIA drivers installed
-- NVIDIA Container Toolkit (for Docker mode)
+- NVIDIA Container Toolkit
 
 ## Checking GPU Availability
 
@@ -65,7 +64,7 @@ docker run --rm --gpus all nvidia/cuda:12.0-base nvidia-smi
 ### Default (GPU Enabled)
 
 ```bash
-./run.sh
+agentomics-run
 ```
 
 GPU is detected and used automatically.
@@ -73,28 +72,25 @@ GPU is detected and used automatically.
 ### CPU Only
 
 ```bash
-./run.sh --cpu-only
+agentomics-run --cpu-only
 ```
 
 Disables GPU even if available.
 
-### Specific GPUs (Local Mode Only)
+### Specific GPUs
 
-In local mode, you can use `CUDA_VISIBLE_DEVICES`:
+The launcher forwards `CUDA_VISIBLE_DEVICES` into the container:
 
 ```bash
 # Use only GPU 0
-CUDA_VISIBLE_DEVICES=0 ./run.sh --local
+CUDA_VISIBLE_DEVICES=0 agentomics-run
 
 # Use GPUs 0 and 1
-CUDA_VISIBLE_DEVICES=0,1 ./run.sh --local
+CUDA_VISIBLE_DEVICES=0,1 agentomics-run
 
 # Use no GPU (equivalent to --cpu-only)
-CUDA_VISIBLE_DEVICES="" ./run.sh --local
+CUDA_VISIBLE_DEVICES="" agentomics-run
 ```
-
-In Docker mode, Agentomics uses all available GPUs and does not expose a flag
-to select a subset.
 
 ## GPU Memory
 
@@ -120,25 +116,15 @@ If you encounter OOM errors:
 Agentomics-ML supports multi-GPU training:
 
 - Agent-generated scripts may use DataParallel or DistributedDataParallel
-- All available GPUs are passed to containers by default
-
-To limit GPUs in local mode:
+- GPUs exposed to the container are available to generated training scripts
 
 ```bash
-CUDA_VISIBLE_DEVICES=0,1 ./run.sh --local  # Use only first 2 GPUs
+CUDA_VISIBLE_DEVICES=0,1 agentomics-run
 ```
 
-In Docker mode, Agentomics passes all available GPUs to the container; selecting a subset requires running Docker manually with custom GPU flags.
-
-## Docker GPU Flags
-
-When running containers manually, you can limit GPUs with Docker flags:
-
-```bash
-docker run --gpus all ...           # All GPUs
-docker run --gpus '"device=0"' ...  # Specific GPU
-docker run --gpus 2 ...             # First 2 GPUs
-```
+`agentomics-run` requests all GPUs from Docker (`--gpus all`) unless you pass
+`--cpu-only`. To restrict the run to specific GPUs, set `CUDA_VISIBLE_DEVICES`
+as shown above; the launcher forwards it into the container.
 
 ## Troubleshooting
 
@@ -169,20 +155,6 @@ The container uses a specific CUDA version. If your driver is older:
 - Check GPU utilization with `nvidia-smi`
 - Ensure you're not CPU-bound (data loading)
 - Verify training is actually using GPU (check nvidia-smi during training)
-
-## Local Mode GPU
-
-In local mode, GPU is used automatically if:
-- NVIDIA drivers are installed
-- PyTorch CUDA is available
-
-Check PyTorch CUDA:
-
-```python
-import torch
-print(torch.cuda.is_available())
-print(torch.cuda.device_count())
-```
 
 ## Cloud GPU Instances
 
