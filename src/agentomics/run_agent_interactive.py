@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import sys
 
 from rich.console import Console
 
-from agentomics.datasets.data_contract import VALIDATION_SPLIT
+from agentomics.datasets.data_contract import METADATA_FILE_NAME, VALIDATION_SPLIT
 from agentomics.datasets.dataset_preparation import prepare_dataset
 from agentomics.datasets.datasets_interactive import (
     get_all_datasets_info,
@@ -159,12 +160,17 @@ def run_agent_interactive(arguments: argparse.Namespace) -> int:
     dataset, model, iterations = _resolve_interactive_parameters(arguments, provider)
     iteration_plan_model = arguments.iteration_plan_model or model
     prepared_datasets_dir = arguments.workspace_dir / "prepared_datasets"
-    dataset_metadata = prepare_dataset(
-        source_dir=arguments.datasets_dir / dataset,
-        destination_dir=prepared_datasets_dir / dataset,
-        task_type=arguments.task_type,
-        interactive=_is_tty_available(),
-    )
+    prepared_dataset_dir = prepared_datasets_dir / dataset
+    if arguments.fork_from_run is not None:
+        metadata_path = prepared_dataset_dir / METADATA_FILE_NAME
+        dataset_metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    else:
+        dataset_metadata = prepare_dataset(
+            source_dir=arguments.datasets_dir / dataset,
+            destination_dir=prepared_dataset_dir,
+            task_type=arguments.task_type,
+            interactive=_is_tty_available(),
+        )
     task_type = dataset_metadata["task_type"]
     val_metric = resolve_val_metric(task_type, arguments.val_metric)
     split_allowed_iterations = arguments.split_allowed_iterations
