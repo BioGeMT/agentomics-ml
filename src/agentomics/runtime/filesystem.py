@@ -102,7 +102,7 @@ def restore_host_ownership(path: Path) -> None:
     if host_user_id is None or not path.exists():
         return
 
-    command = ["chown"]
+    command = ["chown", "--no-dereference"]
     if path.is_dir():
         command.append("-R")
     host_group_id = os.environ.get("HOST_GID", host_user_id)
