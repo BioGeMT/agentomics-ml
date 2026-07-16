@@ -56,6 +56,7 @@ def export_environment_archive(env_path: Path, archive_path: Path) -> None:
             "-p", str(env_path),
             "-o", str(archive_path),
             "--force",
+            "--quiet",
         ],
         check=True,
     )
