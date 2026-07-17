@@ -9,7 +9,7 @@ dependencies:
   - pydantic-ai==1.53.0
   - pip
   - pip:
-    - weave==0.52.17 # Often breaks with new versions, update as necessary
+    - weave==0.52.14 # Often breaks with new versions, update as necessary
     - scikit-learn==1.7.1
     - reportlab==4.2.0
     - wandb==0.22.3
