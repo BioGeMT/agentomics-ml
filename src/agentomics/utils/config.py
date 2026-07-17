@@ -26,7 +26,7 @@ class Config:
 
     DEFAULT_ITERATIONS: ClassVar[int] = 5
     DEFAULT_SPLIT_ALLOWED_ITERATIONS: ClassVar[int] = 1
-    DEFAULT_EXPLORATION_ITERATIONS: ClassVar[int] = 4
+    DEFAULT_EXPLORATION_ITERATIONS: ClassVar[int] = 2
     DEFAULT_STEP_SEQUENCE: ClassVar[list[str]] = [
         "iteration_plan",
         "data_exploration",
