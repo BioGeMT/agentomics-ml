@@ -1,19 +1,18 @@
 import math
+import os
 from pathlib import Path
 
 import wandb
-from wandb.errors import AuthenticationError, UsageError
 
 from agentomics.utils.metrics import get_task_to_metrics_names
 from agentomics.utils.config import Config
 
 
 def login_to_wandb(api_key):
-    try:
-        wandb.login(key=api_key, anonymous="allow", timeout=5)
-        return True
-    except (AuthenticationError, UsageError):
+    if not api_key:
         return False
+    os.environ["WANDB_API_KEY"] = api_key
+    return True
 
 def is_wandb_active():
     try:
