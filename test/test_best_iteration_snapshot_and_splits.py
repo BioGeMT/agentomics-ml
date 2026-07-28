@@ -505,6 +505,34 @@ class TestFinalReportSplitLabels(unittest.TestCase):
         self.assertEqual(snapshot_dir / "eval_predictions_test.csv", test_split.preds_csv)
         self.assertEqual({"ACC": 1.0}, test_split.metrics)
 
+    def test_iteration_inputs_include_multiple_test_artifact_namespaces(self):
+        snapshot_dir = self.config.best_iteration_snapshot_dir
+        (snapshot_dir / Config.RUNTIME_INFO_DIRNAME).mkdir(parents=True, exist_ok=True)
+        (snapshot_dir / Config.RUNTIME_INFO_DIRNAME / Config.ITERATION_METADATA_FILENAME).write_text(
+            json.dumps({"iteration": 0}), encoding="utf-8"
+        )
+        for split_name, accuracy in [
+            ("test_leftout", 0.75),
+            ("test", 1.0),
+        ]:
+            (snapshot_dir / f"eval_predictions_{split_name}.csv").write_text(
+                "id,prediction,probability_1\nt-0,1,0.9\n", encoding="utf-8"
+            )
+            (snapshot_dir / f"eval_predictions_{split_name}.numeric_labels.csv").write_text(
+                "id,numeric_label\nt-0,1\n", encoding="utf-8"
+            )
+            (snapshot_dir / f"eval_predictions_{split_name}.metrics.json").write_text(
+                json.dumps({"ACC": accuracy}), encoding="utf-8"
+            )
+
+        inputs = gather_iteration_inputs(config=self.config, iteration=0)
+
+        test_splits = [
+            split for split in inputs.splits if split.split_name.startswith("test")
+        ]
+        self.assertEqual(["test", "test_leftout"], [split.split_name for split in test_splits])
+        self.assertEqual({"ACC": 0.75}, test_splits[1].metrics)
+
 
 class TestSplitSymlinkHelpers(unittest.TestCase):
 

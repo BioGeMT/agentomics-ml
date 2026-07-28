@@ -38,6 +38,7 @@ agentomics-inference \
 | `--label-col` | Label column in the input **CSV** — when set, metrics are computed against it and written to `<output>.metrics.json`. Ignored for a split folder; there, metrics run only if the folder has a `labels.csv` |
 | `--iteration-dir` | Iteration directory to use, relative to `--agent-dir` (default: `best_iteration_snapshot`) |
 | `--all-iterations` | Run inference for every `run/iteration_N` against `--input` (see below) |
+| `--wandb-prefix` | W&B metric namespace when labels are available (default: input file or directory name) |
 | `--cpu-only` | Run without GPU |
 | `--image` | Docker image to use (default: `biogemt/agentomics:<installed-package-version>`; use this option for an explicit override) |
 | `--help` | Show help message |
@@ -113,6 +114,12 @@ agentomics-inference \
 # -> predictions.csv and predictions.metrics.json
 ```
 
+If `WANDB_API_KEY`, `WANDB_PROJECT_NAME`, and `WANDB_ENTITY` are available and
+the original run has a W&B run ID, those metrics are also appended to that run.
+Use `--wandb-prefix test_external` to log keys such as
+`test_external/AUROC`. Without an explicit prefix, the input file or directory
+name is used. W&B failures warn and do not fail inference.
+
 ## Evaluating Every Iteration
 
 `--all-iterations` runs inference on each `run/iteration_N` snapshot in turn:
@@ -133,7 +140,8 @@ error if every iteration fails.
 Per-iteration predictions are written to `preds/<iteration>_predictions.csv`
 (and `<iteration>_predictions.metrics.json` when `--label-col` is set). Each
 iteration's environment is rebuilt and removed in turn, and a failing iteration
-warns and continues.
+warns and continues. W&B keys include an additional `/iteration_N` namespace
+when `--all-iterations` is used.
 
 ## What's in best_iteration_snapshot
 

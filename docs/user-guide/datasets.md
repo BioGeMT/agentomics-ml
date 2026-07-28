@@ -18,15 +18,20 @@ datasets/my_dataset/
 ├── test/                   # Optional; held out from the agent
 │   ├── input/
 │   └── labels.csv
+├── test_leftout/           # Optional additional held-out split
+│   ├── input/
+│   └── labels.csv
 ├── supplementary/          # Optional: dataset-level source materials
 ├── metadata.json           # Optional if --task-type is provided
 └── dataset_description.md  # Optional domain context
 ```
 
-The optional `test/` split is stored with the dataset, but is excluded from the
-agent worker's mounts and agent-facing prepared data. After model development,
-Agentomics mounts it read-only in a separate evaluation container, prepares it
-in a temporary directory, and evaluates only the best iteration against it.
+Every top-level directory whose name starts with `test` is a held-out
+evaluation split. These directories are excluded from the agent worker's
+mounts and agent-facing prepared data. After model development, Agentomics
+evaluates the best iteration against each one in a separate container. The
+conventional `test/` split runs first, followed by the remaining names in
+alphabetical order.
 
 ## Split Requirements
 
@@ -104,11 +109,11 @@ be part of the experiment.
 
 The top-level entries in `train/input/` are recorded at dataset preparation
 time and define the split interface. All splits must have matching top-level
-`input/` files and folders: `validation/input/` and `test/input/` are validated
-against `train/input/` during preparation, and the agent cannot add, remove, or
-rename top-level `input/` entries during the split step. Files inside matching
-top-level folders may differ between splits, which supports datasets where each
-split contains different sample files.
+`input/` files and folders: `validation/input/` and every test-prefixed split
+are validated against `train/input/` during preparation, and the agent cannot
+add, remove, or rename top-level `input/` entries during the split step. Files
+inside matching top-level folders may differ between splits, which supports
+datasets where each split contains different sample files.
 
 For per-sample file datasets (images, audio, etc.), place files inside a
 subdirectory rather than directly under `input/`:
@@ -128,11 +133,14 @@ validation/input/cat_03.png          # fails: different top-level files
 If `validation/` is not provided, the agent creates train and validation split
 folders from `train/` during the run.
 
-### test/ Optional
+### test-prefixed splits Optional
 
-The hidden test split is used only for final evaluation. Keep it under
-`datasets/<dataset>/test/`. The run excludes it from the agent-facing prepared
-dataset, then automatically evaluates the best iteration on it after training.
+Hidden test splits are used only for final evaluation. Keep them under the
+dataset directory and start each directory name with `test`, for example
+`test/`, `test_leftout/`, and `test_external_cohort/`. The `test` prefix is
+reserved for this purpose. The run excludes every matching directory from the
+agent-facing prepared dataset, then automatically evaluates the best iteration
+on each one after training.
 
 ### metadata.json Optional
 
@@ -196,7 +204,8 @@ datasets/my_dataset/
 ```
 
 Only these CSV names are auto-detected: `train.csv`, optional `validation.csv`,
-and `test.csv` for hidden test data.
+and `test.csv` for hidden test data. Multiple hidden test sets use the
+folder-based format described above.
 
 For CSV datasets, `metadata.json` should identify the label column and task type:
 
@@ -234,9 +243,8 @@ outputs/<agent_id>/run/shared/splits/split_0/
 ```
 
 The original label values are preserved through `label_to_scalar` in the run
-config. The held-out `test/` split is not part of this prepared data — it is
-excluded from the agent's mounts and prepared separately in a temporary
-directory only for the post-run evaluation.
+config. Held-out test-prefixed splits are not part of this prepared data — they
+are excluded from the agent's mounts and used only for post-run evaluation.
 
 ## Example Datasets
 

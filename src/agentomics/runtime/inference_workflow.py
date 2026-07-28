@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import sys
@@ -19,6 +20,10 @@ from agentomics.runtime.filesystem import (
     restore_host_ownership,
 )
 from agentomics.runtime.inference_runner import run_inference_script
+from agentomics.runtime.read_write_utils import (
+    load_config_from_run_dir_and_reroot,
+)
+from agentomics.run_logging.env_utils import are_wandb_vars_available
 from agentomics.utils.config import Config
 
 
@@ -59,6 +64,55 @@ def _compute_metrics(agent_dir: Path, input_split: Path, output_path: Path) -> P
     print("Computing metrics...")
     evaluate_predictions(agent_dir, output_path, labels_path, metrics_path)
     return metrics_path
+
+def _log_metrics_to_wandb(
+    agent_dir: Path,
+    metrics_path: Path | None,
+    prefix: str | None,
+) -> bool:
+    if metrics_path is None or not prefix or not are_wandb_vars_available():
+        return False
+
+    wandb_run = None
+    try:
+        from agentomics.run_logging.wandb_setup import resume_wandb_run
+
+        config = load_config_from_run_dir_and_reroot(
+            Path(agent_dir) / Config.RUN_DIRNAME
+        )
+        wandb_run = resume_wandb_run(
+            config,
+            dir=Path(tempfile.gettempdir()) / "agentomics_inference_wandb_logs",
+        )
+        if wandb_run is None:
+            return False
+
+        metrics = json.loads(Path(metrics_path).read_text(encoding="utf-8"))
+        if not isinstance(metrics, dict):
+            raise ValueError(f"Expected JSON object at {metrics_path}")
+        wandb_run.log(
+            {
+                f"{prefix}/{metric_name}": metric_value
+                for metric_name, metric_value in metrics.items()
+            }
+        )
+        print(f"Logged metrics to W&B under prefix '{prefix}'")
+        return True
+    except Exception as error:
+        print(
+            f"Warning: W&B inference logging failed; continuing: {error}",
+            file=sys.stderr,
+        )
+        return False
+    finally:
+        if wandb_run is not None:
+            try:
+                wandb_run.finish()
+            except Exception as error:
+                print(
+                    f"Warning: W&B inference cleanup failed: {error}",
+                    file=sys.stderr,
+                )
 
 def _run_single_inference(arguments: Namespace) -> None:
     iteration_root = resolve_iteration_root(arguments.agent_dir, arguments.iteration_dir)
@@ -103,6 +157,11 @@ def _run_single_inference(arguments: Namespace) -> None:
             )
         print("Inference done")
         metrics_path = _compute_metrics(arguments.agent_dir, input_split, arguments.output)
+        _log_metrics_to_wandb(
+            arguments.agent_dir,
+            metrics_path,
+            getattr(arguments, "wandb_prefix", None),
+        )
         restore_host_ownership(arguments.output)
         if metrics_path is not None:
             restore_host_ownership(metrics_path)
@@ -135,6 +194,10 @@ def _run_all_iterations(arguments: Namespace) -> None:
             iteration_arguments = Namespace(**vars(arguments))
             iteration_arguments.iteration_dir = Path(Config.RUN_DIRNAME) / iteration_name
             iteration_arguments.output = arguments.output.parent / f"{iteration_name}_predictions.csv"
+            if arguments.wandb_prefix:
+                iteration_arguments.wandb_prefix = (
+                    f"{arguments.wandb_prefix}/{iteration_name}"
+                )
             _run_single_inference(iteration_arguments)
             successful_iterations += 1
         except Exception as error:

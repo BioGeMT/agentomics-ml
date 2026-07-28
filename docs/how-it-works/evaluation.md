@@ -21,15 +21,26 @@ After each iteration:
 3. Compared to previous iterations
 4. Best iteration snapshot updated if improved
 
-## Evaluating on a Held-out Test Set
+## Evaluating on Held-out Test Sets
 
-The agent never sees the held-out `test/` split — it is withheld from the
-agent's mounts. If a dataset includes a co-located `test/` split, `agentomics-run`
-automatically evaluates the best iteration on it **after** the run, in a separate
-read-only evaluation container, and saves the predictions and metrics into the
-best-iteration snapshot (`eval_predictions_test.csv`,
-`eval_predictions_test.metrics.json`). Datasets without a `test/` split simply
-skip this step.
+The agent never sees top-level dataset directories whose names start with
+`test`; they are withheld from the agent's mounts. After a successful run,
+`agentomics-run` automatically evaluates the best iteration on each matching
+split. The conventional `test/` split runs first and additional splits such as
+`test_leftout/` run in alphabetical order.
+
+Each split gets its own best-snapshot artifacts:
+
+```text
+eval_predictions_<split>.csv
+eval_predictions_<split>.numeric_labels.csv
+eval_predictions_<split>.metrics.json
+```
+
+When W&B is configured, metrics are logged to the training run as
+`<split>/<metric>`, for example `test_leftout/AUROC`. A failure on one held-out
+split is reported but does not prevent the remaining splits from running.
+Datasets without a test-prefixed split skip this stage.
 
 To score the finished model on any other labeled set, run inference with
 `--label-col` — metrics are computed by the bundled evaluator and written next to
@@ -161,6 +172,7 @@ Contains:
 If configured, metrics are logged to Weights & Biases:
 
 - Metric plots over iterations
+- Separate final metrics for every test-prefixed split
 - Comparison tables
 - Artifact tracking
 

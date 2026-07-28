@@ -54,9 +54,12 @@ The most important directory - contains the best-performing iteration's artifact
 | `runtime_info/iteration_metadata.json` | Which iteration produced the snapshot |
 | `runtime_info/environment.yml` | Portable definition of the Conda environment used |
 | `runtime_info/environment.tar.gz` | Packed environment for fast container-local restoration in `full` mode |
-| `eval_predictions_test.csv` | Best-model predictions for the optional test split |
-| `eval_predictions_test.numeric_labels.csv` | Numeric test labels used for metrics |
-| `eval_predictions_test.metrics.json` | Metrics for the optional test split |
+| `eval_predictions_<split>.csv` | Best-model predictions for a test-prefixed split |
+| `eval_predictions_<split>.numeric_labels.csv` | Numeric labels used for that split's metrics |
+| `eval_predictions_<split>.metrics.json` | Metrics for that test-prefixed split |
+
+For example, `test/` produces `eval_predictions_test.*`, while
+`test_leftout/` produces `eval_predictions_test_leftout.*`.
 
 ### Using the Best Model
 
@@ -120,6 +123,7 @@ separate staging area or temporary volume:
 If W&B is configured, you'll also find:
 
 - Experiment tracking at wandb.ai
+- Final held-out metrics under `<split>/<metric>` for every test-prefixed split
 - Agent traces with Weave
 - Metric plots and comparisons
 - Artifact versioning

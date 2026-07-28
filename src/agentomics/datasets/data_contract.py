@@ -29,6 +29,9 @@ ALLOWED_PUBLIC_DATASET_ENTRIES = {
 }
 ALLOWED_SPLIT_ENTRIES = {INPUT_DIR_NAME, LABELS_FILE_NAME}
 
+def is_test_split_name(name: str) -> bool:
+    return name.startswith(TEST_SPLIT)
+
 def record_input_dir_structure(input_dir: Path) -> list[str]:
     """
     Returns sorted top-level entries in input_dir. Directories are suffixed with '/'.
@@ -54,12 +57,16 @@ def validate_split_entries(split_path: Path, split_name: str) -> None:
 def validate_public_dataset_entries(dataset_dir: Path) -> None:
     unsupported_entries = sorted(
         item.name for item in dataset_dir.iterdir()
-        if item.name not in ALLOWED_PUBLIC_DATASET_ENTRIES
+        if (
+            item.name not in ALLOWED_PUBLIC_DATASET_ENTRIES
+            and not (item.is_dir() and is_test_split_name(item.name))
+        )
     )
     if unsupported_entries:
         raise ValueError(
             f"Public dataset {dataset_dir.name} has unsupported top-level entries: {unsupported_entries}. "
-            f"Allowed: {sorted(ALLOWED_PUBLIC_DATASET_ENTRIES)}."
+            f"Allowed: {sorted(ALLOWED_PUBLIC_DATASET_ENTRIES)} and directories "
+            f"whose names start with '{TEST_SPLIT}'."
         )
 
 def validate_splits(split_paths: dict[str, Path], expected_input_structure: list[str]) -> None:

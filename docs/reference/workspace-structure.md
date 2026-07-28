@@ -35,6 +35,9 @@ datasets/my_dataset/
 ├── test/                   # Optional; hidden from the agent
 │   ├── input/
 │   └── labels.csv
+├── test_leftout/           # Optional additional hidden test split
+│   ├── input/
+│   └── labels.csv
 ├── supplementary/          # Optional: dataset-level source materials
 │   └── README.md           # Optional: describes the supplementary materials
 ├── metadata.json           # Optional if task type is supplied at preparation
@@ -46,8 +49,9 @@ Each unprepared `labels.csv` must include `id` and `label` columns. Your source
 starts, Agentomics copies its public splits into the run workspace and converts
 their labels to `id,numeric_label`. The `input/` interface is recorded at
 preparation time, must match across all splits, and must not be modified during
-a run. The optional source `test/` split is excluded from the agent worker's
-mounts and remains outside the agent-facing prepared data.
+a run. Every source split whose directory name starts with `test` is excluded
+from the agent worker's mounts and remains outside the agent-facing prepared
+data.
 
 The prepared, agent-facing splits are written to the run workspace (never back
 into `datasets/`):
@@ -62,10 +66,10 @@ outputs/<agent_id>/run/shared/splits/split_0/
     └── labels.csv          # id,numeric_label
 ```
 
-After a successful run, Agentomics mounts the optional held-out split read-only
-in a separate evaluation container, runs the best iteration against it, and
-saves its artifacts in the best-iteration snapshot. The source labels remain
-in raw `id,label` form:
+After a successful run, Agentomics evaluates every optional test-prefixed split
+in a separate container, runs the best iteration against it, and saves
+split-specific artifacts in the best-iteration snapshot. The source labels
+remain in raw `id,label` form:
 
 ```text
 datasets/my_dataset/test/
@@ -240,8 +244,8 @@ rm -rf outputs/*
 
 `agentomics-run` launches the container for you. The repository is baked into
 the image; the launcher mounts only the selected dataset's public entries (the
-`test/` split is withheld) and mounts the host workspace at `/workspace` to
-receive the run's output. The agent runs entirely inside the container,
+all test-prefixed splits are withheld) and mounts the host workspace at
+`/workspace` to receive the run's output. The agent runs entirely inside the container,
 isolating execution from the host. See
 [Installation](../getting-started/installation.md).
 

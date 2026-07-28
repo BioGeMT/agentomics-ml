@@ -37,11 +37,20 @@ from reportlab.platypus import (
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
-from agentomics.datasets.data_contract import LABELS_FILE_NAME, NUMERIC_LABEL_COLUMN_NAME, TRAIN_SPLIT, VALIDATION_SPLIT
+from agentomics.datasets.data_contract import (
+    LABELS_FILE_NAME,
+    NUMERIC_LABEL_COLUMN_NAME,
+    TEST_SPLIT,
+    TRAIN_SPLIT,
+    VALIDATION_SPLIT,
+)
 
-TEST_PREDICTIONS_FILENAME = "eval_predictions_test.csv"
-TEST_NUMERIC_LABELS_FILENAME = "eval_predictions_test.numeric_labels.csv"
-TEST_METRICS_FILENAME = "eval_predictions_test.metrics.json"
+TEST_ARTIFACT_PREFIX = "eval_predictions_"
+TEST_ARTIFACT_SUFFIXES = (
+    ".numeric_labels.csv",
+    ".metrics.json",
+    ".csv",
+)
 
 
 # Data models
@@ -263,6 +272,23 @@ def _get_iteration_split_version(config: Config, iter_dir: Path) -> int | None:
     data_split_output = load_step_output(config, "data_split", iter_dir)
     return getattr(data_split_output, "split_version", None)
 
+def discover_test_artifact_split_names(snapshot_dir: Path) -> list[str]:
+    split_names = set()
+    for artifact_path in Path(snapshot_dir).glob(f"{TEST_ARTIFACT_PREFIX}{TEST_SPLIT}*"):
+        artifact_name = artifact_path.name
+        for suffix in TEST_ARTIFACT_SUFFIXES:
+            if artifact_name.endswith(suffix):
+                split_name = artifact_name[
+                    len(TEST_ARTIFACT_PREFIX):-len(suffix)
+                ]
+                if split_name.startswith(TEST_SPLIT):
+                    split_names.add(split_name)
+                break
+    return sorted(
+        split_names,
+        key=lambda split_name: (split_name != TEST_SPLIT, split_name),
+    )
+
 def gather_iteration_inputs(
     config: Config,
     iteration: int,
@@ -290,11 +316,21 @@ def gather_iteration_inputs(
     best_iter = load_best_iteration_snapshot_iteration(config)
     if best_iter is not None and iteration == best_iter:
         snapshot_dir = config.best_iteration_snapshot_dir
-        test_preds = snapshot_dir / TEST_PREDICTIONS_FILENAME
-        test_labeled = snapshot_dir / TEST_NUMERIC_LABELS_FILENAME
-        test_metrics = load_saved_metrics(snapshot_dir / TEST_METRICS_FILENAME)
-        if test_preds.exists() or test_labeled.exists() or bool(test_metrics):
-            splits.append(SplitArtifacts("test", test_labeled, test_preds, test_metrics))
+        for split_name in discover_test_artifact_split_names(snapshot_dir):
+            artifact_stem = f"{TEST_ARTIFACT_PREFIX}{split_name}"
+            test_preds = snapshot_dir / f"{artifact_stem}.csv"
+            test_labeled = snapshot_dir / f"{artifact_stem}.numeric_labels.csv"
+            test_metrics = load_saved_metrics(
+                snapshot_dir / f"{artifact_stem}.metrics.json"
+            )
+            splits.append(
+                SplitArtifacts(
+                    split_name,
+                    test_labeled,
+                    test_preds,
+                    test_metrics,
+                )
+            )
 
     return IterationInputs(iteration=iteration, report_md=report_md, splits=splits)
 
@@ -846,7 +882,11 @@ def main() -> None:
     ensure_dir(out_dir)
     ensure_dir(plots_dir)
     config.markdown_reports_dir.mkdir(parents=True, exist_ok=True)
-    split_order = ["train", "validation", "test"]
+    split_order = [
+        "train",
+        "validation",
+        *discover_test_artifact_split_names(config.best_iteration_snapshot_dir),
+    ]
 
     for it in iterations:
         inp = gather_iteration_inputs(config, it)
@@ -855,7 +895,7 @@ def main() -> None:
             report_metrics = {
                 f"{split.split_name}/{metric_name}": metric_value
                 for split in inp.splits
-                if split.split_name != "test"
+                if not split.split_name.startswith(TEST_SPLIT)
                 for metric_name, metric_value in split.metrics.items()
             }
             test_metrics = next((split.metrics for split in inp.splits if split.split_name == "test"), None)

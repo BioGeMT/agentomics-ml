@@ -20,8 +20,9 @@ cp .env.example .env
 # Edit .env with your values
 ```
 
-The Python launcher forwards exported provider variables and automatically
-passes a `.env` file from the current directory to Docker.
+The Python launchers forward exported variables and automatically pass a
+`.env` file from the current directory to Docker. This applies to both
+`agentomics-run` and `agentomics-inference`.
 
 ## LLM Provider Keys
 

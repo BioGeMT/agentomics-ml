@@ -58,9 +58,8 @@ def _print_summary(summary: dict, interactive: bool) -> None:
     else:
         console.print("Validation split: not provided (the agent will create one)")
 
-    test_rows = summary.get("test_rows")
-    if test_rows is not None:
-        console.print(f"Test rows: {test_rows}")
+    for split_name, row_count in summary.get("test_splits", {}).items():
+        console.print(f"{split_name} rows: {row_count}")
 
     if "label_to_scalar" in summary:
         console.print(f"Label mapping: {summary['label_to_scalar']}")

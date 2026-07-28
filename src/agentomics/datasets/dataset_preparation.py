@@ -20,6 +20,7 @@ from agentomics.datasets.data_contract import (
     TEST_SPLIT,
     TRAIN_SPLIT,
     VALIDATION_SPLIT,
+    is_test_split_name,
     record_input_dir_structure,
     validate_public_dataset_entries,
     validate_split_entries,
@@ -45,6 +46,21 @@ from agentomics.runtime.filesystem import create_absolute_symlink, find_symlinks
 from agentomics.utils.task_types import TaskTypes
 
 console = Console()
+
+def discover_test_split_names(source_dir: Path) -> list[str]:
+    """Return co-located test split names in deterministic evaluation order."""
+    source_dir = Path(source_dir)
+    split_names = sorted(
+        item.name
+        for item in source_dir.iterdir()
+        if item.is_dir() and is_test_split_name(item.name)
+    )
+    if TEST_SPLIT in split_names:
+        split_names.remove(TEST_SPLIT)
+        split_names.insert(0, TEST_SPLIT)
+    elif is_test_csv_dataset(source_dir):
+        split_names.insert(0, TEST_SPLIT)
+    return split_names
 
 def _reject_symlinks_in_dir(directory: Path) -> None:
     symlinks = find_symlinks_in_dir(directory, include_root=True)
@@ -254,8 +270,8 @@ def check_dataset(source_dir: Path, interactive: bool = False) -> dict:
     Mirrors the preparation a run performs (train/validation, plus the test split
     when present) into a temporary directory that is discarded, so the user's
     dataset is never modified. Returns the prepared train/validation metadata,
-    augmented with ``test_rows`` (the validated test-split row count, or None when
-    no test split is present). Raises ValueError / FileNotFoundError with a
+    augmented with ``test_splits`` (a mapping from every test-prefixed split name
+    to its validated row count). Raises ValueError / FileNotFoundError with a
     descriptive message when the dataset does not satisfy the contract.
     """
     source_dir = Path(source_dir)
@@ -269,22 +285,25 @@ def check_dataset(source_dir: Path, interactive: bool = False) -> dict:
             destination_dir=temporary_root / "prepared",
             interactive=interactive,
         )
-        test_rows = None
-        has_test_split = (source_dir / TEST_SPLIT).is_dir() or is_test_csv_dataset(source_dir)
-        if has_test_split:
+        test_splits = {}
+        for split_name in discover_test_split_names(source_dir):
             test_metadata = prepare_test_dataset(
                 source_dir=source_dir,
-                destination_dir=temporary_root / "prepared_test",
+                destination_dir=temporary_root / f"prepared_{split_name}",
                 task_type=metadata["task_type"],
                 input_structure=metadata["input_structure"],
                 label_to_scalar=metadata.get("label_to_scalar"),
                 label_column=metadata.get("label_column"),
                 id_column=metadata.get("id_column"),
+                split_name=split_name,
             )
-            test_rows = test_metadata["splits"]["test_rows"]
+            test_splits[split_name] = test_metadata["splits"][
+                f"{split_name}_rows"
+            ]
 
     summary = dict(metadata)
-    summary["test_rows"] = test_rows
+    summary["test_splits"] = test_splits
+    summary["test_rows"] = test_splits.get(TEST_SPLIT)
     return summary
 
 
@@ -304,6 +323,7 @@ def prepare_test_dataset(
     label_to_scalar: dict[str, int] | None = None,
     label_column: str | None = None,
     id_column: str | None = None,
+    split_name: str = TEST_SPLIT,
 ) -> dict:
     """Prepare test dataset from source_dir into destination_dir using run metadata.
 
@@ -313,9 +333,17 @@ def prepare_test_dataset(
     """
     source_dir = Path(source_dir)
     destination_dir = Path(destination_dir)
+    if (
+        not is_test_split_name(split_name)
+        or Path(split_name).name != split_name
+    ):
+        raise ValueError(
+            f"Test split name must be a single directory name starting with "
+            f"'{TEST_SPLIT}': {split_name!r}"
+        )
 
     _reject_symlinks_in_dir(source_dir)
-    csv_test_dataset = is_test_csv_dataset(source_dir)
+    csv_test_dataset = split_name == TEST_SPLIT and is_test_csv_dataset(source_dir)
     if csv_test_dataset:
         source_dir = convert_csv_test_dataset_to_standard_raw_dataset(
             source_dir,
@@ -324,33 +352,45 @@ def prepare_test_dataset(
             id_column=id_column,
         )
 
-    test_source = source_dir / TEST_SPLIT
+    test_source = source_dir / split_name
     if not test_source.is_dir():
-        raise FileNotFoundError(f"Required test/ split is missing: {test_source}")
+        raise FileNotFoundError(
+            f"Required {split_name}/ split is missing: {test_source}"
+        )
 
-    validate_split_entries(test_source, TEST_SPLIT)
+    validate_split_entries(test_source, split_name)
 
-    test_labels = load_split_label_dfs({TEST_SPLIT: test_source})
+    test_labels = load_split_label_dfs({split_name: test_source})
 
     if task_type == TaskTypes.CLASSIFICATION:
         if not label_to_scalar:
             raise ValueError("label_to_scalar is required for classification test data preparation")
         validate_single_label_classification(test_labels)
         label_to_scalar = {str(k): int(v) for k, v in label_to_scalar.items()}
-        actual_labels = set(test_labels[TEST_SPLIT][LABEL_COLUMN_NAME].astype(str).unique())
+        actual_labels = set(
+            test_labels[split_name][LABEL_COLUMN_NAME].astype(str).unique()
+        )
         unknown_labels = sorted(actual_labels - set(label_to_scalar))
         if unknown_labels:
             raise ValueError(
-                f"Test split contains labels not present in train: {unknown_labels}. "
+                f"{split_name} split contains labels not present in train: "
+                f"{unknown_labels}. "
                 f"Known labels: {sorted(label_to_scalar)}"
             )
-        numeric_labels = convert_classification_labels(test_labels[TEST_SPLIT], label_to_scalar, TEST_SPLIT)
+        numeric_labels = convert_classification_labels(
+            test_labels[split_name],
+            label_to_scalar,
+            split_name,
+        )
     elif task_type == TaskTypes.REGRESSION:
-        numeric_labels = convert_regression_labels(test_labels[TEST_SPLIT], TEST_SPLIT)
+        numeric_labels = convert_regression_labels(
+            test_labels[split_name],
+            split_name,
+        )
     else:
         raise ValueError(f"Unknown task_type: {task_type}. Expected one of {TaskTypes}.")
 
-    dest_test = destination_dir / TEST_SPLIT
+    dest_test = destination_dir / split_name
     dest_test.mkdir(parents=True, exist_ok=True)
     if csv_test_dataset:
         shutil.copytree(test_source / INPUT_DIR_NAME, dest_test / INPUT_DIR_NAME)
@@ -361,11 +401,11 @@ def prepare_test_dataset(
         )
     numeric_labels.to_csv(dest_test / LABELS_FILE_NAME, index=False)
 
-    validate_splits({TEST_SPLIT: dest_test}, input_structure)
+    validate_splits({split_name: dest_test}, input_structure)
 
     test_metadata = {
         "task_type": task_type,
-        "splits": {"test_rows": len(test_labels[TEST_SPLIT])},
+        "splits": {f"{split_name}_rows": len(test_labels[split_name])},
         "numeric_label_col": NUMERIC_LABEL_COLUMN_NAME,
         "input_structure": input_structure,
         "prepared": True,

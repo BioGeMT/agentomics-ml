@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -38,11 +39,36 @@ def build_parser() -> argparse.ArgumentParser:
         "--all-iterations", action="store_true",
         help="Run every archived iteration",
     )
+    parser.add_argument(
+        "--wandb-prefix",
+        help=(
+            "W&B metric namespace. Defaults to the input file or directory name; "
+            "logging is skipped when W&B is not configured for the run."
+        ),
+    )
     parser.add_argument("--cpu-only", action="store_true", help="Disable GPU access")
     return parser
 
+def _wandb_docker_arguments() -> list[str]:
+    docker_arguments = []
+    env_file = Path.cwd() / ".env"
+    if env_file.is_file():
+        docker_arguments.extend(["--env-file", str(env_file.resolve())])
+    for variable_name in (
+        "WANDB_API_KEY",
+        "WANDB_PROJECT_NAME",
+        "WANDB_ENTITY",
+    ):
+        if variable_name in os.environ:
+            docker_arguments.extend(["-e", variable_name])
+    return docker_arguments
+
 def run_inference_in_docker(arguments: argparse.Namespace) -> None:
     resolve_inference_paths(arguments)
+    wandb_prefix = (
+        getattr(arguments, "wandb_prefix", None)
+        or arguments.input_path.stem
+    )
     container_input = "/inference-input"
     python_arguments = [
         "-m",
@@ -55,6 +81,8 @@ def run_inference_in_docker(arguments: argparse.Namespace) -> None:
         f"/inference-output/{arguments.output.name}",
         "--iteration-dir",
         str(arguments.iteration_dir),
+        "--wandb-prefix",
+        wandb_prefix,
     ]
     if arguments.label_col:
         python_arguments.extend(["--label-col", arguments.label_col])
@@ -72,6 +100,7 @@ def run_inference_in_docker(arguments: argparse.Namespace) -> None:
             f"type=bind,src={arguments.output.parent},dst=/inference-output",
         ],
         python_arguments=python_arguments,
+        docker_arguments=_wandb_docker_arguments(),
     )
 
 def main() -> int:

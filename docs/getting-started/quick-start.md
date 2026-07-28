@@ -57,13 +57,17 @@ datasets/my_dataset/
 ├── test/               # Optional; hidden from the agent and evaluated afterward
 │   ├── input/
 │   └── labels.csv
+├── test_leftout/       # Optional additional hidden evaluation set
+│   ├── input/
+│   └── labels.csv
 └── dataset_description.md
 ```
 
-The held-out test split is optional. It is not mounted into the agent worker.
-After a successful run, Agentomics starts a separate evaluation container with
-read-only access to the test split, evaluates the best iteration, and includes
-the results in reports. Run training with `--dataset my_dataset`. See
+Held-out test splits are optional. Every top-level directory beginning with
+`test` is withheld from the agent worker. After a successful run, Agentomics
+evaluates the best iteration on each one and records separate output artifacts,
+report sections, and W&B metric namespaces. Run training with
+`--dataset my_dataset`. See
 [Preparing Datasets](../user-guide/datasets.md) for details.
 
 ## Example Datasets

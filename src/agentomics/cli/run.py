@@ -14,7 +14,10 @@ from agentomics.cli.docker_utils import (
 )
 from agentomics.cli.inference import run_inference_in_docker
 from agentomics.cli.run_arguments import add_run_arguments
-from agentomics.datasets.dataset_preparation import prepare_test_dataset
+from agentomics.datasets.dataset_preparation import (
+    discover_test_split_names,
+    prepare_test_dataset,
+)
 from agentomics.datasets.datasets_interactive import (
     get_all_datasets_info,
     interactive_dataset_selection,
@@ -247,8 +250,9 @@ def _run_inference_on_test_input(
     cpu_only: bool,
     workspace_directory: Path,
     test_input: Path,
+    split_name: str,
 ) -> None:
-    print(f"Evaluating the best iteration on {test_input}")
+    print(f"Evaluating the best iteration on {split_name}: {test_input}")
     run_inference_in_docker(
         argparse.Namespace(
             image=image,
@@ -257,12 +261,13 @@ def _run_inference_on_test_input(
             output=(
                 workspace_directory
                 / Config.BEST_ITERATION_SNAPSHOT_DIRNAME
-                / "eval_predictions_test.csv"
+                / f"eval_predictions_{split_name}.csv"
             ),
             label_col=None,
             iteration_dir=Path(Config.BEST_ITERATION_SNAPSHOT_DIRNAME),
             all_iterations=False,
             cpu_only=cpu_only,
+            wandb_prefix=split_name,
         )
     )
 
@@ -273,44 +278,67 @@ def _run_test_evaluation_in_docker(
     workspace_directory: Path,
     dataset_directory: Path,
 ) -> None:
-    test_directory = dataset_directory / "test"
-    if test_directory.is_dir():
-        _run_inference_on_test_input(
-            image, cpu_only, workspace_directory, test_directory
-        )
-        return
-
-    test_csv = dataset_directory / "test.csv"
-    if not test_csv.is_file():
+    split_names = discover_test_split_names(dataset_directory)
+    if not split_names:
         print(
-            f"No test split found at {test_directory} or {test_csv}; "
+            f"No test-prefixed split found in {dataset_directory}; "
             "skipping test evaluation."
         )
         return
 
-    metadata_path = (
-        workspace_directory
-        / "prepared_datasets"
-        / dataset_directory.name
-        / "metadata.json"
-    )
-    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-    with tempfile.TemporaryDirectory() as temporary_directory:
-        prepared_directory = Path(temporary_directory) / dataset_directory.name
-        prepare_test_dataset(
-            source_dir=dataset_directory,
-            destination_dir=prepared_directory,
-            task_type=metadata["task_type"],
-            input_structure=metadata["input_structure"],
-            label_to_scalar=metadata.get("label_to_scalar"),
-            label_column=metadata.get("label_column"),
-            id_column=metadata.get("id_column"),
-        )
-        _run_inference_on_test_input(
-            image,
-            cpu_only,
-            workspace_directory,
-            prepared_directory / "test",
+    failures = []
+    for split_name in split_names:
+        test_directory = dataset_directory / split_name
+        try:
+            if test_directory.is_dir():
+                _run_inference_on_test_input(
+                    image,
+                    cpu_only,
+                    workspace_directory,
+                    test_directory,
+                    split_name,
+                )
+                continue
+
+            metadata_path = (
+                workspace_directory
+                / "prepared_datasets"
+                / dataset_directory.name
+                / "metadata.json"
+            )
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            with tempfile.TemporaryDirectory() as temporary_directory:
+                prepared_directory = (
+                    Path(temporary_directory) / dataset_directory.name
+                )
+                prepare_test_dataset(
+                    source_dir=dataset_directory,
+                    destination_dir=prepared_directory,
+                    task_type=metadata["task_type"],
+                    input_structure=metadata["input_structure"],
+                    label_to_scalar=metadata.get("label_to_scalar"),
+                    label_column=metadata.get("label_column"),
+                    id_column=metadata.get("id_column"),
+                    split_name=split_name,
+                )
+                _run_inference_on_test_input(
+                    image,
+                    cpu_only,
+                    workspace_directory,
+                    prepared_directory / split_name,
+                    split_name,
+                )
+        except Exception as error:
+            failures.append(split_name)
+            print(
+                f"Warning: Evaluation failed for {split_name}; continuing: {error}",
+                file=sys.stderr,
+            )
+    if failures:
+        print(
+            f"Test evaluation finished with {len(failures)} failed split(s): "
+            f"{', '.join(failures)}",
+            file=sys.stderr,
         )
 
 

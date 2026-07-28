@@ -2,6 +2,7 @@ import sys
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import call, patch
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_PATH = REPO_ROOT / "src"
@@ -12,6 +13,7 @@ from agentomics.cli.run import (  # noqa: E402
     CONTAINER_DATASETS_DIRECTORY,
     PUBLIC_DATASET_ENTRY_NAMES,
     _build_dataset_mounts,
+    _run_test_evaluation_in_docker,
 )
 
 RUN_LAUNCHER = REPO_ROOT / "src" / "agentomics" / "cli" / "run.py"
@@ -46,14 +48,14 @@ class RunLauncherSourceContractTest(unittest.TestCase):
     def test_launcher_invokes_container_workflow(self):
         self.assertIn("agentomics.runtime.run_workflow", self.launcher)
 
-    def test_test_evaluation_reuses_inference_on_co_located_split(self):
+    def test_test_evaluation_reuses_inference_on_co_located_splits(self):
         # The old separate hidden-test tree and flag are gone; evaluation runs
-        # the best model on the dataset's own ``test`` split via inference.
+        # the best model on every test-prefixed split via inference.
         self.assertNotIn("test_datasets", self.launcher)
         self.assertNotIn("--test-datasets-dir", self.launcher)
-        self.assertIn('dataset_directory / "test"', self.launcher)
+        self.assertIn("discover_test_split_names", self.launcher)
         self.assertIn("run_inference_in_docker", self.launcher)
-        self.assertIn('"eval_predictions_test.csv"', self.launcher)
+        self.assertIn('f"eval_predictions_{split_name}.csv"', self.launcher)
         self.assertIn("agentomics.runtime.report_workflow", self.launcher)
 
     def test_help_text_has_no_prepared_datasets_user_concept(self):
@@ -94,7 +96,9 @@ class DatasetMountContractTest(unittest.TestCase):
         self.assertNotIn("test", PUBLIC_DATASET_ENTRY_NAMES)
         self.assertNotIn("test.csv", PUBLIC_DATASET_ENTRY_NAMES)
 
-        mounts = self._mounts_for(["train", "validation", "test", "test.csv"])
+        mounts = self._mounts_for(
+            ["train", "validation", "test", "test_leftout", "test.csv"]
+        )
         for mount in mounts:
             self.assertNotIn("/example_dataset/test", mount)
 
@@ -109,6 +113,56 @@ class DatasetMountContractTest(unittest.TestCase):
             with self.assertRaises(ValueError) as raised:
                 _build_dataset_mounts(dataset_dir)
             self.assertIn("symlink", str(raised.exception).lower())
+
+
+class MultipleTestEvaluationContractTest(unittest.TestCase):
+    @patch("agentomics.cli.run._run_inference_on_test_input")
+    def test_all_test_prefixed_directories_are_evaluated_in_stable_order(
+        self,
+        run_inference,
+    ):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            dataset_dir = root / "dataset"
+            workspace_dir = root / "workspace"
+            dataset_dir.mkdir()
+            workspace_dir.mkdir()
+            for split_name in ["test_z", "test", "test_a"]:
+                (dataset_dir / split_name).mkdir()
+
+            _run_test_evaluation_in_docker(
+                image="agentomics:test",
+                cpu_only=True,
+                workspace_directory=workspace_dir,
+                dataset_directory=dataset_dir,
+            )
+
+        self.assertEqual(
+            [
+                call(
+                    "agentomics:test",
+                    True,
+                    workspace_dir,
+                    dataset_dir / "test",
+                    "test",
+                ),
+                call(
+                    "agentomics:test",
+                    True,
+                    workspace_dir,
+                    dataset_dir / "test_a",
+                    "test_a",
+                ),
+                call(
+                    "agentomics:test",
+                    True,
+                    workspace_dir,
+                    dataset_dir / "test_z",
+                    "test_z",
+                ),
+            ],
+            run_inference.call_args_list,
+        )
 
 
 if __name__ == "__main__":

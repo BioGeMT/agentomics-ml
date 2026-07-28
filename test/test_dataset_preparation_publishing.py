@@ -9,7 +9,13 @@ SRC_PATH = REPO_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-from agentomics.datasets.dataset_preparation import check_dataset_prepared, prepare_dataset, prepare_test_dataset
+from agentomics.datasets.dataset_preparation import (
+    check_dataset,
+    check_dataset_prepared,
+    discover_test_split_names,
+    prepare_dataset,
+    prepare_test_dataset,
+)
 
 DATASET_NAME = "publishing_dataset"
 
@@ -85,13 +91,52 @@ class DatasetPreparationPublishingTests(unittest.TestCase):
 
     def test_colocated_test_split_is_allowed_and_ignored_by_training_prep(self):
         write_raw_split(self.dataset_dir, "test")
+        write_raw_split(self.dataset_dir, "test_leftout")
 
         self.prepare()
 
-        # test/ is permitted inside the dataset folder but is not part of the
-        # prepared training output (it is prepared separately at eval time).
+        # test-prefixed folders are permitted inside the dataset folder but are
+        # not part of the prepared training output.
         self.assertTrue(check_dataset_prepared(self.prepared_dir))
         self.assertFalse((self.prepared_dir / "test").exists())
+        self.assertFalse((self.prepared_dir / "test_leftout").exists())
+
+    def test_discovers_all_test_prefixed_split_directories_in_stable_order(self):
+        for split_name in ["test_z", "testing", "test", "test_a"]:
+            write_raw_split(self.dataset_dir, split_name)
+
+        self.assertEqual(
+            ["test", "test_a", "test_z", "testing"],
+            discover_test_split_names(self.dataset_dir),
+        )
+
+    def test_named_test_split_is_prepared_using_training_metadata(self):
+        write_raw_split(self.dataset_dir, "test_leftout")
+        train_metadata = self.prepare()
+
+        test_metadata = prepare_test_dataset(
+            source_dir=self.dataset_dir,
+            destination_dir=self.prepared_test_dir,
+            task_type=train_metadata["task_type"],
+            input_structure=train_metadata["input_structure"],
+            label_to_scalar=train_metadata.get("label_to_scalar"),
+            split_name="test_leftout",
+        )
+
+        labels_path = self.prepared_test_dir / "test_leftout" / "labels.csv"
+        self.assertTrue(labels_path.is_file())
+        self.assertEqual(2, test_metadata["splits"]["test_leftout_rows"])
+
+    def test_dataset_check_validates_and_reports_every_test_split(self):
+        write_raw_split(self.dataset_dir, "test")
+        write_raw_split(self.dataset_dir, "test_leftout")
+
+        summary = check_dataset(self.dataset_dir)
+
+        self.assertEqual(
+            {"test": 2, "test_leftout": 2},
+            summary["test_splits"],
+        )
 
     def test_symlinked_public_dataset_is_rejected_with_actionable_error(self):
         external_file = self.root / "external_reference.txt"
