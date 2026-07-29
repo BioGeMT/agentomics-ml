@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -289,7 +290,7 @@ def _run_test_evaluation_in_docker(
                     workspace_directory,
                     test_directory,
                 )
-            except Exception as error:
+            except subprocess.CalledProcessError as error:
                 print(
                     f"Warning: Evaluation failed for {test_directory.name}; "
                     f"continuing: {error}",
