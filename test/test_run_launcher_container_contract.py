@@ -53,7 +53,7 @@ class RunLauncherSourceContractTest(unittest.TestCase):
         self.assertNotIn("--test-datasets-dir", self.launcher)
         self.assertIn('path.name.startswith("test")', self.launcher)
         self.assertIn("run_inference_in_docker", self.launcher)
-        self.assertIn('f"eval_predictions_{split_name}.csv"', self.launcher)
+        self.assertIn('f"eval_predictions_{test_input.name}.csv"', self.launcher)
         self.assertIn("agentomics.runtime.report_workflow", self.launcher)
 
     def test_help_text_has_no_prepared_datasets_user_concept(self):
