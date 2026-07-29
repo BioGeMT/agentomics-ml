@@ -1,4 +1,4 @@
-FROM condaforge/mambaforge:24.9.2-0
+FROM condaforge/miniforge3:26.3.2-3
 
 ARG REPOSITORY_SOURCE=https://github.com/BioGeMT/Agentomics-ML.git#main
 ADD ${REPOSITORY_SOURCE} /repository
