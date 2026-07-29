@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 import sys
 import unittest
@@ -21,6 +22,27 @@ from agentomics.runtime.read_write_utils import (
 
 _shared_test_resources = None
 
+
+def _create_agent_visible_dataset() -> Path:
+    datasets_dir = Path("/tmp/agentomics/test_runtime_datasets")
+    dataset_dir = datasets_dir / "agent_permissions_fixture"
+    if datasets_dir.exists():
+        shutil.rmtree(datasets_dir)
+
+    input_dir = dataset_dir / "train" / "input"
+    input_dir.mkdir(parents=True)
+    (input_dir / "sample.txt").write_text("sample", encoding="utf-8")
+    (dataset_dir / "metadata.json").write_text(
+        '{"task_type": "classification"}',
+        encoding="utf-8",
+    )
+    subprocess.run(
+        ["chmod", "-R", "u=rwX,go=rX", str(datasets_dir)],
+        check=True,
+    )
+    return dataset_dir
+
+
 def get_shared_test_resources():
     global _shared_test_resources
 
@@ -28,17 +50,19 @@ def get_shared_test_resources():
     agent_user = os.getenv('AGENT_USER')
 
     if _shared_test_resources is None:
+        workspace_dir = Path(WORKSPACE_DIR).resolve()
+        dataset_dir = _create_agent_visible_dataset()
         config = Config(
             agent_id=agent_id,
             model_name="openai/gpt-3.5-turbo",
             iteration_plan_model_name="openai/gpt-3.5-turbo",
-            dataset="AGO2_CLASH_Hejret2023",
+            dataset=dataset_dir.name,
             tags=[],
             val_metric="ACC",
             task_type="classification",
             input_structure=["data.csv"],
-            workspace_dir=str(Path("/workspace").resolve()),
-            datasets_dir=str(Path('../repository/datasets').resolve()),
+            workspace_dir=str(workspace_dir),
+            datasets_dir=str(dataset_dir.parent),
             iterations=5,
             user_prompt="Create the best possible machine learning model that will generalize to new unseen data.",
             agent_user=agent_user,
@@ -48,7 +72,6 @@ def get_shared_test_resources():
         save_config(config)
         # Clean up leftover workspace from a previous failed setup attempt.
         if config.current_iteration_dir.exists():
-            import shutil
             shutil.rmtree(config.current_iteration_dir)
         initialize_current_iteration_workspace(config)
 
