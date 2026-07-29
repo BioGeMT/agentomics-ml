@@ -247,9 +247,8 @@ def _run_inference_on_test_input(
     cpu_only: bool,
     workspace_directory: Path,
     test_input: Path,
-    split_name: str,
 ) -> None:
-    print(f"Evaluating the best iteration on {split_name}: {test_input}")
+    print(f"Evaluating the best iteration on {test_input.name}: {test_input}")
     run_inference_in_docker(
         argparse.Namespace(
             image=image,
@@ -258,13 +257,13 @@ def _run_inference_on_test_input(
             output=(
                 workspace_directory
                 / Config.BEST_ITERATION_SNAPSHOT_DIRNAME
-                / f"eval_predictions_{split_name}.csv"
+                / f"eval_predictions_{test_input.name}.csv"
             ),
             label_col=None,
             iteration_dir=Path(Config.BEST_ITERATION_SNAPSHOT_DIRNAME),
             all_iterations=False,
             cpu_only=cpu_only,
-            wandb_prefix=split_name,
+            wandb_prefix=test_input.name,
         )
     )
 
@@ -288,7 +287,6 @@ def _run_test_evaluation_in_docker(
                     cpu_only,
                     workspace_directory,
                     test_directory,
-                    test_directory.name,
                 )
             except Exception as error:
                 print(
@@ -330,7 +328,6 @@ def _run_test_evaluation_in_docker(
             cpu_only,
             workspace_directory,
             prepared_directory / "test",
-            "test",
         )
 
 
