@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 from pathlib import Path
 
 import pandas as pd
@@ -37,6 +36,7 @@ def evaluate_predictions(
     predictions_path: Path,
     labels_path: Path,
     output_path: Path,
+    wandb_prefix: str | None = None,
 ) -> dict:
     config = load_config_from_run_dir_and_reroot(agent_dir / Config.RUN_DIRNAME)
 
@@ -51,12 +51,11 @@ def evaluate_predictions(
     )
 
     output_path.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
-    prefix = os.getenv("AGENTOMICS_WANDB_PREFIX")
-    if prefix:
+    if wandb_prefix:
         wandb_run = resume_wandb_run(config)
         if wandb_run is not None:
             wandb_run.log({
-                f"{prefix}/{metric_name}": value
+                f"{wandb_prefix}/{metric_name}": value
                 for metric_name, value in metrics.items()
             })
             wandb_run.finish()

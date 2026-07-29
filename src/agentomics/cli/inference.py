@@ -40,6 +40,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run every archived iteration",
     )
     parser.add_argument("--cpu-only", action="store_true", help="Disable GPU access")
+    parser.add_argument("--wandb-prefix", help="Metric prefix for W&B logging")
     return parser
 
 def _wandb_docker_arguments(prefix: str | None) -> list[str]:
@@ -62,7 +63,6 @@ def _wandb_docker_arguments(prefix: str | None) -> list[str]:
     ):
         if variable_name in os.environ:
             docker_arguments.extend(["-e", variable_name])
-    docker_arguments.extend(["-e", f"AGENTOMICS_WANDB_PREFIX={prefix}"])
     return docker_arguments
 
 def run_inference_in_docker(arguments: argparse.Namespace) -> None:
@@ -87,6 +87,8 @@ def run_inference_in_docker(arguments: argparse.Namespace) -> None:
         python_arguments.append("--all-iterations")
     if arguments.cpu_only:
         python_arguments.append("--cpu-only")
+    if wandb_prefix:
+        python_arguments.extend(["--wandb-prefix", wandb_prefix])
 
     run_python_in_docker(
         image=arguments.image,
