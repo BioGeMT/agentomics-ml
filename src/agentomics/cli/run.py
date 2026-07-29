@@ -298,13 +298,9 @@ def _run_test_evaluation_in_docker(
                 )
         return
 
-    test_directory = dataset_directory / "test"
     test_csv = dataset_directory / "test.csv"
     if not test_csv.is_file():
-        print(
-            f"No test split found at {test_directory} or {test_csv}; "
-            "skipping test evaluation."
-        )
+        print(f"No test split found in {dataset_directory}; skipping test evaluation.")
         return
 
     metadata_path = (
