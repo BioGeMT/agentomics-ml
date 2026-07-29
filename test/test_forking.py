@@ -7,7 +7,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import call, patch
+from unittest.mock import patch
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_PATH = REPO_ROOT / "src"
@@ -259,32 +259,22 @@ class TestForkRun(unittest.TestCase):
             / Config.RUN_DIRNAME
             / Config.SHARED_DIRNAME
             / Config.ENVIRONMENT_DESCRIPTOR_FILENAME,
-            self.target_workspace
-            / Config.RUN_DIRNAME
-            / Config.SHARED_DIRNAME
-            / ".conda"
-            / "envs"
-            / "tgt_run_env",
+            Path("/tmp/agentomics/envs/tgt_run_env"),
         )
 
-    def test_syncs_shared_and_snapshot_environments_from_descriptors(self):
+    def test_rebuilds_shared_environment_on_container_local_storage(self):
         target_run_id = "tgt_run"
         ensure_environment = self._fork("src_run", target_run_id, fork_from_step=None, fork_from_iteration=None)
         target_run_dir = self.target_workspace / Config.RUN_DIRNAME
         target_snapshot_dir = self.target_workspace / Config.BEST_ITERATION_SNAPSHOT_DIRNAME
         self.assertFalse((target_run_dir / "shared" / ".conda").exists())
         self.assertFalse((target_snapshot_dir / ".conda").exists())
-        ensure_environment.assert_has_calls([
-            call(
-                target_run_dir / Config.SHARED_DIRNAME / Config.ENVIRONMENT_DESCRIPTOR_FILENAME,
-                target_run_dir / Config.SHARED_DIRNAME / ".conda" / "envs" / f"{target_run_id}_env",
-            ),
-            call(
-                target_snapshot_dir / Config.RUNTIME_INFO_DIRNAME / Config.ENVIRONMENT_DESCRIPTOR_FILENAME,
-                target_snapshot_dir / ".conda" / "envs" / f"{target_run_id}_env",
-            ),
-        ])
-        self.assertEqual(ensure_environment.call_count, 2)
+        ensure_environment.assert_called_once_with(
+            target_run_dir
+            / Config.SHARED_DIRNAME
+            / Config.ENVIRONMENT_DESCRIPTOR_FILENAME,
+            Path(f"/tmp/agentomics/envs/{target_run_id}_env"),
+        )
 
     def test_raises_when_target_workspace_not_empty(self):
         self._build_source_run("src_run")

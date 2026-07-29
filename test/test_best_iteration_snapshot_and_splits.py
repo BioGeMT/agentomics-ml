@@ -75,6 +75,7 @@ class TestBestIterationSnapshot(unittest.TestCase):
             user_prompt="test",
             task_type="classification",
             input_structure=["data.csv"],
+            conda_export_mode="yaml",
         )
         initialize_run_directories(config)
         save_config(config)
@@ -119,10 +120,19 @@ class TestBestIterationSnapshot(unittest.TestCase):
         self._create_iteration_with_validation(iteration=1, is_new_best=True, split_changed=False)
         iteration_dir = self.config.iteration_dir(1)
         (iteration_dir / "inference.py").write_text("print('ok')", encoding="utf-8")
-        conda_env = self.config.shared_dir / ".conda" / "envs" / f"{self.config.agent_id}_env"
+        conda_env = self.root / "agent_env"
         conda_env.mkdir(parents=True, exist_ok=True)
 
-        with patch("agentomics.runtime.best_iteration_snapshot.export_environment_descriptor_to_path"):
+        with (
+            patch(
+                "agentomics.runtime.best_iteration_snapshot.get_shared_environment_path",
+                return_value=conda_env,
+            ),
+            patch(
+                "agentomics.runtime.best_iteration_snapshot."
+                "export_environment_descriptor_to_path"
+            ),
+        ):
             update_best_iteration_snapshot(self.config, iteration=1)
 
         self.assertTrue((self.config.best_iteration_snapshot_dir / "inference.py").exists())
