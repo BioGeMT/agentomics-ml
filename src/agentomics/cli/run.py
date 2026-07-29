@@ -14,6 +14,7 @@ from agentomics.cli.docker_utils import (
 )
 from agentomics.cli.inference import run_inference_in_docker
 from agentomics.cli.run_arguments import add_run_arguments
+from agentomics.datasets.data_contract import TEST_SPLIT
 from agentomics.datasets.dataset_preparation import prepare_test_dataset
 from agentomics.datasets.datasets_interactive import (
     get_all_datasets_info,
@@ -277,7 +278,7 @@ def _run_test_evaluation_in_docker(
     test_directories = sorted(
         path
         for path in dataset_directory.iterdir()
-        if path.is_dir() and path.name.startswith("test")
+        if path.is_dir() and path.name.startswith(TEST_SPLIT)
     )
     if test_directories:
         for test_directory in test_directories:
