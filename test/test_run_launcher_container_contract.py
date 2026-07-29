@@ -46,14 +46,14 @@ class RunLauncherSourceContractTest(unittest.TestCase):
     def test_launcher_invokes_container_workflow(self):
         self.assertIn("agentomics.runtime.run_workflow", self.launcher)
 
-    def test_test_evaluation_reuses_inference_on_co_located_split(self):
+    def test_test_evaluation_reuses_inference_on_co_located_splits(self):
         # The old separate hidden-test tree and flag are gone; evaluation runs
-        # the best model on the dataset's own ``test`` split via inference.
+        # the best model on every test-prefixed split via inference.
         self.assertNotIn("test_datasets", self.launcher)
         self.assertNotIn("--test-datasets-dir", self.launcher)
-        self.assertIn('dataset_directory / "test"', self.launcher)
+        self.assertIn('path.name.startswith("test")', self.launcher)
         self.assertIn("run_inference_in_docker", self.launcher)
-        self.assertIn('"eval_predictions_test.csv"', self.launcher)
+        self.assertIn('f"eval_predictions_{split_name}.csv"', self.launcher)
         self.assertIn("agentomics.runtime.report_workflow", self.launcher)
 
     def test_help_text_has_no_prepared_datasets_user_concept(self):

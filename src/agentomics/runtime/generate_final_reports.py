@@ -39,11 +39,6 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 from agentomics.datasets.data_contract import LABELS_FILE_NAME, NUMERIC_LABEL_COLUMN_NAME, TRAIN_SPLIT, VALIDATION_SPLIT
 
-TEST_PREDICTIONS_FILENAME = "eval_predictions_test.csv"
-TEST_NUMERIC_LABELS_FILENAME = "eval_predictions_test.numeric_labels.csv"
-TEST_METRICS_FILENAME = "eval_predictions_test.metrics.json"
-
-
 # Data models
 @dataclass(frozen=True)
 class DatasetMeta:
@@ -63,7 +58,7 @@ class RunMeta:
 
 @dataclass
 class SplitArtifacts:
-    split_name: str  # train/validation/test
+    split_name: str  # train/validation/test*
     labeled_csv: Optional[Path]
     preds_csv: Optional[Path]
     metrics: Dict[str, float]
@@ -290,11 +285,17 @@ def gather_iteration_inputs(
     best_iter = load_best_iteration_snapshot_iteration(config)
     if best_iter is not None and iteration == best_iter:
         snapshot_dir = config.best_iteration_snapshot_dir
-        test_preds = snapshot_dir / TEST_PREDICTIONS_FILENAME
-        test_labeled = snapshot_dir / TEST_NUMERIC_LABELS_FILENAME
-        test_metrics = load_saved_metrics(snapshot_dir / TEST_METRICS_FILENAME)
-        if test_preds.exists() or test_labeled.exists() or bool(test_metrics):
-            splits.append(SplitArtifacts("test", test_labeled, test_preds, test_metrics))
+        for test_preds in sorted(snapshot_dir.glob("eval_predictions_test*.csv")):
+            if test_preds.name.endswith(".numeric_labels.csv"):
+                continue
+            split_name = test_preds.stem.removeprefix("eval_predictions_")
+            test_labeled = snapshot_dir / f"{test_preds.stem}.numeric_labels.csv"
+            test_metrics = load_saved_metrics(
+                snapshot_dir / f"{test_preds.stem}.metrics.json"
+            )
+            splits.append(
+                SplitArtifacts(split_name, test_labeled, test_preds, test_metrics)
+            )
 
     return IterationInputs(iteration=iteration, report_md=report_md, splits=splits)
 
@@ -579,6 +580,21 @@ def plots_compare_splits_page_flowables(
     present_splits = [s for s in split_order if plot_groups.get(s)]
     if not present_splits:
         return []
+    if len(present_splits) > 3:
+        flows = []
+        for start in range(0, len(present_splits), 3):
+            if flows:
+                flows.append(PageBreak())
+            flows.extend(
+                plots_compare_splits_page_flowables(
+                    iteration,
+                    task_type,
+                    plot_groups,
+                    present_splits[start : start + 3],
+                    styles,
+                )
+            )
+        return flows
 
     task_type = (task_type or "").strip().lower()
     if task_type == TaskTypes.CLASSIFICATION:
@@ -735,10 +751,18 @@ def metrics_table_flowable(metrics_by_split, split_order, val_metric, styles):
     if not present or not keys:
         return Paragraph("No metrics found.", styles["Muted"])
 
-    data = [["Metric"] + [s.title() for s in present]]
-    for k in keys:
-        row = [k] + [_fmt_metric(metrics_by_split[s].get(k)) for s in present]
-        data.append(row)
+    if len(present) > 3:
+        data = [["Split", "Metric", "Value"]]
+        for split in present:
+            data.extend(
+                [split, metric, _fmt_metric(value)]
+                for metric, value in sorted(metrics_by_split[split].items())
+            )
+    else:
+        data = [["Metric"] + [s.title() for s in present]]
+        for k in keys:
+            row = [k] + [_fmt_metric(metrics_by_split[s].get(k)) for s in present]
+            data.append(row)
 
     tbl = Table(data, hAlign="LEFT")
     ts = TableStyle(
@@ -754,9 +778,23 @@ def metrics_table_flowable(metrics_by_split, split_order, val_metric, styles):
         ]
     )
 
-    if val_metric and val_metric in keys:
-        r = 1 + keys.index(val_metric)
-        ts.add("BACKGROUND", (0, r), (-1, r), colors.Color(1.0, 0.98, 0.90))
+    if val_metric and len(present) > 3:
+        for row_index, row in enumerate(data[1:], start=1):
+            if row[1] == val_metric:
+                ts.add(
+                    "BACKGROUND",
+                    (0, row_index),
+                    (-1, row_index),
+                    colors.Color(1.0, 0.98, 0.90),
+                )
+    elif val_metric and val_metric in keys:
+        row_index = 1 + keys.index(val_metric)
+        ts.add(
+            "BACKGROUND",
+            (0, row_index),
+            (-1, row_index),
+            colors.Color(1.0, 0.98, 0.90),
+        )
 
     tbl.setStyle(ts)
     return tbl
@@ -846,10 +884,9 @@ def main() -> None:
     ensure_dir(out_dir)
     ensure_dir(plots_dir)
     config.markdown_reports_dir.mkdir(parents=True, exist_ok=True)
-    split_order = ["train", "validation", "test"]
-
     for it in iterations:
         inp = gather_iteration_inputs(config, it)
+        split_order = [split.split_name for split in inp.splits]
         report_path = inp.report_md
         if report_path is None:
             report_metrics = {
