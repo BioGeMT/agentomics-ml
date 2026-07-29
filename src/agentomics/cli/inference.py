@@ -53,6 +53,12 @@ def _wandb_docker_arguments(prefix: str | None) -> list[str]:
         "WANDB_API_KEY",
         "WANDB_PROJECT_NAME",
         "WANDB_ENTITY",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "ALL_PROXY",
+        "http_proxy",
+        "https_proxy",
+        "all_proxy",
     ):
         if variable_name in os.environ:
             docker_arguments.extend(["-e", variable_name])
