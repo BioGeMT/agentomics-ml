@@ -50,14 +50,14 @@ def prepare_inference_input(
     )
     return output_split_dir
 
-def _compute_metrics(agent_dir: Path, input_split: Path, output_path: Path) -> Path | None:
+def _compute_metrics(agent_dir: Path, input_split: Path, output_path: Path, wandb_prefix: str | None) -> Path | None:
     labels_path = input_split / LABELS_FILE_NAME
     if not labels_path.is_file():
         return None
 
     metrics_path = output_path.with_suffix(".metrics.json")
     print("Computing metrics...")
-    evaluate_predictions(agent_dir, output_path, labels_path, metrics_path)
+    evaluate_predictions(agent_dir, output_path, labels_path, metrics_path, wandb_prefix)
     return metrics_path
 
 def _run_single_inference(arguments: Namespace) -> None:
@@ -102,7 +102,7 @@ def _run_single_inference(arguments: Namespace) -> None:
                 f"Inference completed without creating the prediction output: {arguments.output}"
             )
         print("Inference done")
-        metrics_path = _compute_metrics(arguments.agent_dir, input_split, arguments.output)
+        metrics_path = _compute_metrics(arguments.agent_dir, input_split, arguments.output, arguments.wandb_prefix)
         restore_host_ownership(arguments.output)
         if metrics_path is not None:
             restore_host_ownership(metrics_path)
