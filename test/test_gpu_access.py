@@ -27,8 +27,14 @@ class TestGpuAccess(BaseAgentTest):
         """Test if the agent can access the GPU using python tool (PyTorch)."""
 
         print("Installing PyTorch, might take a while...")
-        install_result = self.bash_tool.function("pip install torch")
-        self.assertNotIn("ERROR", install_result, "Failed to install PyTorch through pip")
+        install_result = self.bash_tool.function(
+            "pip install torch && echo TORCH_INSTALL_SUCCEEDED"
+        )
+        self.assertIn(
+            "TORCH_INSTALL_SUCCEEDED",
+            install_result,
+            "Failed to install PyTorch through pip",
+        )
         
         code = (
             "import torch\n"
@@ -54,8 +60,15 @@ class TestGpuAccess(BaseAgentTest):
         """Test if the agent can access the GPU using python tool (Tensorflow)."""
 
         print("Installing tensorflow with CUDA support, might take a while...")
-        install_result = self.bash_tool.function("pip install tensorflow[and-cuda]") #without [and-cuda] would not detect GPU
-        self.assertNotIn("ERROR", install_result, "Failed to install tensorflow through pip")
+        install_result = self.bash_tool.function(
+            "pip install tensorflow[and-cuda] "
+            "&& echo TENSORFLOW_INSTALL_SUCCEEDED"
+        )
+        self.assertIn(
+            "TENSORFLOW_INSTALL_SUCCEEDED",
+            install_result,
+            "Failed to install tensorflow through pip",
+        )
 
         code = (
           "import tensorflow as tf\n"
@@ -71,4 +84,8 @@ class TestGpuAccess(BaseAgentTest):
         self.assertNotIn("Error:", write_result, "Should be able to write TensorFlow test file")
 
         run_result = self.run_python_tool.function(python_file_path=file_path)
-        self.assertNotIn("GPU devices found: 0", run_result, "No GPU devices found for TensorFlow")
+        self.assertRegex(
+            run_result,
+            r"GPU devices found: [1-9]\d*",
+            "No GPU devices found for TensorFlow",
+        )
