@@ -1,5 +1,13 @@
+import os
+import unittest
+
 from test.test_utils import BaseAgentTest
 
+
+@unittest.skipIf(
+    os.getenv("CUDA_VISIBLE_DEVICES") == "",
+    "GPU access tests do not apply in CPU-only mode",
+)
 class TestGpuAccess(BaseAgentTest):
     """Test suite for GPU agent access"""
 
