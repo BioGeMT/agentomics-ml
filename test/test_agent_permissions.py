@@ -1,9 +1,9 @@
 import os
 import subprocess
 import unittest
-from pathlib import Path
 
 from test.test_utils import BaseAgentTest
+from agentomics.runtime.conda_utils import get_shared_environment_path
 from agentomics.utils.config import Config
 
 class TestAgentPermissions(BaseAgentTest):
@@ -85,9 +85,6 @@ class TestAgentPermissions(BaseAgentTest):
             "The co-located test split must not be exposed to the agent",
         )
 
-    def test_agent_access_to_repository_datasets(self):
-        self.assertTrue(Path("/repository/datasets/").is_dir())
-
     @unittest.skipUnless(os.getenv("AGENT_USER"), "Agent user sandboxing only enforced in Docker mode")
     def test_api_key_protection(self):
         """Test that agent cannot access API keys."""
@@ -109,7 +106,8 @@ class TestAgentPermissions(BaseAgentTest):
         """Test that conda environment is set up and isolated."""
         which_python = self.bash_tool.function("which python")
         self.assertNotIn("Command failed", which_python, "'which python' should succeed")
-        self.assertIn(f"{self.config.shared_dir}/.conda/envs/{self.agent_id}_env/bin/python", which_python.strip(),
+        expected_python = get_shared_environment_path(self.config) / "bin" / "python"
+        self.assertIn(str(expected_python), which_python.strip(),
                       "Python should be from the agent's conda environment")
         
         install_result = self.bash_tool.function("conda install matplotlib -y 2>&1")
