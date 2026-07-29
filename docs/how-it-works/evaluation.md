@@ -21,15 +21,17 @@ After each iteration:
 3. Compared to previous iterations
 4. Best iteration snapshot updated if improved
 
-## Evaluating on a Held-out Test Set
+## Evaluating on Held-out Test Sets
 
-The agent never sees the held-out `test/` split — it is withheld from the
-agent's mounts. If a dataset includes a co-located `test/` split, `agentomics-run`
-automatically evaluates the best iteration on it **after** the run, in a separate
-read-only evaluation container, and saves the predictions and metrics into the
-best-iteration snapshot (`eval_predictions_test.csv`,
-`eval_predictions_test.metrics.json`). Datasets without a `test/` split simply
-skip this step.
+The agent never sees held-out `test*` splits — they are withheld from the
+agent's mounts. `agentomics-run` automatically evaluates the best iteration on
+every co-located directory whose name starts with `test` **after** the run, in a
+separate read-only evaluation container. Predictions and metrics are saved as
+`eval_predictions_<test_split>.csv` and
+`eval_predictions_<test_split>.metrics.json`, logged to W&B when configured,
+and included in the final PDF report. The flat-dataset `test.csv` format remains
+supported as a single `test` split. Datasets without test data simply skip this
+step.
 
 To score the finished model on any other labeled set, run inference with
 `--label-col` — metrics are computed by the bundled evaluator and written next to

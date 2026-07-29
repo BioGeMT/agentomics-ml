@@ -54,9 +54,9 @@ The most important directory - contains the best-performing iteration's artifact
 | `runtime_info/iteration_metadata.json` | Which iteration produced the snapshot |
 | `runtime_info/environment.yml` | Portable definition of the Conda environment used |
 | `runtime_info/environment.tar.gz` | Packed environment for fast container-local restoration in `full` mode |
-| `eval_predictions_test.csv` | Best-model predictions for the optional test split |
-| `eval_predictions_test.numeric_labels.csv` | Numeric test labels used for metrics |
-| `eval_predictions_test.metrics.json` | Metrics for the optional test split |
+| `eval_predictions_<test_split>.csv` | Best-model predictions for each `test*` split |
+| `eval_predictions_<test_split>.numeric_labels.csv` | Numeric labels used for that split's metrics |
+| `eval_predictions_<test_split>.metrics.json` | Metrics for that split |
 
 ### Using the Best Model
 
@@ -98,7 +98,8 @@ selected iteration's reports and provide stable paths to the final result.
 
 ### PDF Reports
 
-`reports/pdf/iteration_N.pdf` - PDF report per iteration, plus plots in `reports/pdf/plots/`.
+`reports/pdf/iteration_N.pdf` - PDF report per iteration, including metrics and
+plots for every evaluated `test*` split, plus plots in `reports/pdf/plots/`.
 
 ## Metrics
 

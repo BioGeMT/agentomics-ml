@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -41,8 +42,26 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cpu-only", action="store_true", help="Disable GPU access")
     return parser
 
+def _wandb_docker_arguments(prefix: str | None) -> list[str]:
+    if prefix is None:
+        return []
+    docker_arguments = []
+    env_file = Path.cwd() / ".env"
+    if env_file.is_file():
+        docker_arguments.extend(["--env-file", str(env_file.resolve())])
+    for variable_name in (
+        "WANDB_API_KEY",
+        "WANDB_PROJECT_NAME",
+        "WANDB_ENTITY",
+    ):
+        if variable_name in os.environ:
+            docker_arguments.extend(["-e", variable_name])
+    docker_arguments.extend(["-e", f"AGENTOMICS_WANDB_PREFIX={prefix}"])
+    return docker_arguments
+
 def run_inference_in_docker(arguments: argparse.Namespace) -> None:
     resolve_inference_paths(arguments)
+    wandb_prefix = getattr(arguments, "wandb_prefix", None)
     container_input = "/inference-input"
     python_arguments = [
         "-m",
@@ -72,6 +91,7 @@ def run_inference_in_docker(arguments: argparse.Namespace) -> None:
             f"type=bind,src={arguments.output.parent},dst=/inference-output",
         ],
         python_arguments=python_arguments,
+        docker_arguments=_wandb_docker_arguments(wandb_prefix),
     )
 
 def main() -> int:

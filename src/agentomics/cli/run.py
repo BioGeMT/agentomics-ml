@@ -247,8 +247,9 @@ def _run_inference_on_test_input(
     cpu_only: bool,
     workspace_directory: Path,
     test_input: Path,
+    split_name: str,
 ) -> None:
-    print(f"Evaluating the best iteration on {test_input}")
+    print(f"Evaluating the best iteration on {split_name}: {test_input}")
     run_inference_in_docker(
         argparse.Namespace(
             image=image,
@@ -257,12 +258,13 @@ def _run_inference_on_test_input(
             output=(
                 workspace_directory
                 / Config.BEST_ITERATION_SNAPSHOT_DIRNAME
-                / "eval_predictions_test.csv"
+                / f"eval_predictions_{split_name}.csv"
             ),
             label_col=None,
             iteration_dir=Path(Config.BEST_ITERATION_SNAPSHOT_DIRNAME),
             all_iterations=False,
             cpu_only=cpu_only,
+            wandb_prefix=split_name,
         )
     )
 
@@ -273,13 +275,30 @@ def _run_test_evaluation_in_docker(
     workspace_directory: Path,
     dataset_directory: Path,
 ) -> None:
-    test_directory = dataset_directory / "test"
-    if test_directory.is_dir():
-        _run_inference_on_test_input(
-            image, cpu_only, workspace_directory, test_directory
-        )
+    test_directories = sorted(
+        path
+        for path in dataset_directory.iterdir()
+        if path.is_dir() and path.name.startswith("test")
+    )
+    if test_directories:
+        for test_directory in test_directories:
+            try:
+                _run_inference_on_test_input(
+                    image,
+                    cpu_only,
+                    workspace_directory,
+                    test_directory,
+                    test_directory.name,
+                )
+            except Exception as error:
+                print(
+                    f"Warning: Evaluation failed for {test_directory.name}; "
+                    f"continuing: {error}",
+                    file=sys.stderr,
+                )
         return
 
+    test_directory = dataset_directory / "test"
     test_csv = dataset_directory / "test.csv"
     if not test_csv.is_file():
         print(
@@ -311,6 +330,7 @@ def _run_test_evaluation_in_docker(
             cpu_only,
             workspace_directory,
             prepared_directory / "test",
+            "test",
         )
 
 
