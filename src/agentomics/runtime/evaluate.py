@@ -15,7 +15,7 @@ from agentomics.datasets.data_contract import (
 from agentomics.datasets.label_processing import convert_classification_labels, convert_regression_labels
 from agentomics.run_logging.wandb_setup import resume_wandb_run
 from agentomics.runtime.evaluate_result import get_metrics
-from agentomics.runtime.read_write_utils import load_config_from_run_dir
+from agentomics.runtime.read_write_utils import load_config_from_run_dir_and_reroot
 from agentomics.utils.config import Config
 from agentomics.utils.task_types import TaskTypes
 
@@ -38,9 +38,7 @@ def evaluate_predictions(
     labels_path: Path,
     output_path: Path,
 ) -> dict:
-    config = load_config_from_run_dir(agent_dir / Config.RUN_DIRNAME)
-    if config is None:
-        raise FileNotFoundError(f"Could not load run config under {agent_dir / Config.RUN_DIRNAME}")
+    config = load_config_from_run_dir_and_reroot(agent_dir / Config.RUN_DIRNAME)
 
     numeric_labels = _read_numeric_labels(labels_path, config)
     numeric_labels_path = predictions_path.parent / f"{predictions_path.stem}.numeric_labels.csv"
@@ -55,10 +53,7 @@ def evaluate_predictions(
     output_path.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
     prefix = os.getenv("AGENTOMICS_WANDB_PREFIX")
     if prefix:
-        wandb_run = resume_wandb_run(
-            config,
-            dir=Path(agent_dir) / "logs" / "test_logs",
-        )
+        wandb_run = resume_wandb_run(config)
         if wandb_run is not None:
             wandb_run.log({
                 f"{prefix}/{metric_name}": value
