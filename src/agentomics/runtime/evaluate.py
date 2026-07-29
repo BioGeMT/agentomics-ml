@@ -13,6 +13,7 @@ from agentomics.datasets.data_contract import (
     validate_and_read_labels,
 )
 from agentomics.datasets.label_processing import convert_classification_labels, convert_regression_labels
+from agentomics.run_logging.wandb_setup import resume_wandb_run
 from agentomics.runtime.evaluate_result import get_metrics
 from agentomics.runtime.read_write_utils import load_config_from_run_dir
 from agentomics.utils.config import Config
@@ -54,8 +55,6 @@ def evaluate_predictions(
     output_path.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
     prefix = os.getenv("AGENTOMICS_WANDB_PREFIX")
     if prefix:
-        from agentomics.run_logging.wandb_setup import resume_wandb_run
-
         wandb_run = resume_wandb_run(
             config,
             dir=Path(agent_dir) / "logs" / "test_logs",
