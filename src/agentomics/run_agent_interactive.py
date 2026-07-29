@@ -34,6 +34,12 @@ def resolve_run_arguments(arguments: argparse.Namespace) -> None:
         missing_ok=True,
     )
     if existing_config is not None:
+        if arguments.fork_from_run is None:
+            raise FileExistsError(
+                "The selected workspace already contains an Agentomics run. "
+                "Choose a new empty --workspace-dir, or use --fork-from-run to "
+                "continue from the existing run in a different workspace."
+            )
         next_iteration_index = get_next_iteration_index(existing_config)
         if arguments.dataset is not None and arguments.dataset != existing_config.dataset:
             console.print(
