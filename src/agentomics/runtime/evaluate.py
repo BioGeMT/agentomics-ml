@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
 from pathlib import Path
 
 import pandas as pd
@@ -55,21 +54,18 @@ def evaluate_predictions(
     output_path.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
     prefix = os.getenv("AGENTOMICS_WANDB_PREFIX")
     if prefix:
-        try:
-            from agentomics.run_logging.wandb_setup import resume_wandb_run
+        from agentomics.run_logging.wandb_setup import resume_wandb_run
 
-            wandb_run = resume_wandb_run(
-                config,
-                dir=Path(agent_dir) / "logs" / "test_logs",
-            )
-            if wandb_run is not None:
-                wandb_run.log({
-                    f"{prefix}/{metric_name}": value
-                    for metric_name, value in metrics.items()
-                })
-                wandb_run.finish()
-        except Exception as error:
-            print(f"Warning: W&B metric logging failed: {error}", file=sys.stderr)
+        wandb_run = resume_wandb_run(
+            config,
+            dir=Path(agent_dir) / "logs" / "test_logs",
+        )
+        if wandb_run is not None:
+            wandb_run.log({
+                f"{prefix}/{metric_name}": value
+                for metric_name, value in metrics.items()
+            })
+            wandb_run.finish()
     print(json.dumps(metrics, indent=2))
     print(f"Metrics written to {output_path}")
     return metrics
