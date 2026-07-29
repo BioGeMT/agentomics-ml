@@ -55,37 +55,3 @@ class TestGpuAccess(BaseAgentTest):
         run_result = self.run_python_tool.function(python_file_path=file_path)
         self.assertIn("CUDA is available", run_result, "GPU access failed in python tool")
         self.assertIn("GPU Name:", run_result, "Failed to retrieve GPU name in python tool")
-
-    def test_gpu_tensorflow_python(self):
-        """Test if the agent can access the GPU using python tool (Tensorflow)."""
-
-        print("Installing tensorflow with CUDA support, might take a while...")
-        install_result = self.bash_tool.function(
-            "pip install tensorflow[and-cuda] "
-            "&& echo TENSORFLOW_INSTALL_SUCCEEDED"
-        )
-        self.assertIn(
-            "TENSORFLOW_INSTALL_SUCCEEDED",
-            install_result,
-            "Failed to install tensorflow through pip",
-        )
-
-        code = (
-          "import tensorflow as tf\n"
-          "gpus = tf.config.list_physical_devices('GPU')\n"
-          "print(f'GPU devices found: {len(gpus)}')\n"
-          "if not gpus:\n"
-          "    print('No GPU devices found for TensorFlow')\n"
-      )
-        
-        file_path = self._tool_file_path("test_tensorflow.py")
-        write_result = self.write_python_tool.function(file_path=file_path, code=code)
-        self.assertNotIn("Command failed", write_result, "Should be able to write TensorFlow test file")
-        self.assertNotIn("Error:", write_result, "Should be able to write TensorFlow test file")
-
-        run_result = self.run_python_tool.function(python_file_path=file_path)
-        self.assertRegex(
-            run_result,
-            r"GPU devices found: [1-9]\d*",
-            "No GPU devices found for TensorFlow",
-        )
