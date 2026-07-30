@@ -1,4 +1,3 @@
-
 FROM --platform=$BUILDPLATFORM alpine:3.23.4 AS source
 ARG REPOSITORY_SOURCE=https://github.com/BioGeMT/Agentomics-ML.git#main
 ADD ${REPOSITORY_SOURCE} /repository
@@ -14,10 +13,10 @@ ENV PIP_NO_CACHE_DIR=1
 # Suppress pip version warnings
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
-COPY --from=source /repository/envs/environment.yaml /envs/
+COPY --from=source /repository/envs/environment.yaml /build/
 
 # Create the conda environment with mamba for speed and memory efficiency.
-RUN mamba env create -f /envs/environment.yaml \
+RUN mamba env create -f /build/environment.yaml \
     && mamba clean -afy \
     && rm -rf /tmp/conda-pkgs
 
@@ -26,12 +25,12 @@ RUN conda init bash \
     && echo "conda activate agentomics-env" >> /root/.bashrc
 
 # Setup agent start environment
-COPY --from=source /repository/envs/environment_agent.yaml /envs/
+COPY --from=source /repository/envs/environment_agent.yaml /build/
 ENV START_ENV_PKG=/opt/agent_start_env.tar.gz
 # Preload libgomp on env activation so it claims a static TLS slot before
 # torch's shared libs consume them all. Without this, sklearn (imported via
 # transformers) fails with "cannot allocate memory in static TLS block".
-RUN mamba env create -f /envs/environment_agent.yaml \
+RUN mamba env create -f /build/environment_agent.yaml \
     && mkdir -p /opt/conda/envs/agent_start_env/etc/conda/activate.d \
     && echo 'export LD_PRELOAD=$CONDA_PREFIX/lib/libgomp.so.1' \
        > /opt/conda/envs/agent_start_env/etc/conda/activate.d/preload_libgomp.sh \
