@@ -4,7 +4,7 @@ import pandas as pd
 
 TRAIN_SPLIT = "train"
 VALIDATION_SPLIT = "validation"
-TEST_SPLIT = "test"
+TEST_SPLIT_PREFIX = "test"
 MINI_TRAIN_SPLIT = "mini_train"
 
 NON_TEST_SPLIT_NAMES = (TRAIN_SPLIT, VALIDATION_SPLIT)
@@ -22,7 +22,7 @@ DATASET_DESCRIPTION_FILE_NAME = "dataset_description.md"
 ALLOWED_PUBLIC_DATASET_ENTRIES = {
     TRAIN_SPLIT,
     VALIDATION_SPLIT,
-    TEST_SPLIT,
+    TEST_SPLIT_PREFIX,
     SUPPLEMENTARY_DIR_NAME,
     METADATA_FILE_NAME,
     DATASET_DESCRIPTION_FILE_NAME,
@@ -56,14 +56,14 @@ def validate_public_dataset_entries(dataset_dir: Path) -> None:
         item.name for item in dataset_dir.iterdir()
         if (
             item.name not in ALLOWED_PUBLIC_DATASET_ENTRIES
-            and not (item.is_dir() and item.name.startswith(TEST_SPLIT))
+            and not (item.is_dir() and item.name.startswith(TEST_SPLIT_PREFIX))
         )
     )
     if unsupported_entries:
         raise ValueError(
             f"Public dataset {dataset_dir.name} has unsupported top-level entries: {unsupported_entries}. "
             f"Allowed: {sorted(ALLOWED_PUBLIC_DATASET_ENTRIES)} and directories "
-            f"whose names start with '{TEST_SPLIT}'."
+            f"whose names start with '{TEST_SPLIT_PREFIX}'."
         )
 
 def validate_splits(split_paths: dict[str, Path], expected_input_structure: list[str]) -> None:

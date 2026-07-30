@@ -51,7 +51,7 @@ class RunLauncherSourceContractTest(unittest.TestCase):
         # the best model on every test-prefixed split via inference.
         self.assertNotIn("test_datasets", self.launcher)
         self.assertNotIn("--test-datasets-dir", self.launcher)
-        self.assertIn("path.name.startswith(TEST_SPLIT)", self.launcher)
+        self.assertIn("path.name.startswith(TEST_SPLIT_PREFIX)", self.launcher)
         self.assertIn("run_inference_in_docker", self.launcher)
         self.assertIn('f"eval_predictions_{test_input.name}.csv"', self.launcher)
         self.assertIn("agentomics.runtime.report_workflow", self.launcher)

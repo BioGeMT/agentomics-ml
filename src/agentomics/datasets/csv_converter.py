@@ -13,7 +13,7 @@ from agentomics.datasets.data_contract import (
     LABELS_FILE_NAME,
     METADATA_FILE_NAME,
     SUPPLEMENTARY_DIR_NAME,
-    TEST_SPLIT,
+    TEST_SPLIT_PREFIX,
     TRAIN_SPLIT,
     VALIDATION_SPLIT,
 )
@@ -24,7 +24,7 @@ CSV_LABEL_COLUMN_METADATA_KEY = "label_column"
 CSV_ID_COLUMN_METADATA_KEY = "id_column"
 TRAIN_CSV_FILE_NAME = f"{TRAIN_SPLIT}.csv"
 VALIDATION_CSV_FILE_NAME = f"{VALIDATION_SPLIT}.csv"
-TEST_CSV_FILE_NAME = f"{TEST_SPLIT}.csv"
+TEST_CSV_FILE_NAME = f"{TEST_SPLIT_PREFIX}.csv"
 CSV_CONVERTED_SOURCE_DIR_NAME = "_csv_converted_source"
 ALLOWED_PUBLIC_CSV_DATASET_ENTRIES = {
     TRAIN_CSV_FILE_NAME,
@@ -46,7 +46,7 @@ def is_public_csv_dataset(source_dir: Path) -> bool:
 
 def is_test_csv_dataset(source_dir: Path) -> bool:
     source_dir = Path(source_dir)
-    return not (source_dir / TEST_SPLIT).exists() and (source_dir / TEST_CSV_FILE_NAME).is_file()
+    return not (source_dir / TEST_SPLIT_PREFIX).exists() and (source_dir / TEST_CSV_FILE_NAME).is_file()
 
 def convert_csv_dataset_to_standard_raw_dataset(
     source_dir: Path,
@@ -107,10 +107,10 @@ def convert_csv_test_dataset_to_standard_raw_dataset(
     converted_source_dir = _converted_source_dir(destination_dir)
     remove_path(converted_source_dir)
     _write_input_and_labels(
-        split_dir=converted_source_dir / TEST_SPLIT,
+        split_dir=converted_source_dir / TEST_SPLIT_PREFIX,
         df=pd.read_csv(source_dir / TEST_CSV_FILE_NAME),
         label_column=str(label_column),
-        id_prefix=TEST_SPLIT,
+        id_prefix=TEST_SPLIT_PREFIX,
         id_column=str(id_column) if id_column is not None else None,
     )
     return converted_source_dir
