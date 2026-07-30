@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+from argparse import Namespace
 from pathlib import Path
 
 
@@ -25,6 +26,11 @@ def resolve_output_path(path: Path) -> Path:
             f"Output parent directory does not exist: {path.parent}"
         )
     return path.parent.resolve() / path.name
+
+def resolve_inference_paths(arguments: Namespace) -> None:
+    arguments.agent_dir = resolve_existing_directory(arguments.agent_dir)
+    arguments.input_path = resolve_existing_path(arguments.input_path)
+    arguments.output = resolve_output_path(arguments.output)
 
 def require_empty_directory(path: Path) -> None:
     if path.exists() and not path.is_dir():
