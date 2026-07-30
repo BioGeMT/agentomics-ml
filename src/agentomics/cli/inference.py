@@ -43,7 +43,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--wandb-prefix", help="Metric prefix for W&B logging")
     return parser
 
-def run_inference_in_docker(arguments: argparse.Namespace) -> None:
+def run_inference_in_docker(arguments: argparse.Namespace) -> int:
     resolve_inference_paths(arguments)
     container_input = "/inference-input"
     python_arguments = [
@@ -67,7 +67,7 @@ def run_inference_in_docker(arguments: argparse.Namespace) -> None:
     if arguments.wandb_prefix:
         python_arguments.extend(["--wandb-prefix", arguments.wandb_prefix])
 
-    run_python_in_docker(
+    return run_python_in_docker(
         image=arguments.image,
         cpu_only=arguments.cpu_only,
         mounts=[
@@ -87,12 +87,12 @@ def run_inference_in_docker(arguments: argparse.Namespace) -> None:
             "https_proxy",
             "all_proxy",
         ),
+        check=False,
     )
 
 def main() -> int:
     arguments = build_parser().parse_args()
-    run_inference_in_docker(arguments)
-    return 0
+    return run_inference_in_docker(arguments)
 
 if __name__ == "__main__":
     sys.exit(main())
