@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -243,9 +242,9 @@ def _run_inference_on_test_input(
     cpu_only: bool,
     workspace_directory: Path,
     test_input: Path,
-) -> None:
+) -> int:
     print(f"Evaluating the best iteration on {test_input.name}: {test_input}")
-    run_inference_in_docker(
+    return run_inference_in_docker(
         argparse.Namespace(
             image=image,
             agent_dir=workspace_directory,
@@ -277,17 +276,16 @@ def _run_test_evaluation_in_docker(
     )
     if test_directories:
         for test_directory in test_directories:
-            try:
-                _run_inference_on_test_input(
-                    image,
-                    cpu_only,
-                    workspace_directory,
-                    test_directory,
-                )
-            except subprocess.CalledProcessError as error:
+            return_code = _run_inference_on_test_input(
+                image,
+                cpu_only,
+                workspace_directory,
+                test_directory,
+            )
+            if return_code != 0:
                 print(
-                    f"Warning: Evaluation failed for {test_directory.name}; "
-                    f"continuing: {error}",
+                    f"Warning: Evaluation failed for {test_directory.name} "
+                    f"with exit code {return_code}; continuing.",
                     file=sys.stderr,
                 )
         return
@@ -315,12 +313,18 @@ def _run_test_evaluation_in_docker(
             label_column=metadata.get("label_column"),
             id_column=metadata.get("id_column"),
         )
-        _run_inference_on_test_input(
+        return_code = _run_inference_on_test_input(
             image,
             cpu_only,
             workspace_directory,
             prepared_directory / "test",
         )
+        if return_code != 0:
+            print(
+                f"Warning: Evaluation failed for test with exit code "
+                f"{return_code}; continuing.",
+                file=sys.stderr,
+            )
 
 
 def _run_reporting_in_docker(
