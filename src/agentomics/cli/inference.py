@@ -40,7 +40,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run every archived iteration",
     )
     parser.add_argument("--cpu-only", action="store_true", help="Disable GPU access")
-    parser.add_argument("--wandb-prefix", help="Metric prefix for W&B logging")
+    parser.add_argument("--wandb-prefix", help="Enable W&B logging with this prefix; valid WANDB_API_KEY, WANDB_PROJECT_NAME, and WANDB_ENTITY are also required")
     return parser
 
 def run_inference_in_docker(arguments: argparse.Namespace) -> int:
