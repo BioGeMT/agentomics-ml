@@ -42,15 +42,15 @@ datasets/my_dataset/
 ```
 
 Each unprepared `labels.csv` must include `id` and `label` columns. Your source
-`datasets/<name>/` folder is mounted read-only and is never modified. When a run
-starts, Agentomics copies its public splits into the run workspace and converts
-their labels to `id,numeric_label`. The `input/` interface is recorded at
-preparation time, must match across all splits, and must not be modified during
-a run. The optional source `test/` split is excluded from the agent worker's
-mounts and remains outside the agent-facing prepared data.
+`datasets/<name>/` folder is mounted read-only and is never modified. While a
+run is active, Agentomics creates a transient prepared view in the run workspace
+and converts its labels to `id,numeric_label`. The `input/` interface is
+recorded at preparation time, must match across all splits, and must not be
+modified during a run. The optional source `test/` split is excluded from the
+agent worker's mounts and remains outside the agent-facing prepared data.
 
-The prepared, agent-facing splits are written to the run workspace (never back
-into `datasets/`):
+Exact versioned splits produced or selected by the run are persisted in the run
+workspace (never back into the original `datasets/` folder):
 
 ```text
 outputs/<agent_id>/run/shared/splits/split_0/
@@ -73,6 +73,16 @@ datasets/my_dataset/test/
 └── labels.csv          # id,label
 ```
 
+The transient `prepared_datasets/` directory, including any intermediate CSV
+conversion data inside it, is removed after test evaluation and report
+generation. It is regenerated from the original dataset when a run is forked
+and is not part of the final output.
+
+The resolved preparation choices remain in
+`run/shared/dataset_metadata.json`. This small file is persistent run state, so
+a fork can recreate the prepared dataset without asking again for task type,
+label mapping, or the CSV label column.
+
 ## Active Workspace
 
 The active host workspace is mounted at `/workspace` in the container.
@@ -85,6 +95,7 @@ Current run working directory:
 <workspace_root>/run/
 ├── shared/
 │   ├── config.json
+│   ├── dataset_metadata.json
 │   ├── environment.yml
 │   └── splits/
 ├── current_iteration/
@@ -205,7 +216,7 @@ outputs/<agent_id>/
 ### run/
 
 The working directory. `shared/` holds the run config, the shared conda
-environment, the prepared dataset copy, and the train/validation splits.
+environment, and the persisted train/validation splits.
 `current_iteration/` is the active iteration while the run is in progress;
 completed iterations are archived as `iteration_N/`.
 
