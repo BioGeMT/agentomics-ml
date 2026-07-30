@@ -285,14 +285,12 @@ def gather_iteration_inputs(
     best_iter = load_best_iteration_snapshot_iteration(config)
     if best_iter is not None and iteration == best_iter:
         snapshot_dir = config.best_iteration_snapshot_dir
-        for test_preds in sorted(snapshot_dir.glob("eval_predictions_test*.csv")):
-            if test_preds.name.endswith(".numeric_labels.csv"):
-                continue
-            split_name = test_preds.stem.removeprefix("eval_predictions_")
-            test_labeled = snapshot_dir / f"{test_preds.stem}.numeric_labels.csv"
-            test_metrics = load_saved_metrics(
-                snapshot_dir / f"{test_preds.stem}.metrics.json"
-            )
+        for test_metrics_path in sorted(snapshot_dir.glob("eval_predictions_test*.metrics.json")):
+            predictions_stem = test_metrics_path.name.removesuffix(".metrics.json")
+            split_name = predictions_stem.removeprefix("eval_predictions_")
+            test_preds = snapshot_dir / f"{predictions_stem}.csv"
+            test_labeled = snapshot_dir / f"{predictions_stem}.numeric_labels.csv"
+            test_metrics = load_saved_metrics(test_metrics_path)
             splits.append(
                 SplitArtifacts(split_name, test_labeled, test_preds, test_metrics)
             )
