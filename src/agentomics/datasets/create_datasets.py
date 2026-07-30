@@ -14,7 +14,7 @@ from agentomics.datasets.data_contract import (
     LABEL_COLUMN_NAME,
     LABELS_FILE_NAME,
     METADATA_FILE_NAME,
-    TEST_SPLIT,
+    TEST_SPLIT_PREFIX,
     TRAIN_SPLIT,
 )
 
@@ -186,7 +186,7 @@ def generate_breast_cancer_files(_dataset_name: str = "breast_cancer") -> None:
     convert_csv_dataset(
         dataset_dir,
         label_column=LABEL_COLUMN,
-        splits={TRAIN_SPLIT: train_df, TEST_SPLIT: test_df},
+        splits={TRAIN_SPLIT: train_df, TEST_SPLIT_PREFIX: test_df},
         id_column=ID_COLUMN_NAME,
         task_type="classification",
     )
@@ -217,7 +217,7 @@ def generate_digits_images_files(_dataset_name: str = "digits_images") -> None:
 
     split_indices = {
         TRAIN_SPLIT: train_indices,
-        TEST_SPLIT: test_indices,
+        TEST_SPLIT_PREFIX: test_indices,
     }
 
     for split_name, split_idx in split_indices.items():
@@ -264,10 +264,10 @@ def generate_spoken_digits_files(_dataset_name: str = "spoken_digits") -> None:
         raise FileNotFoundError(f"No recordings directory found after extracting {archive_path}")
 
     recordings_dir = recordings_dirs[-1]
-    split_labels = {TRAIN_SPLIT: [], TEST_SPLIT: []}
+    split_labels = {TRAIN_SPLIT: [], TEST_SPLIT_PREFIX: []}
     for wav_path in sorted(recordings_dir.glob("*.wav")):
         label, _speaker, index = wav_path.stem.rsplit("_", 2)
-        split_name = TEST_SPLIT if int(index) < 5 else TRAIN_SPLIT
+        split_name = TEST_SPLIT_PREFIX if int(index) < 5 else TRAIN_SPLIT
         audio_dir = _make_split_dirs(dataset_dir, split_name, "audio")
         destination = audio_dir / wav_path.name
         shutil.copy2(wav_path, destination)
