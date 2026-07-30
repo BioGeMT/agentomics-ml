@@ -45,7 +45,6 @@ def build_parser() -> argparse.ArgumentParser:
 
 def run_inference_in_docker(arguments: argparse.Namespace) -> None:
     resolve_inference_paths(arguments)
-    wandb_prefix = getattr(arguments, "wandb_prefix", None)
     container_input = "/inference-input"
     python_arguments = [
         "-m",
@@ -65,8 +64,8 @@ def run_inference_in_docker(arguments: argparse.Namespace) -> None:
         python_arguments.append("--all-iterations")
     if arguments.cpu_only:
         python_arguments.append("--cpu-only")
-    if wandb_prefix:
-        python_arguments.extend(["--wandb-prefix", wandb_prefix])
+    if arguments.wandb_prefix:
+        python_arguments.extend(["--wandb-prefix", arguments.wandb_prefix])
 
     run_python_in_docker(
         image=arguments.image,
