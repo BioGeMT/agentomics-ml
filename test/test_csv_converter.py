@@ -1,3 +1,4 @@
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -11,6 +12,7 @@ if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
 from agentomics.datasets.csv_converter import convert_csv_dataset
+from agentomics.datasets.dataset_preparation import prepare_dataset
 
 
 class CsvConverterTest(unittest.TestCase):
@@ -60,6 +62,52 @@ class CsvConverterTest(unittest.TestCase):
                 )
 
             self.assertIn("train", str(raised.exception))
+
+    def test_preparation_can_replay_resolved_csv_metadata(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source_dir = root / "datasets" / "toy"
+            source_dir.mkdir(parents=True)
+            (source_dir / "metadata.json").write_text(
+                json.dumps({"id_column": "sample_id"}),
+                encoding="utf-8",
+            )
+            pd.DataFrame(
+                {
+                    "sample_id": ["row-1", "row-2"],
+                    "feature": [1, 2],
+                    "outcome": ["no", "yes"],
+                }
+            ).to_csv(source_dir / "train.csv", index=False)
+
+            first_metadata = prepare_dataset(
+                source_dir=source_dir,
+                destination_dir=root / "first_prepared",
+                task_type="classification",
+                label_to_scalar={"no": 0, "yes": 1},
+                label_column="outcome",
+                interactive=False,
+            )
+            second_metadata = prepare_dataset(
+                source_dir=source_dir,
+                destination_dir=root / "second_prepared",
+                task_type=first_metadata["task_type"],
+                label_to_scalar=first_metadata["label_to_scalar"],
+                label_column=first_metadata["label_column"],
+                interactive=False,
+            )
+
+            self.assertEqual(second_metadata["label_column"], "outcome")
+            self.assertEqual(second_metadata["id_column"], "sample_id")
+            self.assertEqual(
+                second_metadata["label_to_scalar"],
+                {"no": 0, "yes": 1},
+            )
+            replayed_labels = pd.read_csv(
+                root / "second_prepared" / "train" / "labels.csv",
+                dtype={"id": str},
+            )
+            self.assertEqual(replayed_labels["id"].tolist(), ["row-1", "row-2"])
 
 
 if __name__ == "__main__":
