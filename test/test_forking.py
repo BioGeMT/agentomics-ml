@@ -15,13 +15,20 @@ if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
 from agentomics.runtime.setup_fork import fork_run
+from agentomics.datasets.data_contract import PREPARED_DATASETS_DIR_NAME
 from agentomics.runtime.read_write_utils import replace_string_in_tree_files
 from agentomics.runtime.git_checkpoints import (
     build_iteration_end_commit_message,
     build_step_commit_message,
     _find_checkpoint_commit,
+    initialize_repo_if_needed,
 )
-from agentomics.runtime.read_write_utils import initialize_run_directories, save_config
+from agentomics.runtime.read_write_utils import (
+    initialize_run_directories,
+    load_dataset_metadata,
+    save_config,
+    save_dataset_metadata,
+)
 from agentomics.utils.config import Config
 
 
@@ -167,6 +174,14 @@ class TestForkRun(unittest.TestCase):
         )
         initialize_run_directories(source_config)
         save_config(source_config)
+        save_dataset_metadata(
+            source_config,
+            {
+                "task_type": "classification",
+                "label_to_scalar": {"negative": 0, "positive": 1},
+                "input_structure": ["data.csv"],
+            },
+        )
 
         _setup_git_repo(self.source_workspace)
         run_dir = source_config.run_dir
@@ -274,6 +289,60 @@ class TestForkRun(unittest.TestCase):
             / Config.SHARED_DIRNAME
             / Config.ENVIRONMENT_DESCRIPTOR_FILENAME,
             Path(f"/tmp/agentomics/envs/{target_run_id}_env"),
+        )
+
+    def test_does_not_copy_transient_dataset_state(self):
+        self._build_source_run("src_run")
+        marker = (
+            self.source_workspace
+            / PREPARED_DATASETS_DIR_NAME
+            / "_csv_converted_source"
+            / "toy"
+            / "marker.txt"
+        )
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text("transient", encoding="utf-8")
+
+        with patch("agentomics.runtime.setup_fork.ensure_environment_from_descriptor"):
+            fork_run(
+                source_workspace_dir=self.source_workspace,
+                target_agent_id="tgt_run",
+                target_workspace_dir=self.target_workspace,
+                fork_from_step=None,
+                fork_from_iteration=None,
+            )
+
+        self.assertFalse(
+            (self.target_workspace / PREPARED_DATASETS_DIR_NAME).exists()
+        )
+
+    def test_preserves_dataset_metadata_from_selected_checkpoint(self):
+        self._fork(
+            "src_run",
+            "tgt_run",
+            fork_from_step="data_split",
+            fork_from_iteration=0,
+        )
+        target_config = Config(
+            agent_id="tgt_run",
+            model_name="test-model",
+            iteration_plan_model_name="test-model",
+            dataset="toy",
+            tags=[],
+            val_metric="ACC",
+            workspace_dir=str(self.target_workspace),
+            datasets_dir=str(self.root / "datasets"),
+            task_type="classification",
+            input_structure=["data.csv"],
+        )
+
+        self.assertEqual(
+            load_dataset_metadata(target_config),
+            {
+                "task_type": "classification",
+                "label_to_scalar": {"negative": 0, "positive": 1},
+                "input_structure": ["data.csv"],
+            },
         )
 
     def test_raises_when_target_workspace_not_empty(self):
@@ -397,6 +466,27 @@ class TestForkRun(unittest.TestCase):
                 fork_from_step="data_split",
                 fork_from_iteration=0,
             )
+
+    def test_transient_dataset_directories_are_ignored(self):
+        config = Config(
+            agent_id="gitignore_run",
+            model_name="test-model",
+            iteration_plan_model_name="test-model",
+            dataset="toy",
+            tags=[],
+            val_metric="ACC",
+            workspace_dir=str(self.source_workspace),
+            datasets_dir=str(self.root / "datasets"),
+            task_type="classification",
+            input_structure=["data.csv"],
+        )
+        initialize_run_directories(config)
+        initialize_repo_if_needed(config)
+
+        gitignore = (self.source_workspace / ".gitignore").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(f"{PREPARED_DATASETS_DIR_NAME}/", gitignore)
 
 
 if __name__ == "__main__":
