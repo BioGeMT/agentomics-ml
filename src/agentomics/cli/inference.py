@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 from pathlib import Path
 
 from agentomics.cli.docker_utils import (
     create_parser,
+    docker_environment_arguments,
     run_python_in_docker,
 )
 
@@ -43,26 +43,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--wandb-prefix", help="Metric prefix for W&B logging")
     return parser
 
-def _wandb_docker_arguments() -> list[str]:
-    docker_arguments = []
-    env_file = Path.cwd() / ".env"
-    if env_file.is_file():
-        docker_arguments.extend(["--env-file", str(env_file.resolve())])
-    for variable_name in (
-        "WANDB_API_KEY",
-        "WANDB_PROJECT_NAME",
-        "WANDB_ENTITY",
-        "HTTP_PROXY",
-        "HTTPS_PROXY",
-        "ALL_PROXY",
-        "http_proxy",
-        "https_proxy",
-        "all_proxy",
-    ):
-        if variable_name in os.environ:
-            docker_arguments.extend(["-e", variable_name])
-    return docker_arguments
-
 def run_inference_in_docker(arguments: argparse.Namespace) -> None:
     resolve_inference_paths(arguments)
     wandb_prefix = getattr(arguments, "wandb_prefix", None)
@@ -97,7 +77,17 @@ def run_inference_in_docker(arguments: argparse.Namespace) -> None:
             f"type=bind,src={arguments.output.parent},dst=/inference-output",
         ],
         python_arguments=python_arguments,
-        docker_arguments=_wandb_docker_arguments(),
+        docker_arguments=docker_environment_arguments(
+            "WANDB_API_KEY",
+            "WANDB_PROJECT_NAME",
+            "WANDB_ENTITY",
+            "HTTP_PROXY",
+            "HTTPS_PROXY",
+            "ALL_PROXY",
+            "http_proxy",
+            "https_proxy",
+            "all_proxy",
+        ),
     )
 
 def main() -> int:
