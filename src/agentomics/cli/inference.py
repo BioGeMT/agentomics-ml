@@ -10,7 +10,7 @@ from agentomics.cli.docker_utils import (
     run_python_in_docker,
 )
 
-from agentomics.runtime.inference_workflow import resolve_inference_paths
+from agentomics.runtime.filesystem import resolve_inference_paths
 from agentomics.utils.config import Config
 
 def build_parser() -> argparse.ArgumentParser:

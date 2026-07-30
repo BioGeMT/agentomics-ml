@@ -12,20 +12,12 @@ from agentomics.datasets.data_contract import INPUT_DIR_NAME, LABELS_FILE_NAME
 from agentomics.runtime.conda_utils import restore_iteration_environment
 from agentomics.runtime.evaluate import evaluate_predictions
 from agentomics.runtime.filesystem import (
-    resolve_existing_directory,
-    resolve_existing_path,
+    resolve_inference_paths,
     resolve_iteration_root,
-    resolve_output_path,
     restore_host_ownership,
 )
 from agentomics.runtime.inference_runner import run_inference_script
 from agentomics.utils.config import Config
-
-
-def resolve_inference_paths(arguments: Namespace) -> None:
-    arguments.agent_dir = resolve_existing_directory(arguments.agent_dir)
-    arguments.input_path = resolve_existing_path(arguments.input_path)
-    arguments.output = resolve_output_path(arguments.output)
 
 def prepare_inference_input(
     input_path: Path,
