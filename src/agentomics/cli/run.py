@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import subprocess
 import sys
 import tempfile
@@ -10,6 +9,7 @@ from pathlib import Path
 
 from agentomics.cli.docker_utils import (
     create_parser,
+    docker_environment_arguments,
     run_python_in_docker,
     validate_docker_gpu_access,
 )
@@ -106,19 +106,13 @@ def _build_container_arguments(arguments: argparse.Namespace) -> list[str]:
     return workflow_arguments
 
 def _docker_environment_arguments(agent_id: str) -> list[str]:
-    docker_arguments: list[str] = []
-    env_file = Path.cwd() / ".env"
-    if env_file.is_file():
-        docker_arguments.extend(["--env-file", str(env_file.resolve())])
-    for variable_name in (
+    docker_arguments = docker_environment_arguments(
         "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY",
         "PROVISIONING_OPENROUTER_API_KEY", "OLLAMA_BASE_URL",
         "WANDB_API_KEY", "WANDB_PROJECT_NAME", "WANDB_ENTITY",
         "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
         "http_proxy", "https_proxy", "all_proxy", "CUDA_VISIBLE_DEVICES",
-    ):
-        if variable_name in os.environ:
-            docker_arguments.extend(["-e", variable_name])
+    )
     docker_arguments.extend(["-e", f"AGENT_ID={agent_id}"])
     if sys.stdin.isatty() and sys.stdout.isatty():
         docker_arguments.append("-it")

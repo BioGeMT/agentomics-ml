@@ -4,6 +4,7 @@ import argparse
 import os
 import shutil
 import subprocess
+from pathlib import Path
 
 from agentomics.utils.versioning import get_version
 
@@ -23,6 +24,16 @@ def create_parser(description: str) -> argparse.ArgumentParser:
         help="Docker image used for the worker",
     )
     return parser
+
+def docker_environment_arguments(*variable_names: str) -> list[str]:
+    docker_arguments: list[str] = []
+    env_file = Path.cwd() / ".env"
+    if env_file.is_file():
+        docker_arguments.extend(["--env-file", str(env_file.resolve())])
+    for variable_name in variable_names:
+        if variable_name in os.environ:
+            docker_arguments.extend(["-e", variable_name])
+    return docker_arguments
 
 def validate_docker_gpu_access(image: str) -> None:
     if shutil.which("docker") is None:
