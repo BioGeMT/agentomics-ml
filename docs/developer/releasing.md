@@ -45,8 +45,3 @@ against it with `--image` — nothing is pushed to any registry:
 docker build --build-arg REPOSITORY_SOURCE=. -t agentomics:dev .
 agentomics-run --image agentomics:dev --dataset <name>
 ```
-
-The `Dockerfile` copies `envs/` in before creating the conda environments and the
-rest of the sources in after, so rebuilds skip the environments unless `envs/`
-changed. When the code diff touches `envs/`, expect the environments to rebuild
-(a build that skips them would test that code against your old dependencies).
