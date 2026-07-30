@@ -24,10 +24,11 @@ datasets/my_dataset/
 ```
 
 The optional `test/` split is stored with the dataset, but is excluded from the
-agent worker's mounts and agent-facing prepared data. The same applies to every
-top-level directory whose name starts with `test`; Agentomics evaluates the
-best iteration against each one after model development and uses the directory
-name as its W&B metric prefix.
+agent worker's mounts and agent-facing prepared data. After model development,
+Agentomics mounts it read-only in a separate evaluation container, prepares it
+in a temporary directory, and evaluates only the best iteration against it.
+Additional top-level directories whose names start with `test` are handled the
+same way and evaluated separately.
 
 ## Split Requirements
 
