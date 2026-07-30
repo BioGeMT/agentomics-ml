@@ -14,7 +14,7 @@ from agentomics.cli.docker_utils import (
 )
 from agentomics.cli.inference import run_inference_in_docker
 from agentomics.cli.run_arguments import add_run_arguments
-from agentomics.datasets.data_contract import TEST_SPLIT_PREFIX
+from agentomics.datasets.data_contract import PREPARED_DATASETS_DIR_NAME, TEST_SPLIT_PREFIX
 from agentomics.datasets.dataset_preparation import prepare_test_dataset
 from agentomics.datasets.datasets_interactive import (
     get_all_datasets_info,
@@ -22,6 +22,7 @@ from agentomics.datasets.datasets_interactive import (
     print_datasets_table,
 )
 from agentomics.runtime.read_write_utils import load_config_from_run_dir
+from agentomics.runtime.filesystem import remove_path
 from agentomics.utils.agent_id import create_agent_id
 from agentomics.utils.config import Config
 
@@ -297,7 +298,7 @@ def _run_test_evaluation_in_docker(
 
     metadata_path = (
         workspace_directory
-        / "prepared_datasets"
+        / PREPARED_DATASETS_DIR_NAME
         / dataset_directory.name
         / "metadata.json"
     )
@@ -388,27 +389,31 @@ def main() -> int:
     agent_id = create_agent_id()
     workspace_directory = _resolve_workspace(arguments.workspace_dir, agent_id)
     dataset_mounts = _build_dataset_mounts(dataset_directory)
-    exit_code = _run_agent_in_docker(
-        arguments,
-        workspace_directory,
-        agent_id,
-        dataset_mounts,
-    )
-    if _is_agent_run(arguments) and exit_code == 0:
-        try:
-            _run_test_evaluation_in_docker(
-                image=arguments.image,
-                cpu_only=arguments.cpu_only,
-                workspace_directory=workspace_directory,
-                dataset_directory=dataset_directory,
-            )
-        finally:
-            _run_reporting_in_docker(
-                arguments.image,
-                workspace_directory,
-                agent_id,
-            )
-    return exit_code
+    try:
+        exit_code = _run_agent_in_docker(
+            arguments,
+            workspace_directory,
+            agent_id,
+            dataset_mounts,
+        )
+        if _is_agent_run(arguments) and exit_code == 0:
+            try:
+                _run_test_evaluation_in_docker(
+                    image=arguments.image,
+                    cpu_only=arguments.cpu_only,
+                    workspace_directory=workspace_directory,
+                    dataset_directory=dataset_directory,
+                )
+            finally:
+                _run_reporting_in_docker(
+                    arguments.image,
+                    workspace_directory,
+                    agent_id,
+                )
+        return exit_code
+    finally:
+        if _is_agent_run(arguments):
+            remove_path(workspace_directory / PREPARED_DATASETS_DIR_NAME)
 
 
 if __name__ == "__main__":

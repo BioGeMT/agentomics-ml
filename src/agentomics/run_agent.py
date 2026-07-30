@@ -7,7 +7,11 @@ from timeout_function_decorator import timeout as timeout_decorator
 
 from agentomics.run_logging.wandb_setup import setup_logging
 from agentomics.runtime.git_checkpoints import initialize_repo_if_needed
-from agentomics.runtime.read_write_utils import initialize_run_directories, load_dataset_metadata, save_config
+from agentomics.runtime.read_write_utils import (
+    initialize_run_directories,
+    save_config,
+    save_dataset_metadata,
+)
 from agentomics.runtime.run_lifecycle import run_agentomics
 from agentomics.utils.config import Config
 from agentomics.run_logging.env_utils import are_wandb_vars_available
@@ -33,6 +37,7 @@ async def run_experiment(
     split_allowed_iterations: int,
     exploration_iterations: int,
     input_structure: list[str],
+    dataset_metadata: dict,
     label_to_scalar: dict[str, int] | None = None,
     disable_training_reporting: bool = False,
     conda_export_mode: str = "full"
@@ -73,6 +78,7 @@ async def run_experiment(
     initialize_run_directories(config)
     config.wandb_run_id = setup_logging(config) if are_wandb_vars_available() else None
     save_config(config)
+    save_dataset_metadata(config, dataset_metadata)
     initialize_repo_if_needed(config)
 
     config.print_summary()

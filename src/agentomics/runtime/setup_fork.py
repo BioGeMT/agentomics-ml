@@ -6,6 +6,7 @@ import subprocess
 from dataclasses import replace
 from pathlib import Path
 
+from agentomics.datasets.data_contract import PREPARED_DATASETS_DIR_NAME
 from agentomics.runtime.conda_utils import (
     ensure_environment_from_descriptor,
     get_shared_environment_path,
@@ -40,7 +41,12 @@ def fork_run(
         target_workspace_dir,
         symlinks=True,
         copy_function=shutil.copy2,
-        ignore=shutil.ignore_patterns(".conda", "reports", "logs"),
+        ignore=shutil.ignore_patterns(
+            ".conda",
+            "reports",
+            "logs",
+            PREPARED_DATASETS_DIR_NAME,
+        ),
         dirs_exist_ok=True,
     )
 
