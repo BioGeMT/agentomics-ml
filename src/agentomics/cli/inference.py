@@ -43,9 +43,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--wandb-prefix", help="Metric prefix for W&B logging")
     return parser
 
-def _wandb_docker_arguments(prefix: str | None) -> list[str]:
-    if prefix is None:
-        return []
+def _wandb_docker_arguments() -> list[str]:
     docker_arguments = []
     env_file = Path.cwd() / ".env"
     if env_file.is_file():
@@ -99,7 +97,7 @@ def run_inference_in_docker(arguments: argparse.Namespace) -> None:
             f"type=bind,src={arguments.output.parent},dst=/inference-output",
         ],
         python_arguments=python_arguments,
-        docker_arguments=_wandb_docker_arguments(wandb_prefix),
+        docker_arguments=_wandb_docker_arguments(),
     )
 
 def main() -> int:
