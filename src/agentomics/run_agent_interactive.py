@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import json
 import sys
 
 from rich.console import Console
 
-from agentomics.datasets.data_contract import METADATA_FILE_NAME, VALIDATION_SPLIT
+from agentomics.datasets.data_contract import (
+    PREPARED_DATASETS_DIR_NAME,
+    VALIDATION_SPLIT,
+)
 from agentomics.datasets.dataset_preparation import prepare_dataset
 from agentomics.datasets.datasets_interactive import (
     get_all_datasets_info,
@@ -16,7 +18,11 @@ from agentomics.datasets.datasets_interactive import (
 )
 from agentomics.run_agent import run_experiment
 from agentomics.run_logging.env_utils import are_wandb_vars_available
-from agentomics.runtime.read_write_utils import get_next_iteration_index, load_config_from_run_dir
+from agentomics.runtime.read_write_utils import (
+    get_next_iteration_index,
+    load_config_from_run_dir,
+    load_dataset_metadata,
+)
 from agentomics.utils.config import Config
 from agentomics.utils.metrics import resolve_val_metric
 from agentomics.utils.metrics_interactive import display_metrics_table
@@ -28,7 +34,7 @@ from agentomics.utils.user_input import get_user_input_for_int
 console = Console()
 
 
-def resolve_run_arguments(arguments: argparse.Namespace) -> None:
+def resolve_run_arguments(arguments: argparse.Namespace) -> Config | None:
     existing_config = load_config_from_run_dir(
         arguments.workspace_dir / Config.RUN_DIRNAME,
         missing_ok=True,
@@ -93,6 +99,7 @@ def resolve_run_arguments(arguments: argparse.Namespace) -> None:
         arguments.run_python_timeout = Config.DEFAULT_RUN_PYTHON_TOOL_TIMEOUT
     if arguments.user_prompt is None:
         arguments.user_prompt = Config.DEFAULT_USER_PROMPT
+    return existing_config
 
 
 def _is_tty_available() -> bool:
@@ -137,7 +144,7 @@ def _resolve_interactive_parameters(
 
 
 def run_agent_interactive(arguments: argparse.Namespace) -> int:
-    resolve_run_arguments(arguments)
+    existing_config = resolve_run_arguments(arguments)
 
     if arguments.list_datasets:
         console.print("Available Datasets", style="cyan")
@@ -165,18 +172,23 @@ def run_agent_interactive(arguments: argparse.Namespace) -> int:
 
     dataset, model, iterations = _resolve_interactive_parameters(arguments, provider)
     iteration_plan_model = arguments.iteration_plan_model or model
-    prepared_datasets_dir = arguments.workspace_dir / "prepared_datasets"
-    prepared_dataset_dir = prepared_datasets_dir / dataset
-    if arguments.fork_from_run is not None:
-        metadata_path = prepared_dataset_dir / METADATA_FILE_NAME
-        dataset_metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-    else:
-        dataset_metadata = prepare_dataset(
-            source_dir=arguments.datasets_dir / dataset,
-            destination_dir=prepared_dataset_dir,
-            task_type=arguments.task_type,
-            interactive=_is_tty_available(),
-        )
+    prepared_datasets_dir = arguments.workspace_dir / PREPARED_DATASETS_DIR_NAME
+    inherited_dataset_metadata = (
+        load_dataset_metadata(existing_config)
+        if existing_config is not None
+        else {}
+    )
+    dataset_metadata = prepare_dataset(
+        source_dir=arguments.datasets_dir / dataset,
+        destination_dir=prepared_datasets_dir / dataset,
+        task_type=(
+            inherited_dataset_metadata.get("task_type")
+            or arguments.task_type
+        ),
+        label_to_scalar=inherited_dataset_metadata.get("label_to_scalar"),
+        label_column=inherited_dataset_metadata.get("label_column"),
+        interactive=_is_tty_available() and existing_config is None,
+    )
     task_type = dataset_metadata["task_type"]
     val_metric = resolve_val_metric(task_type, arguments.val_metric)
     split_allowed_iterations = arguments.split_allowed_iterations
@@ -189,6 +201,7 @@ def run_agent_interactive(arguments: argparse.Namespace) -> int:
             iteration_plan_model=iteration_plan_model,
             dataset_name=dataset,
             task_type=task_type,
+            dataset_metadata=dataset_metadata,
             label_to_scalar=dataset_metadata.get("label_to_scalar"),
             input_structure=dataset_metadata["input_structure"],
             val_metric=val_metric,

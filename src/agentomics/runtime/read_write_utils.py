@@ -8,6 +8,7 @@ from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Any
 
+from agentomics.datasets.data_contract import DATASET_METADATA_FILE_NAME
 from agentomics.runtime.conda_utils import export_shared_environment_descriptor
 from agentomics.runtime.filesystem import (
     chown_tree_to_root,
@@ -28,6 +29,14 @@ def initialize_run_directories(config: Config) -> None:
 def save_config(config: Config) -> None:
     config.config_path.parent.mkdir(parents=True, exist_ok=True)
     config.config_path.write_text(json.dumps(asdict(config), indent=2), encoding="utf-8")
+
+def save_dataset_metadata(config: Config, metadata: dict[str, Any]) -> None:
+    metadata_path = config.shared_dir / DATASET_METADATA_FILE_NAME
+    metadata_path.parent.mkdir(parents=True, exist_ok=True)
+    metadata_path.write_text(
+        json.dumps(metadata, indent=2),
+        encoding="utf-8",
+    )
 
 def load_config(config_path: Path | str, missing_ok: bool = False) -> Config | None:
     config_path = Path(config_path)
@@ -209,8 +218,9 @@ def update_current_iteration_state(config: Config, **changes: object) -> None:
     iteration_state.update(changes)
     _write_json(iteration_state_path, iteration_state)
 
-def load_dataset_metadata(config: Config) -> dict[str, str]:
-    return json.loads((config.dataset_dir / "metadata.json").read_text(encoding="utf-8"))
+def load_dataset_metadata(config: Config) -> dict[str, Any]:
+    dataset_metadata_path = config.shared_dir / DATASET_METADATA_FILE_NAME
+    return json.loads(dataset_metadata_path.read_text(encoding="utf-8"))
 
 def replace_string_in_tree_files(root_dir: Path, old: str, new: str, skip_dirs: set[str] | None = None) -> None:
     for file_path in root_dir.rglob("*"):

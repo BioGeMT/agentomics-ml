@@ -3,6 +3,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+from agentomics.datasets.data_contract import PREPARED_DATASETS_DIR_NAME
 from agentomics.runtime.conda_utils import ENVIRONMENT_ARCHIVE_FILENAME
 from agentomics.utils.config import Config
 
@@ -99,6 +100,7 @@ def _write_gitignore(config: Config) -> None:
         "run/shared/.conda/",
         f"{Config.BEST_ITERATION_SNAPSHOT_DIRNAME}/.conda/",
         f"{Config.BEST_ITERATION_SNAPSHOT_DIRNAME}/runtime_info/{ENVIRONMENT_ARCHIVE_FILENAME}",
+        f"{PREPARED_DATASETS_DIR_NAME}/",
         "__pycache__/",
         ".cache/",
         "*.pyc",
