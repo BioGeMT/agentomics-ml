@@ -23,6 +23,7 @@ outputs/<agent_id>/
 ├── run/                      # All iterations + shared run state
 │   ├── shared/
 │   │   ├── config.json
+│   │   ├── dataset_metadata.json
 │   │   └── splits/
 │   ├── iteration_0/
 │   ├── iteration_1/
@@ -69,6 +70,10 @@ agentomics-inference --agent-dir outputs/<agent_id> --input data/input --output 
 ```
 
 ## Iteration Directories
+
+`run/shared/dataset_metadata.json` stores the resolved dataset preparation
+metadata. Forks reuse it so task type, label mapping, and the CSV label column
+are not requested again.
 
 Each iteration's files are preserved under `run/iteration_N/`:
 
@@ -120,6 +125,9 @@ separate staging area or temporary volume:
 
 - The host workspace defaults to `outputs/<agent_id>/` and is mounted at
   `/workspace` in the container.
+- Dataset preparation directories may exist there while the run is active, but
+  they are removed after test evaluation and reporting. Exact versioned splits
+  remain under `run/shared/splits/`.
 
 ## W&B Logging
 

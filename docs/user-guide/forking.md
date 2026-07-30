@@ -73,17 +73,27 @@ Dataset and validation metric are locked to keep all iterations comparable acros
 
 When a fork is set up, the following happens before the new run starts:
 
-1. The source workspace state is copied, excluding generated reports/logs and untracked Conda environments.
+1. The source workspace state is copied, excluding generated reports/logs,
+   untracked Conda environments, and transient dataset-preparation directories.
 2. The git history in the run directory is checked out at the requested checkpoint — files added in later commits are removed.
 3. Absolute paths stored in step outputs are rewritten to point to the new workspace.
 4. The shared Conda environment is rebuilt from the checkpoint's `environment.yml` using the new run ID.
+5. The source dataset is prepared again at the same container path before the
+   fork resumes. Exact versioned splits from the checkpoint are retained rather
+   than regenerated.
 
 The forked run then continues from that state exactly as if the original run had stopped there.
 
-**Note on supplementary materials**: Forked runs reference the same dataset directory as the source run. Any changes to dataset files (including `supplementary/`) will be visible to the fork.
+The preparation uses `run/shared/dataset_metadata.json` from the selected
+checkpoint. Resolved choices such as task type, label mapping, and the CSV label
+column therefore remain unchanged and are not prompted for again.
+
+The original dataset must remain available under `--datasets-dir` with the same
+dataset name. Forked runs reference that dataset directory, so supplementary
+materials are available without being copied into every run output.
 
 Split directories may contain symbolic links pointing to container paths. Forks
-run in the same Docker layout, so those links continue to resolve.
+prepare the dataset at the same Docker path, so those links continue to resolve.
 
 ## Example: Extend a Completed Run
 
