@@ -23,8 +23,9 @@ After each iteration:
 
 ## Evaluating on Held-out Test Sets
 
-The agent never sees held-out `test*` splits — they are withheld from the
-agent's mounts. `agentomics-run` automatically evaluates the best iteration on
+The agent never sees held-out test splits—folders whose names start with
+`test`—because they are excluded from the agent's mounts. `agentomics-run`
+automatically evaluates the best iteration on
 every co-located directory whose name starts with `test` **after** the run, in a
 separate read-only evaluation container. Predictions and metrics are saved as
 `eval_predictions_<test_split>.csv` and
