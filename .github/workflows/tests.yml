@@ -1,0 +1,53 @@
+name: Automated Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  # Enables manual runs; no inputs are required.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # Group runs by workflow and PR number, falling back to the branch or tag ref.
+  group: "${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}"
+  # Cancel an obsolete run when a newer commit starts one in the same group.
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build image and run test suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout tested commit
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build runtime image from checkout
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          build-args: REPOSITORY_SOURCE=.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          load: true
+          push: false
+          tags: agentomics:ci
+
+      # Free GitHub-hosted runners have no GPU, so an empty CUDA_VISIBLE_DEVICES skips GPU tests.
+      - name: Run CPU-compatible test suite
+        run: |
+          docker run --rm \
+            --env AGENT_ID=github-actions-ci \
+            --env CUDA_VISIBLE_DEVICES= \
+            --entrypoint /opt/conda/envs/agentomics-env/bin/python \
+            agentomics:ci \
+            -m test.run_all_tests --workspace-dir /workspace
