@@ -59,14 +59,8 @@ docker build \
   -t agentomics .
 ```
 
-For quick development builds, use the current folder instead of cloning a
-branch:
-
-```bash
-docker build --build-arg REPOSITORY_SOURCE=. -t agentomics .
-```
-
-Then point the launcher at it with `agentomics-run --image agentomics ...`.
+Contributors testing changes from a working tree should use `--dev`; see
+[Local Development](../developer/development.md).
 
 ## Ollama (Local LLMs)
 
