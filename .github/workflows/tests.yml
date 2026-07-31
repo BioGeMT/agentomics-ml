@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   test:
-    name: Build image and run test suite
+    name: Automated tests (CPU-only)
     runs-on: ubuntu-latest
 
     steps:
