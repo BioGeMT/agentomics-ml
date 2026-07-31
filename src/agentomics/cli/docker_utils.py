@@ -10,6 +10,7 @@ from agentomics.utils.versioning import get_version
 
 
 DEFAULT_IMAGE = f"biogemt/agentomics:{get_version()}"
+DEVELOPMENT_IMAGE = "agentomics:dev"
 CONTAINER_PYTHON = "/opt/conda/envs/agentomics-env/bin/python"
 
 def create_parser(description: str) -> argparse.ArgumentParser:
@@ -18,12 +19,47 @@ def create_parser(description: str) -> argparse.ArgumentParser:
         allow_abbrev=False,
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument(
+    image_source = parser.add_mutually_exclusive_group()
+    image_source.add_argument(
         "--image",
         default=DEFAULT_IMAGE,
         help="Docker image used for the worker",
     )
+    image_source.add_argument(
+        "--dev",
+        action="store_true",
+        help=f"Build and use {DEVELOPMENT_IMAGE} from the current repository",
+    )
     return parser
+
+def build_development_image() -> str:
+    if shutil.which("docker") is None:
+        raise RuntimeError("Missing required command: docker")
+
+    repository_root = Path.cwd()
+    required_paths = (
+        repository_root / "Dockerfile",
+        repository_root / "pyproject.toml",
+        repository_root / "src" / "agentomics",
+    )
+    if not all(path.exists() for path in required_paths):
+        raise RuntimeError("Development mode must be run from the Agentomics repository root")
+
+    print(f"Building development image {DEVELOPMENT_IMAGE}...", flush=True)
+    result = subprocess.run(
+        [
+            "docker",
+            "build",
+            "--build-arg",
+            "REPOSITORY_SOURCE=.",
+            "-t",
+            DEVELOPMENT_IMAGE,
+            ".",
+        ]
+    )
+    if result.returncode != 0:
+        raise RuntimeError("Failed to build the Agentomics development image")
+    return DEVELOPMENT_IMAGE
 
 def docker_environment_arguments(*variable_names: str) -> list[str]:
     docker_arguments: list[str] = []

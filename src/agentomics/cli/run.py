@@ -7,6 +7,7 @@ import tempfile
 from pathlib import Path
 
 from agentomics.cli.docker_utils import (
+    build_development_image,
     create_parser,
     docker_environment_arguments,
     run_python_in_docker,
@@ -374,6 +375,20 @@ def main() -> int:
         print_datasets_table(get_all_datasets_info(datasets_directory))
         return 0
 
+    dataset_directory = (
+        _resolve_dataset(arguments, datasets_directory)
+        if _is_agent_run(arguments)
+        else None
+    )
+    agent_id = create_agent_id()
+
+    if arguments.dev:
+        try:
+            arguments.image = build_development_image()
+        except RuntimeError as error:
+            print(f"Error: {error}", file=sys.stderr)
+            return 1
+
     if not arguments.cpu_only:
         try:
             validate_docker_gpu_access(arguments.image)
@@ -381,12 +396,6 @@ def main() -> int:
             print(f"Error: {error}", file=sys.stderr)
             return 1
 
-    dataset_directory = (
-        _resolve_dataset(arguments, datasets_directory)
-        if _is_agent_run(arguments)
-        else None
-    )
-    agent_id = create_agent_id()
     workspace_directory = _resolve_workspace(arguments.workspace_dir, agent_id)
     dataset_mounts = _build_dataset_mounts(dataset_directory)
     try:
