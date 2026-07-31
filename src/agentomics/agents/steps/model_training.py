@@ -138,8 +138,8 @@ class ModelTrainingStep(AgenticStep):
         Training guidelines:
         - Train until validation performance stops improving, and output the best checkpoint.
         - Save only artifacts needed for inference (model file, tokenizers, small preprocessing metadata, small copied source files needed by inference, etc...).
-        - Do not save regenerable training caches, full train/validation feature tensors, embedding arrays, PHACT tensor arrays, downloaded package caches, or prediction-diagnostic dumps in training_artifacts or leave them elsewhere in the step directory.
-        - If large intermediate arrays are needed during training, keep them in a temporary cache directory under the current step directory, outside training_artifacts, and delete that cache before the script exits. Do not leave directories/files such as _training_cache, _embedding_cache_tmp, *embedding_cache*, train_*.npy, or val_*.npy in final step outputs.
+        - Do not save regenerable caches, intermediate data, downloaded resources, or diagnostic outputs in training_artifacts or leave them elsewhere in the step directory.
+        - If large intermediate files are needed during training, keep them in a temporary cache directory under the current step directory, outside training_artifacts, and delete that cache before the script exits.
         - If you failed to implement your intended model, when you call the final_result tool, put into unresolved issues what went wrong.
         {"- If your model can be accelerated by GPU, implement the code to use GPU." if check_gpu_availability() else ""}
         {reporting_requirement}
