@@ -15,7 +15,7 @@ cd "$(dirname "$0")/.."
 
 command -v docker >/dev/null || { echo "Error: docker is required" >&2; exit 1; }
 
-VERSION="$(PYTHONPATH=src python3 -c 'import agentomics; print(agentomics.__version__)')"
+VERSION="$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')"
 TAG="v${VERSION}"
 # Must match docker_utils.DEFAULT_IMAGE so the release publishes the image the
 # installed package pulls.
@@ -24,9 +24,9 @@ REPO_URL="${AGENTOMICS_REPO_URL:-https://github.com/BioGeMT/Agentomics-ML.git}"
 
 echo "Releasing Agentomics ${TAG}"
 
-# Forgot to bump __version__? Refuse to re-release a version already on PyPI.
+# Forgot to bump the project version? Refuse to re-release a version already on PyPI.
 if curl -sfI "https://pypi.org/pypi/agentomics/${VERSION}/json" >/dev/null 2>&1; then
-    echo "Error: agentomics ${VERSION} is already on PyPI; bump __version__." >&2
+    echo "Error: agentomics ${VERSION} is already on PyPI; bump project.version in pyproject.toml." >&2
     exit 1
 fi
 

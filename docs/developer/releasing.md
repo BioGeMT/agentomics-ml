@@ -1,15 +1,16 @@
 # Releasing Agentomics
 
 The pip package and the Docker image are released together at a single version,
-the one declared in `src/agentomics/__init__.py` (`__version__`). The installed
-package defaults to the matching image tag (`biogemt/agentomics:<version>`), so
-users only ever bump one thing.
+the one declared by `project.version` in `pyproject.toml`. The installed package
+exposes that distribution metadata as `agentomics.__version__` and defaults to
+the matching image tag (`biogemt/agentomics:<version>`), so users only ever bump
+one thing.
 
 ## Release steps
 
-1. Bump `__version__` in `src/agentomics/__init__.py` (semantic versioning — bump
-   the MAJOR when a persisted contract changes: config schema, workspace layout,
-   or the host/container argument or environment contract). Merge it to `main`.
+1. Bump `project.version` in `pyproject.toml` (semantic versioning — bump the
+   MAJOR when a persisted contract changes: config schema, workspace layout, or
+   the host/container argument or environment contract). Merge it to `main`.
 2. From an up-to-date `main`, tag the release commit and push the tag:
    ```bash
    git checkout main && git pull
@@ -23,7 +24,7 @@ users only ever bump one thing.
    package pulls) from the git tag, then builds and uploads the pip package. It
    refuses to run if the tree is dirty, `HEAD` is not the tag, the tag is unpushed
    or not on `main`, or `<version>` is already on PyPI (a reminder to bump
-   `__version__`):
+   `project.version`):
    ```bash
    ./scripts/release.sh
    ```
@@ -33,8 +34,8 @@ users only ever bump one thing.
 If the build fails or you spot a problem **before anything is published**, move
 the tag freely: `git tag -d v<version> && git push origin :v<version>`, push the
 fix to `main`, then re-tag. Once the image and wheel are **published**, the
-version is immutable — never reuse it. Bump `__version__` to the next patch, and
-release again.
+version is immutable — never reuse it. Bump `project.version` to the next patch,
+and release again.
 
 ## Testing a version locally before releasing
 

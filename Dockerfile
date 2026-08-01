@@ -52,4 +52,9 @@ COPY --from=source /repository /repository
 
 WORKDIR /repository
 
+# Install Agentomics so the container can read its own version from package metadata.
+# pip also writes metadata into src; remove it so the installed metadata is authoritative.
+RUN conda run -n agentomics-env pip install --no-deps . \
+    && rm -rf src/agentomics.egg-info
+
 ENTRYPOINT ["/opt/conda/envs/agentomics-env/bin/python", "-m", "agentomics.runtime.run_workflow", "--workspace-dir", "/workspace", "--datasets-dir", "/repository/datasets"]
