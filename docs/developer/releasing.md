@@ -21,5 +21,8 @@ request to main and let the proposal automatically update.
 
 ## How the Release Proposal PR works
 
-We use the Release Please (google tool) workflow to create the Release Proposal PR. The workflow continuously updates the proposal PR based on updates to `main` (Merging any pull request other than the Release Proposal only updates the
-proposal). It calculates the next version number from their strongest Release Impact (see [Contributing](../../CONTRIBUTING.md)) automatically.
+We use the Release Please (google tool) workflow to create the Release Proposal PR. The workflow continuously updates the proposal PR based on updates to `main` (Merging any pull request other than the Release Proposal only updates the proposal). It calculates the next version number from their strongest Release Impact (see [Contributing](../../CONTRIBUTING.md)) automatically.
+
+## How Release artifacts are published
+
+When the Release Proposal PR is merged to main, a published stable GitHub Release is created and starts the publication workflow. The workflow builds and pushes images to dockerhub and (if docker succeeds) builds and pushes the PyPI package.
