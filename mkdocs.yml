@@ -58,6 +58,7 @@ nav:
     - Workspace Structure: reference/workspace-structure.md
   - Developer Guide:
     - Releasing: developer/releasing.md
+    - Release Administration: developer/release-administration.md
     - Proxy Settings: developer/proxy-settings.md
     - GPU Settings: developer/gpu-settings.md
 
