@@ -1,48 +1,25 @@
 # Releasing Agentomics
 
-The pip package and the Docker image are released together at a single version,
-the one declared by `project.version` in `pyproject.toml`. The installed package
-exposes that distribution metadata as `agentomics.__version__` and defaults to
-the matching image tag (`biogemt/agentomics:<version>`), so users only ever bump
-one thing.
+## Release a new version
+On each release-worthy merge to main, an automatic Release Proposal PR is created. When merged to main, this releases a new version of agentomics to PyPI (pip).
 
-## Release steps
+To release a new version:
 
-1. Bump `project.version` in `pyproject.toml` (semantic versioning — bump the
-   MAJOR when a persisted contract changes: config schema, workspace layout, or
-   the host/container argument or environment contract). Merge it to `main`.
-2. From an up-to-date `main`, tag the release commit and push the tag:
-   ```bash
-   git checkout main && git pull
-   git tag v<version>
-   git push origin v<version>
-   ```
-3. Ensure you are logged in for both registries:
-   - `docker login` with push access to the agentomics image repo.
-   - a PyPI token available to twine (`~/.pypirc`, or `TWINE_USERNAME`/`TWINE_PASSWORD`).
-4. Run the release script — it builds and pushes the image (the tag the installed
-   package pulls) from the git tag, then builds and uploads the pip package. It
-   refuses to run if the tree is dirty, `HEAD` is not the tag, the tag is unpushed
-   or not on `main`, or `<version>` is already on PyPI (a reminder to bump
-   `project.version`):
-   ```bash
-   ./scripts/release.sh
-   ```
+1. Open the current **Release Proposal PR**.
+2. Review it.
+3. Merge it. The merge is the approval to create the new Agentomics
+   version. No additional manual release step is needed.
 
-## Recovering from a broken release
+Do **not** manually:
 
-If the build fails or you spot a problem **before anything is published**, move
-the tag freely: `git tag -d v<version> && git push origin :v<version>`, push the
-fix to `main`, then re-tag. Once the image and wheel are **published**, the
-version is immutable — never reuse it. Bump `project.version` to the next patch,
-and release again.
+- edit `project.version` in `pyproject.toml`
+- create, move, delete, or reuse a Release tag
+- create the corresponding GitHub Release.
 
-## Testing a version locally before releasing
+To change the proposed version or contents, merge another pull
+request to main and let the proposal automatically update.
 
-Build the image from your working tree (including uncommitted changes) and run
-against it with `--image` — nothing is pushed to any registry:
+## How the Release Proposal PR works
 
-```bash
-docker build --build-arg REPOSITORY_SOURCE=. -t agentomics:dev .
-agentomics-run --image agentomics:dev --dataset <name>
-```
+We use the Release Please (google tool) workflow to create the Release Proposal PR. The workflow continuously updates the proposal PR based on updates to `main` (Merging any pull request other than the Release Proposal only updates the
+proposal). It calculates the next version number from their strongest Release Impact (see [Contributing](../../CONTRIBUTING.md)) automatically.
