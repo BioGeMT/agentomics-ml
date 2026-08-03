@@ -171,7 +171,7 @@ Publisher with these exact values:
 | Field | Value |
 | --- | --- |
 | Repository owner | `BioGeMT` |
-| Repository name | `Agentomics-ML` |
+| Repository name | `agentomics-ml` |
 | Workflow filename | `publish-release.yml` |
 | Environment name | `pypi` |
 
