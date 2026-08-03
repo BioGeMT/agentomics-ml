@@ -27,15 +27,8 @@ jobs:
       - name: Validate Release identity
         id: release
         run: |
-          project_version="$(
-            python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])'
-          )"
-          if [[ ! "$project_version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] ||
-             [[ "$RELEASE_TAG" != "v$project_version" ]]; then
-            echo "Release tag $RELEASE_TAG does not match stable project.version $project_version" >&2
-            exit 1
-          fi
-          echo "version=$project_version" >> "$GITHUB_OUTPUT"
+          version="$(python3 scripts/validate_release_version.py "$RELEASE_TAG")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3.4.0
