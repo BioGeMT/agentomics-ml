@@ -21,7 +21,7 @@ request to main and let the proposal automatically update.
 
 ## How the Release Proposal PR works
 
-We use the Release Please (google tool) workflow to create the Release Proposal PR. The workflow continuously updates the proposal PR based on updates to `main` (Merging any pull request other than the Release Proposal only updates the proposal). It calculates the next version number from their strongest Release Impact (see [Contributing](../../CONTRIBUTING.md)) automatically.
+We use the Release Please (google tool) workflow to create the Release Proposal PR. The workflow continuously updates the proposal PR based on updates to `main` (Merging any pull request other than the Release Proposal only updates the proposal). It calculates the next version number from their strongest Release Impact (see [Contributing](https://github.com/BioGeMT/Agentomics-ML/blob/main/CONTRIBUTING.md)) automatically.
 
 ## How Release artifacts are published
 
