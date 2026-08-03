@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentomics"
-version = "1.0.5"
+version = "1.0.6"
 description = "Package for running Agentomics - an autonomous agentic system for ML model development"
 readme = "README.md"
 requires-python = ">=3.11"
