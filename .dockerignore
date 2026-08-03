@@ -2,6 +2,8 @@
 .git
 .gitignore
 *.md
+# Python package metadata requires the project readme during `pip install .`.
+!README.md
 *.cast
 .env
 .env.*

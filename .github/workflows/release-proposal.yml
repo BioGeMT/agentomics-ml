@@ -1,0 +1,39 @@
+name: Release Proposal
+
+on:
+  push:
+    branches:
+      - main
+
+# Remove all permissions from the built-in GITHUB_TOKEN. Release Please receives
+# only the explicit permissions through its short-lived GitHub App token.
+permissions: {}
+
+concurrency:
+  group: release-proposal
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: Manage Release Proposal, Git tag, and GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Create Release Github App token
+        id: app-token
+        uses: actions/create-github-app-token@v3.2.0
+        with:
+          client-id: "${{ vars.RELEASE_PLEASE_APP_CLIENT_ID }}"
+          private-key: "${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}"
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
+
+      - name: Update Release Proposal or create Release
+        uses: googleapis/release-please-action@v5.0.0
+        with:
+          token: "${{ steps.app-token.outputs.token }}"
+          target-branch: main
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
