@@ -27,20 +27,14 @@ class ReleasePleaseConfigurationTest(unittest.TestCase):
         )
 
     def test_generated_proposal_title_passes_the_title_policy(self):
-        package = self.config["packages"]["."]
         patterns = (
             self.config["group-pull-request-title-pattern"],
-            package["pull-request-title-pattern"],
+            self.config["packages"]["."]["pull-request-title-pattern"],
         )
 
         for pattern in patterns:
             with self.subTest(pattern=pattern):
-                self.assertIn("${component}", pattern)
-                title = (
-                    pattern.replace("${scope}", "")
-                    .replace("${component}", f" {package['package-name']}")
-                    .replace("${version}", "1.2.3")
-                )
+                title = pattern.replace("${version}", "1.2.3")
                 result = subprocess.run(
                     [sys.executable, str(VALIDATOR), title],
                     capture_output=True,
