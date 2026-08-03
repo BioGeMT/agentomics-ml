@@ -91,6 +91,7 @@ class TestTransientDatasetCleanupLifecycle(unittest.TestCase):
             arguments = argparse.Namespace(
                 datasets_dir=datasets_dir,
                 list_datasets=False,
+                dev=False,
                 cpu_only=True,
                 image="test-image",
                 workspace_dir=workspace,

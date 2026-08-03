@@ -57,6 +57,7 @@ nav:
     - Metrics: reference/metrics.md
     - Workspace Structure: reference/workspace-structure.md
   - Developer Guide:
+    - Local Development: developer/development.md
     - Releasing: developer/releasing.md
     - Release Administration: developer/release-administration.md
     - Proxy Settings: developer/proxy-settings.md

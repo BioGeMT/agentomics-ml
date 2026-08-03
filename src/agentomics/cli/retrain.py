@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 from agentomics.cli.docker_utils import (
+    build_development_image,
     create_parser,
     run_python_in_docker,
 )
@@ -36,7 +37,6 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 def _run_in_docker(arguments: argparse.Namespace) -> None:
-    resolve_training_paths(arguments)
     python_arguments = [
         "-m",
         "agentomics.runtime.training_workflow",
@@ -67,6 +67,13 @@ def _run_in_docker(arguments: argparse.Namespace) -> None:
 
 def main() -> int:
     arguments = build_parser().parse_args()
+    resolve_training_paths(arguments)
+    if arguments.dev:
+        try:
+            arguments.image = build_development_image()
+        except RuntimeError as error:
+            print(f"Error: {error}", file=sys.stderr)
+            return 1
     _run_in_docker(arguments)
     return 0
 
