@@ -50,8 +50,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: biogemt/agentomics:${{ steps.release.outputs.version }}
-          cache-from: type=gha,scope=release-${{ github.event.release.tag_name }}
-          cache-to: type=gha,mode=max,scope=release-${{ github.event.release.tag_name }}
+          cache-from: type=gha
 
   pypi:
     name: Create PyPI Release artifact
