@@ -36,6 +36,7 @@ agentomics-run = "agentomics.cli.run:main"
 agentomics-inference = "agentomics.cli.inference:main"
 agentomics-retrain = "agentomics.cli.retrain:main"
 agentomics-check-dataset = "agentomics.cli.check_dataset:main"
+agentomics-add-supplementary = "agentomics.cli.add_supplementary:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -45,4 +46,10 @@ packages = [
     "agentomics.datasets",
     "agentomics.runtime",
     "agentomics.utils",
+]
+
+[tool.setuptools.package-data]
+agentomics = [
+    "supplementary_catalog/README.md",
+    "supplementary_catalog/foundation_models/*.md",
 ]
