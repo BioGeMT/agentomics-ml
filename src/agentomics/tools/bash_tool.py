@@ -116,19 +116,18 @@ def create_bash_tool(config: Config):
 
         def _bash(command: str):
             """
-            A persistent bash. 
-            Use this to execute bash commands. 
+            Run a bash command.
             Input should be a valid bash command.
             Do not use sudo commands, as you don't have sudo access.
             Do not use this tool to run python scripts, use the run_python tool instead.
 
             Examples:
             \"ls\"
-            \"cd /workspace\"
+            \"ls -la /workspace/shared/splits\"
             \"mkdir test\"
             \"echo "hello world" > test.txt\"
-            \"conda create -n my_env python=3.8 matplotlib -c conda-forge -y\"
-            \"source activate my_env\"            
+            \"conda install numpy=2.2.2 -y\"
+            \"pip list | grep torch\"
 
             Args:
                 command: A valid bash command.
