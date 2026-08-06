@@ -55,6 +55,7 @@ def export_environment_archive(env_path: Path, archive_path: Path) -> None:
             str(Path(sys.executable).parent / "conda-pack"),
             "-p", str(env_path),
             "-o", str(archive_path),
+            "-j", "-1",
             "--force",
             "--quiet",
         ],
