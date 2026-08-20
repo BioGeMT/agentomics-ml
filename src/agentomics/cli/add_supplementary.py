@@ -19,13 +19,18 @@ CATALOG_README_NAME = "README.md"
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Copy a foundation model's documentation into a dataset's supplementary/ folder"
+            "Copy foundation models' documentation into a dataset's supplementary/ folder"
         ),
         allow_abbrev=False,
     )
-    parser.add_argument(
+    fm_selection = parser.add_mutually_exclusive_group(required=True)
+    fm_selection.add_argument(
+        "--all",
+        action="store_true",
+        help=f"Attach all foundation models from this list: {', '.join(_available_model_names())}",
+    )
+    fm_selection.add_argument(
         "--model",
-        required=True,
         help=f"Foundation model to attach. Available: {', '.join(_available_model_names())}",
     )
     parser.add_argument(
@@ -70,11 +75,13 @@ def add_supplementary_fm(model: str, dataset_dir: Path) -> Path:
 def main() -> int:
     arguments = build_parser().parse_args()
     try:
-        model_doc = add_supplementary_fm(arguments.model, arguments.dataset_dir)
+        models = _available_model_names() if arguments.all else [arguments.model]
+        for model in models:
+            model_doc = add_supplementary_fm(model, arguments.dataset_dir)
+            console.print(f"Added {model_doc}", style="green")
     except (ValueError, OSError) as error:
         console.print(f"{error}", style="red")
         return 1
-    console.print(f"Added {model_doc}", style="green")
     return 0
 
 if __name__ == "__main__":
