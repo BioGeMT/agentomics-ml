@@ -12,6 +12,7 @@ fine-tuned for a downstream task.
 | DNA | Nucleotide Transformer | [foundation_models/NucleotideTransformer.md](foundation_models/NucleotideTransformer.md) |
 | RNA | RiNALMo | [foundation_models/rinalmo.md](foundation_models/rinalmo.md) |
 | Molecule (SMILES) | ChemBERTa | [foundation_models/ChemBERTa.md](foundation_models/ChemBERTa.md) |
+| Molecule (SMILES) | MoLFormer-XL | [foundation_models/MolFormerXL.md](foundation_models/MolFormerXL.md) |
 
 Each model doc covers what the model is, its available variants with HuggingFace
 IDs, loading and fine-tuning examples, and any extra Python packages it needs.
