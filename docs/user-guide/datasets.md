@@ -89,17 +89,22 @@ into the dataset's `supplementary/` folder before starting the run.
 If you put model weights or other large files in the supplementary/ folder, the agent might copy them multiple times during the run and their full copies might be present multiple times in the exported runs. To reduce disk use, it is recommended to provide code snippets that will download the models on-demand into `~/.cache` (e.g. using huggingface).
 Agentomics ships documentation for a set of foundation models, covering protein
 (ESM-2), DNA (HyenaDNA, Nucleotide Transformer), RNA (RiNALMo), and molecule
-(ChemBERTa). Use `agentomics-add-supplementary` to attach one to a dataset:
+(ChemBERTa). Use `agentomics-add-supplementary` to attach one model or the full
+catalog to a dataset:
 
 ```bash
+# Attach one model
 agentomics-add-supplementary --model ESM-2 --dataset-dir datasets/<your_dataset>
+
+# Attach all bundled models
+agentomics-add-supplementary --all --dataset-dir datasets/<your_dataset>
 ```
 
-This writes the model's documentation and the foundation model README into
+This writes the selected model documentation and the foundation model README into
 `datasets/<your_dataset>/supplementary/foundation_models/`, leaving the rest of
-the dataset's `supplementary/` folder untouched. Run it once per model you want
-to make available. Model names are case-insensitive; `agentomics-add-supplementary --help`
-lists the available ones.
+the dataset's `supplementary/` folder untouched. The `--model` and `--all`
+options are mutually exclusive. Model names are case-insensitive;
+`agentomics-add-supplementary --help` lists the available ones.
 
 #### Note on using supplementary + forking
 
