@@ -7,6 +7,7 @@ fine-tuned for a downstream task.
 | Data Type | Model | Documentation |
 |-----------|-------|---------------|
 | Protein | ESM-2 | [foundation_models/ESM-2.md](foundation_models/ESM-2.md) |
+| DNA | DNABERT-2 | [foundation_models/DNABERT-2.md](foundation_models/DNABERT-2.md) |
 | DNA | HyenaDNA | [foundation_models/HyenaDNA.md](foundation_models/HyenaDNA.md) |
 | DNA | Nucleotide Transformer | [foundation_models/NucleotideTransformer.md](foundation_models/NucleotideTransformer.md) |
 | RNA | RiNALMo | [foundation_models/rinalmo.md](foundation_models/rinalmo.md) |
