@@ -10,6 +10,7 @@ fine-tuned for a downstream task.
 | DNA | DNABERT-2 | [foundation_models/DNABERT-2.md](foundation_models/DNABERT-2.md) |
 | DNA | HyenaDNA | [foundation_models/HyenaDNA.md](foundation_models/HyenaDNA.md) |
 | DNA | Nucleotide Transformer | [foundation_models/NucleotideTransformer.md](foundation_models/NucleotideTransformer.md) |
+| DNA | Nucleotide Transformer v2 | [foundation_models/NucleotideTransformerV2.md](foundation_models/NucleotideTransformerV2.md) |
 | RNA | RiNALMo | [foundation_models/rinalmo.md](foundation_models/rinalmo.md) |
 | Molecule (SMILES) | ChemBERTa | [foundation_models/ChemBERTa.md](foundation_models/ChemBERTa.md) |
 | Molecule (SMILES) | MoLFormer-XL | [foundation_models/MolFormerXL.md](foundation_models/MolFormerXL.md) |
