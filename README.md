@@ -70,6 +70,7 @@ For more details visit **https://biogemt.github.io/agentomics-ml/**
 - Trustworthy: If you provide a test set, Agentomics fully abstracts LLMs from accessing it, allowing you to rely on programmaticly computed and reported test set metrics.
 - Various LLM providers: OpenAI, OpenRouter, or local models via Ollama
 - Reliability: Thanks to our functional validators, Agentomics creates a working model 100% of the time (when using recommended settings).
+- Supplementary materials: Give the agent dataset-specific papers, helper scripts, and foundation-model guidance. See the [supplementary materials documentation](https://biogemt.github.io/agentomics-ml/user-guide/datasets/#supplementary-optional).
 
 ## Run Output Structure Example
 

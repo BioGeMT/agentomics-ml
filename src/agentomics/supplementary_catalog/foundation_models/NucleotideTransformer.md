@@ -27,10 +27,10 @@ import torch
 
 # Load tokenizer and model
 tokenizer = AutoTokenizer.from_pretrained(
-    "InstaDeepAI/nucleotide-transformer-v2-500m-multi-species", trust_remote_code=True
+    "InstaDeepAI/nucleotide-transformer-500m-human-ref", trust_remote_code=True
 )
 model = AutoModelForMaskedLM.from_pretrained(
-    "InstaDeepAI/nucleotide-transformer-v2-500m-multi-species", trust_remote_code=True
+    "InstaDeepAI/nucleotide-transformer-500m-human-ref", trust_remote_code=True
 )
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
