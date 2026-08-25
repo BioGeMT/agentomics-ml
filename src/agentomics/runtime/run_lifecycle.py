@@ -7,6 +7,7 @@ import weave
 from agentomics.agents.prompt_builder import build_iteration_base_prompt, get_system_prompt
 from agentomics.run_logging.logging_helpers import log_files, log_iteration_duration
 from agentomics.runtime.best_iteration_snapshot import update_best_iteration_snapshot
+from agentomics.runtime.conda_utils import initialize_shared_environment
 from agentomics.runtime.git_checkpoints import commit_iteration_end
 from agentomics.runtime.read_write_utils import (
     archive_current_iteration,
@@ -31,6 +32,7 @@ from pydantic_ai.models import Model
 @weave.op(call_display_name=lambda call: f"Agentomics run - agent_id: {call.inputs['config'].agent_id}")
 async def run_agentomics(config: Config, default_model: Model, iteration_plan_model: Model, provider: Provider) -> None:
     total_iterations = config.iterations
+    initialize_shared_environment(config)
     tools = create_tools(config, config.tool_ids)
     print(f"Starting training loop with {total_iterations} iterations") #TODO for run continuing this is wrong?
 

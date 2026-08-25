@@ -12,15 +12,11 @@ from agentomics.utils.text_processing_utils import collapse_repeated_lines, conc
 
 
 class BashProcess:
-    def __init__(self, config: Config, autoconda=True, timeout=60):
+    def __init__(self, config: Config, timeout=60):
         self.locked = threading.Lock()
         self.config = config
-        self.autoconda = autoconda
         self.timeout = timeout
         self.agent_env = self.filter_agent_env_vars()
-
-        if autoconda:
-            self.create_preloaded_conda()
     
     def filter_agent_env_vars(self):
         agent_env = {}
@@ -31,33 +27,6 @@ class BashProcess:
             agent_env[key] = value
 
         return agent_env
-
-    def create_preloaded_conda(self):
-        conda_env_path = get_shared_environment_path(self.config)
-        # Forked runs may already carry a fully initialized shared env.
-        # In that case, preserve it instead of unpacking the base start env over it.
-        if (conda_env_path / "bin" / "activate").exists():
-            return
-        start_env_pkg = os.getenv('START_ENV_PKG')
-        shared_dir = str(self.config.shared_dir)
-        for cmd in [
-            f"mkdir -p {conda_env_path}",
-            f"tar -xf {start_env_pkg} -C {conda_env_path}",
-            f"source {conda_env_path}/bin/activate && conda-unpack",
-        ]:
-            subprocess.run(
-                cmd,
-                shell=True,
-                executable="/bin/bash",
-                cwd=shared_dir,
-                env=self.agent_env,
-                check=True,
-            )
-        if self.config.agent_user:
-            subprocess.run(
-                ["chown", "-R", self.config.agent_user, str(conda_env_path)],
-                check=True,
-            )
 
     def run(self, command: str):
         with self.locked: #exclusive bash access
@@ -110,7 +79,6 @@ class BashProcess:
 def create_bash_tool(config: Config):
         bash = BashProcess(
             config=config,
-            autoconda=True,
             timeout=config.bash_tool_timeout,
         )
 

@@ -12,13 +12,14 @@ if str(SRC_PATH) not in sys.path:
 
 WORKSPACE_DIR = "/workspace"
 
-from agentomics.tools.tool_registry import create_tools
-from agentomics.utils.config import Config
+from agentomics.runtime.conda_utils import initialize_shared_environment
 from agentomics.runtime.read_write_utils import (
     initialize_current_iteration_workspace,
     initialize_run_directories,
     save_config,
 )
+from agentomics.tools.tool_registry import create_tools
+from agentomics.utils.config import Config
 
 _shared_test_resources = None
 
@@ -82,8 +83,9 @@ def get_shared_test_resources():
             subprocess.run(["chown", agent_user, str(config.current_step_dir)], check=True)
 
         print(f"Created shared test agent: {agent_id}")
-        print("Setting up tools for testing (including conda env creation, might take a moment)\n")
+        print("Initializing the shared conda environment for testing (might take a moment)\n")
 
+        initialize_shared_environment(config)
         tools = create_tools(config, config.tool_ids)
         tools_by_name = {tool.name: tool for tool in tools}
 
