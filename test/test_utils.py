@@ -79,8 +79,7 @@ def get_shared_test_resources():
         # Mirror what on_step_start does: create current_step_dir and assign it to
         # agent_user so the agent has a writable working directory during tests.
         config.current_step_dir.mkdir(exist_ok=True)
-        if agent_user:
-            subprocess.run(["chown", agent_user, str(config.current_step_dir)], check=True)
+        subprocess.run(["chown", agent_user, str(config.current_step_dir)], check=True)
 
         print(f"Created shared test agent: {agent_id}")
         print("Initializing the shared conda environment for testing (might take a moment)\n")

@@ -74,11 +74,10 @@ class RuntimeStep(ABC):
         iteration = load_current_iteration_index(self.config)
         _console.print(f"[bold purple]ITERATION {iteration} | {self.display_name} STEP[/bold purple]")
         self.config.current_step_dir.mkdir(exist_ok=True)
-        if self.config.agent_user:
-            subprocess.run(
-                ["chown", self.config.agent_user, str(self.config.current_step_dir)],
-                check=True,
-            )
+        subprocess.run(
+            ["chown", self.config.agent_user, str(self.config.current_step_dir)],
+            check=True,
+        )
 
     def on_step_success(self, output: Any) -> None:
         save_step_output(self.config, self.step_id, output)
@@ -101,8 +100,7 @@ class RuntimeStep(ABC):
         rewrite_symlinks_to_absolute(step_dir)
         step_dir.rename(archived_dir)
         self._rewrite_paths_in_step_output(archived_dir, str(step_dir), str(archived_dir))
-        if self.config.agent_user:
-            chown_tree_to_root(archived_dir)
+        chown_tree_to_root(archived_dir)
 
     def _rewrite_paths_in_step_output(self, directory: Path, old: str, new: str) -> None:
         output_file = directory / Config.STEP_OUTPUT_FILENAME

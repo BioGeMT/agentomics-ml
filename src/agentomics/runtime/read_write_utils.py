@@ -60,8 +60,7 @@ def load_config_from_run_dir_and_reroot(run_dir: Path) -> Config:
 def initialize_current_iteration_workspace(config: Config) -> None:
     config.current_iteration_dir.mkdir(parents=True, exist_ok=True)
     config.current_iteration_runtime_info_dir.mkdir(exist_ok=True)
-    if config.agent_user:
-        chown_tree_to_root(config.current_iteration_dir)
+    chown_tree_to_root(config.current_iteration_dir)
 
 def archive_current_iteration(config: Config, iteration: int) -> None:
     export_shared_environment_descriptor(config)
@@ -77,8 +76,7 @@ def archive_current_iteration(config: Config, iteration: int) -> None:
     if archived_iteration_dir.exists():
         remove_path(archived_iteration_dir)
     current_iteration_dir.replace(archived_iteration_dir)
-    if config.agent_user:
-        chown_tree_to_root(archived_iteration_dir)
+    chown_tree_to_root(archived_iteration_dir)
 
 def get_archived_iterations(
     config: Config,

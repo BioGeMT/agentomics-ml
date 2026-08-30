@@ -1,6 +1,5 @@
 import os
 import subprocess
-import unittest
 
 from test.test_utils import BaseAgentTest
 from agentomics.runtime.conda_utils import get_shared_environment_path
@@ -85,7 +84,6 @@ class TestAgentPermissions(BaseAgentTest):
             "The co-located test split must not be exposed to the agent",
         )
 
-    @unittest.skipUnless(os.getenv("AGENT_USER"), "Agent user sandboxing only enforced in Docker mode")
     def test_api_key_protection(self):
         """Test that agent cannot access API keys."""
         
@@ -118,14 +116,12 @@ class TestAgentPermissions(BaseAgentTest):
         self.assertNotIn("Command failed", python_result, "Python command should succeed")
         self.assertIn("Matplotlib version:", python_result, "Should successfully import matplotlib")
 
-    @unittest.skipUnless(os.getenv("AGENT_USER"), "Agent user sandboxing only enforced in Docker mode")
     def test_agent_runs_as_restricted_user(self):
         """Test that agent tool subprocesses run as the restricted agent user, not root."""
         result = self.bash_tool.function("whoami")
         expected_user = os.getenv("AGENT_USER")
         self.assertIn(expected_user, result, f"Agent should run as {expected_user}, got: {result}")
 
-    @unittest.skipUnless(os.getenv("AGENT_USER"), "Agent user sandboxing only enforced in Docker mode")
     def test_cannot_write_to_current_iteration_dir(self):
         """Test that the agent cannot create files directly in current_iteration_dir.
         Only current_step_dir (chowned to the agent user) should be writable."""
@@ -134,7 +130,6 @@ class TestAgentPermissions(BaseAgentTest):
         self.assertIn("Permission denied", result,
                       f"Agent must not write directly to current_iteration_dir. Got: {result}")
 
-    @unittest.skipUnless(os.getenv("AGENT_USER"), "Agent user sandboxing only enforced in Docker mode")
     def test_can_write_to_current_step_dir(self):
         """Test that the agent can write inside current_step_dir (its designated workspace)."""
         test_path = self.config.current_step_dir / "sandbox_write_test.txt"

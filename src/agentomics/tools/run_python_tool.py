@@ -36,8 +36,7 @@ def create_run_python_tool(config: Config):
             command = f"conda run -p {env_path} --no-capture-output python {python_file_path} {args.strip()}"
         else:
             command = f"conda run -p {env_path} --no-capture-output python {python_file_path}"
-        if config.agent_user:
-            command = f"runuser -u {config.agent_user} -- {command}"
+        command = f"runuser -u {config.agent_user} -- {command}"
         out = bash.run(command)
         timer_msg = f"\n[Tool call took {time.time() - start_time:.1f} seconds]"
         return out + timer_msg
