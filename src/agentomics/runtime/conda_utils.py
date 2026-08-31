@@ -13,10 +13,8 @@ from agentomics.utils.config import Config
 
 ENVIRONMENT_ARCHIVE_FILENAME = "environment.tar.gz"
 
-
 def get_shared_environment_path(config: Config) -> Path:
     return Path("/tmp/agentomics/envs") / f"{config.agent_id}_env"
-
 
 def initialize_shared_environment(config: Config) -> Path:
     """Initialize the run's shared conda environment independently of agent tools."""
@@ -25,38 +23,17 @@ def initialize_shared_environment(config: Config) -> Path:
     if (environment_path / "bin" / "activate").exists():
         return environment_path
 
-    start_environment_archive = os.getenv("START_ENV_PKG")
-    if not start_environment_archive:
-        raise RuntimeError(
-            "START_ENV_PKG is required to initialize the shared environment."
-        )
-
-    archive_path = Path(start_environment_archive)
-    if not archive_path.is_file():
-        raise FileNotFoundError(f"Shared environment archive not found: {archive_path}")
-
     environment_path.mkdir(parents=True, exist_ok=True)
-    subprocess_environment = {
-        key: value
-        for key, value in os.environ.items()
-        if "API_KEY" not in key
-    }
-    try:
-        subprocess.run(
-            ["tar", "-xf", str(archive_path), "-C", str(environment_path)],
-            cwd=config.shared_dir,
-            env=subprocess_environment,
-            check=True,
-        )
-        subprocess.run(
-            [str(environment_path / "bin" / "conda-unpack")],
-            cwd=config.shared_dir,
-            env=subprocess_environment,
-            check=True,
-        )
-    except (OSError, subprocess.CalledProcessError):
-        shutil.rmtree(environment_path, ignore_errors=True)
-        raise
+    subprocess.run(
+        ["tar", "-xf", os.environ["START_ENV_PKG"], "-C", str(environment_path)],
+        cwd=config.shared_dir,
+        check=True,
+    )
+    subprocess.run(
+        [str(environment_path / "bin" / "conda-unpack")],
+        cwd=config.shared_dir,
+        check=True,
+    )
 
     if config.agent_user:
         subprocess.run(
@@ -65,14 +42,12 @@ def initialize_shared_environment(config: Config) -> Path:
         )
     return environment_path
 
-
 def get_iteration_environment_descriptor_path(iteration_dir: Path) -> Path:
     return iteration_dir / Config.RUNTIME_INFO_DIRNAME / Config.ENVIRONMENT_DESCRIPTOR_FILENAME
 
 
 def get_iteration_environment_archive_path(iteration_dir: Path) -> Path:
     return iteration_dir / Config.RUNTIME_INFO_DIRNAME / ENVIRONMENT_ARCHIVE_FILENAME
-
 
 def restore_iteration_environment(
     iteration_root: Path,
@@ -100,7 +75,6 @@ def restore_iteration_environment(
     )
     return environment_path
 
-
 def export_environment_archive(env_path: Path, archive_path: Path) -> None:
     archive_path.parent.mkdir(parents=True, exist_ok=True)
     subprocess.run(
@@ -114,7 +88,6 @@ def export_environment_archive(env_path: Path, archive_path: Path) -> None:
         ],
         check=True,
     )
-
 
 def create_environment_from_descriptor(
     descriptor_path: Path,
