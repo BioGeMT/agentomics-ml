@@ -10,7 +10,6 @@ from agentomics.utils.config import Config
 def create_run_python_tool(config: Config):
     bash = BashProcess(
         config=config,
-        autoconda=False,
         timeout=config.run_python_tool_timeout,
     )
 
