@@ -1,4 +1,3 @@
-import os
 import subprocess
 
 from test.test_utils import BaseAgentTest
@@ -119,7 +118,7 @@ class TestAgentPermissions(BaseAgentTest):
     def test_agent_runs_as_restricted_user(self):
         """Test that agent tool subprocesses run as the restricted agent user, not root."""
         result = self.bash_tool.function("whoami")
-        expected_user = os.getenv("AGENT_USER")
+        expected_user = self.config.AGENT_USER
         self.assertIn(expected_user, result, f"Agent should run as {expected_user}, got: {result}")
 
     def test_cannot_write_to_current_iteration_dir(self):

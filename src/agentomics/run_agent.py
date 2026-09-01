@@ -49,7 +49,6 @@ async def run_experiment(
     split_time_deadline = time.time() + split_timeout if split_timeout is not None else None
 
     agent_id = os.getenv("AGENT_ID")
-    agent_user = os.getenv("AGENT_USER")
     config = Config(
         agent_id=agent_id,
         model_name=model,
@@ -70,7 +69,6 @@ async def run_experiment(
         time_deadline=time_deadline,
         split_time_deadline=split_time_deadline,
         run_python_tool_timeout=run_python_timeout,
-        agent_user=agent_user,
         disable_training_reporting=disable_training_reporting,
         conda_export_mode=conda_export_mode
     )

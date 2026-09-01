@@ -48,7 +48,6 @@ def get_shared_test_resources():
     global _shared_test_resources
 
     agent_id = os.getenv('AGENT_ID')
-    agent_user = os.getenv('AGENT_USER')
 
     if _shared_test_resources is None:
         workspace_dir = Path(WORKSPACE_DIR).resolve()
@@ -66,7 +65,6 @@ def get_shared_test_resources():
             datasets_dir=str(dataset_dir.parent),
             iterations=5,
             user_prompt="Create the best possible machine learning model that will generalize to new unseen data.",
-            agent_user=agent_user,
         )
 
         initialize_run_directories(config)
@@ -79,7 +77,7 @@ def get_shared_test_resources():
         # Mirror what on_step_start does: create current_step_dir and assign it to
         # agent_user so the agent has a writable working directory during tests.
         config.current_step_dir.mkdir(exist_ok=True)
-        subprocess.run(["chown", agent_user, str(config.current_step_dir)], check=True)
+        subprocess.run(["chown", config.AGENT_USER, str(config.current_step_dir)], check=True)
 
         print(f"Created shared test agent: {agent_id}")
         print("Initializing the shared conda environment for testing (might take a moment)\n")

@@ -36,7 +36,7 @@ def initialize_shared_environment(config: Config) -> Path:
     )
 
     subprocess.run(
-        ["chown", "-R", config.agent_user, str(environment_path)],
+        ["chown", "-R", config.AGENT_USER, str(environment_path)],
         check=True,
     )
     return environment_path

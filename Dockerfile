@@ -44,7 +44,6 @@ RUN mamba env create -f /build/environment_agent.yaml \
 # The runtime (root) owns the workspace; only current_step_dir is chowned to this user per step.
 RUN useradd -m -s /bin/bash agentomics-agent
 RUN git config --system --add safe.directory /workspace
-ENV AGENT_USER=agentomics-agent
 ENV PYTHONPATH=/repository/src
 RUN mkdir -p /workspace
 

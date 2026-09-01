@@ -13,6 +13,7 @@ from agentomics.utils.versioning import get_version
 class Config:
     CONFIG_FILENAME: ClassVar[str] = "config.json"
     RUN_DIRNAME: ClassVar[str] = "run"
+    AGENT_USER: ClassVar[str] = "agentomics-agent"
     SHARED_DIRNAME: ClassVar[str] = "shared"
     RUNTIME_INFO_DIRNAME: ClassVar[str] = "runtime_info"
     BEST_ITERATION_SNAPSHOT_DIRNAME: ClassVar[str] = "best_iteration_snapshot"
@@ -93,7 +94,6 @@ class Config:
     max_tool_retries: int = DEFAULT_MAX_TOOL_RETRIES
     label_to_scalar: dict[str, int] | None = None
     wandb_run_id: str | None = None
-    agent_user: str | None = None
 
     @property
     def run_dir(self) -> Path:

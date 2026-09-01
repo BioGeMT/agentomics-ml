@@ -75,7 +75,7 @@ class RuntimeStep(ABC):
         _console.print(f"[bold purple]ITERATION {iteration} | {self.display_name} STEP[/bold purple]")
         self.config.current_step_dir.mkdir(exist_ok=True)
         subprocess.run(
-            ["chown", self.config.agent_user, str(self.config.current_step_dir)],
+            ["chown", self.config.AGENT_USER, str(self.config.current_step_dir)],
             check=True,
         )
 
