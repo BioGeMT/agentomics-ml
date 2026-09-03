@@ -35,7 +35,7 @@ async def run_agentomics(
 ) -> None:
     total_iterations = config.iterations
     initialize_shared_environment(config)
-    tools = create_tools(config, config.tool_ids)
+    tools = create_tools(config, config.tool_ids, model=default_model)
     print(f"Starting training loop with {total_iterations} iterations") #TODO for run continuing this is wrong?
 
     while True:
