@@ -342,8 +342,7 @@ class DataSplitStep(AgenticStep):
         )
 
     def on_step_success(self, output: DataSplitOutput) -> None:
-        if self.config.agent_user:
-            chown_tree_to_root(Path(output.train_path).parent)
+        chown_tree_to_root(Path(output.train_path).parent)
         super().on_step_success(output)
 
     def on_iteration_fail(self, iteration: int) -> None:

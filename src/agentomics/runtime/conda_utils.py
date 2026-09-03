@@ -35,11 +35,10 @@ def initialize_shared_environment(config: Config) -> Path:
         check=True,
     )
 
-    if config.agent_user:
-        subprocess.run(
-            ["chown", "-R", config.agent_user, str(environment_path)],
-            check=True,
-        )
+    subprocess.run(
+        ["chown", "-R", config.AGENT_USER, str(environment_path)],
+        check=True,
+    )
     return environment_path
 
 def get_iteration_environment_descriptor_path(iteration_dir: Path) -> Path:

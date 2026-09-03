@@ -104,8 +104,7 @@ def create_bash_tool(config: Config):
             env_path = get_shared_environment_path(config)
             command_parsed = shlex.quote(command)
             command = f"conda run -p {env_path} --no-capture-output bash -c {command_parsed}"
-            if config.agent_user:
-                command = f"runuser -u {config.agent_user} -- {command}"
+            command = f"runuser -u {config.AGENT_USER} -- {command}"
             out = bash.run(command)
             timer_msg = f"\n[Tool call took {time.time() - start_time:.1f} seconds]"
             return out + timer_msg
