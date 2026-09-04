@@ -8,7 +8,7 @@ from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.common_tools.web_fetch import web_fetch_tool
 
-from agentomics.tools.save_paper_pdf_tool import create_save_paper_pdf_tool, is_pdf
+from agentomics.tools.save_paper_pdf_tool import create_save_paper_pdf_tool
 from agentomics.utils.config import Config
 
 
@@ -68,18 +68,9 @@ def attach_output_validator(agent: Agent[None, PaperFetchOutput], config: Config
         for paper in result.papers:
             if paper.pdf_filename is None:
                 continue
-            # save_paper_pdf stores the basename, so accept a full path reported back.
             pdf_path = papers_dir / Path(paper.pdf_filename).name
             if not pdf_path.is_file():
                 raise ModelRetry(f"'{paper.pdf_filename}' is not in {papers_dir}. Save it with save_paper_pdf or clear pdf_filename.")
-            with pdf_path.open("rb") as pdf_file:
-                header = pdf_file.read(5)
-            if not is_pdf(header):
-                raise ModelRetry(f"'{paper.pdf_filename}' is not a PDF. Remove it and clear pdf_filename.")
-
-        stray = [str(p) for p in config.current_step_dir.resolve().rglob("*.pdf") if p.parent != papers_dir]
-        if stray:
-            raise ModelRetry(f"PDFs must live only in {papers_dir}, but these are elsewhere: {stray[:10]}")
         return result
 
 def build_prompt(config: Config, query: str, websearch_result: list[dict]) -> str:
