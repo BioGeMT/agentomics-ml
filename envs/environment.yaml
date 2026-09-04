@@ -6,7 +6,9 @@ dependencies:
   - conda-pack==0.9.1
   - pandas==2.3.1
   - matplotlib==3.8.4
-  - pydantic-ai==1.53.0
+  - pydantic-ai==1.77.0
+  - markdownify==1.2.3
+  - ddgs==9.14.4
   - pip
   - pip:
     - weave==0.52.14 # Often breaks with new versions, update as necessary

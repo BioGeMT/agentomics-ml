@@ -55,7 +55,7 @@ class TestRunInitialization(unittest.IsolatedAsyncioTestCase):
         ) as initialize_environment, mock.patch.object(
             run_lifecycle,
             "create_tools",
-            side_effect=lambda *_: call_order.append("tools") or [],
+            side_effect=lambda *_, **__: call_order.append("tools") or [],
         ) as create_tools, mock.patch.object(
             run_lifecycle,
             "get_next_iteration_index",
@@ -70,7 +70,11 @@ class TestRunInitialization(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(call_order, ["environment", "tools"])
         initialize_environment.assert_called_once_with(config)
-        create_tools.assert_called_once_with(config, ["run_python"])
+        create_tools.assert_called_once_with(
+            config,
+            ["run_python"],
+            model=mock.sentinel.default_model,
+        )
 
 
 if __name__ == "__main__":
