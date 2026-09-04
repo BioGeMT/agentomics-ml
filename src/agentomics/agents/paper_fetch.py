@@ -78,4 +78,4 @@ def build_prompt(config: Config, query: str, websearch_result: list[dict]) -> st
     {query}
     and the results of web search for that query:
     {websearch_result}
-    - Save the pdf of the papers at: {config.fetched_papers_dir}"""
+    - Save the pdf of relevant papers at: {config.fetched_papers_dir}"""
