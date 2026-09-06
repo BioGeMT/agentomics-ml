@@ -37,6 +37,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Iteration directory relative to --agent-dir",
     )
     parser.add_argument(
+        "--artifacts-dir", type=Path,
+        help=(
+            "Use these model artifacts instead of the selected iteration's original artifacts "
+            "(cannot be combined with --all-iterations)"
+        ),
+    )
+    parser.add_argument(
         "--all-iterations", action="store_true",
         help="Run every archived iteration",
     )
@@ -63,6 +70,16 @@ def _run_inference_with_resolved_paths(arguments: argparse.Namespace) -> int:
         "--iteration-dir",
         str(arguments.iteration_dir),
     ]
+    mounts = [
+        f"type=bind,src={arguments.agent_dir},dst=/agent,readonly",
+        f"type=bind,src={arguments.input_path},dst={container_input},readonly",
+        f"type=bind,src={arguments.output.parent},dst=/inference-output",
+    ]
+    if arguments.artifacts_dir is not None:
+        mounts.append(
+            f"type=bind,src={arguments.artifacts_dir},dst=/inference-artifacts,readonly"
+        )
+        python_arguments.extend(["--artifacts-dir", "/inference-artifacts"])
     if arguments.label_col:
         python_arguments.extend(["--label-col", arguments.label_col])
     if arguments.all_iterations:
@@ -75,11 +92,7 @@ def _run_inference_with_resolved_paths(arguments: argparse.Namespace) -> int:
     return run_python_in_docker(
         image=arguments.image,
         cpu_only=arguments.cpu_only,
-        mounts=[
-            f"type=bind,src={arguments.agent_dir},dst=/agent",
-            f"type=bind,src={arguments.input_path},dst={container_input},readonly",
-            f"type=bind,src={arguments.output.parent},dst=/inference-output",
-        ],
+        mounts=mounts,
         python_arguments=python_arguments,
         docker_arguments=docker_environment_arguments(
             "WANDB_API_KEY",
