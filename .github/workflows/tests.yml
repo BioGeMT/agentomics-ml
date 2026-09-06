@@ -28,6 +28,14 @@ jobs:
       - name: Checkout tested commit
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install host CLI and test dependencies
+        run: pip install -e .
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -42,12 +50,6 @@ jobs:
           push: false
           tags: agentomics:ci
 
-      # Free GitHub-hosted runners have no GPU, so an empty CUDA_VISIBLE_DEVICES skips GPU tests.
+      # Free GitHub-hosted runners have no GPU.
       - name: Run CPU-compatible test suite
-        run: |
-          docker run --rm \
-            --env AGENT_ID=github-actions-ci \
-            --env CUDA_VISIBLE_DEVICES= \
-            --entrypoint /opt/conda/envs/agentomics-env/bin/python \
-            agentomics:ci \
-            -m test.run_all_tests --workspace-dir /workspace
+        run: python scripts/run_tests.py --image agentomics:ci --cpu-only

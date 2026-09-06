@@ -58,7 +58,11 @@ def _run_single_inference(arguments: Namespace) -> None:
     if not inference_script.is_file():
         raise FileNotFoundError(f"inference.py not found at: {inference_script}")
 
-    artifacts_path = iteration_root / "model_training" / "training_artifacts"
+    artifacts_path = (
+        arguments.artifacts_dir
+        if arguments.artifacts_dir is not None
+        else iteration_root / "model_training" / "training_artifacts"
+    )
     print(f"Using iteration directory: {arguments.iteration_dir}")
 
     with tempfile.TemporaryDirectory() as temporary_directory:

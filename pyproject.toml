@@ -17,6 +17,8 @@ dependencies = [
     "scikit-learn>=1.5",
     "scipy>=1.11",
     "rich>=14.0",
+    "pytest==9.1.1",
+    "pypdf>=6.0",
 ]
 license = { file = "LICENSE" }
 authors = [
@@ -37,6 +39,9 @@ agentomics-inference = "agentomics.cli.inference:main"
 agentomics-retrain = "agentomics.cli.retrain:main"
 agentomics-check-dataset = "agentomics.cli.check_dataset:main"
 agentomics-add-supplementary = "agentomics.cli.add_supplementary:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}

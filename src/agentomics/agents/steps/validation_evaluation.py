@@ -10,13 +10,13 @@ from agentomics.agents.steps.data_split import DataSplitStep
 from agentomics.agents.steps.model_inference import ModelInferenceStep
 from agentomics.agents.steps.model_training import ModelTrainingStep
 from agentomics.run_logging.logging_helpers import log_iteration_metrics, log_new_best
-from agentomics.runtime.conda_utils import get_shared_environment_path
 from agentomics.runtime.inference_runner import compute_metrics, run_inference_on_split
 from agentomics.runtime.read_write_utils import (
     load_best_iteration_snapshot_iteration,
     load_dataset_metadata,
 )
 from agentomics.runtime.step_outputs import load_step_output, require_step_output
+from agentomics.utils.config import Config
 from agentomics.utils.exceptions import AgentScriptFailed, IterationRunFailed
 from agentomics.utils.metrics import get_higher_is_better_map
 from agentomics.datasets.data_contract import LABELS_FILE_NAME
@@ -33,6 +33,38 @@ class ValidationEvaluationStep(RuntimeStep):
     display_name = "VALIDATION EVALUATION"
     output_type = ValidationEvaluationOutput
 
+    @staticmethod
+    def is_new_best_iteration(config: Config, new_metrics: dict[str, float]) -> bool:
+        metric_name = config.val_metric
+        validation_metric_key = f"validation/{metric_name}"
+        if validation_metric_key not in new_metrics:
+            return False
+
+        best_iteration = load_best_iteration_snapshot_iteration(config)
+        if best_iteration is None:
+            return True
+
+        current_split = require_step_output(
+            config, DataSplitStep.step_id, config.current_iteration_dir
+        )
+        best_iteration_dir = config.iteration_dir(best_iteration)
+        best_split = require_step_output(
+            config, DataSplitStep.step_id, best_iteration_dir
+        )
+        if current_split.split_version != best_split.split_version:
+            return True
+
+        validation_output = load_step_output(
+            config,
+            ValidationEvaluationStep.step_id,
+            iteration_dir=best_iteration_dir,
+        )
+        best_metrics = {} if validation_output is None else dict(validation_output.metrics)
+        higher_is_better = get_higher_is_better_map()[metric_name]
+        new_value = new_metrics[validation_metric_key]
+        best_value = best_metrics[validation_metric_key]
+        return new_value > best_value if higher_is_better else new_value < best_value
+
     def on_iteration_end(self, iteration: int) -> None:
         output = load_step_output(self.config, self.step_id, self.config.current_iteration_dir)
         if output is not None:
@@ -45,7 +77,7 @@ class ValidationEvaluationStep(RuntimeStep):
 
     async def _execute(self) -> ValidationEvaluationOutput:
         new_metrics = self._run_inference_on_all_splits()
-        current_iteration_is_new_best = self._is_new_best(new_metrics)
+        current_iteration_is_new_best = self.is_new_best_iteration(self.config, new_metrics)
         return ValidationEvaluationOutput(
             metrics=new_metrics,
             is_new_best=current_iteration_is_new_best,
@@ -57,7 +89,7 @@ class ValidationEvaluationStep(RuntimeStep):
         print("Starting evaluation phase")
         metrics: dict[str, float] = {}
         dataset_metadata = load_dataset_metadata(self.config)
-        conda_env_path = get_shared_environment_path(self.config)
+        conda_env_path = self.config.shared_environment_path
         model_inference = require_step_output(self.config, ModelInferenceStep.step_id, self.config.current_iteration_dir)
         model_training = require_step_output(self.config, ModelTrainingStep.step_id, self.config.current_iteration_dir)
         inference_script_path = Path(model_inference.path_to_inference_file)
@@ -101,44 +133,3 @@ class ValidationEvaluationStep(RuntimeStep):
                     exception_trace=exception_trace,
                 ) from None
         return metrics
-
-    def _is_new_best(self, new_metrics: dict[str, float]) -> bool:
-        metric_name = self.config.val_metric
-        validation_metric_key = f"validation/{metric_name}"
-        if validation_metric_key not in new_metrics:
-            return False
-
-        if load_best_iteration_snapshot_iteration(self.config) is None:
-            return True
-
-        if self._current_split_differs_from_best_iteration():
-            return True
-
-        best_metrics = self._get_best_metrics()
-        higher_is_better = get_higher_is_better_map()[metric_name]
-        new_value = new_metrics[validation_metric_key]
-        best_value = best_metrics[validation_metric_key]
-        return new_value > best_value if higher_is_better else new_value < best_value
-
-    def _current_split_differs_from_best_iteration(self) -> bool:
-        best_iteration = load_best_iteration_snapshot_iteration(self.config)
-        if best_iteration is None:
-            return False
-        current_split_version = require_step_output(self.config, DataSplitStep.step_id, self.config.current_iteration_dir).split_version
-        best_split_version = require_step_output(
-            self.config, DataSplitStep.step_id, self.config.iteration_dir(best_iteration)
-        ).split_version
-        return current_split_version != best_split_version
-
-    def _get_best_metrics(self) -> dict[str, float]:
-        best_iteration = load_best_iteration_snapshot_iteration(self.config)
-        if best_iteration is None:
-            return {}
-        validation_output = load_step_output(
-            self.config,
-            self.step_id,
-            iteration_dir=self.config.iteration_dir(best_iteration),
-        )
-        if validation_output is None:
-            return {}
-        return dict(validation_output.metrics)
