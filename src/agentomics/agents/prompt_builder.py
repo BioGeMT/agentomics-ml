@@ -1,6 +1,5 @@
 from agentomics.datasets.data_contract import SUPPLEMENTARY_DIR_NAME, TRAIN_SPLIT, VALIDATION_SPLIT
 
-from agentomics.runtime.conda_utils import get_shared_environment_path
 from agentomics.runtime.read_write_utils import load_dataset_metadata
 from agentomics.runtime.system_resources import check_gpu_availability, get_resources_summary
 from agentomics.utils.config import Config
@@ -42,7 +41,7 @@ def get_system_prompt(config: Config):
     You are provided with your own already activated environment
     Use this environment to install any packages you need (use non-verbose mode for installations, run conda installations with -y option).
     Don't delete this environment.
-    Your conda environment lives under {get_shared_environment_path(config)}.
+    Your conda environment lives under {config.shared_environment_path}.
     Write all your python scripts in files.
     Run all commands in a way that prints the least amount of tokens into the console.
     Always call tools with the right arguments, specifying each argument as separate key-value pair. 

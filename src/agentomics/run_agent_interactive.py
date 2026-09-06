@@ -124,10 +124,10 @@ def _resolve_interactive_parameters(
         if not dataset:
             raise RuntimeError("No dataset selected")
 
-    model = arguments.model
-    if not model:
+    model_name = arguments.model
+    if not model_name:
         print_phase("Model Selection")
-        model = provider.interactive_model_selection(limit=50)
+        model_name = provider.interactive_model_selection(limit=50)
 
     iterations = arguments.iterations
     if iterations is None:
@@ -140,7 +140,7 @@ def _resolve_interactive_parameters(
             if _is_tty_available()
             else Config.DEFAULT_ITERATIONS
         )
-    return dataset, model, iterations
+    return dataset, model_name, iterations
 
 
 def run_agent_interactive(arguments: argparse.Namespace) -> int:
@@ -170,8 +170,8 @@ def run_agent_interactive(arguments: argparse.Namespace) -> int:
             style="yellow",
         )
 
-    dataset, model, iterations = _resolve_interactive_parameters(arguments, provider)
-    iteration_plan_model = arguments.iteration_plan_model or model
+    dataset, model_name, iterations = _resolve_interactive_parameters(arguments, provider)
+    iteration_plan_model_name = arguments.iteration_plan_model or model_name
     prepared_datasets_dir = arguments.workspace_dir / PREPARED_DATASETS_DIR_NAME
     inherited_dataset_metadata = (
         load_dataset_metadata(existing_config)
@@ -197,8 +197,8 @@ def run_agent_interactive(arguments: argparse.Namespace) -> int:
 
     asyncio.run(
         run_experiment(
-            model=model,
-            iteration_plan_model=iteration_plan_model,
+            model_name=model_name,
+            iteration_plan_model_name=iteration_plan_model_name,
             dataset_name=dataset,
             task_type=task_type,
             dataset_metadata=dataset_metadata,
@@ -210,7 +210,7 @@ def run_agent_interactive(arguments: argparse.Namespace) -> int:
             tags=arguments.tags,
             iterations=iterations,
             user_prompt=arguments.user_prompt,
-            provider=provider_name,
+            provider=provider,
             split_allowed_iterations=split_allowed_iterations,
             exploration_iterations=arguments.exploration_iterations,
             timeout=arguments.timeout,

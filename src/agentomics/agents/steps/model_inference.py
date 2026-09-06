@@ -20,7 +20,6 @@ from agentomics.datasets.data_contract import (
 from agentomics.agents.steps.base import AgenticStep, AgenticStepOutput
 from agentomics.agents.steps.data_split import DataSplitStep
 from agentomics.agents.steps.model_training import ModelTrainingStep
-from agentomics.runtime.conda_utils import get_shared_environment_path
 from agentomics.runtime.filesystem import remove_path
 from agentomics.runtime.inference_runner import compute_metrics, run_inference_on_split
 from agentomics.runtime.read_write_utils import (
@@ -141,7 +140,7 @@ class ModelInferenceStep(AgenticStep):
         inference_result = run_inference_on_split(
             split_path=split_path,
             output_path=output_path,
-            conda_env_path=get_shared_environment_path(self.config),
+            conda_env_path=self.config.shared_environment_path,
             inference_script_path=self.config.current_step_dir / "inference.py",
             training_artifacts_dir=Path(model_training.path_to_artifacts_dir),
         )

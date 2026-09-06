@@ -54,6 +54,7 @@ class Config:
     DEFAULT_MAX_TOOL_RETRIES: ClassVar[int] = 5
     DEFAULT_RUN_PYTHON_TOOL_TIMEOUT: ClassVar[int] = 60 * 60 * 6
     DEFAULT_USER_PROMPT: ClassVar[str] = "Develop a machine learning model that generalizes well to new unseen data."
+    DEFAULT_ENVIRONMENTS_DIR: ClassVar[str] = "/tmp/agentomics/envs"
 
     # Required, settable through the CLI (run_agent_interactive.py)
     model_name: str
@@ -94,6 +95,11 @@ class Config:
     max_tool_retries: int = DEFAULT_MAX_TOOL_RETRIES
     label_to_scalar: dict[str, int] | None = None
     wandb_run_id: str | None = None
+    environments_dir: str = DEFAULT_ENVIRONMENTS_DIR
+
+    @property
+    def shared_environment_path(self) -> Path:
+        return Path(self.environments_dir) / f"{self.agent_id}_env"
 
     @property
     def run_dir(self) -> Path:
