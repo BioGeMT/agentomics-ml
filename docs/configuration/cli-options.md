@@ -26,7 +26,6 @@ The run stops when either the iteration count is reached or the timeout expires.
 | Option | Description |
 |--------|-------------|
 | `--cpu-only` | Disable GPU acceleration |
-| `--test` | Run the integrated test suite |
 | `--image <name>` | Docker image to launch (default: `biogemt/agentomics:<installed-package-version>`; use this option for an explicit override) |
 | `--dev` | Build from the current local working tree before launching; cannot be combined with `--image` |
 | `--datasets-dir <path>` | Host directory to read datasets from (default: `./datasets`) |
