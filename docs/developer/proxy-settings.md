@@ -10,6 +10,7 @@ Set these variables for proxy access:
 |----------|-------------|---------|
 | `HTTP_PROXY` | HTTP proxy URL | `http://proxy.company.com:8080` |
 | `HTTPS_PROXY` | HTTPS proxy URL | `http://proxy.company.com:8080` |
+| `ALL_PROXY` | Fallback proxy URL for all protocols | `socks5://proxy.company.com:1080` |
 | `NO_PROXY` | Hosts to bypass | `localhost,127.0.0.1,.internal` |
 
 ### Setting Variables
@@ -32,7 +33,7 @@ NO_PROXY=localhost,127.0.0.1
 
 ## Docker Configuration
 
-Docker requires separate proxy configuration.
+Pulling images from a registry is handled by the Docker daemon. If registry pulls also require a proxy, configure the daemon separately from the proxy settings used by image build steps.
 
 ### Configure Docker Daemon
 
@@ -67,15 +68,12 @@ sudo systemctl show --property=Environment docker
 
 ## Building Images with Proxy
 
-Pass proxy settings as build arguments:
+When an Agentomics command is run with `--dev`, the launcher automatically forwards `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, and `NO_PROXY` to the Dockerbuild. Uppercase and lowercase forms are supported.
+
+Proxy values can be exported in the shell or placed in the `.env` file in the repository root. Exported values take precedence over `.env` values:
 
 ```bash
-docker build \
-  --build-arg HTTP_PROXY=$HTTP_PROXY \
-  --build-arg HTTPS_PROXY=$HTTPS_PROXY \
-  --build-arg http_proxy=$http_proxy \
-  --build-arg https_proxy=$https_proxy \
-  -t agentomics .
+agentomics-run --dev --dataset my_dataset
 ```
 
 ## Running with Proxy

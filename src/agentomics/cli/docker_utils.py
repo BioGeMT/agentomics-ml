@@ -13,6 +13,46 @@ DEFAULT_IMAGE = f"biogemt/agentomics:{get_version()}"
 DEVELOPMENT_IMAGE = "agentomics:dev"
 CONTAINER_PYTHON = "/opt/conda/envs/agentomics-env/bin/python"
 
+PROXY_ENV_VAR_NAMES = (
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "ALL_PROXY",
+    "NO_PROXY"
+)
+
+
+def _resolve_proxy_env_vars() -> dict[str, str]:
+    """Resolve proxy variables from the environment and .env file."""
+
+    env_vars: dict[str, str] = {}
+    env_file_values: dict[str, str] = {}
+    env_file = Path.cwd() / ".env"
+    if env_file.is_file():
+        for line in env_file.read_text().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                name, value = line.split("=", 1)
+                env_file_values[name.strip()] = value.strip()
+
+    for upper_name in PROXY_ENV_VAR_NAMES:
+        lower_name = upper_name.lower()
+        value = (
+            os.environ.get(upper_name)
+            or os.environ.get(lower_name)
+            or env_file_values.get(upper_name)
+            or env_file_values.get(lower_name)
+        )
+        if value:
+            env_vars[upper_name] = value
+            env_vars[lower_name] = value
+    return env_vars
+
+def _proxy_build_arguments() -> list[str]:
+    arguments: list[str] = []
+    for name, value in _resolve_proxy_env_vars().items():
+        arguments.extend(["--build-arg", f"{name}={value}"])
+    return arguments
+
 def create_parser(description: str) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=description,
@@ -50,6 +90,7 @@ def build_development_image() -> str:
         [
             "docker",
             "build",
+            *_proxy_build_arguments(),
             "--build-arg",
             "REPOSITORY_SOURCE=.",
             "-t",
