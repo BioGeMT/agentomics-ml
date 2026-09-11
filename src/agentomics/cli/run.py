@@ -95,7 +95,6 @@ def _build_container_arguments(arguments: argparse.Namespace) -> list[str]:
         workflow_arguments.extend(arguments.tags)
     for option, enabled in (
         ("--use-provisioning-key", arguments.use_provisioning_key),
-        ("--test", arguments.test),
         ("--cpu-only", arguments.cpu_only),
         ("--disable-training-reporting", arguments.disable_training_reporting),
         ("--list-models", arguments.list_models),

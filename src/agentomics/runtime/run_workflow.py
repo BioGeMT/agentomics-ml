@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import os
 import shutil
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -127,18 +126,6 @@ def _execute_workflow(
     agent_id: str,
     workspace_directory: Path,
 ) -> int:
-    if arguments.test:
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "test.run_all_tests",
-                "--workspace-dir",
-                str(workspace_directory),
-            ]
-        )
-        return result.returncode
-
     list_mode = (
         arguments.list_models
         or arguments.list_datasets
