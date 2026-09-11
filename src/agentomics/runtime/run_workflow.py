@@ -170,7 +170,7 @@ def run_workflow(arguments: argparse.Namespace) -> int:
         _configure_runtime_environment(arguments, agent_id)
         _prepare_codex_credentials()
         _prepare_fork(arguments, agent_id, workspace_directory)
-        if arguments.use_provisioning_key and not arguments.test:
+        if arguments.use_provisioning_key:
             temporary_key_hash = _create_temporary_api_key(arguments.spend_limit)
         return _execute_workflow(arguments, agent_id, workspace_directory)
     finally:

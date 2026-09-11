@@ -354,8 +354,7 @@ def _run_reporting_in_docker(
 def _is_agent_run(arguments: argparse.Namespace) -> bool:
     # TODO: Replace this implicit check with explicit command modes.
     return not (
-        arguments.test
-        or arguments.list_models
+        arguments.list_models
         or arguments.list_datasets
         or arguments.list_metrics
     )
