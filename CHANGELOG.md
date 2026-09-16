@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/BioGeMT/agentomics-ml/compare/v1.1.0...v1.1.1) (2026-09-16)
+
+
+### Bug Fixes
+
+* forward proxy settings to docker dev build ([#164](https://github.com/BioGeMT/agentomics-ml/issues/164)) ([0d11d7a](https://github.com/BioGeMT/agentomics-ml/commit/0d11d7a6283e83413ee2d879ba7d0c35aad8aba6))
+
 ## [1.1.0](https://github.com/BioGeMT/agentomics-ml/compare/v1.0.6...v1.1.0) (2026-08-24)
 
 
