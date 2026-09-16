@@ -139,11 +139,6 @@ def add_run_arguments(parser: argparse.ArgumentParser) -> None:
         help="Spend limit for the temporary OpenRouter key",
     )
     operational_arguments.add_argument(
-        "--test",
-        action="store_true",
-        help="Run the project's integrated test suite instead of an agent run",
-    )
-    operational_arguments.add_argument(
         "--cpu-only",
         action="store_true",
         help="Disable GPU access",

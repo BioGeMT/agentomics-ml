@@ -16,12 +16,20 @@ from agentomics.runtime.run_lifecycle import run_agentomics
 from agentomics.utils.config import Config
 from agentomics.run_logging.env_utils import are_wandb_vars_available
 from agentomics.utils.printing_utils import print_phase
-from agentomics.utils.providers.provider import get_provider_from_string
+from agentomics.utils.providers.provider import Provider
+
+
+def initialize_run(config: Config, dataset_metadata: dict) -> None:
+    initialize_run_directories(config)
+    config.wandb_run_id = setup_logging(config) if are_wandb_vars_available() else None
+    save_config(config)
+    save_dataset_metadata(config, dataset_metadata)
+    initialize_repo_if_needed(config)
 
 
 async def run_experiment(
-    model: str,
-    iteration_plan_model: str,
+    model_name: str,
+    iteration_plan_model_name: str,
     dataset_name: str,
     task_type: str,
     val_metric: str,
@@ -30,7 +38,7 @@ async def run_experiment(
     tags: list[str],
     iterations: int,
     user_prompt: str,
-    provider: str,
+    provider: Provider,
     timeout: int | None,
     split_timeout: int | None,
     run_python_timeout: int,
@@ -51,9 +59,9 @@ async def run_experiment(
     agent_id = os.getenv("AGENT_ID")
     config = Config(
         agent_id=agent_id,
-        model_name=model,
-        iteration_plan_model_name=iteration_plan_model,
-        provider_name=provider,
+        model_name=model_name,
+        iteration_plan_model_name=iteration_plan_model_name,
+        provider_name=provider.name,
         dataset=dataset_name,
         tags=tags,
         val_metric=val_metric,
@@ -73,17 +81,12 @@ async def run_experiment(
         conda_export_mode=conda_export_mode
     )
     print_phase("Agentomics run started")
-    initialize_run_directories(config)
-    config.wandb_run_id = setup_logging(config) if are_wandb_vars_available() else None
-    save_config(config)
-    save_dataset_metadata(config, dataset_metadata)
-    initialize_repo_if_needed(config)
+    initialize_run(config, dataset_metadata)
 
     config.print_summary()
 
-    provider_obj = get_provider_from_string(config.provider_name)
-    default_model = provider_obj.create_model(config.model_name, config)
-    iteration_plan_model = provider_obj.create_model(config.iteration_plan_model_name, config)
+    default_model = provider.create_model(config.model_name, config)
+    iteration_plan_model = provider.create_model(config.iteration_plan_model_name, config)
 
     run_fn = run_agentomics
     if timeout is not None:
@@ -95,7 +98,7 @@ async def run_experiment(
             config=config,
             default_model=default_model,
             iteration_plan_model=iteration_plan_model,
-            provider=provider_obj,
+            provider=provider,
         )
     except TimeoutError:
         print("Timeout reached")

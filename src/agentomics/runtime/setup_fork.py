@@ -7,12 +7,10 @@ from dataclasses import replace
 from pathlib import Path
 
 from agentomics.datasets.data_contract import PREPARED_DATASETS_DIR_NAME
-from agentomics.runtime.conda_utils import (
-    ensure_environment_from_descriptor,
-    get_shared_environment_path,
-)
+from agentomics.runtime.conda_utils import ensure_environment_from_descriptor
 from agentomics.runtime.git_checkpoints import create_and_checkout_branch_at_checkpoint
 from agentomics.runtime.read_write_utils import load_config_from_run_dir, replace_string_in_tree_files
+from agentomics.runtime.read_write_utils import save_config
 from agentomics.utils.config import Config
 
 
@@ -66,14 +64,16 @@ def fork_run(
     replace_string_in_tree_files(target_workspace_dir, str(source_workspace_dir), str(target_workspace_dir), skip_dirs={".conda", ".git"})
 
     # Rebuild the checkpoint's dependencies on container-local Linux storage.
+    target_config = load_config_from_run_dir(target_run_dir)
     target_config = replace(
-        source_config,
+        target_config,
         agent_id=target_agent_id,
         workspace_dir=str(target_workspace_dir),
     )
+    save_config(target_config)
     ensure_environment_from_descriptor(
         target_run_dir / Config.SHARED_DIRNAME / Config.ENVIRONMENT_DESCRIPTOR_FILENAME,
-        get_shared_environment_path(target_config),
+        target_config.shared_environment_path,
     )
 
 

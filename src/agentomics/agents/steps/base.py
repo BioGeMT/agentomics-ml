@@ -82,7 +82,7 @@ class RuntimeStep(ABC):
     def on_step_success(self, output: Any) -> None:
         save_step_output(self.config, self.step_id, output)
         export_shared_environment_descriptor(self.config)
-        self._archive_step_folder()
+        self.archive_step_folder()
         commit_step_checkpoint(self.config, iteration=load_current_iteration_index(self.config), step_id=self.step_id)
 
     def on_iteration_start(self, iteration: int) -> None:
@@ -94,7 +94,7 @@ class RuntimeStep(ABC):
     def on_iteration_end(self, iteration: int) -> None:
         return None
     
-    def _archive_step_folder(self) -> None:
+    def archive_step_folder(self) -> None:
         step_dir = self.config.current_step_dir
         archived_dir = self.config.archived_step_dir(self.step_id)
         rewrite_symlinks_to_absolute(step_dir)

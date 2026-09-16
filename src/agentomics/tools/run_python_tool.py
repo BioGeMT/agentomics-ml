@@ -2,7 +2,6 @@ import time
 
 from pydantic_ai import Tool
 from pathlib import Path
-from agentomics.runtime.conda_utils import get_shared_environment_path
 from .bash_tool import BashProcess
 from agentomics.utils.config import Config
 
@@ -31,7 +30,7 @@ def create_run_python_tool(config: Config):
         if not str(Path(python_file_path).resolve()).startswith(str(config.current_iteration_dir.resolve())):
             return f"{python_file_path} must be inside the current iteration directory ({config.current_iteration_dir})"
 
-        env_path = get_shared_environment_path(config)
+        env_path = config.shared_environment_path
         if args and args.strip():
             command = f"conda run -p {env_path} --no-capture-output python {python_file_path} {args.strip()}"
         else:

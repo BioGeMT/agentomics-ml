@@ -6,6 +6,7 @@ import sys
 import httpx
 import requests
 
+from pydantic_ai.models import Model
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.settings import ModelSettings
@@ -93,7 +94,7 @@ class Provider():
         
         return None
     
-    def create_model(self, model_name: str, config: Config) -> OpenAIModel:
+    def create_model(self, model_name: str, config: Config) -> Model:
           """Create pydantic-ai model instance (OpenAI sdk friendly). Override in subclasses when necessary."""
           proxy_url = os.getenv("HTTP_PROXY")
           async_http_client = httpx.AsyncClient(
@@ -166,6 +167,9 @@ class Provider():
         elif name_lower == "codex":
             from .codex_provider import CodexProvider
             return CodexProvider(base_url, provider_config["list_models_endpoint"])
+        elif name_lower == "scripted":
+            from tests.support.scripted_workflow import ScriptedProvider
+            return ScriptedProvider()
         # elif name_lower == "googleai": requires pydanticai version update
         #     from .googleai_provider import GoogleAiProvider
         #     return GoogleAiProvider(api_key, base_url, list_models_endpoint)
@@ -214,8 +218,11 @@ def choose_provider(available_keys) -> int:
     prompt = "Multiple provider API keys found. Select the provider to use:"
     return get_user_input_for_int(prompt, default=1, valid_options=list(range(1, len(available_keys)+1)))
 
-def get_provider_and_api_key(preferred_provider: str = None) -> tuple[str, str]:
+def get_provider_and_api_key(preferred_provider: str | None = None) -> tuple[str, str]:
     """Get provider name and API key from environment variables. If multiple keys are found, prompt user to select one."""
+    if preferred_provider and preferred_provider.lower() == "scripted":
+        return "", "Scripted"
+
     console = Console()
 
     api_keys_provided = get_provided_api_keys()

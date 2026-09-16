@@ -14,7 +14,6 @@ from agentomics.runtime.conda_utils import (
     export_environment_descriptor_to_path,
     get_iteration_environment_archive_path,
     get_iteration_environment_descriptor_path,
-    get_shared_environment_path,
 )
 from agentomics.runtime.filesystem import remove_path
 from agentomics.runtime.step_outputs import load_step_output
@@ -52,7 +51,7 @@ def update_best_iteration_snapshot(config: Config, iteration: int) -> None:
 
 def _publish_best_iteration_snapshot(config: Config, source_dir: Path) -> None:
     best_iteration_snapshot_dir = config.best_iteration_snapshot_dir
-    conda_env = get_shared_environment_path(config)
+    conda_env = config.shared_environment_path
     if not conda_env.exists():
         raise FileNotFoundError(
             f"Cannot publish the best iteration snapshot because the shared Conda environment is missing at {conda_env}."

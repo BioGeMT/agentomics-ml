@@ -24,6 +24,11 @@ providers:
     base_url: "http://localhost:11434/v1"
     list_models_endpoint: "http://localhost:11434/api/tags"
 
+  - name: "Scripted"
+    apikey: ""
+    base_url: ""
+    list_models_endpoint: ""
+
   #Custom provider example
   # - name: "Vercel"
   #   apikey: "${VERCEL_API_KEY}"

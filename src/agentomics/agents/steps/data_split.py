@@ -58,6 +58,31 @@ class DataSplitStep(AgenticStep):
     display_name = "SPLITTING"
     output_type = DataSplitOutput
 
+    @staticmethod
+    def validate_generated_split(split_path: Path, dataset_dir: Path) -> None:
+        try:
+            validate_symlinks_targets_in(split_path, dataset_dir)
+        except ValueError as e:
+            raise ModelRetry(str(e))
+
+        dataset_train_input = dataset_dir / TRAIN_SPLIT / INPUT_DIR_NAME
+        split_input = split_path / INPUT_DIR_NAME
+        copied_files = []
+        for path in split_input.rglob("*"):
+            if path.is_symlink() or path.is_dir():
+                continue
+            # Assumes split mirrors the original structure.
+            # If the agent reorganized files, original.is_file() is False and we skip — no false positives but could have some false negatives.
+            original = dataset_train_input / path.relative_to(split_input)
+            if original.is_file() and path.stat().st_size == original.stat().st_size:
+                copied_files.append(path)
+        if copied_files:
+            names = [str(c.relative_to(split_path)) for c in copied_files[:10]]
+            raise ModelRetry(
+                f"Files in {split_path.name}/input/ that exist unchanged in the source dataset "
+                f"must be symbolic links, not copies. Up to first 10: {names}"
+            )
+
     CLASSIFICATION_MINI_TRAIN_SAMPLES_PER_CLASS = 100
     REGRESSION_MINI_TRAIN_SAMPLE_COUNT = 100
 
@@ -109,25 +134,6 @@ class DataSplitStep(AgenticStep):
                 f"mini_train must have exactly {expected_count} samples "
                 f"(min({self.REGRESSION_MINI_TRAIN_SAMPLE_COUNT}, {len(train_df)}) available in train), "
                 f"got {len(mini_train_df)}."
-            )
-
-    def _raise_on_unnecessary_copies(self, split_path: Path) -> None:
-        dataset_train_input = self.config.dataset_dir / TRAIN_SPLIT / INPUT_DIR_NAME
-        split_input = split_path / INPUT_DIR_NAME
-        copied_files = []
-        for path in split_input.rglob("*"):
-            if path.is_symlink() or path.is_dir():
-                continue
-            # Assumes split mirrors the original structure.
-            # If the agent reorganized files, original.is_file() is False and we skip — no false positives but could have some false negatives.
-            original = dataset_train_input / path.relative_to(split_input)
-            if original.is_file() and path.stat().st_size == original.stat().st_size:
-                copied_files.append(path)
-        if copied_files:
-            names = [str(c.relative_to(split_path)) for c in copied_files[:10]]
-            raise ModelRetry(
-                f"Files in {split_path.name}/input/ that exist unchanged in the source dataset "
-                f"must be symbolic links, not copies. Up to first 10: {names}"
             )
 
     def _move_split_to_versioned_dir(self, result: DataSplitOutput, flag_as_changed: bool) -> DataSplitOutput:
@@ -209,11 +215,7 @@ class DataSplitStep(AgenticStep):
             if not train_path.is_relative_to(self.config.splits_dir) or not val_path.is_relative_to(self.config.splits_dir) or not mini_train_path.is_relative_to(self.config.splits_dir):
                 split_paths_to_validate = [mini_train_path] if is_mini_train_only else [train_path, val_path, mini_train_path]
                 for split_path in split_paths_to_validate:
-                    try:
-                        validate_symlinks_targets_in(split_path, self.config.dataset_dir)
-                    except ValueError as e:
-                        raise ModelRetry(str(e))
-                    self._raise_on_unnecessary_copies(split_path)
+                    self.validate_generated_split(split_path, self.config.dataset_dir)
                     rewrite_symlinks_to_absolute(split_path)
                 result = self._move_split_to_versioned_dir(result, flag_as_changed=not is_mini_train_only)
             else:

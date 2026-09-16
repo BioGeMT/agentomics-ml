@@ -95,7 +95,6 @@ def _build_container_arguments(arguments: argparse.Namespace) -> list[str]:
         workflow_arguments.extend(arguments.tags)
     for option, enabled in (
         ("--use-provisioning-key", arguments.use_provisioning_key),
-        ("--test", arguments.test),
         ("--cpu-only", arguments.cpu_only),
         ("--disable-training-reporting", arguments.disable_training_reporting),
         ("--list-models", arguments.list_models),
@@ -162,9 +161,10 @@ def _resolve_dataset(
     return dataset_directory
 
 
-def _build_dataset_mounts(
+def build_dataset_mounts(
     dataset_directory: Path | None,
 ) -> list[str]:
+    """Build Docker mounts exposing only allowlisted public dataset entries."""
     mounts = [f"type=tmpfs,dst={CONTAINER_DATASETS_DIRECTORY}"]
     if dataset_directory is None:
         return mounts
@@ -258,6 +258,7 @@ def _run_inference_on_test_input(
             ),
             label_col=None,
             iteration_dir=Path(Config.BEST_ITERATION_SNAPSHOT_DIRNAME),
+            artifacts_dir=None,
             all_iterations=False,
             cpu_only=cpu_only,
             wandb_prefix=test_input.name,
@@ -355,8 +356,7 @@ def _run_reporting_in_docker(
 def _is_agent_run(arguments: argparse.Namespace) -> bool:
     # TODO: Replace this implicit check with explicit command modes.
     return not (
-        arguments.test
-        or arguments.list_models
+        arguments.list_models
         or arguments.list_datasets
         or arguments.list_metrics
     )
@@ -397,7 +397,7 @@ def main() -> int:
             return 1
 
     workspace_directory = _resolve_workspace(arguments.workspace_dir, agent_id)
-    dataset_mounts = _build_dataset_mounts(dataset_directory)
+    dataset_mounts = build_dataset_mounts(dataset_directory)
     try:
         exit_code = _run_agent_in_docker(
             arguments,
