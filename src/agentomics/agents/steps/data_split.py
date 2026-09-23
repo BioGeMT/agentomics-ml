@@ -57,6 +57,8 @@ class DataSplitStep(AgenticStep):
     step_id = "data_split"
     display_name = "SPLITTING"
     output_type = DataSplitOutput
+    CLASSIFICATION_MINI_TRAIN_SAMPLES_PER_CLASS = 100
+    REGRESSION_MINI_TRAIN_SAMPLE_COUNT = 100
 
     @staticmethod
     def validate_generated_split(split_path: Path, dataset_dir: Path) -> None:
@@ -83,8 +85,6 @@ class DataSplitStep(AgenticStep):
                 f"must be symbolic links, not copies. Up to first 10: {names}"
             )
 
-    CLASSIFICATION_MINI_TRAIN_SAMPLES_PER_CLASS = 100
-    REGRESSION_MINI_TRAIN_SAMPLE_COUNT = 100
 
     def _get_latest_split_strategy(self) -> str:
         iteration = get_last_successful_iteration(self.config)
