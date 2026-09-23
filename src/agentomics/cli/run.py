@@ -110,8 +110,8 @@ def _docker_environment_arguments(agent_id: str) -> list[str]:
         "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY",
         "PROVISIONING_OPENROUTER_API_KEY", "OLLAMA_BASE_URL",
         "WANDB_API_KEY", "WANDB_PROJECT_NAME", "WANDB_ENTITY",
-        "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
-        "http_proxy", "https_proxy", "all_proxy", "CUDA_VISIBLE_DEVICES",
+        "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
+        "http_proxy", "https_proxy", "all_proxy", "no_proxy", "CUDA_VISIBLE_DEVICES",
     )
     docker_arguments.extend(["-e", f"AGENT_ID={agent_id}"])
     if sys.stdin.isatty() and sys.stdout.isatty():

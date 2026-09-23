@@ -102,9 +102,11 @@ def _run_inference_with_resolved_paths(arguments: argparse.Namespace) -> int:
             "HTTP_PROXY",
             "HTTPS_PROXY",
             "ALL_PROXY",
+            "NO_PROXY",
             "http_proxy",
             "https_proxy",
             "all_proxy",
+            "no_proxy",
         ),
         check=False,
     )
