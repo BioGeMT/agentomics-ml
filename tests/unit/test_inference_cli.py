@@ -29,11 +29,12 @@ def test_inference_rejects_invalid_artifact_directories_before_execution(
 def test_inference_requires_one_iteration_when_artifacts_are_supplied(tmp_path: Path):
     artifacts = tmp_path / "artifacts"
     artifacts.mkdir()
-    arguments = build_parser().parse_args([
-        "--agent-dir", str(tmp_path), "--input", str(tmp_path),
-        "--output", str(tmp_path / "predictions.csv"),
-        "--artifacts-dir", str(artifacts), "--all-iterations",
-    ])
 
-    with pytest.raises(ValueError, match="--artifacts-dir cannot be used with --all-iterations"):
-        run_inference_in_docker(arguments)
+    with pytest.raises(SystemExit) as error:
+        build_parser().parse_args([
+            "--agent-dir", str(tmp_path), "--input", str(tmp_path),
+            "--output", str(tmp_path / "predictions.csv"),
+            "--artifacts-dir", str(artifacts), "--all-iterations",
+        ])
+
+    assert error.value.code == 2

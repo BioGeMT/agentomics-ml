@@ -36,14 +36,15 @@ def build_parser() -> argparse.ArgumentParser:
         default=Path(Config.BEST_ITERATION_SNAPSHOT_DIRNAME),
         help="Iteration directory relative to --agent-dir",
     )
-    parser.add_argument(
+    artifacts_source_options = parser.add_mutually_exclusive_group()
+    artifacts_source_options.add_argument(
         "--artifacts-dir", type=Path,
         help=(
             "Use these model artifacts instead of the selected iteration's original artifacts "
             "(cannot be combined with --all-iterations)"
         ),
     )
-    parser.add_argument(
+    artifacts_source_options.add_argument(
         "--all-iterations", action="store_true",
         help="Run every archived iteration",
     )
