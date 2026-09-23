@@ -26,13 +26,15 @@ def cli():
         root = Path(directory).resolve()
         home = root / "home"
         home.mkdir()
-        # Allowlist transport essentials; do not inherit provider credentials,
-        # proxies, Python startup hooks, or optional remote logging settings.
+        # Allowlist transport essentials and the proxy variables. 
+        # Do not inherit provider credentials, Python startup hooks, or optional remote logging settings.
         environment = {
             key: value for key, value in os.environ.items()
             if key in {
                 "PATH", "DOCKER_HOST", "DOCKER_CONTEXT", "DOCKER_CONFIG",
                 "DOCKER_TLS_VERIFY", "DOCKER_CERT_PATH", "XDG_RUNTIME_DIR",
+                "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
+                "http_proxy", "https_proxy", "all_proxy",
             }
         }
         docker_config = Path.home() / ".docker"
