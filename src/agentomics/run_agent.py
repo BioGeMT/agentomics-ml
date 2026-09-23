@@ -9,7 +9,7 @@ from agentomics.run_logging.wandb_setup import setup_logging
 from agentomics.runtime.git_checkpoints import initialize_repo_if_needed
 from agentomics.runtime.read_write_utils import (
     initialize_run_directories,
-    save_config,
+    save_config_to_file,
     save_dataset_metadata,
 )
 from agentomics.runtime.run_lifecycle import run_agentomics
@@ -22,7 +22,7 @@ from agentomics.utils.providers.provider import Provider
 def initialize_run(config: Config, dataset_metadata: dict) -> None:
     initialize_run_directories(config)
     config.wandb_run_id = setup_logging(config) if are_wandb_vars_available() else None
-    save_config(config)
+    save_config_to_file(config)
     save_dataset_metadata(config, dataset_metadata)
     initialize_repo_if_needed(config)
 

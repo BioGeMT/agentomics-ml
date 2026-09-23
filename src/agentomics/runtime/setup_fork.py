@@ -10,7 +10,7 @@ from agentomics.datasets.data_contract import PREPARED_DATASETS_DIR_NAME
 from agentomics.runtime.conda_utils import ensure_environment_from_descriptor
 from agentomics.runtime.git_checkpoints import create_and_checkout_branch_at_checkpoint
 from agentomics.runtime.read_write_utils import load_config_from_run_dir, replace_string_in_tree_files
-from agentomics.runtime.read_write_utils import save_config
+from agentomics.runtime.read_write_utils import save_config_to_file
 from agentomics.utils.config import Config
 
 
@@ -70,7 +70,7 @@ def fork_run(
         agent_id=target_agent_id,
         workspace_dir=str(target_workspace_dir),
     )
-    save_config(target_config)
+    save_config_to_file(target_config)
     ensure_environment_from_descriptor(
         target_run_dir / Config.SHARED_DIRNAME / Config.ENVIRONMENT_DESCRIPTOR_FILENAME,
         target_config.shared_environment_path,
