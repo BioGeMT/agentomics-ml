@@ -95,7 +95,7 @@ class Provider():
         return None
     
     def create_model(self, model_name: str, config: Config) -> Model:
-          """Create pydantic-ai model instance (OpenAI sdk friendly). Override in subclasses when necessary."""
+          """Create a pydantic-ai model instance. Subclasses may override this method."""
           proxy_url = os.getenv("HTTP_PROXY")
           async_http_client = httpx.AsyncClient(
               proxy=proxy_url if config.use_proxy else None,
