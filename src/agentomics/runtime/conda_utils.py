@@ -218,7 +218,7 @@ def _collect_environment_packages(
         (
             (name, version)
             for norm, (name, version) in conda_managed.items()
-            if norm not in pip_owned and norm not in conda_replaced_by_pip
+            if norm not in conda_replaced_by_pip
         ),
         key=lambda x: x[0],
     )
