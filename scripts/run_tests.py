@@ -11,6 +11,8 @@ from agentomics.cli.docker_utils import (
     build_development_image,
     run_python_in_docker,
     validate_docker_gpu_access,
+    proxy_build_arguments,
+
 )
 
 
@@ -33,7 +35,7 @@ def main(argv: list[str] | None = None) -> int:
         validate_docker_gpu_access(image)
 
     container_name = f"agentomics-tests-{uuid4().hex}"
-    docker_arguments = ["--name", container_name, "--pull", "never"]
+    docker_arguments = ["--name", container_name, "--pull", "never", *proxy_build_arguments()] 
     if arguments.cpu_only:
         docker_arguments.extend(["-e", "CUDA_VISIBLE_DEVICES="])
     try:

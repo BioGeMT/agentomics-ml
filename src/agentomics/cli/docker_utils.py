@@ -47,7 +47,7 @@ def _resolve_proxy_env_vars() -> dict[str, str]:
             env_vars[lower_name] = value
     return env_vars
 
-def _proxy_build_arguments() -> list[str]:
+def proxy_build_arguments() -> list[str]:
     arguments: list[str] = []
     for name, value in _resolve_proxy_env_vars().items():
         arguments.extend(["--build-arg", f"{name}={value}"])
@@ -90,7 +90,7 @@ def build_development_image() -> str:
         [
             "docker",
             "build",
-            *_proxy_build_arguments(),
+            *proxy_build_arguments(),
             "--build-arg",
             "REPOSITORY_SOURCE=.",
             "-t",
