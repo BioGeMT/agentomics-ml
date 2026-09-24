@@ -274,11 +274,17 @@ def _iter_python_metadata_paths(env_path: Path, conda_record: dict) -> list[Path
 
 
 def _read_distribution_name(metadata_path: Path) -> str | None:
-    if not metadata_path.exists():
-        return None
-    for line in metadata_path.read_text(encoding="utf-8", errors="replace").splitlines():
-        if line.startswith("Name: "):
-            return line.removeprefix("Name: ").strip()
+    if metadata_path.is_file():
+        for line in metadata_path.read_text(encoding="utf-8", errors="replace").splitlines():
+            if line.startswith("Name: "):
+                return line.removeprefix("Name: ").strip()
+    # pip can delete METADATA, the file containing a Python package's name.
+    # Conda still records its path (e.g. chardet-5.2.0.dist-info/METADATA).
+    # Take the directory name before the final "-<version>" as the package name.
+    directory = metadata_path.parent
+    if directory.suffix == ".dist-info" and "-" in directory.stem:
+        name, _version = directory.stem.rsplit("-", 1)
+        return name
     return None
 
 
