@@ -123,8 +123,9 @@ def test_pip_conda_pip_installation_order_survives_environment_recreation(
     )
     assert _imported_module_version(source_environment, module_name) == conda_version
 
+    # Without --force-reinstall, pip may correctly report the requirement as satisfied without overwriting the conda package.
     subprocess.run(
-        [str(source_environment / "bin" / "python"), "-m", "pip", "install", pip_requirement],
+        [str(source_environment / "bin" / "python"), "-m", "pip", "install", "--force-reinstall", pip_requirement],
         check=True,
     )
     assert _imported_module_version(source_environment, module_name) == pip_version
