@@ -31,6 +31,10 @@ def resolve_inference_paths(arguments: Namespace) -> None:
     arguments.agent_dir = resolve_existing_directory(arguments.agent_dir)
     arguments.input_path = resolve_existing_path(arguments.input_path)
     arguments.output = resolve_output_path(arguments.output)
+    if arguments.artifacts_dir is not None:
+        if arguments.all_iterations:
+            raise ValueError("--artifacts-dir cannot be used with --all-iterations")
+        arguments.artifacts_dir = resolve_existing_directory(arguments.artifacts_dir)
 
 def require_empty_directory(path: Path) -> None:
     if path.exists() and not path.is_dir():

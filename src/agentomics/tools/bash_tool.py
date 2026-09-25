@@ -6,7 +6,6 @@ import os
 import time
 
 from pydantic_ai import Tool
-from agentomics.runtime.conda_utils import get_shared_environment_path
 from agentomics.utils.config import Config
 from agentomics.utils.text_processing_utils import collapse_repeated_lines, concise_output
 
@@ -101,7 +100,7 @@ def create_bash_tool(config: Config):
                 command: A valid bash command.
             """  
             start_time = time.time()
-            env_path = get_shared_environment_path(config)
+            env_path = config.shared_environment_path
             command_parsed = shlex.quote(command)
             command = f"conda run -p {env_path} --no-capture-output bash -c {command_parsed}"
             command = f"runuser -u {config.AGENT_USER} -- {command}"

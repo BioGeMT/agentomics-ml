@@ -194,6 +194,8 @@ CLAUDE.md
 # AI agent instructions (Codex, Devin, etc.)
 AGENTS.md
 .agents/
+.scratch/
+CONTEXT.md
 
 # Folders
 .genomic_benchmarks
