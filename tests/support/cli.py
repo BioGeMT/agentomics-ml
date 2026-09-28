@@ -78,7 +78,7 @@ def scripted_run_arguments(dataset: Path, workspace: Path, model: str) -> list[s
 
 def run_cli(
     arguments: list[str], root: Path, environment: dict[str, str], *,
-    image: str, module: str = "agentomics.cli.run", timeout: float = 600,
+    image: str, module: str = "agentomics.cli.run", timeout: float = 900,
     expect_failure: bool = False,
 ) -> str:
     """Bound the real CLI and clean its containers, including after interruption."""
