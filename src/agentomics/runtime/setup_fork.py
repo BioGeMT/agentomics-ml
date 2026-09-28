@@ -9,8 +9,7 @@ from pathlib import Path
 from agentomics.datasets.data_contract import PREPARED_DATASETS_DIR_NAME
 from agentomics.runtime.conda_utils import ensure_environment_from_descriptor
 from agentomics.runtime.git_checkpoints import create_and_checkout_branch_at_checkpoint
-from agentomics.runtime.read_write_utils import load_config_from_run_dir, replace_string_in_tree_files
-from agentomics.runtime.read_write_utils import save_config_to_file
+from agentomics.runtime.read_write_utils import load_config_from_run_dir, replace_string_in_tree_files, save_config_to_file
 from agentomics.utils.config import Config
 
 
