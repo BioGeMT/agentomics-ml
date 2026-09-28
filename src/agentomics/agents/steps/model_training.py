@@ -13,7 +13,6 @@ from pydantic_ai import Agent, ModelRetry, RunContext
 import agentomics.agents.injectables.training_reporter as _training_reporter_module
 from agentomics.agents.steps.base import AgenticStep, AgenticStepOutput
 from agentomics.agents.steps.data_split import DataSplitStep
-from agentomics.runtime.conda_utils import get_shared_environment_path
 from agentomics.datasets.data_contract import SUPPLEMENTARY_DIR_NAME
 from agentomics.utils.task_types import TaskTypes
 from agentomics.runtime.read_write_utils import does_file_contain_iteration_pattern, does_file_contain_string
@@ -167,7 +166,7 @@ class ModelTrainingStep(AgenticStep):
 
     def _validate_training_run(self, train_data_path: str, valid_data_path: str, train_script_path: str, model_file_name: str) -> list[str]:
         run_dir = self.config.current_iteration_dir
-        conda_path = get_shared_environment_path(self.config)
+        conda_path = self.config.shared_environment_path
         command_prefix = f"cd {run_dir} && conda run -p {conda_path}"
 
         temp_artifacts_dir = run_dir / "temp_retrain_artifacts"

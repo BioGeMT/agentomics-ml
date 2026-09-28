@@ -1,14 +1,18 @@
 # Local Development
 
-## How to test changes locally
-
 Install Agentomics in editable mode (one time setup) from the repository root:
 
 ```bash
 pip install -e .
 ```
 
-Use `--dev` to test changes with any Docker-backed command.
+## Running tests
+
+See [How to run tests in CONTRIBUTING.md](https://github.com/BioGeMT/Agentomics-ML/blob/main/CONTRIBUTING.md#how-to-run-tests).
+
+## Running application changes locally
+
+Use `--dev` with any Docker-backed command.
 These must be run from the repository root.
 
 ```bash

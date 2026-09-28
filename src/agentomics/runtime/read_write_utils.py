@@ -26,7 +26,7 @@ def initialize_run_directories(config: Config) -> None:
     config.best_iteration_snapshot_dir.mkdir(parents=True, exist_ok=True)
     config.splits_dir.mkdir(parents=True, exist_ok=True)
 
-def save_config(config: Config) -> None:
+def save_config_to_file(config: Config) -> None:
     config.config_path.parent.mkdir(parents=True, exist_ok=True)
     config.config_path.write_text(json.dumps(asdict(config), indent=2), encoding="utf-8")
 

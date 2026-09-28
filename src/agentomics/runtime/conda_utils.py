@@ -13,27 +13,22 @@ from agentomics.utils.config import Config
 
 ENVIRONMENT_ARCHIVE_FILENAME = "environment.tar.gz"
 
-def get_shared_environment_path(config: Config) -> Path:
-    return Path("/tmp/agentomics/envs") / f"{config.agent_id}_env"
-
 def initialize_shared_environment(config: Config) -> Path:
     """Initialize the run's shared conda environment independently of agent tools."""
-    environment_path = get_shared_environment_path(config)
-    # Forked runs may already carry a fully initialized shared environment.
-    if (environment_path / "bin" / "activate").exists():
-        return environment_path
-
-    environment_path.mkdir(parents=True, exist_ok=True)
-    subprocess.run(
-        ["tar", "-xf", os.environ["START_ENV_PKG"], "-C", str(environment_path)],
-        cwd=config.shared_dir,
-        check=True,
-    )
-    subprocess.run(
-        [str(environment_path / "bin" / "conda-unpack")],
-        cwd=config.shared_dir,
-        check=True,
-    )
+    environment_path = config.shared_environment_path
+    # Preserve forked run environment.
+    if not (environment_path / "conda-meta" / "history").is_file():
+        environment_path.mkdir(parents=True, exist_ok=True)
+        subprocess.run(
+            ["tar", "-xf", os.environ["START_ENV_PKG"], "-C", str(environment_path)],
+            cwd=config.shared_dir,
+            check=True,
+        )
+        subprocess.run(
+            [str(environment_path / "bin" / "conda-unpack")],
+            cwd=config.shared_dir,
+            check=True,
+        )
 
     subprocess.run(
         ["chown", "-R", config.AGENT_USER, str(environment_path)],
@@ -160,7 +155,7 @@ def run_python_in_environment(
     )
 
 def export_shared_environment_descriptor(config: Config) -> None:
-    conda_env = get_shared_environment_path(config)
+    conda_env = config.shared_environment_path
     export_environment_descriptor_to_path(
         env_path=conda_env,
         descriptor_path=config.shared_dir / Config.ENVIRONMENT_DESCRIPTOR_FILENAME,
@@ -223,7 +218,7 @@ def _collect_environment_packages(
         (
             (name, version)
             for norm, (name, version) in conda_managed.items()
-            if norm not in pip_owned and norm not in conda_replaced_by_pip
+            if norm not in conda_replaced_by_pip
         ),
         key=lambda x: x[0],
     )
@@ -279,11 +274,17 @@ def _iter_python_metadata_paths(env_path: Path, conda_record: dict) -> list[Path
 
 
 def _read_distribution_name(metadata_path: Path) -> str | None:
-    if not metadata_path.exists():
-        return None
-    for line in metadata_path.read_text(encoding="utf-8", errors="replace").splitlines():
-        if line.startswith("Name: "):
-            return line.removeprefix("Name: ").strip()
+    if metadata_path.is_file():
+        for line in metadata_path.read_text(encoding="utf-8", errors="replace").splitlines():
+            if line.startswith("Name: "):
+                return line.removeprefix("Name: ").strip()
+    # pip can delete METADATA, the file containing a Python package's name.
+    # Conda still records its path (e.g. chardet-5.2.0.dist-info/METADATA).
+    # Take the directory name before the final "-<version>" as the package name.
+    directory = metadata_path.parent
+    if directory.suffix == ".dist-info" and "-" in directory.stem:
+        name, _version = directory.stem.rsplit("-", 1)
+        return name
     return None
 
 

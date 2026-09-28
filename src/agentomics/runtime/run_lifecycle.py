@@ -52,7 +52,7 @@ async def run_agentomics(config: Config, default_model: Model, iteration_plan_mo
 
 @weave.op(call_display_name=lambda call: f"Iteration: {call.inputs['iteration']}")
 async def _run_iteration(config: Config, iteration: int, default_model: Model, iteration_plan_model: Model, provider: Provider, tools: list[Tool]):
-    _prepare_iteration_workspace(config=config, iteration=iteration)
+    prepare_iteration_workspace(config=config, iteration=iteration)
     steps = [step_cls(config, default_model, iteration_plan_model, provider, tools) for step_cls in get_step_sequence(config)]
     for step in steps:
         step.on_iteration_start(iteration)
@@ -80,7 +80,7 @@ async def _run_iteration(config: Config, iteration: int, default_model: Model, i
 
     _enforce_time_deadline(config)
 
-def _prepare_iteration_workspace(config: Config, iteration: int) -> None:
+def prepare_iteration_workspace(config: Config, iteration: int) -> None:
     started_at = time.time()
     initialize_current_iteration_workspace(config)
     initialize_current_iteration_metadata(config, iteration=iteration)

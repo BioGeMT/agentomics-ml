@@ -36,7 +36,8 @@ agentomics-inference \
 | Argument | Description |
 |----------|-------------|
 | `--label-col` | Label column in the input **CSV** — when set, metrics are computed against it and written to `<output>.metrics.json`. Ignored for a split folder; there, metrics run only if the folder has a `labels.csv` |
-| `--iteration-dir` | Iteration directory to use, relative to `--agent-dir` (default: `best_iteration_snapshot`) |
+| `--iteration-dir` | Iteration supplying the inference script and environment, relative to `--agent-dir` (default: `best_iteration_snapshot`) |
+| `--artifacts-dir` | Existing directory of model artifacts to use instead of the selected iteration's original artifacts; cannot be combined with `--all-iterations` |
 | `--all-iterations` | Run inference for every `run/iteration_N` against `--input` (see below) |
 | `--cpu-only` | Run without GPU |
 | `--image` | Docker image to use (default: `biogemt/agentomics:<installed-package-version>`; use this option for an explicit override) |
@@ -45,7 +46,8 @@ agentomics-inference \
 ## Docker Execution
 
 Docker is the default execution mode. The command mounts the agent directory,
-input, and output directory into the configured image automatically:
+input, and any supplied artifact directory read-only. The output directory is
+mounted writable:
 
 ```bash
 agentomics-inference \
@@ -135,6 +137,20 @@ Per-iteration predictions are written to `preds/<iteration>_predictions.csv`
 iteration's environment is rebuilt and removed in turn, and a failing iteration
 warns and continues.
 
+
+## Using Retrained Artifacts
+
+Use `--artifacts-dir` to run inference with [Retrained Artifacts](training.md) instead of the original artifacts.
+
+```bash
+agentomics-inference \
+  --agent-dir outputs/<agent_id> \
+  --artifacts-dir /path/to/output_artifacts \
+  --input /path/to/data.csv \
+  --output /path/to/predictions.csv
+```
+
+
 ## What's in best_iteration_snapshot
 
 ```
@@ -171,7 +187,9 @@ differ.
 
 ### "Model file not found"
 
-Check that `best_iteration_snapshot/` contains the model artifacts. If the agent run failed, there may be no trained model.
+Check the directory supplied with `--artifacts-dir`, or the selected iteration's
+`model_training/training_artifacts` directory when that option is omitted.
+If the agent run failed, there may be no trained model.
 
 ### GPU out of memory
 
