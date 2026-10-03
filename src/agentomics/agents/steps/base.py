@@ -113,6 +113,10 @@ class AgenticStepOutput(BaseModel):
         default_factory=list,
         description="List of files created during the step. Populated programmatically.",
     )
+    insights: list[str] = Field(
+        default_factory=list,
+        description="Verified dataset insights worth reusing in future iterations.",
+    )
 
 class AgenticStep(RuntimeStep):
     output_type: type[AgenticStepOutput]
