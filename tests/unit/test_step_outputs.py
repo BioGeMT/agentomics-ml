@@ -23,6 +23,25 @@ def test_save_step_output_rejects_overwriting_current_output(config_factory):
         save_step_output(config, "data_exploration", {"summary": "second"})
 
 
+def test_step_output_insights_survive_save_and_load(config_factory):
+    from agentomics.agents.steps.data_exploration import DataExplorationOutput
+
+    config = config_factory()
+    output = DataExplorationOutput(
+        data_description="d",
+        feature_analysis="f",
+        domain_insights="o",
+        id_to_sample_info="rows",
+        insights=["ids in labels.csv need zero-padding"],
+    )
+
+    save_step_output(config, "data_exploration", output)
+    config.current_step_dir.rename(config.current_iteration_dir / "data_exploration")
+    loaded = load_step_output(config, "data_exploration", config.current_iteration_dir)
+
+    assert loaded.insights == ["ids in labels.csv need zero-padding"]
+
+
 def test_load_unknown_step_output_returns_plain_payload(config_factory):
     config = config_factory()
     step_id = "custom_step"
