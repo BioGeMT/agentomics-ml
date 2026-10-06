@@ -24,6 +24,8 @@ class Config:
     ITERATION_STATE_FILENAME: ClassVar[str] = "iteration_state.json"
     ENVIRONMENT_DESCRIPTOR_FILENAME: ClassVar[str] = "environment.yml"
     STEP_OUTPUT_FILENAME: ClassVar[str] = "output.json"
+    FETCHED_PAPERS_DIRNAME: ClassVar[str] = "fetched_papers"
+    PROCESSED_PAPERS_DIRNAME: ClassVar[str] = "processed_papers"
 
     DEFAULT_ITERATIONS: ClassVar[int] = 5
     DEFAULT_SPLIT_ALLOWED_ITERATIONS: ClassVar[int] = 1
@@ -40,6 +42,8 @@ class Config:
         "validation_evaluation",
     ]
     DEFAULT_TOOL_IDS: ClassVar[list[str]] = [
+        "retrieve_paper_chunks",
+        "inspect_image",
         "bash",
         "write_python",
         "run_python",
@@ -140,6 +144,14 @@ class Config:
     @property
     def current_step_dir(self) -> Path:
         return self.current_iteration_dir / "current_step"
+
+    @property
+    def fetched_papers_dir(self) -> Path:
+        return self.shared_dir / self.FETCHED_PAPERS_DIRNAME
+
+    @property
+    def processed_papers_dir(self) -> Path:
+        return self.shared_dir / self.PROCESSED_PAPERS_DIRNAME
 
     @property
     def current_iteration_runtime_info_dir(self) -> Path:
