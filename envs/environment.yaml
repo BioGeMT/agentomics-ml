@@ -21,3 +21,5 @@ dependencies:
     - openai==2.16.0
     - anthropic==0.79.0
     - pytest==9.1.1
+    - pypdf==6.19.0
+    - pypdfium2==5.14.0
