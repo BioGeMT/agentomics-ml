@@ -36,8 +36,8 @@ class Config:
         "model_architecture",
         "model_training",
         "model_inference",
-        "prediction_exploration",
         "validation_evaluation",
+        "prediction_exploration",
     ]
     DEFAULT_TOOL_IDS: ClassVar[list[str]] = [
         "bash",
