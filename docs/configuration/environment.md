@@ -59,6 +59,7 @@ Enable experiment tracking and logging:
 | `WANDB_API_KEY` | Your W&B API key |
 | `WANDB_PROJECT_NAME` | Project name for runs |
 | `WANDB_ENTITY` | Team or username |
+| `WANDB_RUN_GROUP` | Optional group for runs |
 
 ### Example
 
