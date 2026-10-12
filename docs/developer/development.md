@@ -66,7 +66,10 @@ validation metrics to `results.json` in the same folder. The script sets
 `--image`, `--workspace-dir`, and `--tags` itself.
 
 When [W&B is configured](../configuration/environment.md), the runs go to
-the `WANDB_PROJECT_NAME` project, are grouped by variant
-(`<config name>-<timestamp>-<name>`), and are tagged
-`ab:<config name>-<timestamp>`, `variant:<name>`, and `commit:<commit>`.
-Runs on commits from before `WANDB_RUN_GROUP` support are not grouped.
+the `WANDB_PROJECT_NAME` project. All runs of an A/B test are in the group
+`<config name>-<timestamp>`, have the variant name as job type, and are named
+after the variant (`<name>-<replicate>` when `replicates` is more than 1).
+They are also tagged `ab:<config name>-<timestamp>`, `variant:<name>`, and
+`commit:<commit>`. To compare variants, group the runs by Job Type. Runs on
+commits from before `WANDB_RUN_GROUP`, `WANDB_JOB_TYPE`, and `WANDB_NAME`
+support keep the agent ID as name and get no group or job type.

@@ -26,7 +26,7 @@ def setup_logging(config: Config, dir=None):
             project=wandb_project_name,
             tags=config.tags,
             config=vars(config),
-            name=config.agent_id,
+            name=os.getenv("WANDB_NAME", config.agent_id),
         )
         if wandb_entity and wandb_project_name:
             weave.init(f"{wandb_entity}/{wandb_project_name}")

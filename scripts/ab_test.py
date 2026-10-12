@@ -50,7 +50,7 @@ def _build_arguments_from_options(options: dict) -> list[str]:
     return arguments
 
 
-def _run(workspace: Path, name: str, commit: str, arguments: list[str]) -> None:
+def _run(workspace: Path, name: str, run_name: str, commit: str, arguments: list[str]) -> None:
     print(f"Running {workspace.name}", flush=True)
     with open(f"{workspace}.log", "w") as log:
         result = subprocess.run(
@@ -64,7 +64,9 @@ def _run(workspace: Path, name: str, commit: str, arguments: list[str]) -> None:
             env=os.environ | {
                 "PYTHONUNBUFFERED": "1",
                 "PYTHONPATH": str(workspace.parent / "source" / commit / "src"),
-                "WANDB_RUN_GROUP": f"{workspace.parent.name}-{name}",
+                "WANDB_RUN_GROUP": workspace.parent.name,
+                "WANDB_JOB_TYPE": name,
+                "WANDB_NAME": run_name,
             },
         )
     if result.returncode:
@@ -103,7 +105,7 @@ def main() -> int:
     config = tomllib.loads(config_path.read_text())
     experiment_dir = Path("outputs_ab", f"{config_path.stem}-{datetime.now():%Y%m%d-%H%M%S}")
     experiment_dir.mkdir(parents=True)
-    print(f"Writing runs to {experiment_dir} (W&B tag ab:{experiment_dir.name})", flush=True)
+    print(f"Writing runs to {experiment_dir} (W&B group {experiment_dir.name})", flush=True)
 
     variants = []
     for index, variant in enumerate(config["variants"]):
@@ -115,10 +117,12 @@ def main() -> int:
 
     results = []
     results_path = experiment_dir / "results.json"
-    for replicate in range(1, config.get("replicates", 1) + 1):
+    replicates = config.get("replicates", 1)
+    for replicate in range(1, replicates + 1):
         for index, (name, commit, arguments) in enumerate(variants):
             workspace = experiment_dir / f"variant_{index}_replicate_{replicate}"
-            _run(workspace, name, commit, arguments)
+            run_name = name if replicates == 1 else f"{name}-{replicate}"
+            _run(workspace, name, run_name, commit, arguments)
             results.append({"variant": name, "replicate": replicate, "commit": commit,
                             "workspace": str(workspace), **_read_results(workspace)})
             results_path.write_text(json.dumps(results, indent=2))
