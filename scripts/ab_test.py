@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run Agentomics variants side by side."""
 
+import argparse
 import os
 import subprocess
 import sys
@@ -70,11 +71,9 @@ def run(workspace: Path, index: int, commit: str, arguments: list[str]) -> None:
 
 
 def main() -> int:
-    if len(sys.argv) != 2:
-        print("Usage: ab_test.py <config.toml>", file=sys.stderr)
-        return 2
-
-    config_path = Path(sys.argv[1])
+    parser = argparse.ArgumentParser(description="Run Agentomics variants side by side.")
+    parser.add_argument("config", type=Path, help="A/B test config file (TOML)")
+    config_path = parser.parse_args().config
     config = tomllib.loads(config_path.read_text())
     experiment_dir = Path("outputs/ab_tests", f"{config_path.stem}-{datetime.now():%Y%m%d-%H%M%S}")
     experiment_dir.mkdir(parents=True)
