@@ -40,37 +40,13 @@ use the image matching the installed Agentomics version (and pull the correspond
 
 `scripts/ab_test.py` runs Agentomics variants side by side. A variant is a
 commit plus `agentomics-run` options, so variants can differ in code, in
-options, or in both. Copy the example config, edit it, and run it from the
-repository root:
+options, or in both. Copy the
+[example config](https://github.com/BioGeMT/Agentomics-ML/blob/main/scripts/ab_test_example.toml),
+edit it, and run it from the repository root:
 
 ```bash
 cp scripts/ab_test_example.toml my_test.toml
 python scripts/ab_test.py my_test.toml
-```
-
-```toml
-replicates = 1
-
-[shared]
-commit = "main"
-dataset = "breast_cancer"
-provider = "codex"
-iterations = 3
-
-[[variants]]
-name = "luna-main"
-model = "gpt-5.6-luna"
-
-[[variants]]
-name = "sol-classical"
-model = "gpt-5.6-sol"
-user-prompt = "Develop a classical machine learning model (no neural networks) that generalizes well to new unseen data."
-cpu-only = true
-
-[[variants]]
-name = "luna-ab-orchestrator"
-commit = "ab-orchestrator"
-model = "gpt-5.6-luna"
 ```
 
 `[shared]` holds the options every variant gets, and each `[[variants]]` block
