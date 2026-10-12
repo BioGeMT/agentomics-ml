@@ -11,6 +11,7 @@ from datetime import datetime
 from pathlib import Path
 
 from agentomics.cli.docker_utils import resolve_proxy_env_vars
+from agentomics.utils.config import Config
 
 
 def _prepare_commit(name: str, experiment_dir: Path) -> str:
@@ -75,14 +76,20 @@ def _read_json(path: Path) -> dict | None:
 
 
 def _read_results(workspace: Path) -> dict:
-    iterations = sorted(workspace.glob("run/iteration_*"), key=lambda path: int(path.name.removeprefix("iteration_")))
+    run_dir = workspace / Config.RUN_DIRNAME
+    iterations = sorted(
+        run_dir.glob(f"{Config.ITERATION_DIR_PREFIX}*"),
+        key=lambda path: int(path.name.removeprefix(Config.ITERATION_DIR_PREFIX)),
+    )
     return {
-        "config": _read_json(workspace / "run/shared/config.json"),
-        "test_metrics": _read_json(workspace / "best_iteration_snapshot/eval_predictions_test.metrics.json"),
+        "config": _read_json(run_dir / Config.SHARED_DIRNAME / Config.CONFIG_FILENAME),
+        "test_metrics": _read_json(
+            workspace / Config.BEST_ITERATION_SNAPSHOT_DIRNAME / "eval_predictions_test.metrics.json"
+        ),
         "iterations": [
             {
-                "state": _read_json(iteration / "runtime_info/iteration_state.json"),
-                "validation": _read_json(iteration / "validation_evaluation/output.json"),
+                "state": _read_json(iteration / Config.RUNTIME_INFO_DIRNAME / Config.ITERATION_STATE_FILENAME),
+                "validation": _read_json(iteration / "validation_evaluation" / Config.STEP_OUTPUT_FILENAME),
             }
             for iteration in iterations
         ],
