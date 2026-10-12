@@ -34,7 +34,9 @@ class OllamaProvider(Provider):
         if not models:
             self.console.print("Could not fetch models from Ollama", style="red")
             return None
-        
+
+        models = sorted(models, key=lambda m: m.get("details", {}).get("family", "unknown"))
+
         if limit and limit < len(models): models = models[:limit]
 
         self.display_models(models)
@@ -88,9 +90,7 @@ class OllamaProvider(Provider):
         columns = [[] for _ in range(num_cols)]
         col_heights = [0] * num_cols
 
-        sorted_boxes = sorted(family_boxes, key=lambda x: x[0], reverse=True)
-
-        for box_height, panel in sorted_boxes:
+        for box_height, panel in family_boxes:
             min_col = col_heights.index(min(col_heights))
             columns[min_col].append(panel)
             col_heights[min_col] += box_height
