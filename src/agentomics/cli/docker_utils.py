@@ -21,9 +21,10 @@ PROXY_ENV_VAR_NAMES = (
 )
 
 
-def read_env_file() -> dict[str, str]:
-    """Read variables from the .env file in the current directory."""
+def resolve_proxy_env_vars() -> dict[str, str]:
+    """Resolve proxy variables from the environment and .env file."""
 
+    env_vars: dict[str, str] = {}
     env_file_values: dict[str, str] = {}
     env_file = Path.cwd() / ".env"
     if env_file.is_file():
@@ -32,14 +33,7 @@ def read_env_file() -> dict[str, str]:
             if line and not line.startswith("#") and "=" in line:
                 name, value = line.split("=", 1)
                 env_file_values[name.strip()] = value.strip()
-    return env_file_values
 
-
-def resolve_proxy_env_vars() -> dict[str, str]:
-    """Resolve proxy variables from the environment and .env file."""
-
-    env_vars: dict[str, str] = {}
-    env_file_values = read_env_file()
     for upper_name in PROXY_ENV_VAR_NAMES:
         lower_name = upper_name.lower()
         value = (

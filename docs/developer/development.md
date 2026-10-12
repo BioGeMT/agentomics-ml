@@ -40,11 +40,10 @@ use the image matching the installed Agentomics version (and pull the correspond
 
 `scripts/ab_test.py` runs Agentomics variants side by side. A variant is a
 commit plus `agentomics-run` options, so variants can differ in code, in
-options, or in both. Install `wandb`, copy the example config, edit it, and run
-it from the repository root:
+options, or in both. Copy the example config, edit it, and run it from the
+repository root:
 
 ```bash
-pip install wandb
 cp scripts/ab_test_example.toml my_test.toml
 python scripts/ab_test.py my_test.toml
 ```
@@ -85,13 +84,13 @@ without the leading `--`; `true` passes a switch such as `cpu-only`.
 The script builds a Docker image for each commit once and runs each variant
 with that commit's code `replicates` times. Runs alternate between variants:
 replicate 1 of every variant, then replicate 2, and so on. Each run writes its
-workspace and log to `outputs_ab/<config name>-<timestamp>/`. The script
-sets `--image`, `--workspace-dir`, and `--tags` itself.
+workspace and log to `outputs_ab/<config name>-<timestamp>/`. After each run,
+the script adds the run's config, test metrics, and each iteration's status and
+validation metrics to `results.json` in the same folder. The script sets
+`--image`, `--workspace-dir`, and `--tags` itself.
 
-[W&B must be configured](../configuration/environment.md). The runs go to
+When [W&B is configured](../configuration/environment.md), the runs go to
 the `WANDB_PROJECT_NAME` project, are grouped by variant
 (`<config name>-<timestamp>-<name>`), and are tagged
 `ab:<config name>-<timestamp>`, `variant:<name>`, and `commit:<commit>`.
-Runs on commits from before `WANDB_RUN_GROUP` support are not grouped. When
-all runs have finished, the script writes what W&B has for each run (config,
-final values, and history) to `results.json` in the same folder.
+Runs on commits from before `WANDB_RUN_GROUP` support are not grouped.
