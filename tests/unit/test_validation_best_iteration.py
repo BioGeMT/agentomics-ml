@@ -14,7 +14,7 @@ from agentomics.runtime.read_write_utils import (
     update_current_iteration_state,
 )
 from agentomics.runtime.run_lifecycle import prepare_iteration_workspace
-from agentomics.runtime.step_outputs import save_step_output
+from agentomics.runtime.step_outputs import load_step_output, save_step_output
 from agentomics.utils.config import Config
 from tests.helpers import create_runtime_step, write_split_folder
 
@@ -143,3 +143,25 @@ def test_train_score_without_validation_score_is_not_new_best(config_factory):
     )
 
     assert not is_new_best
+
+
+def test_failed_iteration_keeps_no_validation_result(
+    initialized_run_with_lightweight_environment: Config,
+):
+    config = initialized_run_with_lightweight_environment
+    prepare_iteration_workspace(config, iteration=0)
+    save_step_output(
+        config,
+        ValidationEvaluationStep.step_id,
+        ValidationEvaluationOutput(
+            metrics={"validation/ACC": 0.9},
+            is_new_best=True,
+            status="success",
+        ),
+    )
+    step = create_runtime_step(ValidationEvaluationStep, config, model=Mock())
+    step.archive_step_folder()
+
+    step.on_iteration_fail(iteration=0)
+
+    assert load_step_output(config, ValidationEvaluationStep.step_id, config.current_iteration_dir) is None
