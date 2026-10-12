@@ -12,7 +12,7 @@ from pathlib import Path
 from agentomics.cli.docker_utils import resolve_proxy_env_vars
 
 
-def prepare_commit(name: str, experiment_dir: Path) -> str:
+def _prepare_commit(name: str, experiment_dir: Path) -> str:
     commit = subprocess.run(
         ["git", "rev-parse", "--short=12", "--verify", f"{name}^{{commit}}"],
         stdout=subprocess.PIPE,
@@ -38,7 +38,7 @@ def prepare_commit(name: str, experiment_dir: Path) -> str:
     return commit
 
 
-def option_arguments(options: dict) -> list[str]:
+def _build_arguments_from_options(options: dict) -> list[str]:
     arguments = []
     for name, value in options.items():
         if value is True:
@@ -48,7 +48,7 @@ def option_arguments(options: dict) -> list[str]:
     return arguments
 
 
-def run(workspace: Path, index: int, commit: str, arguments: list[str]) -> None:
+def _run(workspace: Path, index: int, commit: str, arguments: list[str]) -> None:
     print(f"Running {workspace.name}", flush=True)
     with open(f"{workspace}.log", "w") as log:
         result = subprocess.run(
@@ -83,12 +83,12 @@ def main() -> int:
     for variant in config["variants"]:
         # Shared options the variant doesn't set are added; the variant's own options win.
         options = config.get("shared", {}) | variant
-        commit = prepare_commit(options.pop("commit"), experiment_dir)
-        variants.append((commit, option_arguments(options)))
+        commit = _prepare_commit(options.pop("commit"), experiment_dir)
+        variants.append((commit, _build_arguments_from_options(options)))
 
     for replicate in range(1, config.get("replicates", 1) + 1):
         for index, (commit, arguments) in enumerate(variants):
-            run(experiment_dir / f"variant_{index}_replicate_{replicate}", index, commit, arguments)
+            _run(experiment_dir / f"variant_{index}_replicate_{replicate}", index, commit, arguments)
     return 0
 
 
