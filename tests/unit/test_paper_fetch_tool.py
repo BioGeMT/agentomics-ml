@@ -3,7 +3,7 @@ from io import BytesIO
 
 import httpx
 import pytest
-from pypdf import PdfWriter
+from reportlab.pdfgen.canvas import Canvas
 
 from agentomics.tools import paper_fetch_tool
 from agentomics.tools.paper_fetch_tool import PaperSearchResult, RetrievedPaper, download_papers
@@ -64,9 +64,9 @@ def test_download_papers_saves_pdf_from_resource(
         metadata["openAccessPdf"] = {"url": pdf_url}
 
     pdf = BytesIO()
-    writer = PdfWriter()
-    writer.add_blank_page(width=72, height=72)
-    writer.write(pdf)
+    canvas = Canvas(pdf, pagesize=(72, 72), invariant=1)
+    canvas.showPage()
+    canvas.save()
     pdf_bytes = pdf.getvalue()
 
     def respond(request):
