@@ -287,8 +287,10 @@ class IterationPlanStep(AgenticStep):
         time_left_in_seconds = time_deadline - time.time() if time_deadline is not None else None
         if time_left_in_seconds is not None:
             return f"{time_left_in_seconds / 3600:.2f} hours"
-        iterations_left = self.config.iterations - iteration - 1
-        return f"{iterations_left} iterations"
+        iterations_left = self.config.iterations - iteration
+        if iterations_left == 1:
+            return "1 iteration (the current one)"
+        return f"{iterations_left} iterations (including the current one)"
     
     def _build_supplementary_info(self) -> str:
         dataset_supplementary_path = self.config.dataset_dir / SUPPLEMENTARY_DIR_NAME
