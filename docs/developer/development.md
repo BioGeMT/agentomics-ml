@@ -84,6 +84,7 @@ workspace and log to `outputs_ab/<config name>-<timestamp>/`. The script
 sets `--image`, `--workspace-dir`, and `--tags` itself.
 
 When [W&B is configured](../configuration/environment.md), the runs go to
-their own W&B project, `ab-<config name>-<timestamp>`, are grouped by variant
-(`variant-<index>`), and are tagged `variant:<index>` and `commit:<commit>`.
+the `WANDB_PROJECT_NAME` project, are grouped by variant
+(`<config name>-<timestamp>-variant-<index>`), and are tagged
+`ab:<config name>-<timestamp>`, `variant:<index>`, and `commit:<commit>`.
 Runs on commits from before `WANDB_RUN_GROUP` support are not grouped.

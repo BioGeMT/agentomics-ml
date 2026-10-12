@@ -56,14 +56,13 @@ def _run(workspace: Path, index: int, commit: str, arguments: list[str]) -> None
              "--image", f"agentomics:ab-{commit}",
              "--workspace-dir", str(workspace),
              *arguments,
-             "--tags", f"variant:{index}", f"commit:{commit}"],
+             "--tags", f"ab:{workspace.parent.name}", f"variant:{index}", f"commit:{commit}"],
             stdout=log,
             stderr=subprocess.STDOUT,
             env=os.environ | {
                 "PYTHONUNBUFFERED": "1",
                 "PYTHONPATH": str(workspace.parent / "source" / commit / "src"),
-                "WANDB_PROJECT_NAME": f"ab-{workspace.parent.name}",
-                "WANDB_RUN_GROUP": f"variant-{index}",
+                "WANDB_RUN_GROUP": f"{workspace.parent.name}-variant-{index}",
             },
         )
     if result.returncode:
@@ -77,7 +76,7 @@ def main() -> int:
     config = tomllib.loads(config_path.read_text())
     experiment_dir = Path("outputs_ab", f"{config_path.stem}-{datetime.now():%Y%m%d-%H%M%S}")
     experiment_dir.mkdir(parents=True)
-    print(f"Writing runs to {experiment_dir} (W&B project ab-{experiment_dir.name})", flush=True)
+    print(f"Writing runs to {experiment_dir} (W&B tag ab:{experiment_dir.name})", flush=True)
 
     variants = []
     for variant in config["variants"]:
