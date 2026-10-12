@@ -52,10 +52,10 @@ class Config:
     DEFAULT_MAX_VALIDATION_RETRIES: ClassVar[int] = 5
     DEFAULT_PAPER_FETCH_REQUEST_LIMIT: ClassVar[int] = 10
     DEFAULT_PAPER_FETCH_MAX_RESULTS: ClassVar[int] = 10
+    DEFAULT_PAPER_FETCH_TIMEOUT: ClassVar[int] = 120
     DEFAULT_USE_PROXY: ClassVar[bool] = True
     DEFAULT_LLM_RESPONSE_TIMEOUT: ClassVar[int] = 60 * 10
     DEFAULT_BASH_TOOL_TIMEOUT: ClassVar[int] = 60 * 3
-    DEFAULT_WEB_FETCH_TIMEOUT: ClassVar[int] = 60
     DEFAULT_MAX_TOOL_RETRIES: ClassVar[int] = 5
     DEFAULT_RUN_PYTHON_TOOL_TIMEOUT: ClassVar[int] = 60 * 60 * 6
     DEFAULT_USER_PROMPT: ClassVar[str] = "Develop a machine learning model that generalizes well to new unseen data."
@@ -97,8 +97,7 @@ class Config:
     use_proxy: bool = DEFAULT_USE_PROXY
     llm_response_timeout: int = DEFAULT_LLM_RESPONSE_TIMEOUT
     bash_tool_timeout: int = DEFAULT_BASH_TOOL_TIMEOUT
-    web_fetch_timeout: int = DEFAULT_WEB_FETCH_TIMEOUT
-    paper_fetch_request_limit: int = DEFAULT_PAPER_FETCH_REQUEST_LIMIT
+    paper_fetch_timeout: int = DEFAULT_PAPER_FETCH_TIMEOUT
     paper_fetch_max_results: int = DEFAULT_PAPER_FETCH_MAX_RESULTS
     max_tool_retries: int = DEFAULT_MAX_TOOL_RETRIES
     label_to_scalar: dict[str, int] | None = None
