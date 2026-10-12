@@ -9,6 +9,7 @@ import sys
 import tomllib
 from datetime import datetime
 from pathlib import Path
+from uuid import uuid4
 
 from agentomics.cli.docker_utils import resolve_proxy_env_vars
 from agentomics.utils.config import Config
@@ -121,7 +122,9 @@ def main() -> int:
     for replicate in range(1, replicates + 1):
         for index, (name, commit, arguments) in enumerate(variants):
             workspace = experiment_dir / f"variant_{index}_replicate_{replicate}"
+            # The random suffix keeps names unique across A/B tests.
             run_name = name if replicates == 1 else f"{name}-{replicate}"
+            run_name = f"{run_name}-{uuid4().hex[:7]}"
             _run(workspace, name, run_name, commit, arguments)
             results.append({"variant": name, "replicate": replicate, "commit": commit,
                             "workspace": str(workspace), **_read_results(workspace)})
