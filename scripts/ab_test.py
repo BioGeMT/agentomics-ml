@@ -81,6 +81,7 @@ def main() -> int:
 
     variants = []
     for variant in config["variants"]:
+        # Shared options the variant doesn't set are added; the variant's own options win.
         options = config.get("shared", {}) | variant
         commit = prepare_commit(options.pop("commit"), experiment_dir)
         variants.append((commit, option_arguments(options)))
