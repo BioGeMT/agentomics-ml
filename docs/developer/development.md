@@ -80,7 +80,7 @@ option without the leading `--`; `true` passes a switch such as `cpu-only`.
 The script builds a Docker image for each commit once and runs each variant
 with that commit's code `replicates` times. Runs alternate between variants:
 replicate 1 of every variant, then replicate 2, and so on. Each run writes its
-workspace and log to `outputs/ab_tests/<config name>-<timestamp>/`. The script
+workspace and log to `outputs_ab/<config name>-<timestamp>/`. The script
 sets `--image`, `--workspace-dir`, and `--tags` itself.
 
 When [W&B is configured](../configuration/environment.md), the runs go to

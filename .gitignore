@@ -206,6 +206,7 @@ CONTEXT.md
 workspace/runs
 workspace
 outputs
+outputs_ab
 cleanup_wandb_logs
 cache/
 wandb/

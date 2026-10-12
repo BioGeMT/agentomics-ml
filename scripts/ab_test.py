@@ -75,7 +75,7 @@ def main() -> int:
     parser.add_argument("config", type=Path, help="A/B test config file (TOML)")
     config_path = parser.parse_args().config
     config = tomllib.loads(config_path.read_text())
-    experiment_dir = Path("outputs/ab_tests", f"{config_path.stem}-{datetime.now():%Y%m%d-%H%M%S}")
+    experiment_dir = Path("outputs_ab", f"{config_path.stem}-{datetime.now():%Y%m%d-%H%M%S}")
     experiment_dir.mkdir(parents=True)
     print(f"Writing runs to {experiment_dir} (W&B project ab-{experiment_dir.name})", flush=True)
 
