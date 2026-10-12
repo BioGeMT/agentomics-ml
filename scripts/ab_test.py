@@ -2,6 +2,7 @@
 """Run Agentomics variants side by side."""
 
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -9,7 +10,9 @@ import tomllib
 from datetime import datetime
 from pathlib import Path
 
-from agentomics.cli.docker_utils import resolve_proxy_env_vars
+import wandb
+
+from agentomics.cli.docker_utils import read_env_file, resolve_proxy_env_vars
 
 
 def _prepare_commit(name: str, experiment_dir: Path) -> str:
@@ -69,11 +72,34 @@ def _run(workspace: Path, name: str, commit: str, arguments: list[str]) -> None:
         print(f"  Run failed; see {workspace}.log", flush=True)
 
 
+def _write_results(experiment_dir: Path, api: wandb.Api, wandb_path: str) -> None:
+    runs = api.runs(wandb_path, filters={"tags": f"ab:{experiment_dir.name}"})
+    results = [
+        {
+            "name": run.name,
+            "group": run.group,
+            "tags": run.tags,
+            "state": run.state,
+            "url": run.url,
+            "config": run.config,
+            "summary": run.summary_metrics,
+            "history": list(run.scan_history()),
+        }
+        for run in runs
+    ]
+    results_path = experiment_dir / "results.json"
+    results_path.write_text(json.dumps(results, indent=2))
+    print(f"Wrote {results_path}", flush=True)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run Agentomics variants side by side.")
     parser.add_argument("config", type=Path, help="A/B test config file (TOML)")
     config_path = parser.parse_args().config
     config = tomllib.loads(config_path.read_text())
+    environment = read_env_file() | os.environ
+    api = wandb.Api(api_key=environment["WANDB_API_KEY"])
+    wandb_path = f"{environment['WANDB_ENTITY']}/{environment['WANDB_PROJECT_NAME']}"
     experiment_dir = Path("outputs_ab", f"{config_path.stem}-{datetime.now():%Y%m%d-%H%M%S}")
     experiment_dir.mkdir(parents=True)
     print(f"Writing runs to {experiment_dir} (W&B tag ab:{experiment_dir.name})", flush=True)
@@ -89,6 +115,7 @@ def main() -> int:
     for replicate in range(1, config.get("replicates", 1) + 1):
         for index, (name, commit, arguments) in enumerate(variants):
             _run(experiment_dir / f"variant_{index}_replicate_{replicate}", name, commit, arguments)
+    _write_results(experiment_dir, api, wandb_path)
     return 0
 
 
