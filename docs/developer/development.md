@@ -58,14 +58,17 @@ provider = "codex"
 iterations = 3
 
 [[variants]]
+name = "luna-main"
 model = "gpt-5.6-luna"
 
 [[variants]]
+name = "sol-classical"
 model = "gpt-5.6-sol"
 user-prompt = "Develop a classical machine learning model (no neural networks) that generalizes well to new unseen data."
 cpu-only = true
 
 [[variants]]
+name = "luna-ab-orchestrator"
 commit = "ab-orchestrator"
 model = "gpt-5.6-luna"
 ```
@@ -73,8 +76,9 @@ model = "gpt-5.6-luna"
 `[shared]` holds the options every variant gets, and each `[[variants]]` block
 is one variant; the first is variant 0. A variant's options override
 `[shared]`. `commit` is a commit hash, branch, or tag and is required, either
-in `[shared]` or in every variant. Every other key is an `agentomics-run`
-option without the leading `--`; `true` passes a switch such as `cpu-only`.
+in `[shared]` or in every variant. `name` is the variant's name in W&B and
+defaults to `variant-<index>`. Every other key is an `agentomics-run` option
+without the leading `--`; `true` passes a switch such as `cpu-only`.
 `replicates` defaults to 1 and must come before `[shared]`.
 
 The script builds a Docker image for each commit once and runs each variant
@@ -85,6 +89,6 @@ sets `--image`, `--workspace-dir`, and `--tags` itself.
 
 When [W&B is configured](../configuration/environment.md), the runs go to
 the `WANDB_PROJECT_NAME` project, are grouped by variant
-(`<config name>-<timestamp>-variant-<index>`), and are tagged
-`ab:<config name>-<timestamp>`, `variant:<index>`, and `commit:<commit>`.
+(`<config name>-<timestamp>-<name>`), and are tagged
+`ab:<config name>-<timestamp>`, `variant:<name>`, and `commit:<commit>`.
 Runs on commits from before `WANDB_RUN_GROUP` support are not grouped.

@@ -9,13 +9,16 @@ provider = "codex"
 iterations = 3
 
 [[variants]]                          # variant 0
+name = "luna-main"                    # name in W&B (default variant-<index>)
 model = "gpt-5.6-luna"
 
 [[variants]]                          # variant 1: another model and prompt, without GPU
+name = "sol-classical"
 model = "gpt-5.6-sol"
 user-prompt = "Develop a classical machine learning model (no neural networks) that generalizes well to new unseen data."
 cpu-only = true                       # true turns on a switch
 
 [[variants]]                          # variant 2: the model of variant 0 on another commit
+name = "luna-ab-orchestrator"
 commit = "ab-orchestrator"            # overrides commit in [shared]
 model = "gpt-5.6-luna"
