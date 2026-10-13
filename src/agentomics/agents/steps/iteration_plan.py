@@ -260,8 +260,11 @@ class IterationPlanStep(AgenticStep):
             hours_left = (self.config.split_time_deadline - time.time()) / 3600
             split_budget = f"Splitting is allowed for the next {hours_left:.2f} hours."
         else:
-            remaining = max(self.config.split_allowed_iterations - (iteration + 1), 0)
-            split_budget = f"Splitting is allowed for the next {remaining} iteration/s."
+            remaining = self.config.split_allowed_iterations - iteration
+            if remaining <= 1:
+                split_budget = "Splitting is allowed for 1 iteration (the current one)."
+            else:
+                split_budget = f"Splitting is allowed for the next {remaining} iterations (including the current one)."
 
         best_iteration_note = (
             f" If you do instruct to change the split, also instruct to re-use the best iteration "
@@ -287,8 +290,10 @@ class IterationPlanStep(AgenticStep):
         time_left_in_seconds = time_deadline - time.time() if time_deadline is not None else None
         if time_left_in_seconds is not None:
             return f"{time_left_in_seconds / 3600:.2f} hours"
-        iterations_left = self.config.iterations - iteration - 1
-        return f"{iterations_left} iterations"
+        iterations_left = self.config.iterations - iteration
+        if iterations_left == 1:
+            return "1 iteration (the current one)"
+        return f"{iterations_left} iterations (including the current one)"
     
     def _build_supplementary_info(self) -> str:
         dataset_supplementary_path = self.config.dataset_dir / SUPPLEMENTARY_DIR_NAME
