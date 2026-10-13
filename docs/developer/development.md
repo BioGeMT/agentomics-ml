@@ -35,3 +35,42 @@ layers fast.
 
 `--dev` cannot be combined with `--image`. Commands without `--dev` continue to
 use the image matching the installed Agentomics version (and pull the corresponding image).
+
+## A/B testing
+
+`scripts/ab_test.py` runs Agentomics variants side by side. A variant is a
+commit plus `agentomics-run` options, so variants can differ in code, in
+options, or in both. Copy the
+[example config](https://github.com/BioGeMT/Agentomics-ML/blob/main/scripts/ab_test_example.toml),
+edit it, and run it from the repository root:
+
+```bash
+cp scripts/ab_test_example.toml my_test.toml
+python scripts/ab_test.py my_test.toml
+```
+
+`[shared]` holds the options every variant gets, and each `[[variants]]` block
+is one variant; the first is variant 0. A variant's options override
+`[shared]`. `commit` is a commit hash, branch, or tag and is required, either
+in `[shared]` or in every variant. `name` is the variant's name in W&B and
+defaults to `variant-<index>`. Every other key is an `agentomics-run` option
+without the leading `--`; `true` passes a switch such as `cpu-only`.
+`replicates` defaults to 1 and must come before `[shared]`.
+
+The script builds a Docker image for each commit once and runs each variant
+with that commit's code `replicates` times. Runs alternate between variants:
+replicate 1 of every variant, then replicate 2, and so on. Each run writes its
+workspace and log to `outputs_ab/<config name>-<timestamp>/`. After each run,
+the script adds the run's config, test metrics, and each iteration's status and
+validation metrics to `results.json` in the same folder. The script sets
+`--image`, `--workspace-dir`, and `--tags` itself.
+
+When [W&B is configured](../configuration/environment.md), the runs go to
+the `WANDB_PROJECT_NAME` project. All runs of an A/B test are in the group
+`<config name>-<timestamp>`, have the variant name as job type, and are named
+`<name>-<7 random characters>` (`<name>-<replicate>-<7 random characters>` when
+`replicates` is more than 1). They are also tagged
+`ab:<config name>-<timestamp>`, `variant:<name>`, and `commit:<commit>`. To
+compare variants, filter the runs by Group; each run is one line in every
+chart. Runs on commits from before `WANDB_RUN_GROUP`, `WANDB_JOB_TYPE`, and
+`WANDB_NAME` support keep the agent ID as name and get no group or job type.

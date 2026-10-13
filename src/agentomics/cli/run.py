@@ -110,6 +110,7 @@ def _docker_environment_arguments(agent_id: str) -> list[str]:
         "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY",
         "PROVISIONING_OPENROUTER_API_KEY", "OLLAMA_BASE_URL",
         "WANDB_API_KEY", "WANDB_PROJECT_NAME", "WANDB_ENTITY",
+        "WANDB_RUN_GROUP", "WANDB_JOB_TYPE", "WANDB_NAME",
         "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
         "http_proxy", "https_proxy", "all_proxy", "no_proxy", "CUDA_VISIBLE_DEVICES",
     )
