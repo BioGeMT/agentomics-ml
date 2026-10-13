@@ -34,23 +34,23 @@ class OllamaProvider(Provider):
         if not models:
             self.console.print("Could not fetch models from Ollama", style="red")
             return None
-        
+
         if limit and limit < len(models): models = models[:limit]
 
-        self.display_models(models)
+        display_order_models = self.display_models(models)
         
         choice = get_user_input_for_int(
-          prompt_text=f"Select model (1-{len(models)}) or Enter for first",
+          prompt_text=f"Select model (1-{len(display_order_models)}) or Enter for first",
           default=1,
-          valid_options=list(range(1, len(models) + 1))
+          valid_options=list(range(1, len(display_order_models) + 1))
         )
 
         if choice:
-            return models[choice - 1].get("model")
+            return display_order_models[choice - 1].get("model")
         
         return None
     
-    def display_models(self, models: List[dict] = None) -> None:
+    def display_models(self, models: List[dict] = None) -> List[dict]:
         """Ovveriding method in Provider class. Display Ollama available models in a table format."""
         if models is None:
             models = self.fetch_models()
@@ -65,6 +65,7 @@ class OllamaProvider(Provider):
         self.console.print(f"[white]Top models from {self.name}[/white]", style="underline")
 
         family_boxes = []
+        display_order_models = []
         global_index = 1
         max_num_width = len(str(len(models)))
 
@@ -78,6 +79,7 @@ class OllamaProvider(Provider):
                 num_str = str(global_index).rjust(max_num_width)
                 lines.append(f"[dim]{num_str}.[/dim] [white]{model_name}[/white]")
                 lines.append(f"   Size: [yellow]{parameter_size}[/yellow]  Quant: [blue]{quantization_level}[/blue]")
+                display_order_models.append(model)
                 global_index += 1
 
             panel = Panel("\n".join(lines), title=f"[bold white]{family.title()}[/bold white]",
@@ -97,6 +99,7 @@ class OllamaProvider(Provider):
 
         col_renderables = [Group(*col) for col in columns if col]
         self.console.print(Columns(col_renderables, padding=(0, 1), expand=False))
+        return display_order_models
 
     def create_model(self, model_name: str, config: Config) -> OpenAIModel:
           """Ovveriding method in Provider class. Create OpenAI model instance (Ollama compatible)."""
