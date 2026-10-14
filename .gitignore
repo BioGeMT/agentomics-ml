@@ -213,3 +213,5 @@ wandb/
 
 # Misc
 *playground*.ipynb
+prepared_datasets
+prepared_test_sets

@@ -1,4 +1,4 @@
-import httpx
+import httpx2
 import os
 from typing import List, Dict
 
@@ -39,7 +39,7 @@ class AnthropicProvider(Provider):
         """Ovveriding method in Provider class. Create Anthropic model instance."""
         proxy_url = os.getenv("HTTP_PROXY")
 
-        async_http_client = httpx.AsyncClient(
+        async_http_client = httpx2.AsyncClient(
             proxy=proxy_url if config.use_proxy else None,
             timeout=config.llm_response_timeout
         )

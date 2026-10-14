@@ -30,6 +30,7 @@ def setup_logging(config: Config, dir=None):
         )
         if wandb_entity and wandb_project_name:
             weave.init(f"{wandb_entity}/{wandb_project_name}")
+        print(f"W&B run: {wandb.run.url}")
         return wandb.run.id
     except CommError:
         print("W&B initialization failed - skipping experiment logging")

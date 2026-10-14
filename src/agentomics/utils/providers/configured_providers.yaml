@@ -6,7 +6,6 @@ providers:
 
   - name: "Codex"
     apikey: ""
-    base_url: "https://chatgpt.com/backend-api/codex"
     list_models_endpoint: ""
   
   - name: "Anthropic"

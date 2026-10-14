@@ -3,11 +3,11 @@ from typing import Dict, List, Optional
 from pathlib import Path
 import os
 import sys
-import httpx
+import httpx2
 import requests
 
 from pydantic_ai.models import Model
-from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.models.openai import OpenAIResponsesModelSettings
@@ -97,7 +97,7 @@ class Provider():
     def create_model(self, model_name: str, config: Config) -> Model:
           """Create a pydantic-ai model instance. Subclasses may override this method."""
           proxy_url = os.getenv("HTTP_PROXY")
-          async_http_client = httpx.AsyncClient(
+          async_http_client = httpx2.AsyncClient(
               proxy=proxy_url if config.use_proxy else None,
               timeout=config.llm_response_timeout
           )
@@ -106,7 +106,7 @@ class Provider():
               api_key=self.api_key,
               http_client=async_http_client,
           )
-          return OpenAIModel(
+          return OpenAIChatModel(
               model_name=model_name,
               provider=OpenAIProvider(openai_client=client)
           )
@@ -149,7 +149,7 @@ class Provider():
     def create_provider(provider_name: str, api_key: str):
         """Factory method to create providers."""
         provider_config = Provider.get_provider_config(provider_name)
-        base_url = provider_config["base_url"]
+        base_url = provider_config.get("base_url", "")
         name_lower = provider_name.lower()
         
         if name_lower == "openrouter":
@@ -166,7 +166,7 @@ class Provider():
             return OpenAiProvider(api_key, base_url, provider_config["list_models_endpoint"])
         elif name_lower == "codex":
             from .codex_provider import CodexProvider
-            return CodexProvider(base_url, provider_config["list_models_endpoint"])
+            return CodexProvider(provider_config["list_models_endpoint"])
         elif name_lower == "scripted":
             from tests.support.scripted_workflow import ScriptedProvider
             return ScriptedProvider()
