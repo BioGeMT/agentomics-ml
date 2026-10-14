@@ -7,7 +7,9 @@ import weave
 from pydantic_ai import Tool
 
 from .bash_tool import create_bash_tool
+from .inspect_image_tool import create_inspect_image_tool
 from .replace_tool import create_replace_tool
+from .retrieve_paper_chunks_tool import create_retrieve_paper_chunks_tool
 from .run_python_tool import create_run_python_tool
 from .write_python_tool import create_write_python_tool
 
@@ -15,6 +17,8 @@ from agentomics.utils.config import Config
 
 TOOL_FACTORY_REGISTRY: dict[str, Callable] = {
     "bash": create_bash_tool,
+    "inspect_image": create_inspect_image_tool,
+    "retrieve_paper_chunks": create_retrieve_paper_chunks_tool,
     "write_python": create_write_python_tool,
     "run_python": create_run_python_tool,
     "replace": create_replace_tool,
