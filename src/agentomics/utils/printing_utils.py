@@ -5,7 +5,7 @@ import textwrap
 
 from pydantic_ai import CallToolsNode, ModelRequestNode, UserPromptNode
 from pydantic_ai.messages import SystemPromptPart, UserPromptPart, TextPart, ToolCallPart, ToolReturnPart, RetryPromptPart, ThinkingPart
-from pydantic_graph.nodes import End
+from pydantic_graph import End
 from pygments import highlight
 from pygments.formatters import TerminalFormatter as TF
 from pygments.lexers import PythonLexer

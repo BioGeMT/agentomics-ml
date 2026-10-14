@@ -5,7 +5,7 @@ from rich.panel import Panel
 from rich.columns import Columns
 from rich.console import Group
 from pydantic_ai.providers.openai import OpenAIProvider
-from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.models.openai import OpenAIChatModel
 
 from agentomics.utils.config import Config
 from agentomics.utils.user_input import get_user_input_for_int
@@ -98,9 +98,9 @@ class OllamaProvider(Provider):
         col_renderables = [Group(*col) for col in columns if col]
         self.console.print(Columns(col_renderables, padding=(0, 1), expand=False))
 
-    def create_model(self, model_name: str, config: Config) -> OpenAIModel:
+    def create_model(self, model_name: str, config: Config) -> OpenAIChatModel:
           """Ovveriding method in Provider class. Create OpenAI model instance (Ollama compatible)."""
-          return OpenAIModel(
+          return OpenAIChatModel(
               model_name=model_name,
               provider=OpenAIProvider(base_url=self.base_url)
           )

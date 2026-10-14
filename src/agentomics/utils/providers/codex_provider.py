@@ -1,17 +1,11 @@
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
-from dataclasses import replace
 import json
-from typing import Any, AsyncIterator, Dict, List, Optional
+from typing import Dict, List, Optional
 
-import httpx
-from openai import AsyncOpenAI
+import httpx2
 from pydantic_ai.models.openai import OpenAIResponsesModel
-from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, SystemPromptPart
-from pydantic_ai.models import ModelRequestParameters, StreamedResponse
-from pydantic_ai.providers.openai import OpenAIProvider as PydanticOpenAIProvider
-from pydantic_ai.settings import ModelSettings
+from pydantic_ai.providers.openai_codex import OpenAICodexProvider
 from rich.panel import Panel
 
 from agentomics.utils.config import Config
@@ -21,92 +15,11 @@ from .codex_auth import CodexAuthStore, get_codex_models_cache_path
 from .provider import Provider
 
 
-class AsyncCodexOpenAI(AsyncOpenAI):
-    def __init__(self, auth_store: CodexAuthStore, **kwargs):
-        self._codex_auth_store = auth_store
-        super().__init__(api_key=self._codex_auth_store.get_access_token, **kwargs)
-
-    @property
-    def default_headers(self) -> dict[str, str]:
-        headers = super().default_headers
-        headers["ChatGPT-Account-Id"] = self._codex_auth_store.get_account_id()
-        return headers
-
-
-class CodexResponsesModel(OpenAIResponsesModel):
-    @staticmethod
-    def _merge_codex_settings(model_settings: ModelSettings | None) -> ModelSettings:
-        merged_settings = dict(model_settings or {})
-        merged_settings["openai_store"] = False
-        return merged_settings
-
-    @staticmethod
-    def _rewrite_messages_for_codex(messages: list[ModelMessage]) -> list[ModelMessage]:
-        rewritten_messages: list[ModelMessage] = []
-        carried_instructions: str | None = None
-        for message in messages:
-            if not isinstance(message, ModelRequest):
-                rewritten_messages.append(message)
-                continue
-
-            system_parts = [part.content for part in message.parts if isinstance(part, SystemPromptPart)]
-            instructions = message.instructions or carried_instructions
-
-            if system_parts:
-                joined_system_parts = "\n\n".join(system_parts)
-                instructions = "\n\n".join([instructions, joined_system_parts]) if instructions else joined_system_parts
-
-            if instructions:
-                carried_instructions = instructions
-
-            rewritten_messages.append(
-                replace(
-                    message,
-                    parts=[part for part in message.parts if not isinstance(part, SystemPromptPart)],
-                    instructions=instructions or "You are an helpful assistant", #TODO remove this dummy prompt once actual sys prompt defined for iteration plan
-                )
-            )
-
-        return rewritten_messages
-
-    async def request(
-        self,
-        messages: list[ModelRequest | ModelResponse],
-        model_settings: ModelSettings | None,
-        model_request_parameters: ModelRequestParameters,
-    ) -> ModelResponse:
-        messages = self._rewrite_messages_for_codex(messages)
-        async with super().request_stream(
-            messages,
-            self._merge_codex_settings(model_settings),
-            model_request_parameters,
-        ) as response:
-            async for _ in response:
-                pass
-            return response.get()
-
-    @asynccontextmanager
-    async def request_stream(
-        self,
-        messages: list[ModelMessage],
-        model_settings: ModelSettings | None,
-        model_request_parameters: ModelRequestParameters,
-        run_context: Any | None = None,
-    ) -> AsyncIterator[StreamedResponse]:
-        messages = self._rewrite_messages_for_codex(messages)
-        async with super().request_stream(
-            messages,
-            self._merge_codex_settings(model_settings),
-            model_request_parameters,
-            run_context=run_context,
-        ) as response:
-            yield response
-
-
 class CodexProvider(Provider):
-    def __init__(self, base_url: str, list_models_endpoint: str | None = None):
-        super().__init__(name="Codex", base_url=base_url, list_models_endpoint=list_models_endpoint)
-        self.auth_store = CodexAuthStore(proxy_url=self.get_proxy_url())
+    def __init__(self, list_models_endpoint: str | None = None):
+        # OpenAICodexProvider always calls the ChatGPT Codex endpoint, so there is no base URL to configure.
+        super().__init__(name="Codex", base_url="", list_models_endpoint=list_models_endpoint)
+        self.auth_store = CodexAuthStore()
 
     def fetch_models(self) -> Optional[List[Dict]]:
         cache_path = get_codex_models_cache_path()
@@ -201,16 +114,14 @@ class CodexProvider(Provider):
         self.auth_store.get_account_id()
 
         proxy_url = self.get_proxy_url()
-        async_http_client = httpx.AsyncClient(
+        async_http_client = httpx2.AsyncClient(
             proxy=proxy_url if config.use_proxy else None,
             timeout=config.llm_response_timeout,
         )
-        client = AsyncCodexOpenAI(
-            auth_store=self.auth_store,
-            base_url=self.base_url,
-            http_client=async_http_client,
-        )
-        return CodexResponsesModel(
+        return OpenAIResponsesModel(
             model_name=model_name,
-            provider=PydanticOpenAIProvider(openai_client=client),
+            provider=OpenAICodexProvider(
+                credential_source=self.auth_store,
+                http_client=async_http_client,
+            ),
         )
