@@ -104,7 +104,7 @@ def build_default_step_response(
             "model_architecture_instructions": "Learn the majority class for each first nucleotide.",
             "model_training_instructions": "Fit from training inputs and labels and save model.json.",
             "model_inference_instructions": "Load model.json and predict from input sequences only.",
-            "prediction_exploration_instructions": "Generate validation predictions using the trained model.",
+            "prediction_exploration_instructions": "Analyze the supplied validation predictions.",
             "other_instructions": None,
         }
     if "data_description" in output_fields:
@@ -181,25 +181,10 @@ def build_default_step_response(
             "unresolved_issues": None,
         }
     if "statistics" in output_fields:
-        split = _previous_step_output(messages, "mini_train_path")
-        training = _previous_step_output(messages, "training_summary")
-        inference = _previous_step_output(messages, "inference_summary")
-        arguments = (
-            f"--input {quote(str(Path(split['val_path']) / 'input'))} "
-            f"--output {quote(str(step / 'predictions.csv'))} "
-            f"--artifacts-dir {quote(training['path_to_artifacts_dir'])}"
-        )
-        tool_calls = [
-            (
-                "run_python", {
-                    "python_file_path": inference["path_to_inference_file"],
-                    "args": arguments,
-                },
-                "Predictions generated using trained artifacts",
-            ),
-        ]
-        return tool_calls, {
-            "statistics": "Generated predictions for the supplied validation inputs.",
+        predictions = config.archived_step_dir("validation_evaluation") / "eval_predictions_validation.csv"
+        command = f"head {quote(str(predictions))} && echo 'Validation predictions inspected'"
+        return [("bash", {"command": command}, "Validation predictions inspected")], {
+            "statistics": "Inspected the supplied validation predictions.",
             "insights": "The tiny synthetic dataset is not evidence of real-world generalization.",
         }
     raise AssertionError(f"No scripted response for output fields: {sorted(output_fields)}")

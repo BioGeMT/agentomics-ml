@@ -17,8 +17,8 @@ Each iteration consists of 9 sequential steps:
 │  5. Model Architecture  → Select and configure model         │
 │  6. Model Training      → Train the model                    │
 │  7. Model Inference     → Create prediction pipeline         │
-│  8. Prediction Exploration → Analyze validation predictions  │
-│  9. Validation Evaluation → Score the iteration              │
+│  8. Validation Evaluation → Score the iteration              │
+│  9. Prediction Exploration → Analyze validation predictions  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -105,9 +105,20 @@ Creates prediction pipeline:
 
 **Output:** `model_inference/inference.py`
 
-### 8. Prediction Exploration
+### 8. Validation Evaluation
 
-Analyzes the validation-set predictions produced by the current inference pipeline:
+Runs the validation pass for the iteration:
+
+- Executes the generated inference pipeline on train and validation splits
+- Computes metrics used for model selection
+- Decides whether the iteration becomes the new best iteration
+
+**Output:** Validation metrics and best-iteration status
+
+### 9. Prediction Exploration
+
+Analyzes the validation-set predictions made by Validation Evaluation, without
+running inference again:
 
 - Generates prediction summaries
 - Analyzes prediction distributions
@@ -115,16 +126,6 @@ Analyzes the validation-set predictions produced by the current inference pipeli
 - Surfaces patterns worth addressing in later iterations
 
 **Output:** Structured prediction analysis and iteration reports
-
-### 9. Validation Evaluation
-
-Runs the final validation pass for the iteration:
-
-- Executes the generated inference pipeline on train and validation splits
-- Computes metrics used for model selection
-- Decides whether the iteration becomes the new best iteration
-
-**Output:** Validation metrics and best-iteration status
 
 ## Agent Tools
 
