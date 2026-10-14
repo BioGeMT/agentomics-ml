@@ -108,6 +108,7 @@ def _build_container_arguments(arguments: argparse.Namespace) -> list[str]:
 def _docker_environment_arguments(agent_id: str) -> list[str]:
     docker_arguments = docker_environment_arguments(
         "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY",
+        "ASTA_API_KEY", "S2_API_KEY", "UNPAYWALL_EMAIL",
         "PROVISIONING_OPENROUTER_API_KEY", "OLLAMA_BASE_URL",
         "WANDB_API_KEY", "WANDB_PROJECT_NAME", "WANDB_ENTITY",
         "WANDB_RUN_GROUP", "WANDB_JOB_TYPE", "WANDB_NAME",
