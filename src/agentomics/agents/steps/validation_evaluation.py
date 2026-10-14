@@ -10,7 +10,6 @@ from agentomics.agents.steps.data_split import DataSplitStep
 from agentomics.agents.steps.model_inference import ModelInferenceStep
 from agentomics.agents.steps.model_training import ModelTrainingStep
 from agentomics.run_logging.logging_helpers import log_iteration_metrics, log_new_best
-from agentomics.runtime.filesystem import remove_path
 from agentomics.runtime.inference_runner import compute_metrics, run_inference_on_split
 from agentomics.runtime.read_write_utils import (
     load_best_iteration_snapshot_iteration,
@@ -65,10 +64,6 @@ class ValidationEvaluationStep(RuntimeStep):
         new_value = new_metrics[validation_metric_key]
         best_value = best_metrics[validation_metric_key]
         return new_value > best_value if higher_is_better else new_value < best_value
-
-    def on_iteration_fail(self, iteration: int) -> None:
-        # Prediction Exploration runs after this step, so a failed iteration can already have a result here.
-        remove_path(self.config.archived_step_dir(self.step_id) / Config.STEP_OUTPUT_FILENAME)
 
     def on_iteration_end(self, iteration: int) -> None:
         output = load_step_output(self.config, self.step_id, self.config.current_iteration_dir)
