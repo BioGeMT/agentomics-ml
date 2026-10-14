@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from typing import Any, TypedDict
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 from pydantic_ai import Agent
 
 from agentomics.agents.prompt_builder import get_dataset_knowledge
@@ -73,6 +73,8 @@ class IterationPlanStep(AgenticStep):
     output_type = IterationPlanOutput
     history_excluded_step_ids = {step_id, ValidationEvaluationStep.step_id}
 
+    MAX_ACCUMULATED_INSIGHTS = 40
+
     class IterationHistoryRecord(TypedDict):
         outputs: list[Any]
         metrics: dict[str, float]
@@ -97,6 +99,7 @@ class IterationPlanStep(AgenticStep):
 
     def step_prompt(self) -> str:
         iteration_history_info = self._build_iteration_history_info()
+        insights_info = self._build_insights_info()
         splitting_info = self._build_splitting_info()
         time_info = self._build_time_info()
         exploration_info = self._build_exploration_info()
@@ -114,6 +117,7 @@ class IterationPlanStep(AgenticStep):
         </dataset_knowledge_from_dataset_description_md>
 
         {iteration_history_info}
+        {insights_info}
         <your_instructions>
         {f"<exploration_guidance>{exploration_info}</exploration_guidance>" if exploration_info else ""}
         The main goal of the run is to maximize the hidden test set generalization performance (main metric:{self.config.val_metric}) that will use the 'best iteration model'. {best_iteration_model_info}
@@ -129,8 +133,6 @@ class IterationPlanStep(AgenticStep):
         The iteration agent will have access to the code and steps' outputs from all archived iterations.
         For example if you want to instruct to re-use the same data representation from iteration 5, instruct "Re-use the data representation from iteration 5".
         The data exploration and splitting steps can be instructed to be skipped completely if they're not needed.
-        If any exploration step discovered important id-to-sample information (e.g., how label IDs relate to data in input/, file formats, column semantics) that are not already included in the dataset_knowledge_from_dataset_description_md, include those details in your instructions for relevant downstream steps so the iteration agent doesn't have to re-explore the structure.
-        Similarly, if the exploration step found useful insights from supplementary materials, carry those forward in your instructions.
         {splitting_info}
 
         You're providing instructions to an LLM agent, never offer that you will take any actions to fix or implement fixes yourself.
@@ -234,6 +236,42 @@ class IterationPlanStep(AgenticStep):
                 load_step_output(self.config, DataSplitStep.step_id, iteration_dir).split_changed
             ),
             is_new_best=bool(val_output.is_new_best) if val_output is not None else False,
+        )
+
+    def _build_insights_info(self) -> str:
+        seen: set[str] = set()
+        lines: list[str] = []
+        steps_of_interest = [
+            step_id
+            for step_id in self.config.step_sequence
+            if step_id not in self.history_excluded_step_ids
+        ]
+        for iteration in sorted(get_archived_iterations(self.config, only_successful=True)):
+            outputs = load_step_outputs(
+                self.config,
+                iteration_dir=self.config.iteration_dir(iteration),
+                step_sequence=steps_of_interest,
+            )
+            for output in outputs:
+                insights = (
+                    output.insights
+                    if isinstance(output, BaseModel)
+                    else output.get("insights", [])
+                )
+                for insight in insights:
+                    key = " ".join(insight.lower().split())
+                    if not key or key in seen:
+                        continue
+                    seen.add(key)
+                    lines.append(f"- [from iteration {iteration}] {insight}")
+        if not lines:
+            return ""
+        return (
+            "<accumulated_insights>\n"
+            "Verified lessons from previous iterations. Copy each insight relevant to a step "
+            "into that step's instructions verbatim, so the iteration agent never has to re-discover it.\n"
+            + "\n".join(lines[-self.MAX_ACCUMULATED_INSIGHTS:])
+            + "\n</accumulated_insights>"
         )
 
     def _build_splitting_info(self) -> str:
