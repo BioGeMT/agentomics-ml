@@ -10,6 +10,7 @@ from agentomics.agents.steps.data_split import DataSplitStep
 from agentomics.agents.steps.validation_evaluation import ValidationEvaluationStep
 from agentomics.datasets.data_contract import LABELS_FILE_NAME
 from agentomics.runtime.step_outputs import require_step_output
+from agentomics.utils.exceptions import IterationRunFailed
 
 
 class PredictionExplorationOutput(AgenticStepOutput):
@@ -29,6 +30,14 @@ class PredictionExplorationStep(AgenticStep):
     step_id = "prediction_exploration"
     display_name = "PREDICTION EXPLORATION"
     output_type = PredictionExplorationOutput
+
+    async def run(self) -> None:
+        try:
+            await super().run()
+        except IterationRunFailed:
+            # Validation Evaluation already scored the model, so keep the iteration without the analysis.
+            self.archive_step_folder()
+            print("Prediction exploration failed, keeping the iteration")
 
     def step_prompt(self) -> str:
         #TODO all requires should be deps?
