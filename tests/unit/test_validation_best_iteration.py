@@ -6,7 +6,7 @@ import pytest
 from pydantic_ai.models.function import FunctionModel
 
 from agentomics.agents.steps.data_split import DataSplitOutput, DataSplitStep
-from agentomics.agents.steps.prediction_exploration import PredictionExplorationStep
+from agentomics.agents.steps.prediction_exploration import PredictionExplorationOutput, PredictionExplorationStep
 from agentomics.agents.steps.validation_evaluation import (
     ValidationEvaluationOutput,
     ValidationEvaluationStep,
@@ -172,4 +172,7 @@ def test_failed_prediction_exploration_keeps_the_iteration(
     asyncio.run(step.run())
 
     assert load_step_output(config, ValidationEvaluationStep.step_id, config.current_iteration_dir) is not None
-    assert load_step_output(config, PredictionExplorationStep.step_id, config.current_iteration_dir) is None
+    assert isinstance(
+        load_step_output(config, PredictionExplorationStep.step_id, config.current_iteration_dir),
+        PredictionExplorationOutput,
+    )

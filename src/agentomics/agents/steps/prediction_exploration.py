@@ -36,8 +36,11 @@ class PredictionExplorationStep(AgenticStep):
             await super().run()
         except IterationRunFailed:
             # Validation Evaluation already scored the model, so keep the iteration without the analysis.
-            self.archive_step_folder()
             print("Prediction exploration failed, keeping the iteration")
+            self.on_step_success(PredictionExplorationOutput(
+                statistics="Not available: prediction exploration failed in this iteration.",
+                insights="Not available: prediction exploration failed in this iteration.",
+            ))
 
     def step_prompt(self) -> str:
         #TODO all requires should be deps?
