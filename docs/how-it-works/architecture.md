@@ -133,8 +133,8 @@ The agent has access to these tools:
 
 | Tool | Purpose |
 |------|---------|
-| **Retrieve Paper Chunks** | Find relevant passages in fetched scientific papers |
-| **Inspect Image** | Inspect paper pages and other images from the current run |
+| **ls / glob / grep / read_file** | Navigate and search fetched scientific papers |
+| **Render Paper Page / Inspect Image** | Inspect paper figures and page layouts |
 | **Bash** | Execute shell commands |
 | **Write Python** | Create Python files |
 | **Run Python** | Execute Python scripts |

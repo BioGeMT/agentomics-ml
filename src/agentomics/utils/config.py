@@ -42,7 +42,11 @@ class Config:
         "prediction_exploration",
     ]
     DEFAULT_TOOL_IDS: ClassVar[list[str]] = [
-        "retrieve_paper_chunks",
+        "ls",
+        "glob",
+        "grep",
+        "read_file",
+        "render_paper_page",
         "inspect_image",
         "bash",
         "write_python",

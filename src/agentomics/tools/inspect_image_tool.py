@@ -22,12 +22,16 @@ def create_inspect_image_tool(config: Config) -> Tool[Any]:
         """Send an image to the configured model, which must support image input.
 
         Args:
-            image_path: Absolute path to an image inside the run directory.
+            image_path: Image inside the current step or processed papers directory.
             query: Question to answer using the image.
         """
         path = Path(image_path).resolve()
-        if not path.is_relative_to(config.run_dir.resolve()):
-            raise ModelRetry(f"Image must be inside {config.run_dir}")
+        allowed_roots = (
+            config.current_step_dir.resolve(),
+            config.processed_papers_dir.resolve(),
+        )
+        if not any(path.is_relative_to(root) for root in allowed_roots):
+            raise ModelRetry("Image must be inside the current step or processed papers directory")
 
         media_type = IMAGE_MEDIA_TYPES.get(path.suffix.lower())
         if not path.is_file() or media_type is None:
