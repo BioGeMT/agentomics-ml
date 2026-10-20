@@ -10,6 +10,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 from pydantic.json_schema import SkipJsonSchema
 from pydantic_ai import Agent, ModelRetry, RunContext
+from pydantic_ai.messages import ModelMessage
 from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 
@@ -22,6 +23,7 @@ from rich.console import Console
 from agentomics.runtime.conda_utils import export_shared_environment_descriptor
 from agentomics.runtime.filesystem import chown_tree_to_root, rewrite_symlinks_to_absolute
 from agentomics.runtime.git_checkpoints import commit_step_checkpoint
+from agentomics.runtime.iterations_lessons import read_iterations_lessons, update_iterations_lessons
 from agentomics.runtime.read_write_utils import (
     get_new_rundir_files,
     load_current_iteration_base_prompt,
@@ -30,6 +32,7 @@ from agentomics.runtime.read_write_utils import (
 )
 from agentomics.runtime.step_outputs import load_step_outputs, save_step_output
 from agentomics.utils.config import Config
+from agentomics.utils.exceptions import IterationRunFailed
 from agentomics.utils.providers.provider import Provider
 
 
@@ -54,7 +57,12 @@ class RuntimeStep(ABC):
             self.on_step_success(self.build_simulated_output())
             return
         self.on_step_start()
-        output = await self._execute()
+        try:
+            output = await self._execute()
+        except Exception as error:
+            await self.on_step_end(error=error)
+            raise
+        await self.on_step_end()
         self.on_step_success(output)
 
     def should_run(self) -> bool:
@@ -78,6 +86,11 @@ class RuntimeStep(ABC):
             ["chown", self.config.AGENT_USER, str(self.config.current_step_dir)],
             check=True,
         )
+
+    async def on_step_end(self, error: Exception | None = None) -> None:
+        iteration = load_current_iteration_index(self.config)
+        status = "FAILED" if error else "SUCCEEDED"
+        _console.print(f"[bold purple]ITERATION {iteration} | {self.display_name} STEP {status}[/bold purple]")
 
     def on_step_success(self, output: Any) -> None:
         save_step_output(self.config, self.step_id, output)
@@ -120,6 +133,16 @@ class AgenticStep(RuntimeStep):
     def on_step_start(self) -> None:
         super().on_step_start()
         self._setup_injected_scripts()
+
+    async def on_step_end(self, error: Exception | None = None) -> None:
+        await super().on_step_end(error)
+        await update_iterations_lessons(
+            config=self.config,
+            model=self.iteration_plan_model,
+            step_name=self.display_name,
+            messages=self._step_messages,
+            error=error,
+        )
 
     def injected_scripts(self) -> list[Path]:
         return []
@@ -185,7 +208,17 @@ class AgenticStep(RuntimeStep):
         if self.injected_scripts():
             prompt += "\nYour current working directory contains a helpers/ package of read-only modules you can import."
         prompt += "\nSummarized outputs from your previous steps are in previous messages."
+        prompt += self._build_iterations_lessons()
         return prompt
+
+    def _build_iterations_lessons(self) -> str:
+        iterations_lessons = read_iterations_lessons(self.config)
+        if not iterations_lessons:
+            return ""
+        return (
+            "\nLessons established so far in this run. Apply the ones relevant to this step instead of re-discovering them.\n"
+            f"<iterations_lessons>\n{iterations_lessons}\n</iterations_lessons>"
+        )
 
     def build_deps(self, step_started_at: datetime) -> dict[str, Any]:
         return {"start_time": step_started_at}
@@ -216,15 +249,24 @@ class AgenticStep(RuntimeStep):
         return history
 
     async def _execute(self) -> AgenticStepOutput:
+        self._step_messages: list[ModelMessage] = []
         step_started_at = datetime.now()
         message_history = self.get_message_history()
+        history_length = len(message_history or [])
         user_prompt = self.build_user_prompt()
         agent = self.create_agent()
-        _, output = await run_agent(
-            agent=agent,
-            user_prompt=user_prompt,
-            max_steps=self.config.max_steps,
-            message_history=message_history,
-            deps=self.build_deps(step_started_at),
-        )
+        try:
+            run_messages, output = await run_agent(
+                agent=agent,
+                user_prompt=user_prompt,
+                max_steps=self.config.max_steps,
+                message_history=message_history,
+                deps=self.build_deps(step_started_at),
+            )
+        except IterationRunFailed as error:
+            # history_length: drop the previous steps' context, keep only this step's messages
+            self._step_messages = error.context_messages[history_length:]
+            raise
+        # history_length: drop the previous steps' context, keep only this step's messages
+        self._step_messages = run_messages[history_length:]
         return self._populate_files_created(output, step_started_at)

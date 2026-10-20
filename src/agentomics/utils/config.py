@@ -24,6 +24,7 @@ class Config:
     ITERATION_STATE_FILENAME: ClassVar[str] = "iteration_state.json"
     ENVIRONMENT_DESCRIPTOR_FILENAME: ClassVar[str] = "environment.yml"
     STEP_OUTPUT_FILENAME: ClassVar[str] = "output.json"
+    ITERATIONS_LESSONS_FILENAME: ClassVar[str] = "iterations_lessons.md"
 
     DEFAULT_ITERATIONS: ClassVar[int] = 5
     DEFAULT_SPLIT_ALLOWED_ITERATIONS: ClassVar[int] = 1
@@ -128,6 +129,10 @@ class Config:
     @property
     def shared_dir(self) -> Path:
         return self.run_dir / self.SHARED_DIRNAME
+
+    @property
+    def iterations_lessons_path(self) -> Path:
+        return self.shared_dir / self.ITERATIONS_LESSONS_FILENAME
 
     @property
     def config_path(self) -> Path:
