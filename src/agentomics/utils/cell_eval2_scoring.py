@@ -86,6 +86,12 @@ def _validate_pair(real, pred) -> None:
 
 def _score_context(real, pred) -> dict[str, float]:
     import anndata as ad
+    from scipy import sparse
+
+    # cell-eval2 refuses sparse matrices that are not canonical (sorted, no duplicate entries).
+    for adata in (real, pred):
+        if sparse.issparse(adata.X):
+            adata.X.sum_duplicates()
 
     with tempfile.TemporaryDirectory() as temporary_directory:
         work_dir = Path(temporary_directory)

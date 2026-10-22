@@ -93,6 +93,8 @@ def build(
         if fraction < 1.0:
             counts.data = rng.binomial(counts.data.astype(np.int64), fraction).astype(np.float32)
             counts.eliminate_zeros()
+        # cell-eval2 refuses sparse matrices that are not canonical (sorted, no duplicate entries).
+        counts.sum_duplicates()
 
         cells = ad.AnnData(
             X=counts,
