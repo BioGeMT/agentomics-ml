@@ -81,7 +81,7 @@ def describe_split_folder(task_type: str) -> str:
             f"contains an input/ folder with {CONTROLS_FILE_NAME} (the control cells of each context: raw counts, "
             f"{cell_obs} = '{CONTROL_LABEL}') and {PERTURBATIONS_FILE_NAME} (the conditions to generate cells for: "
             f"{CONTEXT_COLUMN_NAME}, {TARGET_GENE_COLUMN_NAME}, {N_CELLS_COLUMN_NAME}), {LABELS_FILE_NAME} (one row per "
-            f"condition: id '<{CONTEXT_COLUMN_NAME}>|<{TARGET_GENE_COLUMN_NAME}>', label = {N_CELLS_COLUMN_NAME}) and "
+            f"condition: id '<{CONTEXT_COLUMN_NAME}>|<{TARGET_GENE_COLUMN_NAME}>', numeric_label = {N_CELLS_COLUMN_NAME}) and "
             f"{GENERATION_LABELS_FILE_NAME} (the measured cells of every condition: raw counts, {cell_obs})."
         )
     return "contains an input/ folder with the data files and labels.csv with labels keyed by id."

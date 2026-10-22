@@ -4,6 +4,7 @@ A split folder holds:
     input/controls.h5ad      control cells (raw counts), obs: context, target_gene == "non-targeting"
     input/perturbations.csv  conditions to generate: context, target_gene, n_cells
     labels.csv               one row per condition: id = "<context>|<target_gene>", label = n_cells
+                             (column 'label' in source datasets, 'numeric_label' once prepared)
     labels.h5ad              measured perturbed cells (raw counts), obs: context, target_gene
 
 input/ is all inference receives; labels.h5ad is the ground truth.

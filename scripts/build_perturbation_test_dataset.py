@@ -213,7 +213,7 @@ perturbed during training ({train}), as in the Virtual Cell Challenge.
 ## Data format
 - input/controls.h5ad: control cells; obs 'context' and 'target_gene' ('non-targeting').
 - input/perturbations.csv: the conditions (context, target_gene, n_cells) to generate cells for.
-- labels.csv: one row per condition; id '<context>|<target_gene>', label = n_cells.
+- labels.csv: one row per condition; its id '<context>|<target_gene>' and its n_cells.
 - labels.h5ad: the measured cells of every condition; obs 'context' and 'target_gene'.
 """
 
