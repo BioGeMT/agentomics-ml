@@ -21,6 +21,7 @@ from agentomics.runtime.read_write_utils import (
 from agentomics.runtime.step_outputs import load_step_output, load_step_outputs
 from agentomics.runtime.system_resources import get_resources_summary
 from agentomics.tools.tool_registry import get_tool_names
+from agentomics.utils.metrics import describe_metric
 from agentomics.utils.printing_utils import truncate_float
 from agentomics.datasets.data_contract import SUPPLEMENTARY_DIR_NAME
 
@@ -116,7 +117,7 @@ class IterationPlanStep(AgenticStep):
         {iteration_history_info}
         <your_instructions>
         {f"<exploration_guidance>{exploration_info}</exploration_guidance>" if exploration_info else ""}
-        The main goal of the run is to maximize the hidden test set generalization performance (main metric:{self.config.val_metric}) that will use the 'best iteration model'. {best_iteration_model_info}
+        The main goal of the run is to maximize the hidden test set generalization performance (main metric: {describe_metric(self.config.val_metric)}) that will use the 'best iteration model'. {best_iteration_model_info}
         There are {time_info} left before the run ends. Then, the 'best iteration model' will be extracted and automatically evaluated on the hidden test set.
         Once an iteration produces a model with a better {self.config.val_metric} metric, that model will overwrite the 'best iteration model'.
 

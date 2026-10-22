@@ -13,12 +13,14 @@ class Metric:
     - The computation function
     - Whether it needs probabilities (True) or class predictions (False)  
     - Whether higher values are better (True) or worse (False)
+    - An optional description, shown to the agents next to the metric name
     """
     
-    def __init__(self, function, needs_probabilities: bool, higher_is_better: bool):
+    def __init__(self, function, needs_probabilities: bool, higher_is_better: bool, description: Optional[str] = None):
         self.function = function
         self.needs_probabilities = needs_probabilities
         self.higher_is_better = higher_is_better
+        self.description = description
     
     def __call__(self, y_true, y_pred_or_prob):
         return self.function(y_true, y_pred_or_prob)
@@ -125,14 +127,48 @@ def get_regression_metrics_functions():
         ),
     }
 
+# name -> (cell-eval2 member, description)
 CONDITIONAL_GENERATION_METRICS = {
-    "AVG_SCORE": "avg_score", # average of all other conditional generation metrics
-    "PDS": "pds_cosine",
-    "EXPR_MSE": "expr_mse_unbiased_capped_norm",
-    "DIRECTION_FIDELITY": "de_wilcoxon_direction_fidelity_yield_raw",
-    "DIRECTION_REACH": "de_wilcoxon_direction_reach_raw",
-    "SIG_JACCARD": "de_wilcoxon_sig_jaccard",
-    "LFC_NMAE": "de_wilcoxon_lfc_nmae",
+    "AVG_SCORE": (
+        "avg_score",
+        "Virtual Cell Challenge 2026 score: the average of PDS, EXPR_MSE, DIRECTION_FIDELITY, DIRECTION_REACH, "
+        "SIG_JACCARD and LFC_NMAE, computed by cell-eval2 (--preset vcc2026) separately for each context and averaged "
+        "over contexts. Every metric is rescaled so that 0 = predicting the context-mean perturbation effect "
+        "(baseline) and 1 = an experimental replicate (split halves of the real cells); higher is better and values "
+        "can be negative or above 1. To compute it, use the installed cell-eval2 CLI per context: "
+        "baseline --save-pred, prep-real-bundle, run, then score --real-bundle (scaled values in the from_replicate "
+        "column), with --pert-col target_gene --control non-targeting; the predicted h5ad passed to cell-eval2 must "
+        "also contain the context's real control cells.",
+    ),
+    "PDS": (
+        "pds_cosine",
+        "Perturbation discrimination: how close (cosine) each predicted pseudobulk effect is to its own real effect, "
+        "ranked against the real effects of all other perturbations.",
+    ),
+    "EXPR_MSE": (
+        "expr_mse_unbiased_capped_norm",
+        "Error between predicted and real pseudobulk expression, corrected for sampling noise and normalised so that "
+        "predicting the control expression is no-skill.",
+    ),
+    "DIRECTION_FIDELITY": (
+        "de_wilcoxon_direction_fidelity_yield_raw",
+        "Genes differentially expressed (Wilcoxon) with the correct up/down direction, as min(precision, recall) "
+        "against the real differentially expressed genes.",
+    ),
+    "DIRECTION_REACH": (
+        "de_wilcoxon_direction_reach_raw",
+        "How far down the predicted ranking of differentially expressed genes the predicted directions stay correct, "
+        "relative to the number of confident real differentially expressed genes.",
+    ),
+    "SIG_JACCARD": (
+        "de_wilcoxon_sig_jaccard",
+        "Jaccard overlap between the predicted and real sets of significantly differentially expressed genes.",
+    ),
+    "LFC_NMAE": (
+        "de_wilcoxon_lfc_nmae",
+        "Normalised mean absolute error of the log2 fold changes on the real significantly differentially "
+        "expressed genes.",
+    ),
 }
 
 def get_conditional_generation_metrics_functions():
@@ -141,8 +177,9 @@ def get_conditional_generation_metrics_functions():
             function=lambda real, pred, member=member: score_vcc2026(real, pred)[member],
             needs_probabilities=False,
             higher_is_better=True,
+            description=description,
         )
-        for name, member in CONDITIONAL_GENERATION_METRICS.items()
+        for name, (member, description) in CONDITIONAL_GENERATION_METRICS.items()
     }
 
 def get_classification_metrics_names():
@@ -169,6 +206,16 @@ def get_higher_is_better_map():
         **get_conditional_generation_metrics_functions(),
     }
     return {name: metric.higher_is_better for name, metric in all_metrics.items()}
+
+def describe_metric(name: str) -> str:
+    """Return the metric name, followed by its description when it has one."""
+    all_metrics = {
+        **get_classification_metrics_functions(),
+        **get_regression_metrics_functions(),
+        **get_conditional_generation_metrics_functions(),
+    }
+    description = all_metrics[name].description
+    return f"{name} ({description})" if description else name
 
 def get_default_val_metric(task_type: str) -> str:
     if task_type == TaskTypes.CLASSIFICATION:
