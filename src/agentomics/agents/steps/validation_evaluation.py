@@ -21,7 +21,6 @@ from agentomics.utils.config import Config
 from agentomics.utils.exceptions import AgentScriptFailed, IterationRunFailed
 from agentomics.utils.metrics import get_higher_is_better_map
 from agentomics.datasets.data_contract import LABELS_FILE_NAME, predictions_file_suffix
-from agentomics.utils.task_types import TaskTypes
 
 
 class ValidationEvaluationOutput(BaseModel):
@@ -90,12 +89,6 @@ class ValidationEvaluationStep(RuntimeStep):
             status="success",
         )
 
-    def _evaluation_stages(self) -> list[str]:
-        # Generating and scoring cells for the whole train split costs too much for an every-iteration check.
-        if self.config.task_type == TaskTypes.CONDITIONAL_GENERATION:
-            return ["validation"]
-        return ["validation", "train"]
-
     def _run_inference_on_all_splits(self) -> dict[str, float]:
         #TODO printouts remove?
         print("Starting evaluation phase")
@@ -107,7 +100,7 @@ class ValidationEvaluationStep(RuntimeStep):
         inference_script_path = Path(model_inference.path_to_inference_file)
         training_artifacts_dir = Path(model_training.path_to_artifacts_dir)
         data_split = require_step_output(self.config, DataSplitStep.step_id, self.config.current_iteration_dir)
-        for evaluation_stage in self._evaluation_stages():
+        for evaluation_stage in ["validation", "train"]:
             print(f"  Running {evaluation_stage} inference...")
             split_path = Path(data_split.val_path if evaluation_stage == "validation" else data_split.train_path)
             labels_path = split_path / LABELS_FILE_NAME
