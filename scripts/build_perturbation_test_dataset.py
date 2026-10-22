@@ -4,12 +4,13 @@ Each input h5ad is one screen in one cell line (context), as distributed by scPe
 (https://doi.org/10.5281/zenodo.13350497): raw counts, one row per cell, and an obs column naming
 the knocked-down gene. The dataset keeps target genes knocked down well in every context, a fixed
 number of cells per target and of control cells, and the most expressed genes plus the targets.
-Validation contexts are held out entirely, as in the Virtual Cell Challenge.
+Validation and test contexts are held out entirely, as in the Virtual Cell Challenge.
 
 Usage:
     python scripts/build_perturbation_test_dataset.py \\
         --train K562=ReplogleWeissman2022_K562_essential.h5ad RPE1=ReplogleWeissman2022_rpe1.h5ad \\
         --validation HepG2=NadigOConner2024_hepg2.h5ad \\
+        --test Jurkat=NadigOConner2024_jurkat.h5ad \\
         --output datasets/perturb_small
 """
 from __future__ import annotations
@@ -40,6 +41,7 @@ from agentomics.datasets.data_contract import (
     LABEL_COLUMN_NAME,
     LABELS_FILE_NAME,
     METADATA_FILE_NAME,
+    TEST_SPLIT_PREFIX,
     TRAIN_SPLIT,
     VALIDATION_SPLIT,
 )
@@ -232,6 +234,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--train", nargs="+", required=True, metavar="CONTEXT=PATH", help="Training screens")
     parser.add_argument("--validation", nargs="+", required=True, metavar="CONTEXT=PATH", help="Held-out screens")
+    parser.add_argument("--test", nargs="+", metavar="CONTEXT=PATH", help="Held-out screens of the hidden test split")
     parser.add_argument("--output", type=Path, required=True, help="Dataset folder to create (must not exist)")
     parser.add_argument("--perturbation-column", default="perturbation", help="obs column with the knocked-down gene")
     parser.add_argument("--control-label", default="control", help="Label of control cells in that column")
@@ -247,6 +250,8 @@ def main() -> None:
     if args.output.exists():
         parser.error(f"--output already exists: {args.output}")
     contexts = {TRAIN_SPLIT: _parse_contexts(args.train), VALIDATION_SPLIT: _parse_contexts(args.validation)}
+    if args.test:
+        contexts[TEST_SPLIT_PREFIX] = _parse_contexts(args.test)
     build(
         contexts,
         args.output,
