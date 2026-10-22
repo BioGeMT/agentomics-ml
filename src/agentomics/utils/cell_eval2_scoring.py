@@ -158,15 +158,25 @@ def _run_cell_eval2(*arguments) -> None:
 def _cell_eval2_flags() -> tuple[str, ...]:
     """Competition flags plus the compute engines, chosen once per process.
 
-    Engines are pinned explicitly rather than left to cell-eval2's 'auto', which raises on a GPU
-    host without gpudge. They are also part of the real-bundle cache key, because DE numbers
-    differ between engines and a bundle must be scored with the engine that built it.
+    With a visible CUDA device, scoring runs on the GPU engines (gpudge for DE, CUDA kernels) and
+    fails if they cannot run, instead of silently switching engine. Without one (including
+    --cpu-only, which hides the GPU), it runs on CPU. The engines are part of the real-bundle cache
+    key, because DE numbers differ between engines and a bundle must be scored with the engine
+    that built it.
     """
-    from cell_eval2.de_compute import _available
+    from cell_eval2.de_compute import _available, _cuda_device_present
     from cell_eval2.gpu import resolve_device
 
-    backend = "gpudge" if _available("gpudge") else "scanpy"
-    device = resolve_device("auto")
+    if _cuda_device_present():
+        if not _available("gpudge") or resolve_device("auto") != "cuda":
+            raise RuntimeError(
+                "A CUDA device is visible but cell-eval2's GPU engines cannot use it "
+                "(torch.cuda or cupy unavailable). The runtime env needs CUDA 12.4+ drivers; "
+                "check `nvidia-smi` and `python -c 'import torch; print(torch.cuda.is_available())'`."
+            )
+        backend, device = "gpudge", "cuda"
+    else:
+        backend, device = "scanpy", "cpu"
     print(f"cell-eval2 engines: de.backend={backend}, device={device}")
     return (*CELL_EVAL2_FLAGS, "--set", f"de.backend={backend}", "--set", f"device={device}")
 

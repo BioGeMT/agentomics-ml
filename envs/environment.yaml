@@ -22,3 +22,4 @@ dependencies:
     - anthropic==1.13.0
     - pytest==9.1.1
     - cell-eval2[gpu,gpudge]==0.19.0
+    - torch==2.6.0 # CUDA 12.4 build: runs on drivers from CUDA 12.4 up; newer torch needs CUDA 13 drivers
