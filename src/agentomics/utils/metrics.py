@@ -147,8 +147,8 @@ CONDITIONAL_GENERATION_METRICS = {
     ),
     "EXPR_MSE": (
         "expr_mse_unbiased_capped_norm",
-        "Error between predicted and real pseudobulk expression, corrected for sampling noise and normalised so that "
-        "predicting the control expression is no-skill.",
+        "Error between predicted and real pseudobulk expression, corrected for sampling noise. Unlike the other "
+        "metrics it is clamped to [0, 1]: 0 means no better than the context-mean baseline.",
     ),
     "DIRECTION_FIDELITY": (
         "de_wilcoxon_direction_fidelity_yield_raw",
