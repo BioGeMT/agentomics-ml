@@ -1,4 +1,18 @@
-from agentomics.datasets.data_contract import SUPPLEMENTARY_DIR_NAME, TRAIN_SPLIT, VALIDATION_SPLIT
+from agentomics.datasets.conditional_generation_contract import (
+    CONTEXT_COLUMN_NAME,
+    CONTROL_LABEL,
+    CONTROLS_FILE_NAME,
+    N_CELLS_COLUMN_NAME,
+    PERTURBATIONS_FILE_NAME,
+    TARGET_GENE_COLUMN_NAME,
+)
+from agentomics.datasets.data_contract import (
+    GENERATION_LABELS_FILE_NAME,
+    LABELS_FILE_NAME,
+    SUPPLEMENTARY_DIR_NAME,
+    TRAIN_SPLIT,
+    VALIDATION_SPLIT,
+)
 
 from agentomics.runtime.read_write_utils import load_dataset_metadata
 from agentomics.runtime.system_resources import check_gpu_availability, get_resources_summary
@@ -50,14 +64,39 @@ def get_system_prompt(config: Config):
     Dataset paths:
     {dataset_paths}
     Split folder contract:
-    - Each split folder contains an input/ folder with the data files and labels.csv with labels keyed by id.
+    - Each split folder {describe_split_folder(config.task_type)}
     - The input/ interface is fixed and must not be modified anywhere.
-    - The inference script receives only the input/ folder, not the full split — never depend on labels.csv in inference code.
-    - Split directories also contain a mini_train/ folder used for automatic system validation and quick development runs. Generated scripts must not hard-code mini_train paths; use the provided CLI data arguments instead.
+    - The inference script receives only the input/ folder, not the full split — never depend on {_label_files(config.task_type)} in inference code.
+{_task_description(config.task_type)}    - Split directories also contain a mini_train/ folder used for automatic system validation and quick development runs. Generated scripts must not hard-code mini_train paths; use the provided CLI data arguments instead.
 
     Dataset knowledge:
     {dataset_knowledge}
     """
+
+def describe_split_folder(task_type: str) -> str:
+    """Completes the sentence 'Each split folder ...' / 'This folder ...'."""
+    if task_type == TaskTypes.CONDITIONAL_GENERATION:
+        cell_obs = f"obs '{CONTEXT_COLUMN_NAME}' and '{TARGET_GENE_COLUMN_NAME}'"
+        return (
+            f"contains an input/ folder with {CONTROLS_FILE_NAME} (the control cells of each context: raw counts, "
+            f"{cell_obs} = '{CONTROL_LABEL}') and {PERTURBATIONS_FILE_NAME} (the conditions to generate cells for: "
+            f"{CONTEXT_COLUMN_NAME}, {TARGET_GENE_COLUMN_NAME}, {N_CELLS_COLUMN_NAME}), {LABELS_FILE_NAME} (one row per "
+            f"condition: id '<{CONTEXT_COLUMN_NAME}>|<{TARGET_GENE_COLUMN_NAME}>', label = {N_CELLS_COLUMN_NAME}) and "
+            f"{GENERATION_LABELS_FILE_NAME} (the measured cells of every condition: raw counts, {cell_obs})."
+        )
+    return "contains an input/ folder with the data files and labels.csv with labels keyed by id."
+
+def _label_files(task_type: str) -> str:
+    if task_type == TaskTypes.CONDITIONAL_GENERATION:
+        return f"{LABELS_FILE_NAME} or {GENERATION_LABELS_FILE_NAME}"
+    return LABELS_FILE_NAME
+
+def _task_description(task_type: str) -> str:
+    if task_type != TaskTypes.CONDITIONAL_GENERATION:
+        return ""
+    return """    - Task: given the control cells of a cell context and a target gene, generate the cells that would be measured after knocking that gene down.
+    - Predictions are sets of cells, scored against the measured cells of each condition as populations (differential expression against the controls). A model must therefore generate a distribution of cells per condition, not a single profile.
+"""
 
 def get_dataset_knowledge(config: Config):
     dataset_knowledge_path = config.dataset_dir / "dataset_description.md"

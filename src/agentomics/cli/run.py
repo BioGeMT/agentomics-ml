@@ -15,7 +15,7 @@ from agentomics.cli.docker_utils import (
 )
 from agentomics.cli.inference import run_inference_in_docker
 from agentomics.cli.run_arguments import add_run_arguments
-from agentomics.datasets.data_contract import PREPARED_DATASETS_DIR_NAME, TEST_SPLIT_PREFIX
+from agentomics.datasets.data_contract import PREPARED_DATASETS_DIR_NAME, TEST_SPLIT_PREFIX, predictions_file_suffix
 from agentomics.datasets.dataset_preparation import prepare_test_dataset
 from agentomics.datasets.datasets_interactive import (
     get_all_datasets_info,
@@ -245,6 +245,7 @@ def _run_inference_on_test_input(
     cpu_only: bool,
     workspace_directory: Path,
     test_input: Path,
+    predictions_suffix: str,
 ) -> int:
     print(f"Evaluating the best iteration on {test_input.name}: {test_input}")
     return run_inference_in_docker(
@@ -255,7 +256,7 @@ def _run_inference_on_test_input(
             output=(
                 workspace_directory
                 / Config.BEST_ITERATION_SNAPSHOT_DIRNAME
-                / f"eval_predictions_{test_input.name}.csv"
+                / f"eval_predictions_{test_input.name}{predictions_suffix}"
             ),
             label_col=None,
             iteration_dir=Path(Config.BEST_ITERATION_SNAPSHOT_DIRNAME),
@@ -273,6 +274,14 @@ def _run_test_evaluation_in_docker(
     workspace_directory: Path,
     dataset_directory: Path,
 ) -> None:
+    metadata_path = (
+        workspace_directory
+        / PREPARED_DATASETS_DIR_NAME
+        / dataset_directory.name
+        / "metadata.json"
+    )
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    predictions_suffix = predictions_file_suffix(metadata["task_type"])
     test_directories = sorted(
         path
         for path in dataset_directory.iterdir()
@@ -285,6 +294,7 @@ def _run_test_evaluation_in_docker(
                 cpu_only,
                 workspace_directory,
                 test_directory,
+                predictions_suffix,
             )
             if return_code != 0:
                 print(
@@ -299,13 +309,6 @@ def _run_test_evaluation_in_docker(
         print(f"No test split found in {dataset_directory}; skipping test evaluation.")
         return
 
-    metadata_path = (
-        workspace_directory
-        / PREPARED_DATASETS_DIR_NAME
-        / dataset_directory.name
-        / "metadata.json"
-    )
-    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
     with tempfile.TemporaryDirectory() as temporary_directory:
         prepared_directory = Path(temporary_directory) / dataset_directory.name
         prepare_test_dataset(
@@ -322,6 +325,7 @@ def _run_test_evaluation_in_docker(
             cpu_only,
             workspace_directory,
             prepared_directory / "test",
+            predictions_suffix,
         )
         if return_code != 0:
             print(

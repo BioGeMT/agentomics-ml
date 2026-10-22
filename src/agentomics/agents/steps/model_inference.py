@@ -7,14 +7,27 @@ from pathlib import Path
 import pandas as pd
 from pydantic import Field
 from pydantic_ai import Agent, ModelRetry, RunContext
+from agentomics.datasets.conditional_generation_contract import (
+    CONTEXT_COLUMN_NAME,
+    CONTROL_LABEL,
+    CONTROLS_FILE_NAME,
+    MAX_COUNTS_PER_CELL,
+    N_CELLS_COLUMN_NAME,
+    PERTURBATIONS_FILE_NAME,
+    TARGET_GENE_COLUMN_NAME,
+    validate_generated_cells,
+)
 from agentomics.datasets.data_contract import (
+    GENERATION_LABELS_FILE_NAME,
     ID_COLUMN_NAME,
+    INPUT_DIR_NAME,
     LABELS_FILE_NAME,
     MINI_TRAIN_SPLIT,
     PREDICTION_COLUMN_NAME,
     SUPPLEMENTARY_DIR_NAME,
     TRAIN_SPLIT,
     VALIDATION_SPLIT,
+    predictions_file_suffix,
 )
 
 from agentomics.agents.steps.base import AgenticStep, AgenticStepOutput
@@ -65,13 +78,15 @@ class ModelInferenceStep(AgenticStep):
             output_file_description = f"A csv with columns:\n- 'id': the input sample id\n- 'prediction': the predicted class (int)\n{probability_columns}"
         elif self.config.task_type == TaskTypes.REGRESSION:
             output_file_description = "A csv with columns 'id' and 'prediction', where 'prediction' contains the predicted continuous value."
+        elif self.config.task_type == TaskTypes.CONDITIONAL_GENERATION:
+            output_file_description = self._generated_cells_description()
         else:
             raise ValueError(f"Unknown task type: {self.config.task_type}. Supported types are {TaskTypes}.")
 
         return f"""
         Your next task: create inference.py file.
         If your model can be accelerated by GPU, implement the code to use GPU.
-        The inference script must produce a prediction for every single input sample. Don't skip any samples. The 'id' values from the input folder data must be preserved in the output file.
+        {self._coverage_requirement()}
         The inference script must use the same architecture as your current trained model from 'train.py' and use the artifacts produced by that script (located at '{model_training.path_to_artifacts_dir}').
         The inference script will be taking the following named arguments:
         --input (a split input folder path). This folder has the same structure as train/input and contains no labels.
@@ -79,6 +94,26 @@ class ModelInferenceStep(AgenticStep):
         --artifacts-dir (the folder that contains training artifacts from the training step that are needed to run inference (for example model weights, tokenizers, etc..). The following dir should be used as a default: '{model_training.path_to_artifacts_dir}'. If a different path is provided, your script must adapt to the new source. You can assume the artifact files will always have the same name.
         The script must not accept any other parameters.
         """
+
+    def _coverage_requirement(self) -> str:
+        if self.config.task_type == TaskTypes.CONDITIONAL_GENERATION:
+            return (
+                f"The inference script must generate cells for every condition listed in {INPUT_DIR_NAME}/{PERTURBATIONS_FILE_NAME}. "
+                "Don't skip any conditions."
+            )
+        return (
+            "The inference script must produce a prediction for every single input sample. Don't skip any samples. "
+            "The 'id' values from the input folder data must be preserved in the output file."
+        )
+
+    @staticmethod
+    def _generated_cells_description() -> str:
+        return f"""An h5ad file (AnnData) of generated cells:
+        - For every row of {INPUT_DIR_NAME}/{PERTURBATIONS_FILE_NAME}, exactly '{N_CELLS_COLUMN_NAME}' generated cells (one row each), with obs columns '{CONTEXT_COLUMN_NAME}' and '{TARGET_GENE_COLUMN_NAME}' set to that row's values.
+        - No control ('{CONTROL_LABEL}') cells.
+        - Genes (var_names): those of {INPUT_DIR_NAME}/{CONTROLS_FILE_NAME}, in the same order.
+        - X: raw counts, i.e. non-negative whole numbers, at most {MAX_COUNTS_PER_CELL} per cell. Store X as a scipy sparse matrix.
+        - Sample each cell from the predicted distribution of its condition, so the cells of one condition vary like real cells do. Repeating one profile for all cells of a condition removes that variation and breaks the differential-expression based metrics."""
 
     def _validate_inference_file(self, inference_file_path: str) -> None:
         self._validate_inference_file_exists(inference_file_path)
@@ -107,8 +142,11 @@ class ModelInferenceStep(AgenticStep):
                 "iteration folder, which will not accessible during final testing. If you want to re-use "
                 "a file from a past iteration, copy it into the current working directory and use its path."
             )
-        if does_file_contain_string(inference_file_path, "labels.csv"):
-            raise ModelRetry("Inference file contains references to labels.csv, which will not be accessible during final testing.")
+        for labels_file_name in (LABELS_FILE_NAME, GENERATION_LABELS_FILE_NAME):
+            if does_file_contain_string(inference_file_path, labels_file_name):
+                raise ModelRetry(
+                    f"Inference file contains references to {labels_file_name}, which will not be accessible during final testing."
+                )
         dataset_supplementary_path = self.config.dataset_dir / SUPPLEMENTARY_DIR_NAME
         if dataset_supplementary_path.is_dir() and does_file_contain_string(
             inference_file_path, SUPPLEMENTARY_DIR_NAME + "/"
@@ -136,7 +174,7 @@ class ModelInferenceStep(AgenticStep):
         evaluation_stage = "dry_run"
         split_path = Path(data_split.mini_train_path)
         labels_path = split_path / LABELS_FILE_NAME
-        output_path = self.config.current_step_dir / "eval_predictions_dry_run.csv"
+        output_path = self.config.current_step_dir / f"eval_predictions_dry_run{predictions_file_suffix(self.config.task_type)}"
         inference_result = run_inference_on_split(
             split_path=split_path,
             output_path=output_path,
@@ -148,11 +186,18 @@ class ModelInferenceStep(AgenticStep):
             print("DRY RUN EVAL FAIL during inference:", inference_result.stderr)
             message = collapse_repeated_lines(f"Inference script validation failed: {str(inference_result)}")
             raise ModelRetry(concise_output(message))
-        self._validate_dry_run_predictions(
-            labels_path=labels_path,
-            predictions_path=output_path,
-            inference_result=inference_result,
-        )
+        if self.config.task_type == TaskTypes.CONDITIONAL_GENERATION:
+            self._validate_dry_run_generated_cells(
+                input_path=split_path / INPUT_DIR_NAME,
+                predictions_path=output_path,
+                inference_result=inference_result,
+            )
+        else:
+            self._validate_dry_run_predictions(
+                labels_path=labels_path,
+                predictions_path=output_path,
+                inference_result=inference_result,
+            )
         self._compute_dry_run_metrics(
             output_path=output_path,
             labels_path=labels_path,
@@ -199,6 +244,15 @@ class ModelInferenceStep(AgenticStep):
                 "Inference script must produce a prediction for every labeled sample. "
                 f"First (up to 20) label ids missing from predictions: {missing}"
             )
+
+    def _validate_dry_run_generated_cells(self, input_path: Path, predictions_path: Path, inference_result) -> None:
+        if not predictions_path.exists():
+            inference_summary = concise_output(collapse_repeated_lines(str(inference_result)))
+            raise ModelRetry(f"Inference doesn't produce generated cells. Stderr/stdout: {inference_summary}")
+        try:
+            validate_generated_cells(predictions_path, input_path)
+        except ValueError as error:
+            raise ModelRetry(f"Inference produced invalid generated cells: {error}") from error
 
     def _compute_dry_run_metrics(
         self,

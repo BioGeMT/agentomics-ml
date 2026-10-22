@@ -10,6 +10,7 @@ from rich.console import Console
 
 from agentomics.datasets.data_contract import (
     DATASET_DESCRIPTION_FILE_NAME,
+    GENERATION_LABELS_FILE_NAME,
     INPUT_DIR_NAME,
     LABEL_COLUMN_NAME,
     LABELS_FILE_NAME,
@@ -107,6 +108,15 @@ def _build_binary_label_mapping(
         )
     return {str(resolved_negative): 0, str(resolved_positive): 1}
 
+def _link_generation_labels(source_split: Path, dest_split: Path, task_type: str) -> None:
+    """Conditional generation keeps its ground-truth cells in labels.h5ad, next to labels.csv."""
+    if task_type != TaskTypes.CONDITIONAL_GENERATION:
+        return
+    source_labels = source_split / GENERATION_LABELS_FILE_NAME
+    if not source_labels.is_file():
+        raise ValueError(f"{source_split.name} split is missing {GENERATION_LABELS_FILE_NAME}: {source_labels}")
+    create_absolute_symlink(source_labels, dest_split / GENERATION_LABELS_FILE_NAME)
+
 def _build_output_metadata(
     source_metadata: dict,
     resolved_task_type: str,
@@ -170,13 +180,12 @@ def prepare_dataset(
     if TRAIN_SPLIT not in source_splits:
         raise FileNotFoundError(f"Required train/ split is missing: {source_dir / TRAIN_SPLIT}")
 
-    for split_name, split_path in source_splits.items():
-        validate_split_entries(split_path, split_name)
-
     input_structure = record_input_dir_structure(source_splits[TRAIN_SPLIT] / INPUT_DIR_NAME)
     split_labels = load_split_label_dfs(source_splits)
 
     resolved_task_type = _resolve_task_type(source_metadata, task_type, split_labels[TRAIN_SPLIT], interactive)
+    for split_name, split_path in source_splits.items():
+        validate_split_entries(split_path, split_name, resolved_task_type)
     output_metadata = _build_output_metadata(
         source_metadata, resolved_task_type, split_labels, input_structure,
     )
@@ -210,7 +219,8 @@ def prepare_dataset(
             split_name: convert_classification_labels(labels, label_to_scalar, split_name)
             for split_name, labels in split_labels.items()
         }
-    elif resolved_task_type == TaskTypes.REGRESSION:
+    elif resolved_task_type in (TaskTypes.REGRESSION, TaskTypes.CONDITIONAL_GENERATION):
+        # Conditional generation labels are the number of cells to generate per condition.
         numeric_split_labels = {
             split_name: convert_regression_labels(labels, split_name)
             for split_name, labels in split_labels.items()
@@ -225,9 +235,10 @@ def prepare_dataset(
         dest_split.mkdir(exist_ok=True)
         create_absolute_symlink(source_split / INPUT_DIR_NAME, dest_split / INPUT_DIR_NAME)
         numeric_split_labels[split_name].to_csv(dest_split / LABELS_FILE_NAME, index=False)
+        _link_generation_labels(source_split, dest_split, resolved_task_type)
         destination_splits[split_name] = dest_split
 
-    validate_splits(destination_splits, input_structure)
+    validate_splits(destination_splits, input_structure, resolved_task_type)
 
     source_desc = source_dir / DATASET_DESCRIPTION_FILE_NAME
     if source_desc.exists():
@@ -328,7 +339,7 @@ def prepare_test_dataset(
     if not test_source.is_dir():
         raise FileNotFoundError(f"Required test/ split is missing: {test_source}")
 
-    validate_split_entries(test_source, TEST_SPLIT_PREFIX)
+    validate_split_entries(test_source, TEST_SPLIT_PREFIX, task_type)
 
     test_labels = load_split_label_dfs({TEST_SPLIT_PREFIX: test_source})
 
@@ -345,7 +356,7 @@ def prepare_test_dataset(
                 f"Known labels: {sorted(label_to_scalar)}"
             )
         numeric_labels = convert_classification_labels(test_labels[TEST_SPLIT_PREFIX], label_to_scalar, TEST_SPLIT_PREFIX)
-    elif task_type == TaskTypes.REGRESSION:
+    elif task_type in (TaskTypes.REGRESSION, TaskTypes.CONDITIONAL_GENERATION):
         numeric_labels = convert_regression_labels(test_labels[TEST_SPLIT_PREFIX], TEST_SPLIT_PREFIX)
     else:
         raise ValueError(f"Unknown task_type: {task_type}. Expected one of {TaskTypes}.")
@@ -360,8 +371,9 @@ def prepare_test_dataset(
             dest_test / INPUT_DIR_NAME,
         )
     numeric_labels.to_csv(dest_test / LABELS_FILE_NAME, index=False)
+    _link_generation_labels(test_source, dest_test, task_type)
 
-    validate_splits({TEST_SPLIT_PREFIX: dest_test}, input_structure)
+    validate_splits({TEST_SPLIT_PREFIX: dest_test}, input_structure, task_type)
 
     test_metadata = {
         "task_type": task_type,

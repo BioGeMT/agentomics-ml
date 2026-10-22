@@ -5,6 +5,7 @@ import sys
 import pandas as pd
 
 from agentomics.datasets.data_contract import ID_COLUMN_NAME, NUMERIC_LABEL_COLUMN_NAME, PREDICTION_COLUMN_NAME
+from agentomics.runtime.conditional_generation_evaluation import get_conditional_generation_metrics
 from agentomics.utils.metrics import get_classification_metrics_functions, get_regression_metrics_functions
 from agentomics.utils.task_types import TaskTypes
 
@@ -17,6 +18,10 @@ def get_metrics(
     pred_col=PREDICTION_COLUMN_NAME,
     prob_col_prefix='probability_',
 ):
+    if task_type == TaskTypes.CONDITIONAL_GENERATION:
+        # results_file is predictions.h5ad; test_file is the split's labels.csv, next to its labels.h5ad.
+        return get_conditional_generation_metrics(results_file, test_file)
+
     results = pd.read_csv(results_file, dtype={ID_COLUMN_NAME: str}, keep_default_na=False)
     test = pd.read_csv(test_file, dtype={ID_COLUMN_NAME: str}, keep_default_na=False)
     if pred_col == numeric_label_col:

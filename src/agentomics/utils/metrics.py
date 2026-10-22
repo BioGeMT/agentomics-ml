@@ -3,6 +3,7 @@ from scipy.stats import pearsonr, spearmanr
 import numpy as np
 from typing import Optional
 
+from agentomics.utils.cell_eval2_scoring import score_vcc2026
 from agentomics.utils.task_types import TaskTypes
 
 
@@ -124,16 +125,40 @@ def get_regression_metrics_functions():
         ),
     }
 
+CONDITIONAL_GENERATION_METRICS = {
+    "AVG_SCORE": "avg_score", # average of all other conditional generation metrics
+    "PDS": "pds_cosine",
+    "EXPR_MSE": "expr_mse_unbiased_capped_norm",
+    "DIRECTION_FIDELITY": "de_wilcoxon_direction_fidelity_yield_raw",
+    "DIRECTION_REACH": "de_wilcoxon_direction_reach_raw",
+    "SIG_JACCARD": "de_wilcoxon_sig_jaccard",
+    "LFC_NMAE": "de_wilcoxon_lfc_nmae",
+}
+
+def get_conditional_generation_metrics_functions():
+    return {
+        name: Metric(
+            function=lambda real, pred, member=member: score_vcc2026(real, pred)[member],
+            needs_probabilities=False,
+            higher_is_better=True,
+        )
+        for name, member in CONDITIONAL_GENERATION_METRICS.items()
+    }
+
 def get_classification_metrics_names():
     return list(get_classification_metrics_functions().keys())
 
 def get_regression_metrics_names():
     return list(get_regression_metrics_functions().keys())
 
+def get_conditional_generation_metrics_names():
+    return list(get_conditional_generation_metrics_functions().keys())
+
 def get_task_to_metrics_names():
     return {
         TaskTypes.CLASSIFICATION: get_classification_metrics_names(),
         TaskTypes.REGRESSION: get_regression_metrics_names(),
+        TaskTypes.CONDITIONAL_GENERATION: get_conditional_generation_metrics_names(),
     }
 
 def get_higher_is_better_map():
@@ -141,6 +166,7 @@ def get_higher_is_better_map():
     all_metrics = {
         **get_classification_metrics_functions(),
         **get_regression_metrics_functions(),
+        **get_conditional_generation_metrics_functions(),
     }
     return {name: metric.higher_is_better for name, metric in all_metrics.items()}
 
@@ -149,6 +175,8 @@ def get_default_val_metric(task_type: str) -> str:
         return "AUROC"
     if task_type == TaskTypes.REGRESSION:
         return "MAE"
+    if task_type == TaskTypes.CONDITIONAL_GENERATION:
+        return "AVG_SCORE"
     raise ValueError(f"Unknown task_type: {task_type}. Expected one of {TaskTypes}.")
 
 def resolve_val_metric(task_type: str, val_metric: Optional[str] = None) -> str:

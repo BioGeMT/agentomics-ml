@@ -21,3 +21,4 @@ dependencies:
     - openai==3.29.0
     - anthropic==1.13.0
     - pytest==9.1.1
+    - cell-eval2[gpu,gpudge]==0.19.0

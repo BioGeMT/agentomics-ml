@@ -27,7 +27,9 @@ from agentomics.runtime.read_write_utils import (
 )
 from agentomics.runtime.step_outputs import load_step_output
 from agentomics.run_logging.logging_helpers import log_split_is_allowed
+from agentomics.datasets.conditional_generation_contract import CONTROLS_FILE_NAME, PERTURBATIONS_FILE_NAME
 from agentomics.datasets.data_contract import (
+    GENERATION_LABELS_FILE_NAME,
     ID_COLUMN_NAME,
     INPUT_DIR_NAME,
     LABELS_FILE_NAME,
@@ -59,6 +61,7 @@ class DataSplitStep(AgenticStep):
     output_type = DataSplitOutput
     CLASSIFICATION_MINI_TRAIN_SAMPLES_PER_CLASS = 100
     REGRESSION_MINI_TRAIN_SAMPLE_COUNT = 100
+    GENERATION_MINI_TRAIN_CONDITION_COUNT = 10
 
     @staticmethod
     def validate_generated_split(split_path: Path, dataset_dir: Path) -> None:
@@ -127,12 +130,12 @@ class DataSplitStep(AgenticStep):
                     f"got {mini_count}."
                 )
 
-    def _validate_mini_train_regression(self, mini_train_df: pd.DataFrame, train_df: pd.DataFrame) -> None:
-        expected_count = min(self.REGRESSION_MINI_TRAIN_SAMPLE_COUNT, len(train_df))
+    def _validate_mini_train_count(self, mini_train_df: pd.DataFrame, train_df: pd.DataFrame, sample_count: int) -> None:
+        expected_count = min(sample_count, len(train_df))
         if len(mini_train_df) != expected_count:
             raise ModelRetry(
                 f"mini_train must have exactly {expected_count} samples "
-                f"(min({self.REGRESSION_MINI_TRAIN_SAMPLE_COUNT}, {len(train_df)}) available in train), "
+                f"(min({sample_count}, {len(train_df)}) available in train), "
                 f"got {len(mini_train_df)}."
             )
 
@@ -170,6 +173,7 @@ class DataSplitStep(AgenticStep):
                 validate_splits(
                     {TRAIN_SPLIT: train_path, VALIDATION_SPLIT: val_path, MINI_TRAIN_SPLIT: mini_train_path},
                     expected_structure,
+                    self.config.task_type,
                 )
             except ValueError as exc:
                 raise ModelRetry(str(exc)) from exc
@@ -196,8 +200,10 @@ class DataSplitStep(AgenticStep):
                 )
             if self.config.task_type == TaskTypes.CLASSIFICATION:
                 self._validate_mini_train_classification(train_df, mini_train_df)
+            elif self.config.task_type == TaskTypes.CONDITIONAL_GENERATION:
+                self._validate_mini_train_count(mini_train_df, train_df, self.GENERATION_MINI_TRAIN_CONDITION_COUNT)
             else:
-                self._validate_mini_train_regression(mini_train_df, train_df)
+                self._validate_mini_train_count(mini_train_df, train_df, self.REGRESSION_MINI_TRAIN_SAMPLE_COUNT)
 
             is_mini_train_only = load_iteration_state(self.config.current_iteration_dir)["only_mini_split_allowed_at_start"]
             if is_mini_train_only:
@@ -223,6 +229,17 @@ class DataSplitStep(AgenticStep):
                 result.split_version = int(train_path.parent.name.removeprefix("split_"))
             return result
 
+    def _split_files_instructions(self) -> str:
+        if self.config.task_type != TaskTypes.CONDITIONAL_GENERATION:
+            return ""
+        return (
+            f"Every split also holds {GENERATION_LABELS_FILE_NAME} next to {LABELS_FILE_NAME}. For each split, write "
+            f"{INPUT_DIR_NAME}/{PERTURBATIONS_FILE_NAME}, {LABELS_FILE_NAME} and {GENERATION_LABELS_FILE_NAME} with only "
+            f"that split's conditions, and {INPUT_DIR_NAME}/{CONTROLS_FILE_NAME} with the control cells of the contexts "
+            "those conditions belong to (a symbolic link to the original is fine when it holds exactly those contexts). "
+            "Control cells are model input, so splits that share a context share its control cells."
+        )
+
     def step_prompt(self) -> str:
         iteration = load_current_iteration_index(self.config)
         latest_split_dir = self._get_latest_split_dir()
@@ -240,6 +257,15 @@ class DataSplitStep(AgenticStep):
                 f"exactly {self.REGRESSION_MINI_TRAIN_SAMPLE_COUNT} samples "
                 f"(or all available if the training split has fewer than {self.REGRESSION_MINI_TRAIN_SAMPLE_COUNT})"
             )
+        elif self.config.task_type == TaskTypes.CONDITIONAL_GENERATION:
+            validation_instructions = (
+                f"Split by condition (rows of {LABELS_FILE_NAME}), never by cell. Models are judged on generalising to "
+                "cell contexts they have not seen perturbed, so prefer holding out whole contexts (all of their conditions)."
+            )
+            mini_train_size_instructions = (
+                f"exactly {self.GENERATION_MINI_TRAIN_CONDITION_COUNT} conditions (rows of {LABELS_FILE_NAME}), preferably "
+                f"from one context (or all available if the training split has fewer than {self.GENERATION_MINI_TRAIN_CONDITION_COUNT})"
+            )
         else:
             raise ValueError(f"Unknown task type: {self.config.task_type}. Supported types are {TaskTypes}.")
 
@@ -256,6 +282,7 @@ class DataSplitStep(AgenticStep):
 
             '{MINI_TRAIN_SPLIT}': a subset of the training split ({train_split_path}) with {mini_train_size_instructions}, used solely for automatic system validation.
             The '{MINI_TRAIN_SPLIT}' folder must contain an input/ folder with the data files and a labels.csv file. The input/ must contain only the data that corresponds to the ids in the newly created labels.csv file.
+            {self._split_files_instructions()}
             When populating input/, use symbolic links to the original files in {train_split_path}/input/ instead of copying them. Only create new files when the data must be modified (e.g. splitting a single file that contains multiple samples into per-split subsets). Always create labels.csv as a new file.
             Preserve the original ID scheme: each id in labels.csv must refer to the same data in input/ as it did in the original data.
             The input/ interface must match the original train/input/ interface.
@@ -277,6 +304,7 @@ class DataSplitStep(AgenticStep):
             Your next task: Split the training dataset ({train_split_path}) into '{TRAIN_SPLIT}', '{VALIDATION_SPLIT}', and '{MINI_TRAIN_SPLIT}' folders.
             Each split folder must contain an {INPUT_DIR_NAME}/ folder with the data files and a {LABELS_FILE_NAME} file.
             Each split's {INPUT_DIR_NAME}/ must contain only data for ids in that split's {LABELS_FILE_NAME}.
+            {self._split_files_instructions()}
             When populating {INPUT_DIR_NAME}/, use symbolic links to the original files in {train_split_path}/{INPUT_DIR_NAME}/ instead of copying them. Only create new files when the data must be modified (e.g. splitting a single file that contains multiple samples into per-split subsets); do not reuse an unfiltered shared file across splits. Always create {LABELS_FILE_NAME} as a new file.
             Train and validation {LABELS_FILE_NAME} files must contain disjoint ids. mini_train {LABELS_FILE_NAME} must contain only ids that are present in train {LABELS_FILE_NAME}.
             Preserve the original ID scheme: each id in labels.csv must refer to the same data in input/ as it did in the original data.

@@ -11,6 +11,7 @@ from pydantic import Field
 from pydantic_ai import Agent, ModelRetry, RunContext
 
 import agentomics.agents.injectables.training_reporter as _training_reporter_module
+from agentomics.agents.prompt_builder import describe_split_folder
 from agentomics.agents.steps.base import AgenticStep, AgenticStepOutput
 from agentomics.agents.steps.data_split import DataSplitStep
 from agentomics.datasets.data_contract import SUPPLEMENTARY_DIR_NAME
@@ -145,8 +146,8 @@ class ModelTrainingStep(AgenticStep):
         - Save the training script directly as train.py in the current step directory, not inside a nested folder.
         - Do not read supplementary/ directly from train.py. If you need files from there, copy them into your current step directory.
         The train script should take the following parameters
-        --train-data (a path to the training split folder. This folder contains input/ with the data files and labels.csv with labels keyed by id.)
-        --validation-data (a path to the validation split folder. This folder contains input/ with the data files and labels.csv with labels keyed by id. For example for the purposes of early-stopping. If the training script doesn't need validation data, still include the argument for compatibility and don't use it.)
+        --train-data (a path to the training split folder. This folder {describe_split_folder(self.config.task_type)})
+        --validation-data (a path to the validation split folder. This folder {describe_split_folder(self.config.task_type)} For example for the purposes of early-stopping. If the training script doesn't need validation data, still include the argument for compatibility and don't use it.)
         --artifacts-dir (path to a directory that will be populated by the training script with artifacts needed to use the trained model for predictions (e.g. produced model weights, produced tokenizers, ...). This directory should contain only final inference artifacts and must not contain training caches, full train/validation tensors, downloaded package caches, or other regenerable intermediate files. This directory should not contain any other external sources like imported scripts, conda packages, foundation models, etc..)
         The script must not accept any other parameters.
 

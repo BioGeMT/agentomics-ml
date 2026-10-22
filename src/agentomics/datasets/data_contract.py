@@ -2,6 +2,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from agentomics.utils.task_types import TaskTypes
+
 TRAIN_SPLIT = "train"
 VALIDATION_SPLIT = "validation"
 TEST_SPLIT_PREFIX = "test"
@@ -14,6 +16,7 @@ SUPPLEMENTARY_DIR_NAME = "supplementary"
 PREPARED_DATASETS_DIR_NAME = "prepared_datasets"
 DATASET_METADATA_FILE_NAME = "dataset_metadata.json"
 LABELS_FILE_NAME = "labels.csv"
+GENERATION_LABELS_FILE_NAME = "labels.h5ad"
 ID_COLUMN_NAME = "id"
 LABEL_COLUMN_NAME = "label"
 NUMERIC_LABEL_COLUMN_NAME = "numeric_label"
@@ -30,6 +33,11 @@ ALLOWED_PUBLIC_DATASET_ENTRIES = {
     DATASET_DESCRIPTION_FILE_NAME,
 }
 ALLOWED_SPLIT_ENTRIES = {INPUT_DIR_NAME, LABELS_FILE_NAME}
+GENERATION_ALLOWED_SPLIT_ENTRIES = ALLOWED_SPLIT_ENTRIES | {GENERATION_LABELS_FILE_NAME}
+
+def predictions_file_suffix(task_type: str) -> str:
+    """Conditional generation predicts cells (h5ad); the other task types predict one value per id (csv)."""
+    return ".h5ad" if task_type == TaskTypes.CONDITIONAL_GENERATION else ".csv"
 
 def record_input_dir_structure(input_dir: Path) -> list[str]:
     """
@@ -43,14 +51,19 @@ def record_input_dir_structure(input_dir: Path) -> list[str]:
         f"{item.name}/" if item.is_dir() else item.name for item in Path(input_dir).iterdir()
     )
 
-def validate_split_entries(split_path: Path, split_name: str) -> None:
+def validate_split_entries(split_path: Path, split_name: str, task_type: str | None = None) -> None:
+    allowed_entries = (
+        GENERATION_ALLOWED_SPLIT_ENTRIES
+        if task_type == TaskTypes.CONDITIONAL_GENERATION
+        else ALLOWED_SPLIT_ENTRIES
+    )
     unsupported_entries = sorted(
-        item.name for item in split_path.iterdir() if item.name not in ALLOWED_SPLIT_ENTRIES
+        item.name for item in split_path.iterdir() if item.name not in allowed_entries
     )
     if unsupported_entries:
         raise ValueError(
             f"{split_name} split folder has unsupported top-level entries: {unsupported_entries}. "
-            f"Allowed: {sorted(ALLOWED_SPLIT_ENTRIES)}."
+            f"Allowed: {sorted(allowed_entries)}."
         )
 
 def validate_public_dataset_entries(dataset_dir: Path) -> None:
@@ -68,21 +81,27 @@ def validate_public_dataset_entries(dataset_dir: Path) -> None:
             f"whose names start with '{TEST_SPLIT_PREFIX}'."
         )
 
-def validate_splits(split_paths: dict[str, Path], expected_input_structure: list[str]) -> None:
+def validate_splits(
+    split_paths: dict[str, Path],
+    expected_input_structure: list[str],
+    task_type: str | None = None,
+) -> None:
     """Validates selected split folders against the full dataset contract."""
     for split_name, split_path in split_paths.items():
-        _validate_split_folder(split_path, split_name, expected_input_structure)
+        _validate_split_folder(split_path, split_name, expected_input_structure, task_type)
 
 def _validate_split_folder(
     split_path: Path,
     split_name: str,
     expected_input_structure: list[str],
+    task_type: str | None = None,
 ) -> None:
     """
     Validates one split folder against the dataset contract.
 
-    Each split must contain exactly input/ and labels.csv. The input/ interface
-    must match the expected structure (recorded from train/input/ at preparation time).
+    Each split must contain exactly input/ and labels.csv (plus labels.h5ad for conditional
+    generation). The input/ interface must match the expected structure (recorded from
+    train/input/ at preparation time).
     """
     split_path = Path(split_path)
     if not split_path.is_dir():
@@ -95,9 +114,14 @@ def _validate_split_folder(
             f"{split_name} split folder must contain input/ and labels.csv: {split_path}"
         )
 
-    validate_split_entries(split_path, split_name)
-    validate_and_read_labels(labels_path, NUMERIC_LABEL_COLUMN_NAME, require_numeric_values=True)
+    validate_split_entries(split_path, split_name, task_type)
+    labels = validate_and_read_labels(labels_path, NUMERIC_LABEL_COLUMN_NAME, require_numeric_values=True)
     _validate_input_structure(input_path, expected_input_structure)
+    if task_type == TaskTypes.CONDITIONAL_GENERATION:
+        # Imported here: the generation contract module imports this one.
+        from agentomics.datasets.conditional_generation_contract import validate_conditional_generation_split
+
+        validate_conditional_generation_split(split_path, labels, NUMERIC_LABEL_COLUMN_NAME)
 
 def _format_input_structure_mismatch(input_dir: Path, entries: list[str]) -> list[str]:
     formatted_entries = []

@@ -40,12 +40,16 @@ def evaluate_predictions(
 ) -> dict:
     config = load_config_from_run_dir_and_reroot(agent_dir / Config.RUN_DIRNAME)
 
-    numeric_labels = _read_numeric_labels(labels_path, config)
-    numeric_labels_path = predictions_path.parent / f"{predictions_path.stem}.numeric_labels.csv"
-    numeric_labels.to_csv(numeric_labels_path, index=False)
+    if config.task_type == TaskTypes.CONDITIONAL_GENERATION:
+        # Scored against the split itself: its labels.h5ad and input/controls.h5ad sit next to labels.csv.
+        test_file = labels_path
+    else:
+        numeric_labels = _read_numeric_labels(labels_path, config)
+        test_file = predictions_path.parent / f"{predictions_path.stem}.numeric_labels.csv"
+        numeric_labels.to_csv(test_file, index=False)
     metrics = get_metrics(
         results_file=predictions_path,
-        test_file=numeric_labels_path,
+        test_file=test_file,
         task_type=config.task_type,
         numeric_label_col=NUMERIC_LABEL_COLUMN_NAME,
     )

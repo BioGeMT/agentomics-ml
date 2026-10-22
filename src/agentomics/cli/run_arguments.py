@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from agentomics.utils.task_types import TaskTypes
+
 
 def add_run_arguments(parser: argparse.ArgumentParser) -> None:
     run_arguments = parser.add_argument_group("run configuration")
@@ -27,7 +29,7 @@ def add_run_arguments(parser: argparse.ArgumentParser) -> None:
     )
     run_arguments.add_argument(
         "--task-type",
-        choices=("classification", "regression"),
+        choices=tuple(TaskTypes),
         help=(
             "Task type used to prepare the selected dataset; when omitted, use "
             "dataset metadata or prompt interactively"
@@ -36,8 +38,8 @@ def add_run_arguments(parser: argparse.ArgumentParser) -> None:
     run_arguments.add_argument(
         "--val-metric",
         help=(
-            "Validation metric to optimize; defaults to AUROC for classification "
-            "and MAE for regression"
+            "Validation metric to optimize; defaults to AUROC for classification, "
+            "MAE for regression and AVG_SCORE for conditional_generation"
         ),
     )
     run_arguments.add_argument(

@@ -122,6 +122,8 @@ def _run_all_iterations(arguments: Namespace) -> None:
         )
 
     print(f"Evaluating {len(iteration_directories)} archived iteration(s) on {arguments.input_path}")
+    # Keep the extension of the requested --output (.csv, or .h5ad for conditional generation).
+    predictions_suffix = arguments.output.suffix or ".csv"
     successful_iterations = 0
     failed_iterations = 0
     for iteration_directory in iteration_directories:
@@ -130,7 +132,7 @@ def _run_all_iterations(arguments: Namespace) -> None:
         try:
             iteration_arguments = Namespace(**vars(arguments))
             iteration_arguments.iteration_dir = Path(Config.RUN_DIRNAME) / iteration_name
-            iteration_arguments.output = arguments.output.parent / f"{iteration_name}_predictions.csv"
+            iteration_arguments.output = arguments.output.parent / f"{iteration_name}_predictions{predictions_suffix}"
             _run_single_inference(iteration_arguments)
             successful_iterations += 1
         except Exception as error:
@@ -138,7 +140,7 @@ def _run_all_iterations(arguments: Namespace) -> None:
             print(f"Warning: Inference failed for {iteration_name}; continuing: {error}", file=sys.stderr)
     print(
         f"All iterations done: {successful_iterations} succeeded, {failed_iterations} failed. "
-        f"Predictions written to {arguments.output.parent}/<iteration>_predictions.csv"
+        f"Predictions written to {arguments.output.parent}/<iteration>_predictions{predictions_suffix}"
     )
     if successful_iterations == 0:
         raise RuntimeError("Inference failed for every archived iteration")
