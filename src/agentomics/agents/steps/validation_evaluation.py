@@ -20,7 +20,7 @@ from agentomics.runtime.step_outputs import load_step_output, require_step_outpu
 from agentomics.utils.config import Config
 from agentomics.utils.exceptions import AgentScriptFailed, IterationRunFailed
 from agentomics.utils.metrics import get_higher_is_better_map
-from agentomics.datasets.data_contract import LABELS_FILE_NAME, predictions_file_suffix
+from agentomics.datasets.data_contract import NUMERIC_LABEL_COLUMN_NAME, labels_file_name, predictions_file_suffix
 
 
 class ValidationEvaluationOutput(BaseModel):
@@ -103,7 +103,7 @@ class ValidationEvaluationStep(RuntimeStep):
         for evaluation_stage in ["validation", "train"]:
             print(f"  Running {evaluation_stage} inference...")
             split_path = Path(data_split.val_path if evaluation_stage == "validation" else data_split.train_path)
-            labels_path = split_path / LABELS_FILE_NAME
+            labels_path = split_path / labels_file_name(self.config.task_type)
             output_path = (
                 self.config.current_step_dir
                 / f"eval_predictions_{evaluation_stage}{predictions_file_suffix(self.config.task_type)}"
@@ -121,7 +121,7 @@ class ValidationEvaluationStep(RuntimeStep):
                 evaluation_metrics = compute_metrics(
                     results_file=output_path,
                     labels_path=labels_path,
-                    numeric_label_col=dataset_metadata["numeric_label_col"],
+                    numeric_label_col=dataset_metadata.get("numeric_label_col", NUMERIC_LABEL_COLUMN_NAME),
                     task_type=dataset_metadata["task_type"],
                     evaluation_stage=evaluation_stage,
                 )

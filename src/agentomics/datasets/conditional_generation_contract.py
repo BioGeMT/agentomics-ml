@@ -3,8 +3,6 @@
 A split folder holds:
     input/controls.h5ad      control cells (raw counts), obs: context, target_gene == "non-targeting"
     input/perturbations.csv  conditions to generate: context, target_gene, n_cells
-    labels.csv               one row per condition: id = "<context>|<target_gene>", label = n_cells
-                             (column 'label' in source datasets, 'numeric_label' once prepared)
     labels.h5ad              measured perturbed cells (raw counts), obs: context, target_gene
 
 input/ is all inference receives; labels.h5ad is the ground truth.
@@ -36,8 +34,8 @@ def condition_ids(contexts, target_genes) -> list[str]:
     return [f"{context}{CONDITION_ID_SEPARATOR}{target}" for context, target in zip(contexts, target_genes)]
 
 
-def validate_conditional_generation_split(split_path: Path, labels: pd.DataFrame, value_column: str) -> None:
-    """Validates the generation files of one split against each other and against labels.csv."""
+def validate_conditional_generation_split(split_path: Path) -> None:
+    """Validates the generation files of one split against each other."""
     split_path = Path(split_path)
     input_path = split_path / INPUT_DIR_NAME
     perturbations = read_perturbations(input_path / PERTURBATIONS_FILE_NAME)
@@ -66,17 +64,6 @@ def validate_conditional_generation_split(split_path: Path, labels: pd.DataFrame
     if truth_genes != controls_genes:
         raise ValueError(
             f"{GENERATION_LABELS_FILE_NAME} and {CONTROLS_FILE_NAME} must have the same genes (var_names), in the same order"
-        )
-
-    # labels.csv: one row per condition, label = n_cells
-    label_ids = set(labels[ID_COLUMN_NAME])
-    _require_same_ids(label_ids, expected_ids, "labels.csv")
-    label_n_cells = labels.set_index(ID_COLUMN_NAME)[value_column].astype(float)
-    expected_n_cells = perturbations.set_index(ID_COLUMN_NAME)[N_CELLS_COLUMN_NAME].astype(float)
-    mismatched = label_n_cells.index[label_n_cells != expected_n_cells.reindex(label_n_cells.index)]
-    if len(mismatched):
-        raise ValueError(
-            f"labels.csv labels must equal {PERTURBATIONS_FILE_NAME} {N_CELLS_COLUMN_NAME}; mismatched ids: {_head(mismatched)}"
         )
 
 

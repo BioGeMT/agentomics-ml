@@ -7,6 +7,7 @@ from rich.console import Console
 from rich.table import Table
 
 from agentomics.datasets.data_contract import (
+    INPUT_DIR_NAME,
     LABEL_COLUMN_NAME,
     LABELS_FILE_NAME,
     METADATA_FILE_NAME,
@@ -23,34 +24,36 @@ def _get_single_dataset_info(dataset_dir: Path) -> dict | None:
         return None
 
     base = {"name": dataset_dir.name, "path": dataset_dir}
-    train_labels_path = dataset_dir / TRAIN_SPLIT / LABELS_FILE_NAME
-    validation_labels_path = dataset_dir / VALIDATION_SPLIT / LABELS_FILE_NAME
-    try:
-        train_rows = len(pd.read_csv(train_labels_path)) if train_labels_path.is_file() else None
-        validation_rows = len(pd.read_csv(validation_labels_path)) if validation_labels_path.is_file() else None
-    except Exception as exc:
-        return {**base, "status": f"Invalid labels.csv: {exc}"}
-
     metadata_path = dataset_dir / METADATA_FILE_NAME
-    if not metadata_path.is_file():
-        return {
-            **base,
-            "train_rows": train_rows,
-            "validation_rows": validation_rows,
-            "status": "Unprepared",
-        }
-
     try:
-        metadata = json.loads(metadata_path.read_text())
-        status = "Prepared" if metadata.get("prepared") is True else "Unprepared"
-        return {
-            **base,
-            "train_rows": train_rows,
-            "validation_rows": validation_rows,
-            "status": status,
-        }
+        metadata = json.loads(metadata_path.read_text()) if metadata_path.is_file() else {}
     except Exception as exc:
         return {**base, "status": f"Invalid metadata.json: {exc}"}
+
+    try:
+        if metadata.get("task_type") == TaskTypes.CONDITIONAL_GENERATION:
+            from agentomics.datasets.conditional_generation_contract import PERTURBATIONS_FILE_NAME, read_perturbations
+
+            counts = [
+                len(read_perturbations(dataset_dir / split / INPUT_DIR_NAME / PERTURBATIONS_FILE_NAME))
+                if (dataset_dir / split).is_dir() else None
+                for split in (TRAIN_SPLIT, VALIDATION_SPLIT)
+            ]
+        else:
+            counts = [
+                len(pd.read_csv(dataset_dir / split / LABELS_FILE_NAME))
+                if (dataset_dir / split / LABELS_FILE_NAME).is_file() else None
+                for split in (TRAIN_SPLIT, VALIDATION_SPLIT)
+            ]
+    except Exception as exc:
+        return {**base, "status": f"Invalid sample index: {exc}"}
+    return {
+        **base,
+        "train_rows": counts[0],
+        "validation_rows": counts[1],
+        "status": "Prepared" if metadata.get("prepared") is True else "Unprepared",
+    }
+
 
 def get_all_datasets_info(datasets_dir: Path) -> list[dict]:
     if not datasets_dir.exists():

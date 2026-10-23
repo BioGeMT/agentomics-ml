@@ -37,15 +37,11 @@ from agentomics.datasets.conditional_generation_contract import (
     N_CELLS_COLUMN_NAME,
     PERTURBATIONS_FILE_NAME,
     TARGET_GENE_COLUMN_NAME,
-    condition_ids,
 )
 from agentomics.datasets.data_contract import (
     DATASET_DESCRIPTION_FILE_NAME,
     GENERATION_LABELS_FILE_NAME,
-    ID_COLUMN_NAME,
     INPUT_DIR_NAME,
-    LABEL_COLUMN_NAME,
-    LABELS_FILE_NAME,
     METADATA_FILE_NAME,
     TEST_SPLIT_PREFIX,
     TRAIN_SPLIT,
@@ -157,9 +153,6 @@ def _write_split(split_dir: Path, perturbed, controls) -> None:
     pd.DataFrame(
         {CONTEXT_COLUMN_NAME: contexts, TARGET_GENE_COLUMN_NAME: n_cells.index, N_CELLS_COLUMN_NAME: n_cells.to_numpy()}
     ).to_csv(split_dir / INPUT_DIR_NAME / PERTURBATIONS_FILE_NAME, index=False)
-    pd.DataFrame(
-        {ID_COLUMN_NAME: condition_ids(contexts, n_cells.index), LABEL_COLUMN_NAME: n_cells.to_numpy()}
-    ).to_csv(split_dir / LABELS_FILE_NAME, index=False)
 
 
 def _description(split_summaries, genes, cells_per_target) -> str:
@@ -185,7 +178,6 @@ validation targets ({validation_targets}) are never seen during training ({train
 ## Data format
 - input/controls.h5ad: control cells; obs 'context' and 'target_gene' ('non-targeting').
 - input/perturbations.csv: the conditions (context, target_gene, n_cells) to generate cells for.
-- labels.csv: one row per condition; its id '<context>|<target_gene>' and its n_cells.
 - labels.h5ad: the measured cells of every condition; obs 'context' and 'target_gene'.
 """
 

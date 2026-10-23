@@ -38,6 +38,7 @@ from agentomics.datasets.data_contract import (
     NUMERIC_LABEL_COLUMN_NAME,
     TRAIN_SPLIT,
     VALIDATION_SPLIT,
+    read_split_samples,
     validate_splits,
 )
 
@@ -178,19 +179,19 @@ class DataSplitStep(AgenticStep):
             except ValueError as exc:
                 raise ModelRetry(str(exc)) from exc
 
-            train_df = pd.read_csv(train_path / LABELS_FILE_NAME, dtype={ID_COLUMN_NAME: str}, keep_default_na=False)
+            train_df = read_split_samples(train_path, self.config.task_type)
             val_ids = set(
-                pd.read_csv(val_path / LABELS_FILE_NAME, dtype={ID_COLUMN_NAME: str}, keep_default_na=False)[ID_COLUMN_NAME].tolist()
+                read_split_samples(val_path, self.config.task_type)[ID_COLUMN_NAME].tolist()
             )
             train_ids = set(train_df[ID_COLUMN_NAME].tolist())
             overlapping_ids = train_ids & val_ids
             if overlapping_ids:
                 raise ModelRetry(
-                    "Train and validation labels.csv files have overlapping ids. "
+                    "Train and validation splits have overlapping ids. "
                     f"First overlaps: {list(overlapping_ids)[:20]}"
                 )
 
-            mini_train_df = pd.read_csv(mini_train_path / LABELS_FILE_NAME, dtype={ID_COLUMN_NAME: str}, keep_default_na=False)
+            mini_train_df = read_split_samples(mini_train_path, self.config.task_type)
             mini_train_ids = set(mini_train_df[ID_COLUMN_NAME].tolist())
             if not mini_train_ids.issubset(train_ids):
                 extra_ids = mini_train_ids - train_ids
@@ -233,8 +234,8 @@ class DataSplitStep(AgenticStep):
         if self.config.task_type != TaskTypes.CONDITIONAL_GENERATION:
             return ""
         return (
-            f"Every split also holds {GENERATION_LABELS_FILE_NAME} next to {LABELS_FILE_NAME}. For each split, write "
-            f"{INPUT_DIR_NAME}/{PERTURBATIONS_FILE_NAME}, {LABELS_FILE_NAME} and {GENERATION_LABELS_FILE_NAME} with only "
+            f"Every split holds {GENERATION_LABELS_FILE_NAME}. For each split, write "
+            f"{INPUT_DIR_NAME}/{PERTURBATIONS_FILE_NAME} and {GENERATION_LABELS_FILE_NAME} with only "
             f"that split's conditions, and {INPUT_DIR_NAME}/{CONTROLS_FILE_NAME} with the control cells of the contexts "
             "those conditions belong to (a symbolic link to the original is fine when it holds exactly those contexts). "
             "Control cells are model input, so splits that share a context share its control cells."
@@ -244,6 +245,13 @@ class DataSplitStep(AgenticStep):
         iteration = load_current_iteration_index(self.config)
         latest_split_dir = self._get_latest_split_dir()
         current_step_dir = self.config.current_step_dir
+        is_generation = self.config.task_type == TaskTypes.CONDITIONAL_GENERATION
+        sample_index = f"{INPUT_DIR_NAME}/{PERTURBATIONS_FILE_NAME}" if is_generation else LABELS_FILE_NAME
+        sample_identity = "(context, target_gene) pairs" if is_generation else "ids"
+        split_contents = (
+            f"an {INPUT_DIR_NAME}/ folder and {GENERATION_LABELS_FILE_NAME}"
+            if is_generation else f"an {INPUT_DIR_NAME}/ folder and {LABELS_FILE_NAME}"
+        )
 
         if self.config.task_type == TaskTypes.CLASSIFICATION:
             validation_instructions = "Ensure that the validation split contains representative samples from ALL classes."
@@ -259,11 +267,11 @@ class DataSplitStep(AgenticStep):
             )
         elif self.config.task_type == TaskTypes.CONDITIONAL_GENERATION:
             validation_instructions = (
-                f"Split by condition (rows of {LABELS_FILE_NAME}), never by cell. Models are judged on generalising to "
+                f"Split by condition (rows of {PERTURBATIONS_FILE_NAME}), never by cell. Models are judged on generalising to "
                 "cell contexts they have not seen perturbed, so prefer holding out whole contexts (all of their conditions)."
             )
             mini_train_size_instructions = (
-                f"exactly {self.GENERATION_MINI_TRAIN_CONDITION_COUNT} conditions (rows of {LABELS_FILE_NAME}), preferably "
+                f"exactly {self.GENERATION_MINI_TRAIN_CONDITION_COUNT} conditions (rows of {PERTURBATIONS_FILE_NAME}), preferably "
                 f"from one context (or all available if the training split has fewer than {self.GENERATION_MINI_TRAIN_CONDITION_COUNT})"
             )
         else:
@@ -281,10 +289,10 @@ class DataSplitStep(AgenticStep):
             Do NOT modify or recreate them. Only create the '{MINI_TRAIN_SPLIT}' folder in {current_step_dir}.
 
             '{MINI_TRAIN_SPLIT}': a subset of the training split ({train_split_path}) with {mini_train_size_instructions}, used solely for automatic system validation.
-            The '{MINI_TRAIN_SPLIT}' folder must contain an input/ folder with the data files and a labels.csv file. The input/ must contain only the data that corresponds to the ids in the newly created labels.csv file.
+            The '{MINI_TRAIN_SPLIT}' folder must contain {split_contents}. Include only data for the {sample_identity} in its {sample_index}.
             {self._split_files_instructions()}
-            When populating input/, use symbolic links to the original files in {train_split_path}/input/ instead of copying them. Only create new files when the data must be modified (e.g. splitting a single file that contains multiple samples into per-split subsets). Always create labels.csv as a new file.
-            Preserve the original ID scheme: each id in labels.csv must refer to the same data in input/ as it did in the original data.
+            When populating input/, use symbolic links to the original files in {train_split_path}/input/ instead of copying them. Only create new files when the data must be modified (e.g. splitting a single file that contains multiple samples into per-split subsets). Always create {sample_index} as a new file.
+            Preserve the original {sample_identity}: each entry in {sample_index} must refer to the same condition or sample as in the original data.
             The input/ interface must match the original train/input/ interface.
 
             Return the absolute paths to all three split folders ('{TRAIN_SPLIT}', '{VALIDATION_SPLIT}', and '{MINI_TRAIN_SPLIT}').
@@ -302,12 +310,12 @@ class DataSplitStep(AgenticStep):
         train_split_path = self.config.dataset_dir / TRAIN_SPLIT
         return f"""
             Your next task: Split the training dataset ({train_split_path}) into '{TRAIN_SPLIT}', '{VALIDATION_SPLIT}', and '{MINI_TRAIN_SPLIT}' folders.
-            Each split folder must contain an {INPUT_DIR_NAME}/ folder with the data files and a {LABELS_FILE_NAME} file.
-            Each split's {INPUT_DIR_NAME}/ must contain only data for ids in that split's {LABELS_FILE_NAME}.
+            Each split folder must contain {split_contents}.
+            Each split's {INPUT_DIR_NAME}/ must contain only data for the {sample_identity} in that split's {sample_index}.
             {self._split_files_instructions()}
-            When populating {INPUT_DIR_NAME}/, use symbolic links to the original files in {train_split_path}/{INPUT_DIR_NAME}/ instead of copying them. Only create new files when the data must be modified (e.g. splitting a single file that contains multiple samples into per-split subsets); do not reuse an unfiltered shared file across splits. Always create {LABELS_FILE_NAME} as a new file.
-            Train and validation {LABELS_FILE_NAME} files must contain disjoint ids. mini_train {LABELS_FILE_NAME} must contain only ids that are present in train {LABELS_FILE_NAME}.
-            Preserve the original ID scheme: each id in labels.csv must refer to the same data in input/ as it did in the original data.
+            When populating {INPUT_DIR_NAME}/, use symbolic links to the original files in {train_split_path}/{INPUT_DIR_NAME}/ instead of copying them. Only create new files when the data must be modified (e.g. splitting a single file that contains multiple samples into per-split subsets); do not reuse an unfiltered shared file across splits. Always create {sample_index} as a new file.
+            Train and validation {sample_index} files must contain disjoint {sample_identity}. mini_train {sample_index} must contain only {sample_identity} that are present in train {sample_index}.
+            Preserve the original {sample_identity}: each entry in {sample_index} must refer to the same condition or sample as in the original data.
             The input/ interface must match the original train/input/ interface.
 
             '{VALIDATION_SPLIT}': representative of new unseen data, used for optimizing architecture, hyperparameters, and training strategies.

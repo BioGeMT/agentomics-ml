@@ -33,7 +33,21 @@ ALLOWED_PUBLIC_DATASET_ENTRIES = {
     DATASET_DESCRIPTION_FILE_NAME,
 }
 ALLOWED_SPLIT_ENTRIES = {INPUT_DIR_NAME, LABELS_FILE_NAME}
-GENERATION_ALLOWED_SPLIT_ENTRIES = ALLOWED_SPLIT_ENTRIES | {GENERATION_LABELS_FILE_NAME}
+GENERATION_ALLOWED_SPLIT_ENTRIES = {INPUT_DIR_NAME, GENERATION_LABELS_FILE_NAME}
+
+def labels_file_name(task_type: str | None) -> str:
+    """Return the measured-response filename for a task."""
+    return GENERATION_LABELS_FILE_NAME if task_type == TaskTypes.CONDITIONAL_GENERATION else LABELS_FILE_NAME
+
+
+def read_split_samples(split_path: Path, task_type: str | None, value_column: str = NUMERIC_LABEL_COLUMN_NAME) -> pd.DataFrame:
+    """Read condition requests for generation, or sample labels for other tasks."""
+    if task_type == TaskTypes.CONDITIONAL_GENERATION:
+        from agentomics.datasets.conditional_generation_contract import PERTURBATIONS_FILE_NAME, read_perturbations
+
+        return read_perturbations(Path(split_path) / INPUT_DIR_NAME / PERTURBATIONS_FILE_NAME)
+    return validate_and_read_labels(Path(split_path) / LABELS_FILE_NAME, value_column)
+
 
 def predictions_file_suffix(task_type: str) -> str:
     """Conditional generation predicts cells (h5ad); the other task types predict one value per id (csv)."""
@@ -99,8 +113,8 @@ def _validate_split_folder(
     """
     Validates one split folder against the dataset contract.
 
-    Each split must contain exactly input/ and labels.csv (plus labels.h5ad for conditional
-    generation). The input/ interface must match the expected structure (recorded from
+    Each split must contain input/ and labels.csv, or labels.h5ad for conditional
+    generation. The input/ interface must match the expected structure (recorded from
     train/input/ at preparation time).
     """
     split_path = Path(split_path)
@@ -108,20 +122,21 @@ def _validate_split_folder(
         raise ValueError(f"Split folder must exist and be a directory: {split_path}")
 
     input_path = split_path / INPUT_DIR_NAME
-    labels_path = split_path / LABELS_FILE_NAME
+    labels_path = split_path / labels_file_name(task_type)
     if not input_path.is_dir() or not labels_path.is_file():
         raise ValueError(
-            f"{split_name} split folder must contain input/ and labels.csv: {split_path}"
+            f"{split_name} split folder must contain input/ and {labels_path.name}: {split_path}"
         )
 
     validate_split_entries(split_path, split_name, task_type)
-    labels = validate_and_read_labels(labels_path, NUMERIC_LABEL_COLUMN_NAME, require_numeric_values=True)
     _validate_input_structure(input_path, expected_input_structure)
     if task_type == TaskTypes.CONDITIONAL_GENERATION:
         # Imported here: the generation contract module imports this one.
         from agentomics.datasets.conditional_generation_contract import validate_conditional_generation_split
 
-        validate_conditional_generation_split(split_path, labels, NUMERIC_LABEL_COLUMN_NAME)
+        validate_conditional_generation_split(split_path)
+    else:
+        validate_and_read_labels(labels_path, NUMERIC_LABEL_COLUMN_NAME, require_numeric_values=True)
 
 def _format_input_structure_mismatch(input_dir: Path, entries: list[str]) -> list[str]:
     formatted_entries = []

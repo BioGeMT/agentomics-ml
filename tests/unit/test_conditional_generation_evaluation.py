@@ -44,9 +44,7 @@ def _write_split(split: Path, measured_contexts=("A", "B"), control_contexts=("A
         [(context, target, N_CELLS) for context, target in conditions],
         columns=["context", "target_gene", "n_cells"],
     ).to_csv(split / "input" / "perturbations.csv", index=False)
-    pd.DataFrame(
-        {"id": [f"{context}|{target}" for context, target in conditions], "numeric_label": N_CELLS}
-    ).to_csv(split / "labels.csv", index=False)
+
     ad.concat([_cells(rng, context, target, N_CELLS) for context, target in conditions], index_unique="-").write_h5ad(
         split / "labels.h5ad"
     )
@@ -76,10 +74,45 @@ def test_get_metrics_scores_a_prediction_against_its_split(tmp_path, monkeypatch
 
     metrics = get_metrics(
         results_file=prediction,
-        test_file=split / "labels.csv",
+        test_file=split / "labels.h5ad",
         task_type=TaskTypes.CONDITIONAL_GENERATION,
     )
 
     assert list(metrics) == get_conditional_generation_metrics_names()
     assert all(math.isfinite(value) for value in metrics.values())
     assert metrics["AVG_SCORE"] > 0
+
+
+def test_inference_metrics_use_h5ad_without_labels_csv(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from agentomics.runtime import inference_workflow
+
+    split = _write_split(tmp_path / "validation")
+    monkeypatch.setattr(inference_workflow, "load_config_from_run_dir_and_reroot",
+                        lambda _: SimpleNamespace(task_type=TaskTypes.CONDITIONAL_GENERATION))
+    calls = []
+    monkeypatch.setattr(inference_workflow, "evaluate_predictions", lambda *args: calls.append(args))
+    output = tmp_path / "predictions.h5ad"
+    assert inference_workflow._compute_metrics(tmp_path, split, output, None) == output.with_suffix(".metrics.json")
+    assert calls[0][2] == split / "labels.h5ad"
+    (split / "labels.h5ad").unlink()
+    assert inference_workflow._compute_metrics(tmp_path, split, output, None) is None
+    assert len(calls) == 1
+
+
+def test_runtime_metrics_use_h5ad_reference(tmp_path, monkeypatch):
+    from agentomics.runtime import conditional_generation_evaluation, inference_runner
+
+    split = _write_split(tmp_path / "validation")
+    def metric(reference_path, predictions_path):
+        reference = ad.read_h5ad(reference_path)
+        assert CONTROL_LABEL in set(reference.obs["target_gene"])
+        assert predictions_path == tmp_path / "predictions.h5ad"
+        return 0.5
+
+    monkeypatch.setattr(conditional_generation_evaluation, "get_conditional_generation_metrics_functions",
+                        lambda: {"AVG_SCORE": metric})
+    assert inference_runner.compute_metrics(
+        tmp_path / "predictions.h5ad", split / "labels.h5ad", "numeric_label",
+        TaskTypes.CONDITIONAL_GENERATION, "validation",
+    ) == {"AVG_SCORE": 0.5}

@@ -19,7 +19,7 @@ def get_metrics(
     prob_col_prefix='probability_',
 ):
     if task_type == TaskTypes.CONDITIONAL_GENERATION:
-        # results_file is predictions.h5ad; test_file is the split's labels.csv, next to its labels.h5ad.
+        # Both files hold cells; test_file is the split's labels.h5ad.
         return get_conditional_generation_metrics(results_file, test_file)
 
     results = pd.read_csv(results_file, dtype={ID_COLUMN_NAME: str}, keep_default_na=False)
@@ -83,12 +83,12 @@ def _get_regression_metrics(merged, numeric_label_col: str, pred_col: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Evaluate classification metrics for model predictions.")
-    parser.add_argument("-r", "--results", required=True, help="Path to the results CSV file.")
-    parser.add_argument("-t", "--test", required=True, help="Path to the CSV file with labels.")
+    parser = argparse.ArgumentParser(description="Evaluate metrics for model predictions.")
+    parser.add_argument("-r", "--results", required=True, help="Path to predictions.csv or predictions.h5ad.")
+    parser.add_argument("-t", "--test", required=True, help="Path to labels.csv, or labels.h5ad for conditional generation.")
     parser.add_argument("--pred-col", default="prediction", help="Name of the prediction column in the results file.")
     parser.add_argument("--numeric-label-col", default="numeric_label", help="Name of the numeric label column in the file.")
-    parser.add_argument("--task-type", choices=sorted(TaskTypes), required=True, help="Type of task: classification or regression.")
+    parser.add_argument("--task-type", choices=sorted(TaskTypes), required=True, help="Type of prediction task.")
 
     args = parser.parse_args()
 

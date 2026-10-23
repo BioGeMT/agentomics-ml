@@ -8,7 +8,7 @@ from argparse import Namespace
 from pathlib import Path
 
 from agentomics.datasets.csv_converter import convert_inference_csv
-from agentomics.datasets.data_contract import INPUT_DIR_NAME, LABELS_FILE_NAME
+from agentomics.datasets.data_contract import INPUT_DIR_NAME, labels_file_name
 from agentomics.runtime.conda_utils import restore_iteration_environment
 from agentomics.runtime.evaluate import evaluate_predictions
 from agentomics.runtime.filesystem import (
@@ -17,6 +17,7 @@ from agentomics.runtime.filesystem import (
     restore_host_ownership,
 )
 from agentomics.runtime.inference_runner import run_inference_script
+from agentomics.runtime.read_write_utils import load_config_from_run_dir_and_reroot
 from agentomics.utils.config import Config
 
 def prepare_inference_input(
@@ -43,7 +44,8 @@ def prepare_inference_input(
     return output_split_dir
 
 def _compute_metrics(agent_dir: Path, input_split: Path, output_path: Path, wandb_prefix: str | None) -> Path | None:
-    labels_path = input_split / LABELS_FILE_NAME
+    config = load_config_from_run_dir_and_reroot(agent_dir / Config.RUN_DIRNAME)
+    labels_path = input_split / labels_file_name(config.task_type)
     if not labels_path.is_file():
         return None
 

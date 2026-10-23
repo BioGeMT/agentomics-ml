@@ -28,9 +28,8 @@ class DataExplorationOutput(AgenticStepOutput):
     )
     id_to_sample_info: str = Field(
         description="""
-        How sample IDs in labels.csv relate to the data in input/.
-        For example: IDs are row indices in a single CSV file, filename stems of per-sample files, or a column value in a tabular file.
-        This must be concrete and specific enough for downstream steps to correctly load data for a given ID without re-exploring.
+        Explain how samples or conditions are identified and how those identifiers map to the input data and measured responses.
+        Provide enough detail for downstream steps to load the corresponding data without repeating exploration.
         """
     )
     supplementary_insights: str | None = Field(

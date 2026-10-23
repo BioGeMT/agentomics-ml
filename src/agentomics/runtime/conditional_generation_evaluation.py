@@ -14,7 +14,7 @@ from agentomics.utils.metrics import get_conditional_generation_metrics_function
 
 
 def get_conditional_generation_metrics(predictions_path: Path, labels_path: Path) -> dict[str, float]:
-    """Scores predictions.h5ad against the split that labels_path (its labels.csv) belongs to."""
+    """Scores predictions.h5ad against labels_path (labels.h5ad) and its split controls."""
     split_path = Path(labels_path).parent
     with tempfile.TemporaryDirectory() as temporary_directory:
         reference_path = Path(temporary_directory) / "reference.h5ad"

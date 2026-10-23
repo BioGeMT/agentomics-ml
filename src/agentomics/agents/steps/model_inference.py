@@ -23,10 +23,12 @@ from agentomics.datasets.data_contract import (
     INPUT_DIR_NAME,
     LABELS_FILE_NAME,
     MINI_TRAIN_SPLIT,
+    NUMERIC_LABEL_COLUMN_NAME,
     PREDICTION_COLUMN_NAME,
     SUPPLEMENTARY_DIR_NAME,
     TRAIN_SPLIT,
     VALIDATION_SPLIT,
+    labels_file_name,
     predictions_file_suffix,
 )
 
@@ -173,7 +175,7 @@ class ModelInferenceStep(AgenticStep):
         data_split = require_step_output(self.config, DataSplitStep.step_id, self.config.current_iteration_dir)
         evaluation_stage = "dry_run"
         split_path = Path(data_split.mini_train_path)
-        labels_path = split_path / LABELS_FILE_NAME
+        labels_path = split_path / labels_file_name(self.config.task_type)
         output_path = self.config.current_step_dir / f"eval_predictions_dry_run{predictions_file_suffix(self.config.task_type)}"
         inference_result = run_inference_on_split(
             split_path=split_path,
@@ -201,7 +203,7 @@ class ModelInferenceStep(AgenticStep):
         self._compute_dry_run_metrics(
             output_path=output_path,
             labels_path=labels_path,
-            numeric_label_col=dataset_metadata["numeric_label_col"],
+            numeric_label_col=dataset_metadata.get("numeric_label_col"),
             task_type=dataset_metadata["task_type"],
             evaluation_stage=evaluation_stage,
         )
