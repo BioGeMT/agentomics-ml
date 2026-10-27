@@ -6,6 +6,8 @@ A split folder holds:
     labels.h5ad              measured perturbed cells (raw counts), obs: context, target_gene
 
 input/ is all inference receives; labels.h5ad is the ground truth.
+Controls and measured responses may contain NaN for unavailable measurements;
+observed values must be finite, non-negative whole counts. Predictions may not contain NaN.
 """
 from pathlib import Path
 
@@ -39,8 +41,8 @@ def validate_conditional_generation_split(split_path: Path) -> None:
     split_path = Path(split_path)
     input_path = split_path / INPUT_DIR_NAME
     perturbations = read_perturbations(input_path / PERTURBATIONS_FILE_NAME)
-    controls_obs, controls_genes = _read_cells(input_path / CONTROLS_FILE_NAME)
-    truth_obs, truth_genes = _read_cells(split_path / GENERATION_LABELS_FILE_NAME)
+    controls_obs, controls_genes = _read_cells(input_path / CONTROLS_FILE_NAME, validate_counts=True)
+    truth_obs, truth_genes = _read_cells(split_path / GENERATION_LABELS_FILE_NAME, validate_counts=True)
     expected_ids = set(perturbations[ID_COLUMN_NAME])
 
     # controls.h5ad: only control cells, for every context that has conditions
@@ -138,8 +140,8 @@ def read_perturbations(perturbations_path: Path) -> pd.DataFrame:
     return perturbations
 
 
-def _read_cells(h5ad_path: Path) -> tuple[pd.DataFrame, list[str]]:
-    """Reads the cell annotations and gene names of an h5ad without loading its matrix."""
+def _read_cells(h5ad_path: Path, *, validate_counts: bool = False) -> tuple[pd.DataFrame, list[str]]:
+    """Reads annotations and genes, optionally validating reference counts in blocks."""
     import anndata as ad
 
     if not h5ad_path.is_file():
@@ -149,9 +151,31 @@ def _read_cells(h5ad_path: Path) -> tuple[pd.DataFrame, list[str]]:
         missing = set(CELL_OBS_COLUMNS) - set(adata.obs.columns)
         if missing:
             raise ValueError(f"{h5ad_path} is missing obs columns: {sorted(missing)}")
+        if validate_counts:
+            _validate_reference_counts(adata, h5ad_path)
         return adata.obs[CELL_OBS_COLUMNS].astype(str), list(adata.var_names)
     finally:
         adata.file.close()
+
+
+def _validate_reference_counts(adata, h5ad_path: Path) -> None:
+    """Allows missing measurements (NaN), but requires raw counts elsewhere."""
+    import numpy as np
+    from scipy import sparse
+
+    for matrix, start, end in adata.chunked_X(1024):
+        # Implicit sparse zeros are valid observed counts; do not densify the block.
+        values = matrix.data if sparse.issparse(matrix) else np.asarray(matrix)
+        observed = values[~np.isnan(values)]
+        if (
+            not np.isfinite(observed).all()
+            or (observed < 0).any()
+            or (observed != np.floor(observed)).any()
+        ):
+            raise ValueError(
+                f"{h5ad_path} rows [{start}, {end}) contain invalid reference values: "
+                "expected finite, non-negative whole counts or NaN for unavailable measurements"
+            )
 
 
 def _require_same_ids(actual: set[str], expected: set[str], file_name: str) -> None:

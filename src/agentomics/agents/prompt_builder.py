@@ -95,6 +95,9 @@ def _task_description(task_type: str) -> str:
         return ""
     return """    - Task: given the control cells of a cell context and a target gene, generate the cells that would be measured after knocking that gene down.
     - Predictions are sets of cells, scored against the measured cells of each condition as populations (differential expression against the controls). A model must therefore generate a distribution of cells per condition, not a single profile.
+    - Controls and measured responses may contain NaN for unavailable gene measurements. Zero, including an implicit sparse zero, is an observed count. Inspect missingness by context and source; optional source masks describe the same availability but are not required by the interface.
+    - Handle missingness explicitly in preprocessing, normalization, model inputs and training losses. Exclude unavailable target entries from losses and statistics; do not interpret them as observed zeros. If the model needs finite input placeholders, retain an availability mask so the placeholders remain distinguishable from observations. Do not overwrite NaNs in the dataset files.
+    - Framework evaluation selects, separately for each context, genes observed in every reference control and perturbed cell. It applies that same panel to references and predictions before normalization, baseline construction and scoring. Predictions must still provide finite, non-negative whole counts for every gene in the input gene panel, including genes missing from the controls.
 """
 
 def get_dataset_knowledge(config: Config):

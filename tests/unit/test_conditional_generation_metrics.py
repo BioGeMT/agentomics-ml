@@ -142,3 +142,36 @@ def test_prediction_with_different_genes_is_rejected(dataset):
 
     with pytest.raises(ValueError, match="var_names"):
         _score_all(real_path, reversed_genes_path)
+
+
+def test_missing_reference_genes_score_like_genes_removed_from_both_sides(dataset):
+    real_path, pred_path = dataset
+    missing_genes = [5, 23, 47]
+    kept_genes = [gene for gene in range(N_GENES) if gene not in missing_genes]
+
+    def mark_missing(real):
+        real.X = np.asarray(real.X, dtype=np.float32)
+        for context in CONTEXTS:
+            rows = np.flatnonzero((real.obs["context"] == context).to_numpy())
+            # One control and one perturbed cell per context suffice to make each gene unavailable.
+            real.X[rows[0], missing_genes] = np.nan
+            real.X[rows[-1], missing_genes[0]] = np.nan
+
+    def keep_genes(adata):
+        adata._inplace_subset_var(kept_genes)
+
+    def scramble_missing_genes(pred):
+        pred.X = np.asarray(pred.X, dtype=np.float32)
+        pred.X[:, missing_genes] = np.random.default_rng(2).poisson(500, size=(pred.n_obs, len(missing_genes)))
+
+    nan_real_path = _write_variant(real_path, "real_with_nan.h5ad", mark_missing)
+    scrambled_pred_path = _write_variant(pred_path, "pred_scrambled.h5ad", scramble_missing_genes)
+    expected = _score_all(
+        _write_variant(real_path, "real_kept.h5ad", keep_genes),
+        _write_variant(pred_path, "pred_kept.h5ad", keep_genes),
+    )
+
+    for prediction in (pred_path, scrambled_pred_path):
+        scores = _score_all(nan_real_path, prediction)
+        assert all(math.isfinite(value) for value in scores.values())
+        assert scores == pytest.approx(expected)

@@ -114,7 +114,8 @@ class ModelInferenceStep(AgenticStep):
         - For every row of {INPUT_DIR_NAME}/{PERTURBATIONS_FILE_NAME}, exactly '{N_CELLS_COLUMN_NAME}' generated cells (one row each), with obs columns '{CONTEXT_COLUMN_NAME}' and '{TARGET_GENE_COLUMN_NAME}' set to that row's values.
         - No control ('{CONTROL_LABEL}') cells.
         - Genes (var_names): those of {INPUT_DIR_NAME}/{CONTROLS_FILE_NAME}, in the same order.
-        - X: raw counts, i.e. non-negative whole numbers, at most {MAX_COUNTS_PER_CELL} per cell. Store X as a scipy sparse matrix.
+        - X: finite, non-negative whole counts, at most {MAX_COUNTS_PER_CELL} in total per cell. Store X as a scipy sparse matrix. Predictions must not contain NaN or infinity.
+        - Input controls may contain NaN for unavailable measurements. Handle them consistently with training and generate predictions for the full input gene panel; do not copy missing values into the output or omit those genes.
         - Sample each cell from the predicted distribution of its condition, so the cells of one condition vary like real cells do. Repeating one profile for all cells of a condition removes that variation and breaks the differential-expression based metrics."""
 
     def _validate_inference_file(self, inference_file_path: str) -> None:

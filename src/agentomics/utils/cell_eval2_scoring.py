@@ -5,7 +5,10 @@ Both inputs are h5ad files of raw counts with obs `context` and `target_gene`:
 - pred: generated cells for the same perturbations and genes, without control cells
 
 Each context is scored independently against its own control cells and the values are
-averaged over contexts. Every value is scaled so that 0 is the context-mean baseline and 1 is
+averaged over contexts. Reference NaNs denote unavailable measurements: each context is
+scored only on genes observed in all its reference cells, before any normalization or calibration.
+Predictions must contain finite counts on the full gene panel.
+Every value is scaled so that 0 is the context-mean baseline and 1 is
 an experimental replicate. The baseline and replicate (the "real bundle") depend only on the
 real data, so they are cached on disk; the full score is cached in memory per file version.
 
@@ -49,25 +52,40 @@ def _score(real_path: Path, pred_path: Path) -> dict[str, float]:
     import anndata as ad
 
     real = ad.read_h5ad(real_path, backed="r")
-    pred = ad.read_h5ad(pred_path)
-    _validate_pair(real, pred)
+    try:
+        pred = ad.read_h5ad(pred_path)
+        _validate_pair(real, pred)
 
-    per_context = {}
-    for context in sorted(real.obs[CONTEXT_COLUMN].unique()):
-        real_context = real[(real.obs[CONTEXT_COLUMN] == context).to_numpy()].to_memory()
-        controls = real_context[(real_context.obs[PERTURBATION_COLUMN] == CONTROL_LABEL).to_numpy()]
-        pred_context = ad.concat(
-            [pred[(pred.obs[CONTEXT_COLUMN] == context).to_numpy()], controls],
-            keys=["pred", "control"],
-            index_unique="-",
-        )
-        per_context[context] = _score_context(real_context, pred_context)
-        print(f"cell-eval2 vcc2026 [context {context}]: {per_context[context]}")
+        per_context = {}
+        for context in sorted(real.obs[CONTEXT_COLUMN].unique()):
+            real_context = real[(real.obs[CONTEXT_COLUMN] == context).to_numpy()].to_memory()
+            keep = _scoring_genes(real_context, context)
+            print(f"cell-eval2 vcc2026 [context {context}]: scoring {int(keep.sum())}/{len(keep)} genes")
+            if not keep.all():
+                real_context = real_context[:, keep].copy()
+            controls = real_context[(real_context.obs[PERTURBATION_COLUMN] == CONTROL_LABEL).to_numpy()]
+            pred_context = ad.concat(
+                [pred[(pred.obs[CONTEXT_COLUMN] == context).to_numpy(), keep], controls],
+                keys=["pred", "control"],
+                index_unique="-",
+            )
+            try:
+                per_context[context] = _score_context(real_context, pred_context)
+            except (ValueError, RuntimeError) as error:
+                raise RuntimeError(f"Scoring context {context!r} failed: {error}") from error
+            print(f"cell-eval2 vcc2026 [context {context}]: {per_context[context]}")
+    finally:
+        real.file.close()
 
     scores = pd.DataFrame(per_context).mean(axis=1)
     return {metric: float(value) for metric, value in scores.items()}
 
 def _validate_pair(real, pred) -> None:
+    import numpy as np
+    from scipy import sparse
+
+    from agentomics.datasets.conditional_generation_contract import MAX_COUNTS_PER_CELL
+
     for name, adata in (("real", real), ("pred", pred)):
         missing = {CONTEXT_COLUMN, PERTURBATION_COLUMN} - set(adata.obs.columns)
         if missing:
@@ -83,6 +101,40 @@ def _validate_pair(real, pred) -> None:
     pred_contexts = set(pred.obs[CONTEXT_COLUMN].unique())
     if real_contexts != pred_contexts:
         raise ValueError(f"pred contexts {sorted(pred_contexts)} differ from real contexts {sorted(real_contexts)}")
+    # Check the full prediction panel before filtering; excluded genes cannot hide invalid values.
+    for matrix, start, end in pred.chunked_X(1024):
+        values = matrix.data if sparse.issparse(matrix) else np.asarray(matrix)
+        if not np.isfinite(values).all() or (values < 0).any() or (values != np.floor(values)).any():
+            raise ValueError(f"pred rows [{start}, {end}) must contain finite, non-negative whole counts")
+        if (np.asarray(matrix.sum(axis=1)).ravel() > MAX_COUNTS_PER_CELL).any():
+            raise ValueError(f"a predicted cell's counts must not total more than {MAX_COUNTS_PER_CELL}")
+
+def _scoring_genes(real, context):
+    """Genes observed in every reference cell, including controls; zeros remain observed."""
+    import numpy as np
+    from scipy import sparse
+
+    keep = np.ones(real.n_vars, dtype=bool)
+    for matrix, start, end in real.chunked_X(1024):
+        if sparse.issparse(matrix):
+            matrix = matrix.tocsr()
+            values = matrix.data
+        else:
+            values = np.asarray(matrix)
+        missing = np.isnan(values)
+        observed = values[~missing]
+        if not np.isfinite(observed).all() or (observed < 0).any() or (observed != np.floor(observed)).any():
+            raise ValueError(
+                f"Reference context {context!r} rows [{start}, {end}) must contain "
+                "finite, non-negative whole counts or NaN"
+            )
+        if sparse.issparse(matrix):
+            keep[matrix.indices[missing]] = False
+        else:
+            keep &= ~missing.any(axis=0)
+    if not keep.any():
+        raise ValueError(f"Context {context!r} has no genes observed in every reference cell")
+    return keep
 
 def _score_context(real, pred) -> dict[str, float]:
     import anndata as ad
@@ -134,6 +186,7 @@ def _get_real_bundle(real, real_path: Path) -> Path:
             "prep-real-bundle", "--real", real_path, "--baseline", baseline_pred_path,
             "-o", work_dir / "bundle", *_cell_eval2_flags(),
         )
+        pd.DataFrame({"gene": list(real.var_names)}).to_csv(work_dir / "bundle" / "scoring_genes.csv", index=False)
         # Rename only once complete, so an interrupted build is never reused.
         (work_dir / "bundle").rename(bundle_dir)
     return bundle_dir

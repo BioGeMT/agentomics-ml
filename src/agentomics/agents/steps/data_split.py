@@ -238,7 +238,11 @@ class DataSplitStep(AgenticStep):
             f"{INPUT_DIR_NAME}/{PERTURBATIONS_FILE_NAME} and {GENERATION_LABELS_FILE_NAME} with only "
             f"that split's conditions, and {INPUT_DIR_NAME}/{CONTROLS_FILE_NAME} with the control cells of the contexts "
             "those conditions belong to (a symbolic link to the original is fine when it holds exactly those contexts). "
-            "Control cells are model input, so splits that share a context share its control cells."
+            "Control cells are model input, so splits that share a context share its control cells. "
+            "Preserve the full gene axis and its order, observed counts, NaNs for unavailable measurements, "
+            "and source metadata when creating subsets. Do not fill missing measurements with zeros or imputed values. "
+            "If source masks are present, preserve their cell-to-mask mappings; when combining files, reconcile "
+            "mask IDs so identical names from different files do not refer to different availability patterns."
         )
 
     def step_prompt(self) -> str:
