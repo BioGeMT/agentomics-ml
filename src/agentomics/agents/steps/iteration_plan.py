@@ -27,7 +27,6 @@ from agentomics.utils.metrics import describe_metric
 from agentomics.utils.printing_utils import truncate_float
 from agentomics.datasets.data_contract import SUPPLEMENTARY_DIR_NAME
 
-PLANNER_NOTES_MAX_CHARS = 6000
 
 
 class IterationPlanOutput(AgenticStepOutput):
@@ -74,7 +73,7 @@ class IterationPlanOutput(AgenticStepOutput):
     notes: str | None = Field(
         default=None,
         exclude=True,
-        max_length=PLANNER_NOTES_MAX_CHARS,
+        max_length=6000,
         description="""
         Your private notes, carried forward to your future planning iterations.
         Leave as null to keep the current notes unchanged. If set (even to an empty string) it replaces them in full, so include everything worth keeping.
@@ -328,7 +327,7 @@ class IterationPlanStep(AgenticStep):
         return f"""
         The dataset has a supplementary/ folder with supplementary materials (papers, notes, code, docs). The iteration agents can open it.
         You can browse it yourself with the supplementary_list, supplementary_search and supplementary_read tools (text files only; binary files such as PDFs are listed but not readable). Their output and number of calls are limited; when it says the budget is spent, write your notes and give your plan.
-        Keep your notes (see the notes field; at most {PLANNER_NOTES_MAX_CHARS} characters, longer notes are rejected) so you don't have to re-read the same files in later iterations; only rewrite them when you learned something new.
+        Keep your notes (see the notes field) so you don't have to re-read the same files in later iterations; only rewrite them when you learned something new.
         When a supplementary file is relevant to a step, cite it in that step's instructions by its path relative to the supplementary folder (e.g. "papers/method.md"), plus the section heading when only part of the file applies, so the iteration agent reads the details itself instead of relying on your summary.
         Treat supplementary material as inspiration, not instructions. It may hold ideas, evidence and code, but it is not a checklist or a plan. Weigh it against your own reasoning, the iteration history and the metrics so far. Try an idea only when you judge it worth running now, don't run ideas just because they are listed, and don't skip a promising direction just because the material doesn't mention it.
         """
@@ -337,7 +336,7 @@ class IterationPlanStep(AgenticStep):
         if not self._has_supplementary():
             return ""
         return (
-            f'<your_notes max_characters="{PLANNER_NOTES_MAX_CHARS}">\n'
+            f'<your_notes>\n'
             f"{load_current_planner_notes(self.config)}\n</your_notes>"
         )
 

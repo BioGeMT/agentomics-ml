@@ -11,7 +11,7 @@ from pydantic_ai.models.function import FunctionModel
 
 from agentomics.agents.steps.data_representation import DataRepresentationStep
 from agentomics.agents.steps.data_split import DataSplitStep
-from agentomics.agents.steps.iteration_plan import PLANNER_NOTES_MAX_CHARS, IterationPlanOutput, IterationPlanStep
+from agentomics.agents.steps.iteration_plan import IterationPlanOutput, IterationPlanStep
 from agentomics.datasets.data_contract import SUPPLEMENTARY_DIR_NAME
 from agentomics.runtime.git_checkpoints import commit_iteration_end
 from agentomics.runtime.planner_notes import load_current_planner_notes
@@ -110,7 +110,7 @@ def _notes_text(config, iteration: int) -> str:
 
 def test_notes_field_is_in_planner_schema_but_not_in_serialised_output():
     notes_schema = IterationPlanOutput.model_json_schema()["properties"]["notes"]
-    assert "maxLength" in json.dumps(notes_schema) and str(PLANNER_NOTES_MAX_CHARS) in json.dumps(notes_schema)
+    assert "maxLength" in json.dumps(notes_schema) and "6000" in json.dumps(notes_schema)
     output = IterationPlanOutput(**_plan_args(notes=NOTES_MARKER))
     assert "notes" not in output.model_dump()
 
@@ -155,14 +155,14 @@ def test_over_cap_notes_are_sent_back_to_the_planner_for_retry(
     initialized_run_config, prepared_iteration, supplementary_folder
 ):
     planner = ScriptedPlanner(
-        _plan_args(notes="x" * (PLANNER_NOTES_MAX_CHARS + 1)), _plan_args(notes="x" * PLANNER_NOTES_MAX_CHARS)
+        _plan_args(notes="x" * (6001)), _plan_args(notes="x" * 6000)
     )
 
     _run_planner(initialized_run_config, planner)
 
     assert len(planner.prompts) == 2
     notes_files = list(initialized_run_config.current_iteration_dir.glob("iteration_plan/*notes*"))
-    assert [f.read_text(encoding="utf-8") for f in notes_files] == ["x" * PLANNER_NOTES_MAX_CHARS]
+    assert [f.read_text(encoding="utf-8") for f in notes_files] == ["x" * 6000]
 
 
 def test_notes_never_reach_iteration_agent_history(
@@ -260,12 +260,6 @@ def test_notes_are_neither_saved_nor_injected_without_supplementary_folder(
 
     assert list(config.current_iteration_dir.glob("iteration_plan/*notes*")) == []
     assert "your_notes" not in planner.prompts[0]
-
-
-def test_prompt_tells_the_planner_the_notes_cap(initialized_run_config, prepared_iteration, supplementary_folder):
-    planner = ScriptedPlanner(_plan_args())
-    _run_planner(initialized_run_config, planner)
-    assert str(PLANNER_NOTES_MAX_CHARS) in planner.prompts[0]
 
 
 def test_failed_iteration_keeps_its_notes_and_unfinished_planner_is_skipped(
