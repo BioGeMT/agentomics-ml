@@ -21,7 +21,7 @@ from agentomics.runtime.filesystem import (
 )
 from agentomics.utils.task_types import TaskTypes
 from agentomics.runtime.read_write_utils import (
-    get_last_successful_iteration,
+    get_archived_iterations,
     load_current_iteration_index,
     load_iteration_state,
     update_current_iteration_state,
@@ -91,10 +91,24 @@ class DataSplitStep(AgenticStep):
             )
 
 
-    def _get_latest_split_strategy(self) -> str:
-        iteration = get_last_successful_iteration(self.config)
-        assert iteration is not None
-        return load_step_output(self.config, self.step_id, self.config.iteration_dir(iteration)).splitting_strategy
+    def _get_split_strategy(self, split_dir: Path) -> str:
+        """The strategy recorded for this split, preferring the newest successful iteration that used it.
+
+        A failed iteration keeps a split it did not change (e.g. a mini_train added to provided splits),
+        so the split may predate any successful iteration; its strategy then comes from the newest
+        failed iteration that used it. A failed iteration's changed split is deleted and its number
+        reused, so a newer iteration recording the same number describes the current split.
+        """
+        split_version = int(split_dir.name.removeprefix("split_"))
+        for iterations in (
+            get_archived_iterations(self.config, only_successful=True),
+            get_archived_iterations(self.config),
+        ):
+            for iteration in reversed(iterations):
+                output = load_step_output(self.config, self.step_id, self.config.iteration_dir(iteration))
+                if output is not None and output.split_version == split_version:
+                    return output.splitting_strategy
+        return ""
 
     def _get_latest_split_dir(self) -> Path | None:
         dirs = [d for d in self.config.splits_dir.iterdir() if d.is_dir()]
@@ -245,7 +259,7 @@ class DataSplitStep(AgenticStep):
                     rewrite_symlinks_to_absolute(split_path)
                 result = self._move_split_to_versioned_dir(result, flag_as_changed=not is_mini_train_only)
             else:
-                result.splitting_strategy = self._get_latest_split_strategy()
+                result.splitting_strategy = self._get_split_strategy(train_path.parent)
                 result.split_version = int(train_path.parent.name.removeprefix("split_"))
             return result
 
@@ -394,7 +408,7 @@ class DataSplitStep(AgenticStep):
                 create_absolute_symlink(self.config.dataset_dir / split_name, latest_split_dir / split_name)
             splitting_strategy = ""
         else:
-            splitting_strategy = self._get_latest_split_strategy()
+            splitting_strategy = self._get_split_strategy(latest_split_dir)
         return DataSplitOutput(
             train_path=str(latest_split_dir / TRAIN_SPLIT),
             val_path=str(latest_split_dir / VALIDATION_SPLIT),

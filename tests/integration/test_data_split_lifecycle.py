@@ -179,6 +179,47 @@ def test_simulated_output_reuses_latest_split_and_latest_successful_strategy(
     assert not output.split_changed
 
 
+def test_simulated_output_reuses_a_split_kept_by_a_failed_iteration(
+    initialized_run_config: Config,
+):
+    split_step = create_runtime_step(
+        DataSplitStep,
+        initialized_run_config,
+        model=Mock(),
+    )
+    config = split_step.config
+    split_dir = _create_versioned_split(config, version=0)
+    create_archived_iteration_with_split_output(
+        split_step,
+        iteration=0,
+        split_version=0,
+        status="failed",
+        strategy="mini_train added to the provided splits",
+    )
+
+    output = split_step.build_simulated_output()
+
+    assert Path(output.train_path) == split_dir / "train"
+    assert output.splitting_strategy == "mini_train added to the provided splits"
+    assert output.split_version == 0
+
+
+def test_simulated_output_without_a_recorded_strategy_has_an_empty_one(
+    initialized_run_config: Config,
+):
+    split_step = create_runtime_step(
+        DataSplitStep,
+        initialized_run_config,
+        model=Mock(),
+    )
+    _create_versioned_split(split_step.config, version=0)
+
+    output = split_step.build_simulated_output()
+
+    assert output.splitting_strategy == ""
+    assert output.split_version == 0
+
+
 def test_simulated_output_creates_symlinks_to_provided_dataset_splits(
     initialized_run_config: Config,
 ):
