@@ -48,6 +48,7 @@ class Config:
     DEFAULT_MAX_STEPS: ClassVar[int] = 100
     DEFAULT_TEMPERATURE: ClassVar[float] = 0.7
     DEFAULT_MAX_VALIDATION_RETRIES: ClassVar[int] = 5
+    DEFAULT_PLANNER_NOTES_MAX_CHARS: ClassVar[int] = 6000
     DEFAULT_USE_PROXY: ClassVar[bool] = True
     DEFAULT_LLM_RESPONSE_TIMEOUT: ClassVar[int] = 60 * 10
     DEFAULT_BASH_TOOL_TIMEOUT: ClassVar[int] = 60 * 3
@@ -102,6 +103,8 @@ class Config:
     label_to_scalar: dict[str, int] | None = None
     wandb_run_id: str | None = None
     environments_dir: str = DEFAULT_ENVIRONMENTS_DIR
+
+    planner_notes_max_chars: int = DEFAULT_PLANNER_NOTES_MAX_CHARS
 
     @property
     def shared_environment_path(self) -> Path:
