@@ -10,7 +10,6 @@ from agentomics.agents.prompt_builder import get_dataset_knowledge
 from agentomics.agents.steps.base import AgenticStep, AgenticStepOutput
 from agentomics.agents.steps.data_split import DataSplitStep
 from agentomics.agents.steps.validation_evaluation import ValidationEvaluationStep
-from agentomics.runtime.planner_notes import load_current_planner_notes, save_planner_notes
 from agentomics.runtime.read_write_utils import (
     get_archived_iterations,
     get_last_successful_iteration,
@@ -86,6 +85,7 @@ class IterationPlanStep(AgenticStep):
     display_name = "ITERATION PLAN"
     output_type = IterationPlanOutput
     history_excluded_step_ids = {step_id, ValidationEvaluationStep.step_id}
+    NOTES_FILENAME = "planner_notes.md"
 
     class IterationHistoryRecord(TypedDict):
         outputs: list[Any]
@@ -113,9 +113,17 @@ class IterationPlanStep(AgenticStep):
     def on_step_success(self, output: IterationPlanOutput) -> None:
         # Written before the base class archives the step folder and commits the checkpoint.
         if self._has_supplementary():
-            notes = output.notes if output.notes is not None else load_current_planner_notes(self.config)
-            save_planner_notes(self.config, notes)
+            notes = output.notes if output.notes is not None else self._load_notes()
+            (self.config.current_step_dir / self.NOTES_FILENAME).write_text(notes, encoding="utf-8")
         super().on_step_success(output)
+
+    def _load_notes(self) -> str:
+        """Notes saved by the latest archived iteration that has a notes file; empty if none."""
+        for iteration in reversed(get_archived_iterations(self.config)):
+            notes_path = self.config.iteration_dir(iteration) / self.step_id / self.NOTES_FILENAME
+            if notes_path.is_file():
+                return notes_path.read_text(encoding="utf-8")
+        return ""
 
     def build_user_prompt(self) -> str:
         return self.step_prompt()
@@ -335,7 +343,7 @@ class IterationPlanStep(AgenticStep):
             return ""
         return (
             f'<your_notes>\n'
-            f"{load_current_planner_notes(self.config)}\n</your_notes>"
+            f"{self._load_notes()}\n</your_notes>"
         )
 
     def _build_exploration_info(self) -> str:

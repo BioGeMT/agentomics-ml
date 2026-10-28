@@ -14,7 +14,6 @@ from agentomics.agents.steps.data_split import DataSplitStep
 from agentomics.agents.steps.iteration_plan import IterationPlanOutput, IterationPlanStep
 from agentomics.datasets.data_contract import SUPPLEMENTARY_DIR_NAME
 from agentomics.runtime.git_checkpoints import commit_iteration_end
-from agentomics.runtime.planner_notes import load_current_planner_notes
 from agentomics.runtime.read_write_utils import (
     load_config_from_run_dir,
     load_current_iteration_index,
@@ -76,6 +75,10 @@ class ScriptedPlanner:
             return ModelResponse(parts=[ToolCallPart(tool_name=agent_info.output_tools[0].name, args=reply)])
 
         return FunctionModel(respond)
+
+
+def _load_notes(config):
+    return IterationPlanStep(config, Mock(), Mock(), Mock(), [])._load_notes()
 
 
 def _run_planner(config, planner: ScriptedPlanner) -> None:
@@ -273,7 +276,7 @@ def test_failed_iteration_keeps_its_notes_and_unfinished_planner_is_skipped(
     archive_current_iteration(config, 1)
     prepare_iteration_workspace(config, iteration=2)
 
-    assert load_current_planner_notes(config) == "from failed iteration"
+    assert _load_notes(config) == "from failed iteration"
 
 
 # --- fork inheritance -------------------------------------------------------------------------
@@ -309,7 +312,7 @@ def test_fork_from_earlier_iteration_sees_notes_as_of_that_checkpoint(
 ):
     fork_config = _fork(three_iterations_of_notes, tmp_path, monkeypatch, step="end", iteration=0)
 
-    assert load_current_planner_notes(fork_config) == "NOTES-A"
+    assert _load_notes(fork_config) == "NOTES-A"
     assert not fork_config.iteration_dir(1).exists()
 
     prepare_iteration_workspace(fork_config, iteration=1)
@@ -322,7 +325,7 @@ def test_fork_from_earlier_iteration_sees_notes_as_of_that_checkpoint(
 def test_fork_from_latest_checkpoint_inherits_latest_notes(three_iterations_of_notes, tmp_path, monkeypatch):
     fork_config = _fork(three_iterations_of_notes, tmp_path, monkeypatch, step="end", iteration=2)
 
-    assert load_current_planner_notes(fork_config) == "NOTES-C"
+    assert _load_notes(fork_config) == "NOTES-C"
 
 
 def test_fork_from_the_planner_step_keeps_that_iterations_notes(
@@ -336,4 +339,4 @@ def test_fork_from_the_planner_step_keeps_that_iterations_notes(
     # Once the forked iteration is archived, its notes are the current notes.
     update_current_iteration_state(fork_config, ended_at=200.0, status="failed")
     archive_current_iteration(fork_config, 1)
-    assert load_current_planner_notes(fork_config) == "NOTES-B"
+    assert _load_notes(fork_config) == "NOTES-B"
