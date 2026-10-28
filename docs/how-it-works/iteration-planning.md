@@ -53,6 +53,12 @@ IterationPlanOutput
 - Remaining time (if timeout set)
 - Training duration of previous models
 
+## Supplementary Material and Planner Notes
+
+If the dataset has a `supplementary/` folder, the planner gets a read-only tool to list, search and read text files in it, from iteration 0. Limits (configurable): 5,000 characters per call, 50 calls and 100,000 characters in total per planning run. When a limit is hit the tool returns a message telling the planner to write its notes and give its plan; the run continues. Binary files are listed but never read, and nothing outside the folder is reachable.
+
+The planner also keeps notes (up to 6,000 characters) that persist across iterations. It leaves them unchanged by omitting the `notes` field, or replaces them in full. Notes are saved per iteration as `iteration_plan/planner_notes.md` and injected into the planner's next prompt; they are never shown to the iteration agents, who instead get file paths cited in the plan's instructions. Forks inherit the notes of the checkpoint they fork from.
+
 ## Iteration-Plan Examples
 
 ### Overfitting Detected

@@ -1,4 +1,5 @@
 import asyncio
+import shutil
 import subprocess
 from unittest.mock import Mock
 
@@ -40,9 +41,11 @@ def _plan_args(**overrides) -> dict:
 class ScriptedPlanner:
     """Model that replies with queued planner outputs and records prompts."""
 
-    def __init__(self, *replies: dict) -> None:
+    def __init__(self, *replies: dict | tuple) -> None:
         self.replies = list(replies)
         self.prompts: list[str] = []
+        self.tool_names: list[str] = []
+        self.tool_returns: list[str] = []
 
     def model(self) -> FunctionModel:
         def respond(messages, agent_info):
@@ -54,9 +57,17 @@ class ScriptedPlanner:
                     if part.part_kind == "user-prompt"
                 )
             )
-            return ModelResponse(
-                parts=[ToolCallPart(tool_name=agent_info.output_tools[0].name, args=self.replies.pop(0))]
-            )
+            self.tool_names = [tool.name for tool in agent_info.function_tools]
+            self.tool_returns = [
+                str(part.content)
+                for message in messages
+                for part in message.parts
+                if part.part_kind == "tool-return"
+            ]
+            reply = self.replies.pop(0)
+            if isinstance(reply, tuple):  # (tool_name, args) is a call to the planner's tool
+                return ModelResponse(parts=[ToolCallPart(tool_name=reply[0], args=reply[1])])
+            return ModelResponse(parts=[ToolCallPart(tool_name=agent_info.output_tools[0].name, args=reply)])
 
         return FunctionModel(respond)
 
@@ -178,3 +189,39 @@ def test_planner_runs_without_notes_file_or_supplementary_folder(
     planner = ScriptedPlanner(_plan_args())
     _run_planner(initialized_run_config, planner)
     assert len(planner.prompts) == 1
+
+
+def test_planner_gets_the_supplementary_tool_when_the_folder_exists(
+    initialized_run_config, prepared_iteration, supplementary_folder
+):
+    planner = ScriptedPlanner(
+        ("supplementary", {"operation": "read", "path": "README.md"}),
+        _plan_args(),
+    )
+    _run_planner(initialized_run_config, planner)
+
+    assert planner.tool_names == ["supplementary"]
+    assert "index" in planner.tool_returns[0]
+
+
+def test_planner_has_no_tool_without_supplementary_folder(initialized_run_config, prepared_iteration):
+    shutil.rmtree(initialized_run_config.dataset_dir / SUPPLEMENTARY_DIR_NAME)
+    planner = ScriptedPlanner(_plan_args())
+    _run_planner(initialized_run_config, planner)
+    assert planner.tool_names == []
+
+
+def test_exhausted_tool_budget_is_not_cut_off_by_the_request_limit(
+    initialized_run_config, prepared_iteration, supplementary_folder
+):
+    config = initialized_run_config
+    config.supplementary_tool_max_calls = 3
+    config.max_steps = 2  # below the tool budget: the planner must not be capped by it
+    call = ("supplementary", {"operation": "list"})
+    planner = ScriptedPlanner(call, call, call, call, _plan_args(notes=NOTES_MARKER))
+
+    _run_planner(config, planner)
+
+    assert "budget is spent" in planner.tool_returns[-1]
+    notes_files = list(config.current_iteration_dir.glob("iteration_plan/*notes*"))
+    assert [f.read_text(encoding="utf-8") for f in notes_files] == [NOTES_MARKER]

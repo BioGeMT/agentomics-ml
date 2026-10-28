@@ -223,8 +223,12 @@ class AgenticStep(RuntimeStep):
         _, output = await run_agent(
             agent=agent,
             user_prompt=user_prompt,
-            max_steps=self.config.max_steps,
+            max_steps=self.get_max_steps(),
             message_history=message_history,
             deps=self.build_deps(step_started_at),
         )
         return self._populate_files_created(output, step_started_at)
+
+    def get_max_steps(self) -> int:
+        """Model request limit for this step's agent run."""
+        return self.config.max_steps

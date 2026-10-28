@@ -82,6 +82,8 @@ Supporting/supplementary materials (PDFs, papers, helper scripts, foundation mod
 You can describe what the supplementary folder contains and how it relates to
 the task in `supplementary/README.md` to help the agent use it effectively.
 
+The iteration planner reads the folder itself with a read-only tool (list, search, read line ranges of text files) and keeps short private notes about what it learned across iterations. When notes are empty it starts from `supplementary/README.md`, so put the index there. It cites relevant files by path in its instructions and the iteration agents read the details. Binary files such as PDFs are listed but the planner cannot read them (it can still point agents to them by name); it cannot read anything outside the folder, including symlinks leading out. The planner treats the material as inspiration, not a checklist. The data exploration step no longer summarises the folder. Runs without a `supplementary/` folder are unaffected.
+
 #### Using existing / foundation models
 
 To make models available to the agent, copy the models or their docs

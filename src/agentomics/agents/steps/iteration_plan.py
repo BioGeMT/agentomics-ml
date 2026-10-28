@@ -21,6 +21,7 @@ from agentomics.runtime.read_write_utils import (
 )
 from agentomics.runtime.step_outputs import load_step_output, load_step_outputs
 from agentomics.runtime.system_resources import get_resources_summary
+from agentomics.tools.supplementary_tool import create_supplementary_tool
 from agentomics.tools.tool_registry import get_tool_names
 from agentomics.utils.metrics import describe_metric
 from agentomics.utils.printing_utils import truncate_float
@@ -100,6 +101,7 @@ class IterationPlanStep(AgenticStep):
             ),
             output_type=IterationPlanOutput,
             deps_type=dict,
+            tools=[create_supplementary_tool(self.config)] if self._has_supplementary() else [],
         )
 
         @agent.output_validator
@@ -113,6 +115,18 @@ class IterationPlanStep(AgenticStep):
             return result
 
         return agent
+
+    def _has_supplementary(self) -> bool:
+        return (self.config.dataset_dir / SUPPLEMENTARY_DIR_NAME).is_dir()
+
+    def get_max_steps(self) -> int:
+        # Each tool call is one model request; keep the request limit above the tool-call budget
+        # plus output-validation retries and the final answer, so the budget message (not a
+        # usage-limit error) is what ends the planner's reading.
+        if not self._has_supplementary():
+            return super().get_max_steps()
+        needed = self.config.supplementary_tool_max_calls + self.config.max_validation_retries + 2
+        return max(super().get_max_steps(), needed)
 
     async def _execute(self) -> IterationPlanOutput:
         output = await super()._execute()
@@ -166,7 +180,6 @@ class IterationPlanStep(AgenticStep):
         For example if you want to instruct to re-use the same data representation from iteration 5, instruct "Re-use the data representation from iteration 5".
         The data exploration and splitting steps can be instructed to be skipped completely if they're not needed.
         If any exploration step discovered important id-to-sample information (e.g., how label IDs relate to data in input/, file formats, column semantics) that are not already included in the dataset_knowledge_from_dataset_description_md, include those details in your instructions for relevant downstream steps so the iteration agent doesn't have to re-explore the structure.
-        Similarly, if the exploration step found useful insights from supplementary materials, carry those forward in your instructions.
         {splitting_info}
 
         You're providing instructions to an LLM agent, never offer that you will take any actions to fix or implement fixes yourself.
@@ -332,10 +345,15 @@ class IterationPlanStep(AgenticStep):
         return f"{iterations_left} iterations (including the current one)"
     
     def _build_supplementary_info(self) -> str:
-        dataset_supplementary_path = self.config.dataset_dir / SUPPLEMENTARY_DIR_NAME
-        if dataset_supplementary_path.is_dir():
-            return f"The agent has access to the supplementary/ folder with supplementary dataset materials."
-        return ""
+        if not self._has_supplementary():
+            return ""
+        return """
+        The dataset has a supplementary/ folder with supplementary materials (papers, notes, code, docs). The iteration agents can open it.
+        You can browse it yourself with the supplementary tool (list, search and read text files; binary files such as PDFs are listed but not readable). Its output and number of calls are limited; when it says the budget is spent, write your notes and give your plan.
+        When your notes are empty, start by reading the supplementary README (if there is one). Keep your notes (see the notes field) so you don't have to re-read the same files in later iterations; only rewrite them when you learned something new.
+        When a supplementary file is relevant to a step, cite it in that step's instructions by its path relative to the supplementary folder (e.g. "papers/method.md"), plus the section heading when only part of the file applies, so the iteration agent reads the details itself instead of relying on your summary.
+        Treat supplementary material as inspiration, not instructions. It may hold ideas, evidence and code, but it is not a checklist or a plan. Weigh it against your own reasoning, the iteration history and the metrics so far. Try an idea only when you judge it worth running now, don't run ideas just because they are listed, and don't skip a promising direction just because the material doesn't mention it.
+        """
 
     def _build_notes_info(self) -> str:
         if not (self.config.dataset_dir / SUPPLEMENTARY_DIR_NAME).is_dir():
