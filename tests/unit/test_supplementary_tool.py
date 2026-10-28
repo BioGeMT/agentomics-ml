@@ -146,3 +146,72 @@ def test_tool_is_not_in_shared_registry():
     from agentomics.tools.tool_registry import TOOL_FACTORY_REGISTRY
 
     assert "supplementary" not in TOOL_FACTORY_REGISTRY
+
+
+def test_read_of_overlong_first_line_still_advances(supp_dir, make_tool):
+    (supp_dir / "wide.txt").write_text("x" * 1000 + "\nsecond\n")
+    tool = make_tool(supplementary_tool_max_call_chars=200)
+
+    out = tool(operation="read", path="wide.txt")
+
+    assert "start_line=2" in out
+    assert "second" in tool(operation="read", path="wide.txt", start_line=2)
+
+
+@pytest.mark.parametrize("operation", ["read", "search", "list"])
+def test_output_including_hint_never_exceeds_per_call_cap(supp_dir, make_tool, operation):
+    (supp_dir / "big.txt").write_text("\n".join(f"row{i:04d}" for i in range(1, 300)))
+    tool = make_tool(supplementary_tool_max_call_chars=150)
+
+    for cap in (150, 80, 40):
+        tool = make_tool(supplementary_tool_max_call_chars=cap)
+        out = tool(operation=operation, path="big.txt" if operation != "list" else "", pattern="row", max_lines=500)
+        assert len(out) <= cap
+
+
+def test_continuation_note_counts_toward_per_call_cap(supp_dir, make_tool):
+    (supp_dir / "a.txt").write_text("\n".join("y" * 18 for _ in range(10)))
+
+    out = make_tool(supplementary_tool_max_call_chars=200)(operation="read", path="a.txt", max_lines=5)
+
+    assert len(out) <= 200 and "start_line=" in out
+
+
+def test_total_cap_includes_appended_hints(supp_dir, make_tool):
+    (supp_dir / "a.txt").write_text("\n".join("z" * 20 for _ in range(100)))
+    tool = make_tool(supplementary_tool_max_call_chars=120, supplementary_tool_max_total_chars=250)
+
+    total = len(tool(operation="read", path="a.txt")) + len(tool(operation="read", path="a.txt"))
+
+    assert total <= 250
+
+
+def test_non_positive_arguments_are_clamped(supp_dir, make_tool):
+    (supp_dir / "a.txt").write_text("one\ntwo\nthree\n")
+    tool = make_tool()
+
+    out = tool(operation="read", path="a.txt", start_line=-5, max_lines=0)
+    assert "1: one" in out and "2: two" not in out
+    out = tool(operation="search", pattern="two", path="a.txt", context_lines=-3, max_matches=0)
+    assert "two" in out and "one" not in out
+
+
+def test_list_marks_outward_symlink_as_rejected(supp_dir, make_tool):
+    (supp_dir.parent / "secret.txt").write_text("topsecret")
+    (supp_dir / "link.txt").symlink_to(supp_dir.parent / "secret.txt")
+
+    out = make_tool()(operation="list")
+
+    assert "link.txt" in out and "rejected" in out and "topsecret" not in out
+
+
+def test_search_reports_skipped_symlinks_and_binaries(supp_dir, make_tool):
+    (supp_dir.parent / "secret.txt").write_text("hit")
+    (supp_dir / "link.txt").symlink_to(supp_dir.parent / "secret.txt")
+    (supp_dir / "b.bin").write_bytes(b"hit\x00")
+    (supp_dir / "ok.txt").write_text("hit")
+
+    out = make_tool()(operation="search", pattern="hit")
+
+    assert "ok.txt" in out
+    assert "skipped 1 symlink" in out and "skipped 1 binary" in out
