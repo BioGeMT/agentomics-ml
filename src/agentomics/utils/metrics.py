@@ -138,7 +138,10 @@ CONDITIONAL_GENERATION_METRICS = {
         "can be negative or above 1. To compute it, use the installed cell-eval2 CLI per context: "
         "baseline --save-pred, prep-real-bundle, run, then score --real-bundle (scaled values in the from_replicate "
         "column), with --pert-col target_gene --control non-targeting; the predicted h5ad passed to cell-eval2 must "
-        "also contain the context's real control cells.",
+        "also contain the context's real control cells. Each context is scored only on the genes observed (not NaN) "
+        "in all its real cells, and without perturbations that have fewer than 2 real cells (on both sides). A context "
+        "whose prep-real-bundle fails with 'no usable replicate scale' has no valid scale for any prediction and is "
+        "left out of the average.",
     ),
     "PDS": (
         "pds_cosine",

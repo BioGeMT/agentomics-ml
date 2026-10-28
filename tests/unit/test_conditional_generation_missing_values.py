@@ -459,6 +459,68 @@ def test_scorer_failure_names_its_context(tmp_path, monkeypatch):
         scoring._score(write(real, tmp_path / "real.h5ad"), write(pred, tmp_path / "pred.h5ad"))
 
 
+def test_unscorable_context_is_left_out_of_the_average(tmp_path, monkeypatch, capsys):
+    real = cells([[1, 1], [1, 1]] * 3, ["A", "A", "B", "B", "C", "C"], [CONTROL_LABEL, "G0"] * 3, "csr")
+    pred = cells([[1, 1]] * 3, ["A", "B", "C"], ["G0"] * 3, "csr")
+    values = {"A": 0.2, "C": 0.6}
+
+    def score_context(reference, prediction):
+        context = reference.obs["context"].iloc[0]
+        if context == "B":
+            raise scoring.UnscorableContext("metric 'pds_cosine' has no usable replicate scale")
+        return {"avg_score": values[context]}
+
+    monkeypatch.setattr(scoring, "_score_context", score_context)
+    scores = scoring._score(write(real, tmp_path / "real.h5ad"), write(pred, tmp_path / "pred.h5ad"))
+
+    assert scores == pytest.approx({"avg_score": 0.4})
+    output = capsys.readouterr().out
+    assert "[context B]: skipped, left out of the average: metric 'pds_cosine'" in output
+    assert "averaged over 2 contexts; skipped ['B']" in output
+
+
+def test_single_cell_perturbations_are_left_out_on_both_sides(capsys):
+    real = cells(
+        [[1, 1], [2, 2], [2, 2], [3, 3], [4, 4], [4, 4]],
+        ["A"] * 6, [CONTROL_LABEL, "G0", "G0", "G1", "G2", "G2"], "csr",
+    )
+    pred = cells([[2, 2], [2, 2], [5, 5], [4, 4], [4, 4], [1, 1]], ["A"] * 6, ["G0", "G0", "G1", "G2", "G2", CONTROL_LABEL], "csr")
+
+    real, pred = scoring._without_unsplittable_perturbations(real, pred)
+
+    assert real.obs["target_gene"].tolist() == [CONTROL_LABEL, "G0", "G0", "G2", "G2"]
+    assert pred.obs["target_gene"].tolist() == ["G0", "G0", "G2", "G2", CONTROL_LABEL]
+    assert 5 not in dense(pred)
+    assert "[context A]: left out 1 perturbations with fewer than 2 measured cells: ['G1']" in capsys.readouterr().out
+
+
+def test_complete_perturbations_are_kept_unchanged():
+    real = cells([[1, 1], [2, 2], [2, 2], [3, 3], [3, 3]], ["A"] * 5, [CONTROL_LABEL, "G0", "G0", "G1", "G1"], "csr")
+    pred = cells([[2, 2], [2, 2]], ["A"] * 2, ["G0", "G1"], "csr")
+
+    assert scoring._without_unsplittable_perturbations(real, pred) == (real, pred)
+
+
+def test_context_with_too_few_splittable_perturbations_is_unscorable():
+    real = cells([[1, 1], [2, 2], [2, 2], [3, 3]], ["A"] * 4, [CONTROL_LABEL, "G0", "G0", "G1"], "csr")
+    pred = cells([[2, 2], [2, 2], [3, 3]], ["A"] * 3, ["G0", "G0", "G1"], "csr")
+
+    with pytest.raises(scoring.UnscorableContext, match="fewer than 2 perturbations with at least 2 measured cells"):
+        scoring._without_unsplittable_perturbations(real, pred)
+
+
+def test_scoring_fails_when_no_context_is_scorable(tmp_path, monkeypatch):
+    real = cells([[1, 1], [1, 1]], ["A", "A"], [CONTROL_LABEL, "G0"], "csr")
+    pred = cells([[1, 1]], ["A"], ["G0"], "csr")
+
+    def unscorable(reference, prediction):
+        raise scoring.UnscorableContext("no usable replicate scale")
+
+    monkeypatch.setattr(scoring, "_score_context", unscorable)
+    with pytest.raises(RuntimeError, match="No context could be scored: {'A': 'no usable replicate scale'}"):
+        scoring._score(write(real, tmp_path / "real.h5ad"), write(pred, tmp_path / "pred.h5ad"))
+
+
 @pytest.mark.parametrize("failure", ["invalid_prediction", "empty_panel", "scorer"])
 def test_reference_file_is_closed_after_a_failure(tmp_path, monkeypatch, failure):
     real_matrix = [[np.nan, np.nan], [np.nan, np.nan]] if failure == "empty_panel" else [[1, np.nan], [1, 1]]
@@ -536,6 +598,112 @@ def test_bundle_records_the_filtered_gene_panel(tmp_path, fake_cell_eval2):
     assert [path.name for path in (tmp_path / "bundles").iterdir()] == [bundle.name]
 
 
+REFUSAL = (
+    "prep-real-bundle: metric 'de_wilcoxon_sig_jaccard' has no usable replicate scale: the anchor (0.59855) "
+    "leaves no usable headroom over the baseline (0.704545). Every vcc2026 member is decisive"
+)
+
+
+BASELINE_REFUSAL = (
+    "ValueError: expr_mse_unbiased_capped_norm: the sum of expr_distance_unbiased over 10 perturbation(s) is "
+    "-0.0031749501165267862, which is not positive, so the ratio of sums is undefined or sign-flipped. That means "
+    "this reference panel carries no measurable aggregate effect at this cell depth -- a property of the REFERENCE, "
+    "not of the submission. Fix or replace the reference panel."
+)
+
+
+def _fail_prep_real_bundle(monkeypatch, message, failing="prep-real-bundle"):
+    run = scoring._run_cell_eval2
+
+    def fail(subcommand, *arguments):
+        run(subcommand, *arguments)
+        if subcommand == failing:
+            raise RuntimeError(f"cell-eval2 {failing} failed with exit code 1:\nsome warning\n{message}\n")
+
+    monkeypatch.setattr(scoring, "_run_cell_eval2", fail)
+
+
+@pytest.mark.parametrize(
+    "failing, message, subcommands",
+    [
+        ("prep-real-bundle", REFUSAL, ["baseline", "prep-real-bundle"]),
+        ("baseline", BASELINE_REFUSAL, ["baseline"]),
+    ],
+)
+def test_refused_bundle_is_unscorable_and_the_refusal_is_cached(
+    tmp_path, fake_cell_eval2, monkeypatch, failing, message, subcommands
+):
+    real = cells([[1, 1], [1, 1]], ["A", "A"], [CONTROL_LABEL, "G0"], "csr")
+    _fail_prep_real_bundle(monkeypatch, message, failing)
+
+    for _ in range(2):
+        with pytest.raises(scoring.UnscorableContext) as error:
+            scoring._get_real_bundle(real, tmp_path / "unused.h5ad")
+        assert str(error.value) == message
+    assert fake_cell_eval2 == subcommands
+    assert len(list((tmp_path / "bundles").iterdir())) == 1
+
+
+def test_other_bundle_failures_still_fail_and_are_not_cached(tmp_path, fake_cell_eval2, monkeypatch):
+    real = cells([[1, 1], [1, 1]], ["A", "A"], [CONTROL_LABEL, "G0"], "csr")
+    _fail_prep_real_bundle(monkeypatch, "CUDA_ERROR_OUT_OF_MEMORY")
+
+    for _ in range(2):
+        with pytest.raises(RuntimeError, match="CUDA_ERROR_OUT_OF_MEMORY") as error:
+            scoring._get_real_bundle(real, tmp_path / "unused.h5ad")
+        assert not isinstance(error.value, scoring.UnscorableContext)
+    assert fake_cell_eval2 == ["baseline", "prep-real-bundle"] * 2
+    assert list((tmp_path / "bundles").iterdir()) == []
+
+
+def _real_with_contexts():
+    """Context A has 2 splittable perturbations; context B has only one (G1; G2 has a single cell)."""
+    rows = [("A", CONTROL_LABEL)] * 2 + [("A", "G1")] * 2 + [("A", "G2")] * 2
+    rows += [("B", CONTROL_LABEL)] * 2 + [("B", "G1")] * 2 + [("B", "G2")]
+    contexts, targets = zip(*rows)
+    matrix = np.ones((len(rows), 3), dtype=np.float32)
+    matrix[0, 2] = np.nan
+    return cells(matrix, list(contexts), list(targets), "csr")
+
+
+def test_unscorable_contexts_reports_refused_and_unsplittable_contexts(tmp_path, fake_cell_eval2, monkeypatch):
+    real_path = write(_real_with_contexts(), tmp_path / "real.h5ad")
+    _fail_prep_real_bundle(monkeypatch, REFUSAL)
+
+    assert scoring.unscorable_contexts(real_path) == {
+        "A": REFUSAL,
+        "B": "fewer than 2 perturbations with at least 2 measured cells",
+    }
+
+
+def test_unscorable_contexts_is_empty_when_every_bundle_builds(tmp_path, fake_cell_eval2):
+    real = _real_with_contexts()
+    real = real[(real.obs["context"] == "A").to_numpy()].copy()
+
+    assert scoring.unscorable_contexts(write(real, tmp_path / "real.h5ad")) == {}
+    assert fake_cell_eval2 == ["baseline", "prep-real-bundle"]
+
+
+def test_checked_bundle_is_the_one_scoring_reuses(tmp_path, fake_cell_eval2, monkeypatch):
+    real = _real_with_contexts()
+    real_path = write(real[(real.obs["context"] == "A").to_numpy()].copy(), tmp_path / "real.h5ad")
+    pred_path = write(cells(np.ones((4, 3)), ["A"] * 4, ["G1", "G1", "G2", "G2"], "csr"), tmp_path / "pred.h5ad")
+    assert scoring.unscorable_contexts(real_path) == {}
+
+    run = scoring._run_cell_eval2
+
+    def run_or_score(subcommand, *arguments):
+        if subcommand != "score":
+            return run(subcommand, *arguments)
+        fake_cell_eval2.append(subcommand)
+        output = Path(arguments[list(arguments).index("-o") + 1])
+        pd.DataFrame({"metric": ["avg_score"], "from_replicate": [0.5]}).to_csv(output, index=False)
+
+    monkeypatch.setattr(scoring, "_run_cell_eval2", run_or_score)
+    assert scoring._score(real_path, pred_path) == {"avg_score": 0.5}
+    assert fake_cell_eval2 == ["baseline", "prep-real-bundle", "run", "score"]
+
+
 def test_filtered_gene_panel_changes_bundle_identity(monkeypatch):
     real = cells([[1, 2, 3]], ["A"], ["G0"], "csr")
     monkeypatch.setattr(scoring, "_cell_eval2_flags", lambda: scoring.CELL_EVAL2_FLAGS)
@@ -582,6 +750,15 @@ def test_task_description_explains_missing_values_only_for_generation():
     assert "NaN" not in _task_description(TaskTypes.REGRESSION)
 
 
+def test_metric_description_states_what_the_scorer_leaves_out():
+    from agentomics.utils.metrics import CONDITIONAL_GENERATION_METRICS
+
+    description = CONDITIONAL_GENERATION_METRICS["AVG_SCORE"][1]
+    assert "genes observed (not NaN) in all its real cells" in description
+    assert "fewer than 2 real cells" in description
+    assert "'no usable replicate scale'" in description and "left out of the average" in description
+
+
 def test_inference_instructions_forbid_missing_values_in_predictions():
     from agentomics.agents.steps.model_inference import ModelInferenceStep
 
@@ -599,3 +776,33 @@ def test_split_instructions_preserve_missing_values():
     assert "NaNs for unavailable measurements" in instructions(TaskTypes.CONDITIONAL_GENERATION)
     assert "Do not fill missing measurements with zeros" in instructions(TaskTypes.CONDITIONAL_GENERATION)
     assert instructions(TaskTypes.CLASSIFICATION) == ""
+
+
+# --- mini_train check -----------------------------------------------------------------------------
+
+
+def test_mini_train_check_rejects_real_data_cell_eval2_refuses(tmp_path, monkeypatch):
+    from pydantic_ai import ModelRetry
+
+    from agentomics.agents.steps.data_split import DataSplitStep
+
+    checked = []
+
+    def unscorable(reference_path):
+        reference = ad.read_h5ad(reference_path)
+        checked.append(sorted(set(reference.obs["target_gene"])))
+        return {"B": REFUSAL}
+
+    monkeypatch.setattr(scoring, "unscorable_contexts", unscorable)
+    split = _write_split(tmp_path / "mini_train")
+
+    with pytest.raises(ModelRetry, match=r"Choose other conditions\. Refused contexts: B: prep-real-bundle"):
+        DataSplitStep._validate_mini_train_scorable(split)
+    assert checked == [["G1", "G2", CONTROL_LABEL]]
+
+
+def test_mini_train_check_accepts_scorable_real_data(tmp_path, monkeypatch):
+    from agentomics.agents.steps.data_split import DataSplitStep
+
+    monkeypatch.setattr(scoring, "unscorable_contexts", lambda reference_path: {})
+    DataSplitStep._validate_mini_train_scorable(_write_split(tmp_path / "mini_train"))

@@ -11,6 +11,11 @@ Predictions must contain finite counts on the full gene panel.
 Every value is scaled so that 0 is the context-mean baseline and 1 is
 an experimental replicate. The baseline and replicate (the "real bundle") depend only on the
 real data, so they are cached on disk; the full score is cached in memory per file version.
+cell-eval2 refuses a context whose real data cannot give a scale: the replicate is no better than
+the baseline on some metric, or the real effects sum to no measurable effect. Such a context is left
+out of the average (it still fails if no context is left); `unscorable_contexts` finds them up front.
+Perturbations with a single measured cell cannot be split into replicate halves, so they are
+left out of their context's score, together with their generated cells.
 
 Runs on GPU when cell-eval2's GPU extras (`cell-eval2[gpu,gpudge]`) and a CUDA device are
 usable, and on CPU otherwise.
@@ -32,6 +37,14 @@ PERTURBATION_COLUMN = "target_gene"
 CONTROL_LABEL = "non-targeting"
 CELL_EVAL2_FLAGS = ("--preset", "vcc2026", "--pert-col", PERTURBATION_COLUMN, "--control", CONTROL_LABEL)
 BUNDLE_CACHE_DIR = Path(tempfile.gettempdir()) / "agentomics_cell_eval2"
+# cell-eval2 refusals that depend only on the real data: prep-real-bundle's and baseline's.
+UNSCORABLE_MESSAGES = ("has no usable replicate scale", "a property of the REFERENCE, not of the submission")
+MIN_CELLS_PER_PERTURBATION = 2
+UNSCORABLE_FILE_NAME = "unscorable.txt"
+
+
+class UnscorableContext(RuntimeError):
+    """cell-eval2 cannot build a scale for this context's real data, whatever the prediction."""
 
 _score_cache: dict[tuple, dict[str, float]] = {}
 
@@ -56,13 +69,9 @@ def _score(real_path: Path, pred_path: Path) -> dict[str, float]:
         pred = ad.read_h5ad(pred_path)
         _validate_pair(real, pred)
 
-        per_context = {}
+        per_context, unscorable = {}, {}
         for context in sorted(real.obs[CONTEXT_COLUMN].unique()):
-            real_context = real[(real.obs[CONTEXT_COLUMN] == context).to_numpy()].to_memory()
-            keep = _scoring_genes(real_context, context)
-            print(f"cell-eval2 vcc2026 [context {context}]: scoring {int(keep.sum())}/{len(keep)} genes")
-            if not keep.all():
-                real_context = real_context[:, keep].copy()
+            real_context, keep = _real_context(real, context)
             controls = real_context[(real_context.obs[PERTURBATION_COLUMN] == CONTROL_LABEL).to_numpy()]
             pred_context = ad.concat(
                 [pred[(pred.obs[CONTEXT_COLUMN] == context).to_numpy(), keep], controls],
@@ -71,14 +80,57 @@ def _score(real_path: Path, pred_path: Path) -> dict[str, float]:
             )
             try:
                 per_context[context] = _score_context(real_context, pred_context)
+            except UnscorableContext as error:
+                unscorable[context] = str(error)
+                print(f"cell-eval2 vcc2026 [context {context}]: skipped, left out of the average: {error}")
+                continue
             except (ValueError, RuntimeError) as error:
                 raise RuntimeError(f"Scoring context {context!r} failed: {error}") from error
             print(f"cell-eval2 vcc2026 [context {context}]: {per_context[context]}")
     finally:
         real.file.close()
 
+    if not per_context:
+        raise RuntimeError(f"No context could be scored: {unscorable}")
+    if unscorable:
+        print(f"cell-eval2 vcc2026: averaged over {len(per_context)} contexts; skipped {sorted(unscorable)}")
     scores = pd.DataFrame(per_context).mean(axis=1)
     return {metric: float(value) for metric, value in scores.items()}
+
+def unscorable_contexts(real_path) -> dict[str, str]:
+    """{context: reason} for the contexts of this real data that cell-eval2 refuses, whatever the prediction.
+
+    Builds (and caches) each context's real bundle exactly as scoring does, so a context that passes
+    here can only fail scoring because of the prediction.
+    """
+    import anndata as ad
+
+    real = ad.read_h5ad(real_path, backed="r")
+    unscorable = {}
+    try:
+        for context in sorted(real.obs[CONTEXT_COLUMN].unique()):
+            real_context, _ = _real_context(real, context)
+            try:
+                real_context, _ = _without_unsplittable_perturbations(real_context)
+                _canonicalize(real_context)
+                with tempfile.TemporaryDirectory() as temporary_directory:
+                    context_path = Path(temporary_directory) / "real.h5ad"
+                    _write_h5ad(real_context, context_path)
+                    _get_real_bundle(real_context, context_path)
+            except UnscorableContext as error:
+                unscorable[context] = str(error)
+    finally:
+        real.file.close()
+    return unscorable
+
+def _real_context(real, context):
+    """The context's real cells on its scoring genes, and the mask of those genes."""
+    real_context = real[(real.obs[CONTEXT_COLUMN] == context).to_numpy()].to_memory()
+    keep = _scoring_genes(real_context, context)
+    print(f"cell-eval2 vcc2026 [context {context}]: scoring {int(keep.sum())}/{len(keep)} genes")
+    if not keep.all():
+        real_context = real_context[:, keep].copy()
+    return real_context, keep
 
 def _validate_pair(real, pred) -> None:
     import numpy as np
@@ -136,24 +188,32 @@ def _scoring_genes(real, context):
         raise ValueError(f"Context {context!r} has no genes observed in every reference cell")
     return keep
 
-def _score_context(real, pred) -> dict[str, float]:
-    import anndata as ad
-    from scipy import sparse
+def _without_unsplittable_perturbations(real, pred=None):
+    """Drops perturbations with too few measured cells for cell-eval2's replicate halves, on both sides."""
+    sizes = real.obs[PERTURBATION_COLUMN].value_counts()
+    dropped = sorted(set(sizes.index[sizes < MIN_CELLS_PER_PERTURBATION]) - {CONTROL_LABEL})
+    if not dropped:
+        return real, pred
+    context = real.obs[CONTEXT_COLUMN].iloc[0]
+    print(f"cell-eval2 vcc2026 [context {context}]: left out {len(dropped)} perturbations "
+          f"with fewer than {MIN_CELLS_PER_PERTURBATION} measured cells: {dropped[:10]}")
+    real = real[~real.obs[PERTURBATION_COLUMN].isin(dropped).to_numpy()].copy()
+    if pred is not None:
+        pred = pred[~pred.obs[PERTURBATION_COLUMN].isin(dropped).to_numpy()].copy()
+    if real.obs[PERTURBATION_COLUMN].nunique() - 1 < 2:
+        raise UnscorableContext(f"fewer than 2 perturbations with at least {MIN_CELLS_PER_PERTURBATION} measured cells")
+    return real, pred
 
-    # cell-eval2 refuses sparse matrices that are not canonical (sorted, no duplicate entries).
-    for adata in (real, pred):
-        if sparse.issparse(adata.X):
-            adata.X.sum_duplicates()
+def _score_context(real, pred) -> dict[str, float]:
+    real, pred = _without_unsplittable_perturbations(real, pred)
+    _canonicalize(real, pred)
 
     with tempfile.TemporaryDirectory() as temporary_directory:
         work_dir = Path(temporary_directory)
         real_path = work_dir / "real.h5ad"
         pred_path = work_dir / "pred.h5ad"
-        # Under pandas 2, anndata refuses to write nullable-string obs columns by default. Write
-        # plain strings instead, so cell-eval2's own h5ad writes downstream don't hit the same error.
-        with ad.settings.override(allow_write_nullable_strings=False):
-            real.write_h5ad(real_path)
-            pred.write_h5ad(pred_path)
+        _write_h5ad(real, real_path)
+        _write_h5ad(pred, pred_path)
 
         bundle_dir = _get_real_bundle(real, real_path)
         run_dir = work_dir / "run"
@@ -168,24 +228,55 @@ def _score_context(real, pred) -> dict[str, float]:
         scored = pd.read_csv(scored_path)
     return dict(zip(scored["metric"], scored["from_replicate"].astype(float)))
 
+def _canonicalize(*adatas) -> None:
+    """cell-eval2 refuses sparse matrices that are not canonical (sorted, no duplicate entries)."""
+    from scipy import sparse
+
+    for adata in adatas:
+        if sparse.issparse(adata.X):
+            adata.X.sum_duplicates()
+
+def _write_h5ad(adata, path: Path) -> None:
+    import anndata as ad
+
+    # Under pandas 2, anndata refuses to write nullable-string obs columns by default. Write
+    # plain strings instead, so cell-eval2's own h5ad writes downstream don't hit the same error.
+    with ad.settings.override(allow_write_nullable_strings=False):
+        adata.write_h5ad(path)
+
 def _get_real_bundle(real, real_path: Path) -> Path:
     """Build (or reuse) the baseline and replicate-anchor bundle for this real data."""
     bundle_dir = BUNDLE_CACHE_DIR / _content_digest(real)
     if bundle_dir.is_dir():
+        if (bundle_dir / UNSCORABLE_FILE_NAME).is_file():
+            raise UnscorableContext((bundle_dir / UNSCORABLE_FILE_NAME).read_text())
         return bundle_dir
 
     BUNDLE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=BUNDLE_CACHE_DIR) as temporary_directory:
         work_dir = Path(temporary_directory)
         baseline_pred_path = work_dir / "baseline_pred.h5ad"
-        _run_cell_eval2(
-            "baseline", "-ar", real_path, "-o", work_dir / "baseline",
-            "--save-pred", baseline_pred_path, *_cell_eval2_flags(),
-        )
-        _run_cell_eval2(
-            "prep-real-bundle", "--real", real_path, "--baseline", baseline_pred_path,
-            "-o", work_dir / "bundle", *_cell_eval2_flags(),
-        )
+        try:
+            _run_cell_eval2(
+                "baseline", "-ar", real_path, "-o", work_dir / "baseline",
+                "--save-pred", baseline_pred_path, *_cell_eval2_flags(),
+            )
+            _run_cell_eval2(
+                "prep-real-bundle", "--real", real_path, "--baseline", baseline_pred_path,
+                "-o", work_dir / "bundle", *_cell_eval2_flags(),
+            )
+        except RuntimeError as error:
+            reasons = [
+                line for line in str(error).splitlines()
+                if any(message in line for message in UNSCORABLE_MESSAGES)
+            ]
+            if not reasons:
+                raise
+            # Cache the refusal too: it depends only on the real data, and rebuilding it is slow.
+            (work_dir / "bundle").mkdir(exist_ok=True)
+            (work_dir / "bundle" / UNSCORABLE_FILE_NAME).write_text(reasons[-1])
+            (work_dir / "bundle").rename(bundle_dir)
+            raise UnscorableContext(reasons[-1]) from error
         pd.DataFrame({"gene": list(real.var_names)}).to_csv(work_dir / "bundle" / "scoring_genes.csv", index=False)
         # Rename only once complete, so an interrupted build is never reused.
         (work_dir / "bundle").rename(bundle_dir)

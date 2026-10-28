@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import tempfile
 import time
 from pathlib import Path
 from typing import cast
@@ -140,6 +141,23 @@ class DataSplitStep(AgenticStep):
                 f"got {len(mini_train_df)}."
             )
 
+    @staticmethod
+    def _validate_mini_train_scorable(mini_train_path: Path) -> None:
+        """The dry run scores mini_train, so cell-eval2 must accept its real data whatever the model predicts."""
+        from agentomics.runtime.conditional_generation_evaluation import write_reference
+        from agentomics.utils.cell_eval2_scoring import unscorable_contexts
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            reference_path = Path(temporary_directory) / "reference.h5ad"
+            write_reference(mini_train_path, reference_path)
+            unscorable = unscorable_contexts(reference_path)
+        if unscorable:
+            reasons = "; ".join(f"{context}: {reason}" for context, reason in unscorable.items())
+            raise ModelRetry(
+                f"cell-eval2 cannot score the real data of {MINI_TRAIN_SPLIT}, whatever the model predicts, so the "
+                f"system check of the model would always fail. Choose other conditions. Refused contexts: {reasons}"
+            )
+
     def _move_split_to_versioned_dir(self, result: DataSplitOutput, flag_as_changed: bool) -> DataSplitOutput:
         train_path = Path(result.train_path)
         val_path = Path(result.val_path)
@@ -203,6 +221,7 @@ class DataSplitStep(AgenticStep):
                 self._validate_mini_train_classification(train_df, mini_train_df)
             elif self.config.task_type == TaskTypes.CONDITIONAL_GENERATION:
                 self._validate_mini_train_count(mini_train_df, train_df, self.GENERATION_MINI_TRAIN_CONDITION_COUNT)
+                self._validate_mini_train_scorable(mini_train_path)
             else:
                 self._validate_mini_train_count(mini_train_df, train_df, self.REGRESSION_MINI_TRAIN_SAMPLE_COUNT)
 
@@ -276,7 +295,9 @@ class DataSplitStep(AgenticStep):
             )
             mini_train_size_instructions = (
                 f"exactly {self.GENERATION_MINI_TRAIN_CONDITION_COUNT} conditions (rows of {PERTURBATIONS_FILE_NAME}), preferably "
-                f"from one context (or all available if the training split has fewer than {self.GENERATION_MINI_TRAIN_CONDITION_COUNT})"
+                f"from one context (or all available if the training split has fewer than {self.GENERATION_MINI_TRAIN_CONDITION_COUNT}). "
+                "cell-eval2 must be able to score it: the system checks this and rejects conditions whose real data "
+                "it refuses (too little signal, e.g. very few cells per condition)"
             )
         else:
             raise ValueError(f"Unknown task type: {self.config.task_type}. Supported types are {TaskTypes}.")
