@@ -4,12 +4,13 @@ import time
 from typing import Any, TypedDict
 
 from pydantic import Field
-from pydantic_ai import Agent
+from pydantic_ai import Agent, ModelRetry, RunContext
 
 from agentomics.agents.prompt_builder import get_dataset_knowledge
 from agentomics.agents.steps.base import AgenticStep, AgenticStepOutput
 from agentomics.agents.steps.data_split import DataSplitStep
 from agentomics.agents.steps.validation_evaluation import ValidationEvaluationStep
+from agentomics.runtime.planner_notes import load_current_planner_notes, save_planner_notes
 from agentomics.runtime.read_write_utils import (
     get_archived_iterations,
     get_last_successful_iteration,
@@ -67,6 +68,14 @@ class IterationPlanOutput(AgenticStepOutput):
         Any other instructions that don't fit only one step (optional).
         """
     )
+    notes: str | None = Field(
+        default=None,
+        exclude=True,
+        description="""
+        Your private notes, carried forward to your future planning iterations (never shown to the iteration agents).
+        Leave empty to keep the current notes unchanged. If set, it replaces the current notes in full, so include everything worth keeping.
+        """,
+    )
 
 class IterationPlanStep(AgenticStep):
     step_id = "iteration_plan"
@@ -83,7 +92,7 @@ class IterationPlanStep(AgenticStep):
         is_new_best: bool
 
     def create_agent(self) -> Agent[dict, IterationPlanOutput]:
-        return Agent(
+        agent = Agent(
             model=self.iteration_plan_model,
             retries=self.config.max_validation_retries,
             model_settings=self.provider.get_high_reasoning_model_settings(
@@ -92,6 +101,30 @@ class IterationPlanStep(AgenticStep):
             output_type=IterationPlanOutput,
             deps_type=dict,
         )
+
+        @agent.output_validator
+        async def _notes_within_cap(ctx: RunContext[dict], result: IterationPlanOutput) -> IterationPlanOutput:
+            cap = self.config.planner_notes_max_chars
+            if result.notes is not None and len(result.notes) > cap:
+                raise ModelRetry(
+                    f"Your notes are {len(result.notes)} characters, over the {cap} character limit. "
+                    "Rewrite them shorter."
+                )
+            return result
+
+        return agent
+
+    async def _execute(self) -> IterationPlanOutput:
+        output = await super()._execute()
+        self._notes_to_save = output.notes if output.notes is not None else load_current_planner_notes(self.config)
+        return output
+
+    def on_step_success(self, output: Any) -> None:
+        # Written before the base class archives the step folder and commits the checkpoint.
+        notes = getattr(self, "_notes_to_save", "")
+        if notes:
+            save_planner_notes(self.config, notes)
+        super().on_step_success(output)
 
     def build_user_prompt(self) -> str:
         return self.step_prompt()
@@ -104,6 +137,7 @@ class IterationPlanStep(AgenticStep):
         tools_info = ", ".join(get_tool_names(self.config, self.config.tool_ids))
         best_iteration_model_info = self._build_best_iteration_model_info()
         supplementary_info = self._build_supplementary_info()
+        notes_info = self._build_notes_info()
 
         return f"""
         <prompt_of_the_iteration_agents>
@@ -115,6 +149,7 @@ class IterationPlanStep(AgenticStep):
         </dataset_knowledge_from_dataset_description_md>
 
         {iteration_history_info}
+        {notes_info}
         <your_instructions>
         {f"<exploration_guidance>{exploration_info}</exploration_guidance>" if exploration_info else ""}
         The main goal of the run is to maximize the hidden test set generalization performance (main metric: {describe_metric(self.config.val_metric)}) that will use the 'best iteration model'. {best_iteration_model_info}
@@ -301,6 +336,11 @@ class IterationPlanStep(AgenticStep):
         if dataset_supplementary_path.is_dir():
             return f"The agent has access to the supplementary/ folder with supplementary dataset materials."
         return ""
+
+    def _build_notes_info(self) -> str:
+        if not (self.config.dataset_dir / SUPPLEMENTARY_DIR_NAME).is_dir():
+            return ""
+        return f"<your_notes>\n{load_current_planner_notes(self.config)}\n</your_notes>"
 
     def _build_exploration_info(self) -> str:
         iteration = load_current_iteration_index(self.config)
