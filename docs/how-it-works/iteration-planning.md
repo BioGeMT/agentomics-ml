@@ -55,7 +55,7 @@ IterationPlanOutput
 
 ## Supplementary Material
 
-If the dataset has a `supplementary/` folder, the planner can read its text files itself. The planner keeps its own notes between iterations, so it does not have to re-read the same files every time. When a file is relevant to a step, the plan points the agents that carry out that step to it by path. The planner treats the material as inspiration to weigh against the results so far, not as a checklist. Only text files are read: PDFs and other binary files are listed, and the planner can still point agents to them.
+If the dataset has a `supplementary/` folder, the planner can read its text files itself and keeps notes between iterations so it does not have to re-read them.
 
 ## Iteration-Plan Examples
 
