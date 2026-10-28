@@ -82,7 +82,7 @@ Supporting/supplementary materials (PDFs, papers, helper scripts, foundation mod
 You can describe what the supplementary folder contains and how it relates to
 the task in `supplementary/README.md` to help the agent use it effectively.
 
-The planner can read the text files in this folder itself, starting from `supplementary/README.md`, so put an index of your material there. It keeps its own notes between iterations, points the agents that carry out each step to the files that matter, and treats the material as inspiration rather than instructions. PDFs and other binary files are listed but not read (the planner can still point agents to them).
+The planner can read the text files in this folder itself. It keeps its own notes between iterations, points the agents that carry out each step to the files that matter, and treats the material as inspiration rather than instructions. PDFs and other binary files are listed but not read (the planner can still point agents to them).
 
 #### Using existing / foundation models
 
