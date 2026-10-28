@@ -12,7 +12,8 @@ Every value is scaled so that 0 is the context-mean baseline and 1 is
 an experimental replicate. The baseline and replicate (the "real bundle") depend only on the
 real data, so they are cached on disk; the full score is cached in memory per file version.
 cell-eval2 refuses a context whose real data cannot give a scale: the replicate is no better than
-the baseline on some metric, or the real effects sum to no measurable effect. Such a context is left
+the baseline on some metric, the baseline's own value leaves no scale ("degenerate baseline"),
+or the real effects sum to no measurable effect. Such a context is left
 out of the average (it still fails if no context is left); `unscorable_contexts` finds them up front.
 Perturbations with a single measured cell cannot be split into replicate halves, so they are
 left out of their context's score, together with their generated cells.
@@ -37,8 +38,12 @@ PERTURBATION_COLUMN = "target_gene"
 CONTROL_LABEL = "non-targeting"
 CELL_EVAL2_FLAGS = ("--preset", "vcc2026", "--pert-col", PERTURBATION_COLUMN, "--control", CONTROL_LABEL)
 BUNDLE_CACHE_DIR = Path(tempfile.gettempdir()) / "agentomics_cell_eval2"
-# cell-eval2 refusals that depend only on the real data: prep-real-bundle's and baseline's.
-UNSCORABLE_MESSAGES = ("has no usable replicate scale", "a property of the REFERENCE, not of the submission")
+# cell-eval2 refusals that depend only on the real data: prep-real-bundle's and baseline's (two).
+UNSCORABLE_MESSAGES = (
+    "has no usable replicate scale",
+    "a property of the REFERENCE, not of the submission",
+    "degenerate baseline aggregate",
+)
 MIN_CELLS_PER_PERTURBATION = 2
 UNSCORABLE_FILE_NAME = "unscorable.txt"
 

@@ -634,6 +634,12 @@ BASELINE_REFUSAL = (
     "not of the submission. Fix or replace the reference panel."
 )
 
+DEGENERATE_BASELINE_REFUSAL = (
+    "ValueError: degenerate baseline aggregate for 3 scoreable metric(s): de_wilcoxon_direction_reach_raw=1.0 "
+    "(denominator 0.0 is not a finite positive number (anchor=1.0, direction='higher')); "
+    "de_wilcoxon_lfc_nmae=None (non-finite). Drop them from the metric profile or investigate the degeneracy."
+)
+
 
 def _fail_prep_real_bundle(monkeypatch, message, failing="prep-real-bundle"):
     run = scoring._run_cell_eval2
@@ -651,6 +657,7 @@ def _fail_prep_real_bundle(monkeypatch, message, failing="prep-real-bundle"):
     [
         ("prep-real-bundle", REFUSAL, ["baseline", "prep-real-bundle"]),
         ("baseline", BASELINE_REFUSAL, ["baseline"]),
+        ("baseline", DEGENERATE_BASELINE_REFUSAL, ["baseline"]),
     ],
 )
 def test_refused_bundle_is_unscorable_and_the_refusal_is_cached(
