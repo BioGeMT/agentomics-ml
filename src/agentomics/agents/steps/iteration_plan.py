@@ -23,6 +23,7 @@ from agentomics.runtime.step_outputs import load_step_output, load_step_outputs
 from agentomics.runtime.system_resources import get_resources_summary
 from agentomics.tools.supplementary_tool import create_supplementary_tools
 from agentomics.tools.tool_registry import get_tool_names
+from agentomics.utils.config import Config
 from agentomics.utils.metrics import describe_metric
 from agentomics.utils.printing_utils import truncate_float
 from agentomics.datasets.data_contract import SUPPLEMENTARY_DIR_NAME
@@ -73,7 +74,7 @@ class IterationPlanOutput(AgenticStepOutput):
     notes: str | None = Field(
         default=None,
         exclude=True,
-        max_length=6000,
+        max_length=Config.PLANNER_NOTES_MAX_CHARS,
         description="""
         Your private notes, carried forward to your future planning iterations.
         Leave as null to keep the current notes unchanged. If set (even to an empty string) it replaces them in full, so include everything worth keeping.

@@ -55,6 +55,7 @@ class Config:
     DEFAULT_SUPPLEMENTARY_TOOL_MAX_CALL_CHARS: ClassVar[int] = 5000
     DEFAULT_SUPPLEMENTARY_TOOL_MAX_CALLS: ClassVar[int] = 50
     DEFAULT_SUPPLEMENTARY_TOOL_MAX_TOTAL_CHARS: ClassVar[int] = 100_000
+    PLANNER_NOTES_MAX_CHARS: ClassVar[int] = 6000
     DEFAULT_RUN_PYTHON_TOOL_TIMEOUT: ClassVar[int] = 60 * 60 * 6
     DEFAULT_USER_PROMPT: ClassVar[str] = "Develop a machine learning model that generalizes well to new unseen data."
     DEFAULT_ENVIRONMENTS_DIR: ClassVar[str] = "/tmp/agentomics/envs"
