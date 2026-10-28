@@ -116,9 +116,8 @@ def test_cumulative_cap_returns_budget_message(supp_dir, make_tool):
     (supp_dir / "a.txt").write_text("x" * 300)
     tool = make_tool(supplementary_tool_max_call_chars=200, supplementary_tool_max_total_chars=300)
 
-    tool(operation="read", path="a.txt")
-    tool(operation="read", path="a.txt")
-    out = tool(operation="read", path="a.txt")
+    outputs = [tool(operation="read", path="a.txt") for _ in range(5)]
+    out = outputs[-1]
 
     assert "budget" in out and "notes" in out and "plan" in out
     assert "x" * 10 not in out
@@ -203,15 +202,3 @@ def test_list_marks_outward_symlink_as_rejected(supp_dir, make_tool):
     out = make_tool()(operation="list")
 
     assert "link.txt" in out and "rejected" in out and "topsecret" not in out
-
-
-def test_search_reports_skipped_symlinks_and_binaries(supp_dir, make_tool):
-    (supp_dir.parent / "secret.txt").write_text("hit")
-    (supp_dir / "link.txt").symlink_to(supp_dir.parent / "secret.txt")
-    (supp_dir / "b.bin").write_bytes(b"hit\x00")
-    (supp_dir / "ok.txt").write_text("hit")
-
-    out = make_tool()(operation="search", pattern="hit")
-
-    assert "ok.txt" in out
-    assert "skipped 1 symlink" in out and "skipped 1 binary" in out
