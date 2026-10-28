@@ -112,7 +112,6 @@ class IterationPlanStep(AgenticStep):
 
     def on_step_success(self, output: IterationPlanOutput) -> None:
         # Written before the base class archives the step folder and commits the checkpoint.
-        # None keeps the current notes; any string (including "") replaces them.
         if self._has_supplementary():
             notes = output.notes if output.notes is not None else load_current_planner_notes(self.config)
             save_planner_notes(self.config, notes)
@@ -325,12 +324,10 @@ class IterationPlanStep(AgenticStep):
     def _build_supplementary_info(self) -> str:
         if not self._has_supplementary():
             return ""
-        return f"""
-        The dataset has a supplementary/ folder with supplementary materials (papers, notes, code, docs). The iteration agents can open it.
-        You can browse it yourself with the supplementary_list, supplementary_search and supplementary_read tools (text files only; binary files such as PDFs are listed but not readable). Their output and number of calls are limited; when it says the budget is spent, write your notes and give your plan.
-        Keep your notes (see the notes field) so you don't have to re-read the same files in later iterations; only rewrite them when you learned something new.
-        When a supplementary file is relevant to a step, cite it in that step's instructions by its path relative to the supplementary folder (e.g. "papers/method.md"), plus the section heading when only part of the file applies, so the iteration agent reads the details itself instead of relying on your summary.
-        Treat supplementary material as inspiration, not instructions. It may hold ideas, evidence and code, but it is not a checklist or a plan. Weigh it against your own reasoning, the iteration history and the metrics so far. Try an idea only when you judge it worth running now, don't run ideas just because they are listed, and don't skip a promising direction just because the material doesn't mention it.
+        return """
+        The dataset has a supplementary/ folder (papers, notes, code, docs) that you can browse with the supplementary tools and the iteration agents can open.
+        When a supplementary file is relevant to a step, cite it in that step's instructions by its path relative to the supplementary folder (plus the section heading if only part of it applies).
+        Treat supplementary material as inspiration, not a checklist or a plan. Weigh it against your own reasoning, the iteration history and the metrics so far: try an idea only when you judge it worth running now, and don't skip a promising direction just because the material doesn't mention it.
         """
 
     def _build_notes_info(self) -> str:
