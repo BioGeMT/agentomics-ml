@@ -165,3 +165,46 @@ def test_failed_iteration_keeps_no_validation_result(
     step.on_iteration_fail(iteration=0)
 
     assert load_step_output(config, ValidationEvaluationStep.step_id, config.current_iteration_dir) is None
+
+
+@pytest.mark.parametrize(
+    ("task_type", "expected_stages"),
+    [
+        pytest.param("classification", ["validation", "train"], id="classification-evaluates-both"),
+        pytest.param("conditional_generation", ["validation"], id="generation-evaluates-validation-only"),
+    ],
+)
+def test_evaluated_splits_depend_on_task_type(tmp_path, monkeypatch, task_type, expected_stages):
+    from types import SimpleNamespace
+
+    from agentomics.agents.steps import validation_evaluation
+
+    outputs = SimpleNamespace(
+        path_to_inference_file=str(tmp_path / "inference.py"),
+        path_to_artifacts_dir=str(tmp_path / "artifacts"),
+        train_path=str(tmp_path / "train"),
+        val_path=str(tmp_path / "validation"),
+    )
+    stages = []
+    monkeypatch.setattr(validation_evaluation, "load_dataset_metadata", lambda config: {"task_type": task_type})
+    monkeypatch.setattr(validation_evaluation, "require_step_output", lambda *args: outputs)
+    monkeypatch.setattr(
+        validation_evaluation, "run_inference_on_split", lambda **kwargs: SimpleNamespace(returncode=0)
+    )
+
+    def compute_metrics(*, evaluation_stage, **kwargs):
+        stages.append(evaluation_stage)
+        return {"SCORE": 1.0}
+
+    monkeypatch.setattr(validation_evaluation, "compute_metrics", compute_metrics)
+    config = SimpleNamespace(
+        task_type=task_type,
+        shared_environment_path=tmp_path / "env",
+        current_iteration_dir=tmp_path,
+        current_step_dir=tmp_path,
+    )
+
+    metrics = ValidationEvaluationStep._run_inference_on_all_splits(SimpleNamespace(config=config))
+
+    assert stages == expected_stages
+    assert metrics == {f"{stage}/SCORE": 1.0 for stage in expected_stages}

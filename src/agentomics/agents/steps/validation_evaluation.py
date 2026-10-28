@@ -20,6 +20,7 @@ from agentomics.runtime.step_outputs import load_step_output, require_step_outpu
 from agentomics.utils.config import Config
 from agentomics.utils.exceptions import AgentScriptFailed, IterationRunFailed
 from agentomics.utils.metrics import get_higher_is_better_map
+from agentomics.utils.task_types import TaskTypes
 from agentomics.datasets.data_contract import NUMERIC_LABEL_COLUMN_NAME, labels_file_name, predictions_file_suffix
 
 
@@ -100,7 +101,12 @@ class ValidationEvaluationStep(RuntimeStep):
         inference_script_path = Path(model_inference.path_to_inference_file)
         training_artifacts_dir = Path(model_training.path_to_artifacts_dir)
         data_split = require_step_output(self.config, DataSplitStep.step_id, self.config.current_iteration_dir)
-        for evaluation_stage in ["validation", "train"]:
+        # Generated cells for a conditional-generation train split can be as large as the measured data
+        # (millions of cells, terabytes), too large to generate and score every iteration.
+        evaluation_stages = (
+            ["validation"] if self.config.task_type == TaskTypes.CONDITIONAL_GENERATION else ["validation", "train"]
+        )
+        for evaluation_stage in evaluation_stages:
             print(f"  Running {evaluation_stage} inference...")
             split_path = Path(data_split.val_path if evaluation_stage == "validation" else data_split.train_path)
             labels_path = split_path / labels_file_name(self.config.task_type)
