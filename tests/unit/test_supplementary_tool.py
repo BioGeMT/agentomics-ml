@@ -13,10 +13,13 @@ def supp_dir(default_agent_config):
 
 
 @pytest.fixture
+def small_cap(monkeypatch):
+    monkeypatch.setattr("agentomics.tools.supplementary_tool.MAX_OUTPUT_CHARS", 200)
+
+
+@pytest.fixture
 def make_tool(default_agent_config):
-    def make(**overrides):
-        for key, value in overrides.items():
-            setattr(default_agent_config, key, value)
+    def make():
         tools = {t.name: t.function for t in create_supplementary_tools(default_agent_config)}
         return SimpleNamespace(**tools)
 
@@ -94,64 +97,25 @@ def test_binary_files_are_never_read_or_searched(supp_dir, make_tool):
     assert "needle" not in tool.grep(pattern="needle", recursive=True)
 
 
-def test_read_over_cap_keeps_head_and_hints_next_line(supp_dir, make_tool):
+def test_read_over_cap_keeps_head_and_hints_next_line(supp_dir, make_tool, small_cap):
     (supp_dir / "big.txt").write_text("\n".join(f"row{i:04d}" for i in range(1, 1001)))
 
-    out = make_tool(supplementary_tool_max_call_chars=200).read_file(path="big.txt", max_lines=1000)
+    out = make_tool().read_file(path="big.txt", max_lines=1000)
 
     assert "row0001" in out and "row1000" not in out
     last_shown = max(int(w[3:7]) for w in out.split() if w.startswith("row"))
     assert f"start_line={last_shown + 1}" in out
 
 
-def test_search_over_cap_keeps_head_and_hints_narrowing(supp_dir, make_tool):
+def test_search_over_cap_keeps_head_and_hints_narrowing(supp_dir, make_tool, small_cap):
     (supp_dir / "big.txt").write_text("\n".join(f"match{i:04d}" for i in range(1, 500)))
 
-    out = make_tool(supplementary_tool_max_call_chars=200).grep(
+    out = make_tool().grep(
         pattern="match", path="big.txt", max_matches=500
     )
 
     assert "match0001" in out and "match0499" not in out
     assert "narrow" in out
-
-
-def test_cumulative_cap_returns_budget_message(supp_dir, make_tool):
-    (supp_dir / "a.txt").write_text("x" * 300)
-    tool = make_tool(supplementary_tool_max_call_chars=200, supplementary_tool_max_total_chars=300)
-
-    outputs = [tool.read_file(path="a.txt") for _ in range(5)]
-    out = outputs[-1]
-
-    assert "budget" in out and "notes" in out and "plan" in out
-    assert "x" * 10 not in out
-
-
-def test_call_budget_returns_message_not_error(supp_dir, make_tool):
-    tool = make_tool(supplementary_tool_max_calls=2)
-
-    tool.ls()
-    tool.ls()
-    out = tool.ls()
-
-    assert "budget" in out and "notes" in out and "plan" in out
-
-
-def test_budget_is_per_tool_instance(supp_dir, make_tool):
-    first = make_tool(supplementary_tool_max_calls=1)
-    first.ls()
-    assert "budget" in first.ls()
-
-    assert "budget" not in make_tool(supplementary_tool_max_calls=1).ls()
-
-
-def test_budget_is_shared_across_the_three_tools(supp_dir, make_tool):
-    (supp_dir / "a.txt").write_text("a")
-    tool = make_tool(supplementary_tool_max_calls=2)
-
-    tool.ls()
-    tool.read_file(path="a.txt")
-
-    assert "budget" in tool.grep(pattern="a")
 
 
 def test_tools_are_plain_described_tools_not_in_shared_registry(default_agent_config):
@@ -164,35 +128,14 @@ def test_tools_are_plain_described_tools_not_in_shared_registry(default_agent_co
     assert not any(t.name in TOOL_FACTORY_REGISTRY or "supplementary" in TOOL_FACTORY_REGISTRY for t in tools)
 
 
-def test_read_of_overlong_first_line_still_advances(supp_dir, make_tool):
+def test_read_of_overlong_first_line_still_advances(supp_dir, make_tool, small_cap):
     (supp_dir / "wide.txt").write_text("x" * 1000 + "\nsecond\n")
-    tool = make_tool(supplementary_tool_max_call_chars=200)
+    tool = make_tool()
 
     out = tool.read_file(path="wide.txt")
 
     assert "start_line=2" in out
     assert "second" in tool.read_file(path="wide.txt", start_line=2)
-
-
-@pytest.mark.parametrize("cap", [150, 80, 40])
-def test_output_including_hint_never_exceeds_per_call_cap(supp_dir, make_tool, cap):
-    (supp_dir / "big.txt").write_text("\n".join(f"row{i:04d}" for i in range(1, 300)))
-    for i in range(300):
-        (supp_dir / f"f{i:03d}.txt").write_text("x")
-    tool = make_tool(supplementary_tool_max_call_chars=cap, supplementary_tool_max_calls=10)
-
-    assert len(tool.read_file(path="big.txt", max_lines=500)) <= cap
-    assert len(tool.grep(pattern="row", path="big.txt", max_matches=500)) <= cap
-    assert len(tool.ls()) <= cap
-
-
-def test_total_cap_includes_appended_hints(supp_dir, make_tool):
-    (supp_dir / "a.txt").write_text("\n".join("z" * 20 for _ in range(100)))
-    tool = make_tool(supplementary_tool_max_call_chars=120, supplementary_tool_max_total_chars=250)
-
-    total = len(tool.read_file(path="a.txt")) + len(tool.read_file(path="a.txt"))
-
-    assert total <= 250
 
 
 def test_list_hides_outward_symlink(supp_dir, make_tool):

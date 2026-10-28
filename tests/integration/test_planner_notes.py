@@ -223,20 +223,6 @@ def test_planner_has_no_tool_without_supplementary_folder(initialized_run_config
     assert planner.tool_names == []
 
 
-def test_exhausted_tool_budget_ends_reading_and_planner_still_saves_notes(
-    initialized_run_config, prepared_iteration, supplementary_folder
-):
-    config = initialized_run_config
-    config.supplementary_tool_max_calls = 3
-    call = ("ls", {})
-    planner = ScriptedPlanner(call, call, call, call, _plan_args(notes=NOTES_MARKER))
-
-    _run_planner(config, planner)
-
-    assert "budget is spent" in planner.tool_returns[-1]
-    notes_files = list(config.current_iteration_dir.glob("iteration_plan/*notes*"))
-    assert [f.read_text(encoding="utf-8") for f in notes_files] == [NOTES_MARKER]
-
 
 def test_empty_string_notes_replace_with_empty_while_absent_keeps(
     initialized_run_config, prepared_iteration, supplementary_folder

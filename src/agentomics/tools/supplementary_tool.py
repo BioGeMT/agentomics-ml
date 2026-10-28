@@ -1,6 +1,6 @@
 """Read-only, confined tools for browsing a dataset's supplementary folder (iteration planner only).
 
-Not in TOOL_FACTORY_REGISTRY; each planner run gets fresh tools and therefore a fresh shared budget.
+Not in TOOL_FACTORY_REGISTRY.
 """
 
 import functools
@@ -12,36 +12,24 @@ from pydantic_ai import Tool
 from agentomics.datasets.data_contract import SUPPLEMENTARY_DIR_NAME
 from agentomics.utils.config import Config
 
-BUDGET_MESSAGE = (
-    "Supplementary tool budget is spent ({reason}). Do not call this tool again: "
-    "write your notes and give your plan with what you have."
-)
+MAX_OUTPUT_CHARS = 5000
 
 
 def create_supplementary_tools(config: Config) -> list[Tool]:
     root = (config.dataset_dir / SUPPLEMENTARY_DIR_NAME).resolve()
-    used = {"calls": 0, "chars": 0}
 
     def tool(fn):
-        """Confine paths, share one call/character budget across tools, and cap the output (never raises)."""
+        """Return errors as messages and keep the head of over-long output, followed by fn's hint."""
 
         @functools.wraps(fn)
         def wrapper(*args, **kwargs) -> str:
-            remaining = config.supplementary_tool_max_total_chars - used["chars"]
-            if used["calls"] >= config.supplementary_tool_max_calls:
-                return BUDGET_MESSAGE.format(reason="call limit reached")
-            if remaining <= 0:
-                return BUDGET_MESSAGE.format(reason="output limit reached")
-            used["calls"] += 1
-            limit = min(config.supplementary_tool_max_call_chars, remaining)
             try:
                 text, hint = fn(*args, **kwargs)
             except (ValueError, OSError, re.error) as e:
                 return f"Error: {e}"
-            if len(text) > limit:
-                head = text[: max(limit - 100, 0)]  # leave room for the hint
+            if len(text) > MAX_OUTPUT_CHARS:
+                head = text[: MAX_OUTPUT_CHARS - 100]  # leave room for the hint
                 text = head + "\n" + hint(max(head.count("\n"), 1))
-            used["chars"] += len(text)
             return text
 
         return wrapper
