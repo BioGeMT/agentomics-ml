@@ -207,12 +207,12 @@ def test_planner_gets_the_supplementary_tool_when_the_folder_exists(
     initialized_run_config, prepared_iteration, supplementary_folder
 ):
     planner = ScriptedPlanner(
-        ("supplementary_read", {"path": "README.md"}),
+        ("read_file", {"path": "README.md"}),
         _plan_args(),
     )
     _run_planner(initialized_run_config, planner)
 
-    assert planner.tool_names == ["supplementary_list", "supplementary_search", "supplementary_read"]
+    assert planner.tool_names == ["ls", "grep", "read_file"]
     assert "index" in planner.tool_returns[0]
 
 
@@ -228,7 +228,7 @@ def test_exhausted_tool_budget_ends_reading_and_planner_still_saves_notes(
 ):
     config = initialized_run_config
     config.supplementary_tool_max_calls = 3
-    call = ("supplementary_list", {})
+    call = ("ls", {})
     planner = ScriptedPlanner(call, call, call, call, _plan_args(notes=NOTES_MARKER))
 
     _run_planner(config, planner)

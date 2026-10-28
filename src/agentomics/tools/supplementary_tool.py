@@ -82,7 +82,7 @@ def create_supplementary_tools(config: Config) -> list[Tool]:
         return target
 
     @budgeted
-    def supplementary_list(path: str = "") -> str:
+    def ls(path: str = "") -> str:
         """
         List a directory of the supplementary folder (papers, notes, code, docs) with file sizes.
         Binary files such as PDFs are listed but cannot be read.
@@ -106,7 +106,7 @@ def create_supplementary_tools(config: Config) -> list[Tool]:
         return _head(lines or ["(empty directory)"], state["limit"], lambda _: "[truncated; list a subdirectory]")
 
     @budgeted
-    def supplementary_search(
+    def grep(
         pattern: str,
         path: str = "",
         case_sensitive: bool = False,
@@ -152,7 +152,7 @@ def create_supplementary_tools(config: Config) -> list[Tool]:
         return _head(out or ["No matches."], state["limit"], narrow_hint)
 
     @budgeted
-    def supplementary_read(path: str, start_line: int = 1, max_lines: int = 200) -> str:
+    def read_file(path: str, start_line: int = 1, max_lines: int = 200) -> str:
         """
         Read lines of one text file in the supplementary folder (binary files such as PDFs cannot be read).
 
@@ -176,4 +176,4 @@ def create_supplementary_tools(config: Config) -> list[Tool]:
         return _head(lines, state["limit"], lambda kept: f"[truncated; continue with start_line={start_line + kept}]")
 
     options = dict(takes_ctx=False, max_retries=config.max_tool_retries, require_parameter_descriptions=True, sequential=True)
-    return [Tool(fn, **options) for fn in (supplementary_list, supplementary_search, supplementary_read)]
+    return [Tool(fn, **options) for fn in (ls, grep, read_file)]

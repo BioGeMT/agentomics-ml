@@ -159,7 +159,7 @@ def test_tools_are_plain_described_tools_not_in_shared_registry(default_agent_co
 
     tools = create_supplementary_tools(default_agent_config)
 
-    assert [t.name for t in tools] == ["supplementary_list", "supplementary_search", "supplementary_read"]
+    assert [t.name for t in tools] == ["ls", "grep", "read_file"]
     assert all(t.tool_def.description and t.tool_def.parameters_json_schema["properties"] for t in tools)
     assert not any(t.name in TOOL_FACTORY_REGISTRY or "supplementary" in TOOL_FACTORY_REGISTRY for t in tools)
 
