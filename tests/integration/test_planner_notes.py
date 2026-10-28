@@ -1,6 +1,7 @@
 import asyncio
 import shutil
 import subprocess
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
@@ -11,12 +12,16 @@ from agentomics.agents.steps.data_representation import DataRepresentationStep
 from agentomics.agents.steps.data_split import DataSplitStep
 from agentomics.agents.steps.iteration_plan import IterationPlanOutput, IterationPlanStep
 from agentomics.datasets.data_contract import SUPPLEMENTARY_DIR_NAME
+from agentomics.runtime.git_checkpoints import commit_iteration_end
+from agentomics.runtime.planner_notes import load_current_planner_notes
 from agentomics.runtime.read_write_utils import (
+    load_config_from_run_dir,
     load_current_iteration_index,
     archive_current_iteration,
     update_current_iteration_state,
 )
 from agentomics.runtime.run_lifecycle import prepare_iteration_workspace
+from agentomics.runtime.setup_fork import fork_run
 from agentomics.runtime.step_outputs import load_step_outputs
 from agentomics.utils.config import Config
 from tests.helpers import create_runtime_step
@@ -85,6 +90,7 @@ def _finish_iteration(config, iteration: int) -> None:
     # Marked failed so the planner prompt needs no history of other steps.
     update_current_iteration_state(config, ended_at=110.0, status="failed")
     archive_current_iteration(config, iteration)
+    commit_iteration_end(config, iteration)
     prepare_iteration_workspace(config, iteration=iteration + 1)
 
 
@@ -225,3 +231,125 @@ def test_exhausted_tool_budget_is_not_cut_off_by_the_request_limit(
     assert "budget is spent" in planner.tool_returns[-1]
     notes_files = list(config.current_iteration_dir.glob("iteration_plan/*notes*"))
     assert [f.read_text(encoding="utf-8") for f in notes_files] == [NOTES_MARKER]
+
+
+def test_empty_string_notes_replace_with_empty_while_absent_keeps(
+    initialized_run_config, prepared_iteration, supplementary_folder
+):
+    _run_planner(initialized_run_config, ScriptedPlanner(_plan_args(notes="old notes")))
+    _finish_iteration(initialized_run_config, 0)
+
+    _run_planner(initialized_run_config, ScriptedPlanner(_plan_args(notes="")))
+    _finish_iteration(initialized_run_config, 1)
+    assert _notes_text(initialized_run_config, 1) == ""
+
+    third = ScriptedPlanner(_plan_args())
+    _run_planner(initialized_run_config, third)
+    assert "old notes" not in third.prompts[0]
+
+
+def test_notes_are_neither_saved_nor_injected_without_supplementary_folder(
+    initialized_run_config, prepared_iteration
+):
+    config = initialized_run_config
+    shutil.rmtree(config.dataset_dir / SUPPLEMENTARY_DIR_NAME)
+    planner = ScriptedPlanner(_plan_args(notes=NOTES_MARKER))
+    _run_planner(config, planner)
+
+    assert list(config.current_iteration_dir.glob("iteration_plan/*notes*")) == []
+    assert "your_notes" not in planner.prompts[0]
+
+
+def test_prompt_tells_the_planner_the_notes_cap(initialized_run_config, prepared_iteration, supplementary_folder):
+    initialized_run_config.planner_notes_max_chars = 1234
+    planner = ScriptedPlanner(_plan_args())
+    _run_planner(initialized_run_config, planner)
+    assert "1234" in planner.prompts[0]
+
+
+def test_request_limit_covers_tool_budget_and_retries(initialized_run_config, supplementary_folder):
+    config = initialized_run_config
+    config.max_steps = 1
+    config.supplementary_tool_max_calls = 7
+    config.max_tool_retries = 4
+    config.max_validation_retries = 3
+    provider = Mock()
+    step = IterationPlanStep(config, Mock(), Mock(), provider, [])
+    assert step.get_max_steps() > 7 + 4 + 3
+
+
+def test_failed_iteration_keeps_its_notes_and_unfinished_planner_is_skipped(
+    initialized_run_config, prepared_iteration, supplementary_folder
+):
+    config = initialized_run_config
+    _run_planner(config, ScriptedPlanner(_plan_args(notes="from failed iteration")))
+    _finish_iteration(config, 0)  # archived with status failed
+    # Iteration 1: planner step never completed, so it has no notes file.
+    update_current_iteration_state(config, ended_at=120.0, status="failed")
+    archive_current_iteration(config, 1)
+    prepare_iteration_workspace(config, iteration=2)
+
+    assert load_current_planner_notes(config) == "from failed iteration"
+
+
+# --- fork inheritance -------------------------------------------------------------------------
+
+
+@pytest.fixture
+def three_iterations_of_notes(initialized_run_config, prepared_iteration, supplementary_folder):
+    config = initialized_run_config
+    for iteration, marker in enumerate(("NOTES-A", "NOTES-B", "NOTES-C")):
+        _run_planner(config, ScriptedPlanner(_plan_args(notes=marker)))
+        _finish_iteration(config, iteration)
+    # Leave the source as a finished run, without the uncommitted workspace of a next iteration.
+    shutil.rmtree(config.current_iteration_dir)
+    return config
+
+
+def _fork(source_config, tmp_path, monkeypatch, *, step, iteration):
+    # Environment rebuilding needs conda and is irrelevant to the notes.
+    monkeypatch.setattr("agentomics.runtime.setup_fork.ensure_environment_from_descriptor", lambda *a, **k: None)
+    target = tmp_path / "forked-workspace"
+    fork_run(
+        source_workspace_dir=Path(source_config.workspace_dir),
+        target_agent_id="forked",
+        target_workspace_dir=target,
+        fork_from_step=step,
+        fork_from_iteration=iteration,
+    )
+    return load_config_from_run_dir(target / Config.RUN_DIRNAME)
+
+
+def test_fork_from_earlier_iteration_sees_notes_as_of_that_checkpoint(
+    three_iterations_of_notes, tmp_path, monkeypatch
+):
+    fork_config = _fork(three_iterations_of_notes, tmp_path, monkeypatch, step="end", iteration=0)
+
+    assert load_current_planner_notes(fork_config) == "NOTES-A"
+    assert not fork_config.iteration_dir(1).exists()
+
+    prepare_iteration_workspace(fork_config, iteration=1)
+    # The notes block of the next planner prompt (the full prompt needs split state a fork does not carry in git).
+    prompt = IterationPlanStep(fork_config, Mock(), Mock(), Mock(), [])._build_notes_info()
+    assert "NOTES-A" in prompt
+    assert "NOTES-B" not in prompt and "NOTES-C" not in prompt
+
+
+def test_fork_from_latest_checkpoint_inherits_latest_notes(three_iterations_of_notes, tmp_path, monkeypatch):
+    fork_config = _fork(three_iterations_of_notes, tmp_path, monkeypatch, step="end", iteration=2)
+
+    assert load_current_planner_notes(fork_config) == "NOTES-C"
+
+
+def test_fork_from_the_planner_step_keeps_that_iterations_notes(
+    three_iterations_of_notes, tmp_path, monkeypatch
+):
+    fork_config = _fork(three_iterations_of_notes, tmp_path, monkeypatch, step="iteration_plan", iteration=1)
+
+    # The iteration is still in progress at that checkpoint; its notes live in the current iteration.
+    assert (fork_config.current_iteration_dir / "iteration_plan" / "planner_notes.md").read_text() == "NOTES-B"
+    assert not fork_config.iteration_dir(2).exists()
+    # Once the forked iteration is archived, its notes are the current notes.
+    update_current_iteration_state(fork_config, ended_at=200.0, status="failed")
+    archive_current_iteration(fork_config, 1)
+    assert load_current_planner_notes(fork_config) == "NOTES-B"

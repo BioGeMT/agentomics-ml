@@ -8,7 +8,12 @@ ITERATION_PLAN_STEP_ID = "iteration_plan"
 
 
 def load_current_planner_notes(config: Config) -> str:
-    """Return the notes of the latest archived iteration that has any; empty if none."""
+    """Return the notes of the latest archived iteration that saved a notes file; empty if none.
+
+    Failed iterations count: the planner step runs first, so a later failure does not lose its
+    notes. An iteration whose planner step never completed has no file and is skipped, so the
+    previous notes carry on. An empty file is a deliberate "notes cleared" and ends the search.
+    """
     for iteration in reversed(get_archived_iterations(config)):
         notes_path = config.iteration_dir(iteration) / ITERATION_PLAN_STEP_ID / PLANNER_NOTES_FILENAME
         if notes_path.is_file():

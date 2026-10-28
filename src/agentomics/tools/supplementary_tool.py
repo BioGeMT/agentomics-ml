@@ -10,9 +10,10 @@ from typing import Literal
 
 from pydantic_ai import Tool
 
+from agentomics.datasets.data_contract import SUPPLEMENTARY_DIR_NAME
 from agentomics.utils.config import Config
 
-SUPPLEMENTARY_DIRNAME = "supplementary"
+BINARY_SNIFF_BYTES = 8192
 BUDGET_MESSAGE = (
     "Supplementary tool budget is spent ({reason}). Do not call this tool again: "
     "write your notes and give your plan with what you have."
@@ -20,15 +21,21 @@ BUDGET_MESSAGE = (
 
 
 def _is_binary(path: Path) -> bool:
-    return b"\x00" in path.read_bytes()
+    """Null byte in the first chunk (enough to tell text from PDFs, images, archives)."""
+    with path.open("rb") as f:
+        return b"\x00" in f.read(BINARY_SNIFF_BYTES)
 
 
 def _human_size(size: int) -> str:
     return f"{size} B" if size < 1024 else f"{size / 1024:.1f} KiB"
 
 
-def _head(lines: list[str], limit: int) -> tuple[str, int]:
-    """Join as many whole leading lines as fit in `limit` chars; return text and lines kept."""
+def _head(lines: list[str], limit: int) -> tuple[str, int, bool]:
+    """Join whole leading lines that fit in `limit` chars.
+
+    Returns the text, the number of whole lines kept, and whether the first line alone did not
+    fit and was cut instead (then 0 whole lines are kept but a prefix of line 1 is shown).
+    """
     kept: list[str] = []
     total = 0
     for line in lines:
@@ -38,12 +45,30 @@ def _head(lines: list[str], limit: int) -> tuple[str, int]:
         kept.append(line)
         total += cost
     if not kept and lines:
-        return lines[0][:limit], 0
-    return "\n".join(kept), len(kept)
+        return lines[0][: max(limit, 0)], 0, True
+    return "\n".join(kept), len(kept), False
+
+
+def _fit(lines: list[str], limit: int, tail_for) -> tuple[str, bool]:
+    """Head of `lines` plus the tail text, together at most `limit` chars.
+
+    `tail_for(kept, partial, truncated)` builds the hint or note (may be empty).
+    """
+    budget = limit
+    while True:
+        body, kept, partial = _head(lines, budget)
+        truncated = partial or kept < len(lines)
+        tail = tail_for(kept, partial, truncated)
+        text = body + ("\n" + tail if tail else "")
+        if len(text) <= limit:
+            return text, truncated
+        if budget <= 0:
+            return text[:limit], truncated
+        budget -= len(text) - limit
 
 
 def create_supplementary_tool(config: Config):
-    root = (config.dataset_dir / SUPPLEMENTARY_DIRNAME).resolve()
+    root = (config.dataset_dir / SUPPLEMENTARY_DIR_NAME).resolve()
     state = {"calls": 0, "chars": 0}
 
     def _inside(real: Path) -> bool:
@@ -58,9 +83,10 @@ def create_supplementary_tool(config: Config):
         lines = []
         for entry in sorted(target.iterdir()):
             real = entry.resolve()
-            if not _inside(real):
-                continue  # symlink pointing outside the folder
             name = entry.relative_to(root).as_posix()
+            if not _inside(real):
+                lines.append(f"{name}  (symlink pointing outside the supplementary folder; rejected, not accessible)")
+                continue
             if real.is_dir():
                 lines.append(f"{name}/")
             else:
@@ -73,18 +99,27 @@ def create_supplementary_tool(config: Config):
             regex = re.compile(pattern, 0 if case_sensitive else re.IGNORECASE)
         except re.error as e:
             return [f"Invalid pattern: {e}"], ""
+        skipped_outside = 0
+        skipped_binary = 0
         if target.is_file():
-            files = [target]
+            candidates = [target]
         elif recursive:
-            files = sorted(p for p in target.rglob("*") if p.is_file())
+            candidates = sorted(target.rglob("*"))
         else:
-            files = sorted(p for p in target.iterdir() if p.is_file())
+            candidates = sorted(target.iterdir())
+        files = []
+        for candidate in candidates:
+            if candidate.is_symlink() and not _inside(candidate.resolve()):
+                skipped_outside += 1
+            elif candidate.is_file():
+                files.append(candidate)
         out: list[str] = []
         matches = 0
         more = False
         for file in files:
             real = file.resolve()
-            if not _inside(real) or _is_binary(real):
+            if _is_binary(real):
+                skipped_binary += 1
                 continue
             text = real.read_text(encoding="utf-8", errors="replace").splitlines()
             shown_until = -1
@@ -104,8 +139,14 @@ def create_supplementary_tool(config: Config):
                 shown_until = hi
             if more:
                 break
-        note = f"[more matches exist beyond max_matches={max_matches}]" if more else ""
-        return out or ["No matches."], note
+        notes = []
+        if more:
+            notes.append(f"[more matches exist beyond max_matches={max_matches}]")
+        if skipped_outside:
+            notes.append(f"[skipped {skipped_outside} symlink(s) pointing outside the supplementary folder]")
+        if skipped_binary:
+            notes.append(f"[skipped {skipped_binary} binary file(s)]")
+        return out or ["No matches."], " ".join(notes)
 
     def _supplementary(
         operation: Literal["list", "search", "read"],
@@ -134,6 +175,10 @@ def create_supplementary_tool(config: Config):
             start_line: (read) First line to return, 1-based.
             max_lines: (read) Maximum number of lines to return.
         """
+        context_lines = max(context_lines, 0)
+        max_matches = max(max_matches, 1)
+        max_lines = max(max_lines, 1)
+        start_line = max(start_line, 1)
         if state["calls"] >= config.supplementary_tool_max_calls:
             return BUDGET_MESSAGE.format(reason="call limit reached")
         remaining = config.supplementary_tool_max_total_chars - state["chars"]
@@ -152,16 +197,18 @@ def create_supplementary_tool(config: Config):
         if operation == "list":
             lines = _list(target)
 
-            def hint_for(kept: int) -> str:
-                return "[truncated; list a subdirectory to see fewer entries]"
+            def tail_for(kept: int, partial: bool, truncated: bool) -> str:
+                return "[truncated; list a subdirectory to see fewer entries]" if truncated else ""
 
         elif operation == "search":
             if not pattern:
                 return "Error: pattern is required for search."
             lines, note = _search(target, pattern, case_sensitive, context_lines, max_matches, recursive)
 
-            def hint_for(kept: int) -> str:
-                return "[truncated; narrow the pattern or lower the match limit]"
+            def tail_for(kept: int, partial: bool, truncated: bool) -> str:
+                if truncated:
+                    return "[truncated; narrow the pattern or lower the match limit]" + (f" {note}" if note else "")
+                return note
 
         elif operation == "read":
             if not target.is_file():
@@ -169,25 +216,30 @@ def create_supplementary_tool(config: Config):
             if _is_binary(target):
                 return f"Error: {path!r} is a binary file and cannot be read."
             all_lines = target.read_text(encoding="utf-8", errors="replace").splitlines()
-            start = max(start_line, 1)
+            start = start_line
             window = all_lines[start - 1 : start - 1 + max_lines]
             lines = [f"{start + i}: {text}" for i, text in enumerate(window)]
+            continues = start - 1 + max_lines < len(all_lines)
             if not window:
                 lines = [f"(no lines at start_line={start}; file has {len(all_lines)} lines)"]
-            elif start - 1 + max_lines < len(all_lines):
-                note = f"[file continues; next start_line={start + len(window)}]"
 
-            def hint_for(kept: int) -> str:
-                return f"[truncated; continue with start_line={start + kept}]"
+            def tail_for(kept: int, partial: bool, truncated: bool) -> str:
+                if partial:
+                    return (
+                        f"[line {start} is longer than the per-call limit and was cut; "
+                        f"continue with start_line={start + 1} to skip the rest of it, "
+                        "or use search with a pattern to find text inside it]"
+                    )
+                if truncated:
+                    return f"[truncated; continue with start_line={start + kept}]"
+                if continues:
+                    return f"[file continues; next start_line={start + len(window)}]"
+                return ""
 
         else:
             return "Error: operation must be one of list, search, read."
 
-        text, kept = _head(lines, limit)
-        if kept < len(lines):
-            text += "\n" + hint_for(kept)
-        elif note:
-            text += "\n" + note
+        text, _ = _fit(lines, limit, tail_for)
         state["chars"] += len(text)
         return text
 

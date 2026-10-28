@@ -48,7 +48,6 @@ class Config:
     DEFAULT_MAX_STEPS: ClassVar[int] = 100
     DEFAULT_TEMPERATURE: ClassVar[float] = 0.7
     DEFAULT_MAX_VALIDATION_RETRIES: ClassVar[int] = 5
-    DEFAULT_PLANNER_NOTES_MAX_CHARS: ClassVar[int] = 6000
     DEFAULT_USE_PROXY: ClassVar[bool] = True
     DEFAULT_LLM_RESPONSE_TIMEOUT: ClassVar[int] = 60 * 10
     DEFAULT_BASH_TOOL_TIMEOUT: ClassVar[int] = 60 * 3
@@ -56,6 +55,7 @@ class Config:
     DEFAULT_SUPPLEMENTARY_TOOL_MAX_CALL_CHARS: ClassVar[int] = 5000
     DEFAULT_SUPPLEMENTARY_TOOL_MAX_CALLS: ClassVar[int] = 50
     DEFAULT_SUPPLEMENTARY_TOOL_MAX_TOTAL_CHARS: ClassVar[int] = 100_000
+    DEFAULT_PLANNER_NOTES_MAX_CHARS: ClassVar[int] = 6000
     DEFAULT_RUN_PYTHON_TOOL_TIMEOUT: ClassVar[int] = 60 * 60 * 6
     DEFAULT_USER_PROMPT: ClassVar[str] = "Develop a machine learning model that generalizes well to new unseen data."
     DEFAULT_ENVIRONMENTS_DIR: ClassVar[str] = "/tmp/agentomics/envs"
@@ -100,11 +100,10 @@ class Config:
     supplementary_tool_max_call_chars: int = DEFAULT_SUPPLEMENTARY_TOOL_MAX_CALL_CHARS
     supplementary_tool_max_calls: int = DEFAULT_SUPPLEMENTARY_TOOL_MAX_CALLS
     supplementary_tool_max_total_chars: int = DEFAULT_SUPPLEMENTARY_TOOL_MAX_TOTAL_CHARS
+    planner_notes_max_chars: int = DEFAULT_PLANNER_NOTES_MAX_CHARS
     label_to_scalar: dict[str, int] | None = None
     wandb_run_id: str | None = None
     environments_dir: str = DEFAULT_ENVIRONMENTS_DIR
-
-    planner_notes_max_chars: int = DEFAULT_PLANNER_NOTES_MAX_CHARS
 
     @property
     def shared_environment_path(self) -> Path:

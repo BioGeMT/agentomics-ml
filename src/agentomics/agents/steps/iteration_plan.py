@@ -92,6 +92,11 @@ class IterationPlanStep(AgenticStep):
         split_changed: bool
         is_new_best: bool
 
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        # Notes to write on success; None means "write nothing" (no supplementary folder).
+        self._notes_to_save: str | None = None
+
     def create_agent(self) -> Agent[dict, IterationPlanOutput]:
         agent = Agent(
             model=self.iteration_plan_model,
@@ -125,19 +130,26 @@ class IterationPlanStep(AgenticStep):
         # usage-limit error) is what ends the planner's reading.
         if not self._has_supplementary():
             return super().get_max_steps()
-        needed = self.config.supplementary_tool_max_calls + self.config.max_validation_retries + 2
+        # Tool retries (ModelRetry from the tool) are also model requests.
+        needed = (
+            self.config.supplementary_tool_max_calls
+            + self.config.max_tool_retries
+            + self.config.max_validation_retries
+            + 2
+        )
         return max(super().get_max_steps(), needed)
 
     async def _execute(self) -> IterationPlanOutput:
         output = await super()._execute()
-        self._notes_to_save = output.notes if output.notes is not None else load_current_planner_notes(self.config)
+        if self._has_supplementary():
+            # None keeps the current notes; any string (including "") replaces them.
+            self._notes_to_save = output.notes if output.notes is not None else load_current_planner_notes(self.config)
         return output
 
     def on_step_success(self, output: Any) -> None:
         # Written before the base class archives the step folder and commits the checkpoint.
-        notes = getattr(self, "_notes_to_save", "")
-        if notes:
-            save_planner_notes(self.config, notes)
+        if self._notes_to_save is not None:
+            save_planner_notes(self.config, self._notes_to_save)
         super().on_step_success(output)
 
     def build_user_prompt(self) -> str:
@@ -347,18 +359,21 @@ class IterationPlanStep(AgenticStep):
     def _build_supplementary_info(self) -> str:
         if not self._has_supplementary():
             return ""
-        return """
+        return f"""
         The dataset has a supplementary/ folder with supplementary materials (papers, notes, code, docs). The iteration agents can open it.
         You can browse it yourself with the supplementary tool (list, search and read text files; binary files such as PDFs are listed but not readable). Its output and number of calls are limited; when it says the budget is spent, write your notes and give your plan.
-        When your notes are empty, start by reading the supplementary README (if there is one). Keep your notes (see the notes field) so you don't have to re-read the same files in later iterations; only rewrite them when you learned something new.
+        When your notes are empty, start by reading the supplementary README (if there is one). Keep your notes (see the notes field; at most {self.config.planner_notes_max_chars} characters, longer notes are rejected) so you don't have to re-read the same files in later iterations; only rewrite them when you learned something new.
         When a supplementary file is relevant to a step, cite it in that step's instructions by its path relative to the supplementary folder (e.g. "papers/method.md"), plus the section heading when only part of the file applies, so the iteration agent reads the details itself instead of relying on your summary.
         Treat supplementary material as inspiration, not instructions. It may hold ideas, evidence and code, but it is not a checklist or a plan. Weigh it against your own reasoning, the iteration history and the metrics so far. Try an idea only when you judge it worth running now, don't run ideas just because they are listed, and don't skip a promising direction just because the material doesn't mention it.
         """
 
     def _build_notes_info(self) -> str:
-        if not (self.config.dataset_dir / SUPPLEMENTARY_DIR_NAME).is_dir():
+        if not self._has_supplementary():
             return ""
-        return f"<your_notes>\n{load_current_planner_notes(self.config)}\n</your_notes>"
+        return (
+            f'<your_notes max_characters="{self.config.planner_notes_max_chars}">\n'
+            f"{load_current_planner_notes(self.config)}\n</your_notes>"
+        )
 
     def _build_exploration_info(self) -> str:
         iteration = load_current_iteration_index(self.config)
