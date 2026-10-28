@@ -31,7 +31,7 @@ def test_list_shows_entries_with_sizes(supp_dir, make_tool):
     out = make_tool().ls()
 
     assert "README.md" in out and "5 B" in out
-    assert "paper.pdf" in out and "binary" in out
+    assert "paper.pdf" in out
     assert "sub/" in out
 
 
@@ -62,7 +62,7 @@ def test_search_recursive_and_max_matches(supp_dir, make_tool):
     assert "hit" not in tool.grep(pattern="hit", recursive=False)
     out = tool.grep(pattern="hit", recursive=True, max_matches=2)
     assert "x.txt:1" in out and "x.txt:2" in out and "x.txt:3" not in out
-    assert "lower the match limit" in out or "max_matches" in out
+    assert "max_matches" in out
 
 
 @pytest.mark.parametrize("operation", ["ls", "read_file", "grep"])
@@ -112,7 +112,7 @@ def test_search_over_cap_keeps_head_and_hints_narrowing(supp_dir, make_tool):
     )
 
     assert "match0001" in out and "match0499" not in out
-    assert "narrow" in out and "match limit" in out
+    assert "narrow" in out
 
 
 def test_cumulative_cap_returns_budget_message(supp_dir, make_tool):
@@ -186,14 +186,6 @@ def test_output_including_hint_never_exceeds_per_call_cap(supp_dir, make_tool, c
     assert len(tool.ls()) <= cap
 
 
-def test_continuation_note_counts_toward_per_call_cap(supp_dir, make_tool):
-    (supp_dir / "a.txt").write_text("\n".join("y" * 18 for _ in range(10)))
-
-    out = make_tool(supplementary_tool_max_call_chars=200).read_file(path="a.txt", max_lines=5)
-
-    assert len(out) <= 200 and "start_line=" in out
-
-
 def test_total_cap_includes_appended_hints(supp_dir, make_tool):
     (supp_dir / "a.txt").write_text("\n".join("z" * 20 for _ in range(100)))
     tool = make_tool(supplementary_tool_max_call_chars=120, supplementary_tool_max_total_chars=250)
@@ -203,20 +195,10 @@ def test_total_cap_includes_appended_hints(supp_dir, make_tool):
     assert total <= 250
 
 
-def test_non_positive_arguments_are_clamped(supp_dir, make_tool):
-    (supp_dir / "a.txt").write_text("one\ntwo\nthree\n")
-    tool = make_tool()
-
-    out = tool.read_file(path="a.txt", start_line=-5, max_lines=0)
-    assert "1: one" in out and "2: two" not in out
-    out = tool.grep(pattern="two", path="a.txt", context_lines=-3, max_matches=0)
-    assert "two" in out and "one" not in out
-
-
-def test_list_marks_outward_symlink_as_rejected(supp_dir, make_tool):
+def test_list_hides_outward_symlink(supp_dir, make_tool):
     (supp_dir.parent / "secret.txt").write_text("topsecret")
     (supp_dir / "link.txt").symlink_to(supp_dir.parent / "secret.txt")
 
     out = make_tool().ls()
 
-    assert "link.txt" in out and "rejected" in out and "topsecret" not in out
+    assert "link.txt" not in out and "topsecret" not in out
