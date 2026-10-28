@@ -1,4 +1,5 @@
 import asyncio
+import json
 import shutil
 import subprocess
 from pathlib import Path
@@ -10,7 +11,7 @@ from pydantic_ai.models.function import FunctionModel
 
 from agentomics.agents.steps.data_representation import DataRepresentationStep
 from agentomics.agents.steps.data_split import DataSplitStep
-from agentomics.agents.steps.iteration_plan import IterationPlanOutput, IterationPlanStep
+from agentomics.agents.steps.iteration_plan import PLANNER_NOTES_MAX_CHARS, IterationPlanOutput, IterationPlanStep
 from agentomics.datasets.data_contract import SUPPLEMENTARY_DIR_NAME
 from agentomics.runtime.git_checkpoints import commit_iteration_end
 from agentomics.runtime.planner_notes import load_current_planner_notes
@@ -108,7 +109,8 @@ def _notes_text(config, iteration: int) -> str:
 
 
 def test_notes_field_is_in_planner_schema_but_not_in_serialised_output():
-    assert "notes" in IterationPlanOutput.model_json_schema()["properties"]
+    notes_schema = IterationPlanOutput.model_json_schema()["properties"]["notes"]
+    assert "maxLength" in json.dumps(notes_schema) and str(PLANNER_NOTES_MAX_CHARS) in json.dumps(notes_schema)
     output = IterationPlanOutput(**_plan_args(notes=NOTES_MARKER))
     assert "notes" not in output.model_dump()
 
@@ -152,14 +154,15 @@ def test_absent_notes_are_kept_and_present_notes_replace_in_full(
 def test_over_cap_notes_are_sent_back_to_the_planner_for_retry(
     initialized_run_config, prepared_iteration, supplementary_folder
 ):
-    initialized_run_config.planner_notes_max_chars = 10
-    planner = ScriptedPlanner(_plan_args(notes="x" * 11), _plan_args(notes="x" * 10))
+    planner = ScriptedPlanner(
+        _plan_args(notes="x" * (PLANNER_NOTES_MAX_CHARS + 1)), _plan_args(notes="x" * PLANNER_NOTES_MAX_CHARS)
+    )
 
     _run_planner(initialized_run_config, planner)
 
     assert len(planner.prompts) == 2
     notes_files = list(initialized_run_config.current_iteration_dir.glob("iteration_plan/*notes*"))
-    assert [f.read_text(encoding="utf-8") for f in notes_files] == ["x" * 10]
+    assert [f.read_text(encoding="utf-8") for f in notes_files] == ["x" * PLANNER_NOTES_MAX_CHARS]
 
 
 def test_notes_never_reach_iteration_agent_history(
@@ -201,12 +204,12 @@ def test_planner_gets_the_supplementary_tool_when_the_folder_exists(
     initialized_run_config, prepared_iteration, supplementary_folder
 ):
     planner = ScriptedPlanner(
-        ("supplementary", {"operation": "read", "path": "README.md"}),
+        ("supplementary_read", {"path": "README.md"}),
         _plan_args(),
     )
     _run_planner(initialized_run_config, planner)
 
-    assert planner.tool_names == ["supplementary"]
+    assert planner.tool_names == ["supplementary_list", "supplementary_search", "supplementary_read"]
     assert "index" in planner.tool_returns[0]
 
 
@@ -217,13 +220,12 @@ def test_planner_has_no_tool_without_supplementary_folder(initialized_run_config
     assert planner.tool_names == []
 
 
-def test_exhausted_tool_budget_is_not_cut_off_by_the_request_limit(
+def test_exhausted_tool_budget_ends_reading_and_planner_still_saves_notes(
     initialized_run_config, prepared_iteration, supplementary_folder
 ):
     config = initialized_run_config
     config.supplementary_tool_max_calls = 3
-    config.max_steps = 2  # below the tool budget: the planner must not be capped by it
-    call = ("supplementary", {"operation": "list"})
+    call = ("supplementary_list", {})
     planner = ScriptedPlanner(call, call, call, call, _plan_args(notes=NOTES_MARKER))
 
     _run_planner(config, planner)
@@ -261,21 +263,9 @@ def test_notes_are_neither_saved_nor_injected_without_supplementary_folder(
 
 
 def test_prompt_tells_the_planner_the_notes_cap(initialized_run_config, prepared_iteration, supplementary_folder):
-    initialized_run_config.planner_notes_max_chars = 1234
     planner = ScriptedPlanner(_plan_args())
     _run_planner(initialized_run_config, planner)
-    assert "1234" in planner.prompts[0]
-
-
-def test_request_limit_covers_tool_budget_and_retries(initialized_run_config, supplementary_folder):
-    config = initialized_run_config
-    config.max_steps = 1
-    config.supplementary_tool_max_calls = 7
-    config.max_tool_retries = 4
-    config.max_validation_retries = 3
-    provider = Mock()
-    step = IterationPlanStep(config, Mock(), Mock(), provider, [])
-    assert step.get_max_steps() > 7 + 4 + 3
+    assert str(PLANNER_NOTES_MAX_CHARS) in planner.prompts[0]
 
 
 def test_failed_iteration_keeps_its_notes_and_unfinished_planner_is_skipped(

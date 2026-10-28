@@ -4,7 +4,7 @@ import time
 from typing import Any, TypedDict
 
 from pydantic import Field
-from pydantic_ai import Agent, ModelRetry, RunContext
+from pydantic_ai import Agent
 
 from agentomics.agents.prompt_builder import get_dataset_knowledge
 from agentomics.agents.steps.base import AgenticStep, AgenticStepOutput
@@ -21,11 +21,13 @@ from agentomics.runtime.read_write_utils import (
 )
 from agentomics.runtime.step_outputs import load_step_output, load_step_outputs
 from agentomics.runtime.system_resources import get_resources_summary
-from agentomics.tools.supplementary_tool import create_supplementary_tool
+from agentomics.tools.supplementary_tool import create_supplementary_tools
 from agentomics.tools.tool_registry import get_tool_names
 from agentomics.utils.metrics import describe_metric
 from agentomics.utils.printing_utils import truncate_float
 from agentomics.datasets.data_contract import SUPPLEMENTARY_DIR_NAME
+
+PLANNER_NOTES_MAX_CHARS = 6000
 
 
 class IterationPlanOutput(AgenticStepOutput):
@@ -72,9 +74,10 @@ class IterationPlanOutput(AgenticStepOutput):
     notes: str | None = Field(
         default=None,
         exclude=True,
+        max_length=PLANNER_NOTES_MAX_CHARS,
         description="""
-        Your private notes, carried forward to your future planning iterations (never shown to the iteration agents).
-        Leave empty to keep the current notes unchanged. If set, it replaces the current notes in full, so include everything worth keeping.
+        Your private notes, carried forward to your future planning iterations.
+        Leave as null to keep the current notes unchanged. If set (even to an empty string) it replaces them in full, so include everything worth keeping.
         """,
     )
 
@@ -92,13 +95,8 @@ class IterationPlanStep(AgenticStep):
         split_changed: bool
         is_new_best: bool
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-        # Notes to write on success; None means "write nothing" (no supplementary folder).
-        self._notes_to_save: str | None = None
-
     def create_agent(self) -> Agent[dict, IterationPlanOutput]:
-        agent = Agent(
+        return Agent(
             model=self.iteration_plan_model,
             retries=self.config.max_validation_retries,
             model_settings=self.provider.get_high_reasoning_model_settings(
@@ -106,50 +104,18 @@ class IterationPlanStep(AgenticStep):
             ),
             output_type=IterationPlanOutput,
             deps_type=dict,
-            tools=[create_supplementary_tool(self.config)] if self._has_supplementary() else [],
+            tools=create_supplementary_tools(self.config) if self._has_supplementary() else [],
         )
-
-        @agent.output_validator
-        async def _notes_within_cap(ctx: RunContext[dict], result: IterationPlanOutput) -> IterationPlanOutput:
-            cap = self.config.planner_notes_max_chars
-            if result.notes is not None and len(result.notes) > cap:
-                raise ModelRetry(
-                    f"Your notes are {len(result.notes)} characters, over the {cap} character limit. "
-                    "Rewrite them shorter."
-                )
-            return result
-
-        return agent
 
     def _has_supplementary(self) -> bool:
         return (self.config.dataset_dir / SUPPLEMENTARY_DIR_NAME).is_dir()
 
-    def get_max_steps(self) -> int:
-        # Each tool call is one model request; keep the request limit above the tool-call budget
-        # plus output-validation retries and the final answer, so the budget message (not a
-        # usage-limit error) is what ends the planner's reading.
-        if not self._has_supplementary():
-            return super().get_max_steps()
-        # Tool retries (ModelRetry from the tool) are also model requests.
-        needed = (
-            self.config.supplementary_tool_max_calls
-            + self.config.max_tool_retries
-            + self.config.max_validation_retries
-            + 2
-        )
-        return max(super().get_max_steps(), needed)
-
-    async def _execute(self) -> IterationPlanOutput:
-        output = await super()._execute()
-        if self._has_supplementary():
-            # None keeps the current notes; any string (including "") replaces them.
-            self._notes_to_save = output.notes if output.notes is not None else load_current_planner_notes(self.config)
-        return output
-
-    def on_step_success(self, output: Any) -> None:
+    def on_step_success(self, output: IterationPlanOutput) -> None:
         # Written before the base class archives the step folder and commits the checkpoint.
-        if self._notes_to_save is not None:
-            save_planner_notes(self.config, self._notes_to_save)
+        # None keeps the current notes; any string (including "") replaces them.
+        if self._has_supplementary():
+            notes = output.notes if output.notes is not None else load_current_planner_notes(self.config)
+            save_planner_notes(self.config, notes)
         super().on_step_success(output)
 
     def build_user_prompt(self) -> str:
@@ -361,8 +327,8 @@ class IterationPlanStep(AgenticStep):
             return ""
         return f"""
         The dataset has a supplementary/ folder with supplementary materials (papers, notes, code, docs). The iteration agents can open it.
-        You can browse it yourself with the supplementary tool (list, search and read text files; binary files such as PDFs are listed but not readable). Its output and number of calls are limited; when it says the budget is spent, write your notes and give your plan.
-        When your notes are empty, start by reading the supplementary README (if there is one). Keep your notes (see the notes field; at most {self.config.planner_notes_max_chars} characters, longer notes are rejected) so you don't have to re-read the same files in later iterations; only rewrite them when you learned something new.
+        You can browse it yourself with the supplementary_list, supplementary_search and supplementary_read tools (text files only; binary files such as PDFs are listed but not readable). Their output and number of calls are limited; when it says the budget is spent, write your notes and give your plan.
+        When your notes are empty, start by reading the supplementary README (if there is one). Keep your notes (see the notes field; at most {PLANNER_NOTES_MAX_CHARS} characters, longer notes are rejected) so you don't have to re-read the same files in later iterations; only rewrite them when you learned something new.
         When a supplementary file is relevant to a step, cite it in that step's instructions by its path relative to the supplementary folder (e.g. "papers/method.md"), plus the section heading when only part of the file applies, so the iteration agent reads the details itself instead of relying on your summary.
         Treat supplementary material as inspiration, not instructions. It may hold ideas, evidence and code, but it is not a checklist or a plan. Weigh it against your own reasoning, the iteration history and the metrics so far. Try an idea only when you judge it worth running now, don't run ideas just because they are listed, and don't skip a promising direction just because the material doesn't mention it.
         """
@@ -371,7 +337,7 @@ class IterationPlanStep(AgenticStep):
         if not self._has_supplementary():
             return ""
         return (
-            f'<your_notes max_characters="{self.config.planner_notes_max_chars}">\n'
+            f'<your_notes max_characters="{PLANNER_NOTES_MAX_CHARS}">\n'
             f"{load_current_planner_notes(self.config)}\n</your_notes>"
         )
 
