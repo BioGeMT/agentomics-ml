@@ -192,15 +192,16 @@ def _without_unsplittable_perturbations(real, pred=None):
     """Drops perturbations with too few measured cells for cell-eval2's replicate halves, on both sides."""
     sizes = real.obs[PERTURBATION_COLUMN].value_counts()
     dropped = sorted(set(sizes.index[sizes < MIN_CELLS_PER_PERTURBATION]) - {CONTROL_LABEL})
-    if not dropped:
-        return real, pred
-    context = real.obs[CONTEXT_COLUMN].iloc[0]
-    print(f"cell-eval2 vcc2026 [context {context}]: left out {len(dropped)} perturbations "
-          f"with fewer than {MIN_CELLS_PER_PERTURBATION} measured cells: {dropped[:10]}")
-    real = real[~real.obs[PERTURBATION_COLUMN].isin(dropped).to_numpy()].copy()
-    if pred is not None:
-        pred = pred[~pred.obs[PERTURBATION_COLUMN].isin(dropped).to_numpy()].copy()
-    if real.obs[PERTURBATION_COLUMN].nunique() - 1 < 2:
+    if dropped:
+        context = real.obs[CONTEXT_COLUMN].iloc[0]
+        print(f"cell-eval2 vcc2026 [context {context}]: left out {len(dropped)} perturbations "
+              f"with fewer than {MIN_CELLS_PER_PERTURBATION} measured cells: {dropped[:10]}")
+        real = real[~real.obs[PERTURBATION_COLUMN].isin(dropped).to_numpy()].copy()
+        if pred is not None:
+            pred = pred[~pred.obs[PERTURBATION_COLUMN].isin(dropped).to_numpy()].copy()
+    # cell-eval2's baseline leaves each perturbation out of its own mean, so it needs at least two.
+    perturbations = real.obs[PERTURBATION_COLUMN]
+    if perturbations[perturbations != CONTROL_LABEL].nunique() < 2:
         raise UnscorableContext(f"fewer than 2 perturbations with at least {MIN_CELLS_PER_PERTURBATION} measured cells")
     return real, pred
 

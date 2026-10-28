@@ -509,6 +509,29 @@ def test_context_with_too_few_splittable_perturbations_is_unscorable():
         scoring._without_unsplittable_perturbations(real, pred)
 
 
+def test_context_with_a_single_perturbation_is_unscorable_even_when_nothing_is_dropped():
+    # GSE127199 hepatic endoderm: one target (FOXA2) with many cells, so no perturbation is dropped.
+    real = cells([[1, 1], [2, 2], [2, 2]], ["A"] * 3, [CONTROL_LABEL, "G0", "G0"], "csr")
+    pred = cells([[2, 2], [2, 2]], ["A"] * 2, ["G0", "G0"], "csr")
+
+    with pytest.raises(scoring.UnscorableContext, match="fewer than 2 perturbations with at least 2 measured cells"):
+        scoring._without_unsplittable_perturbations(real, pred)
+
+
+def test_single_perturbation_context_is_left_out_of_the_average(tmp_path, monkeypatch):
+    rows = [("A", CONTROL_LABEL), ("A", "G0"), ("A", "G0"), ("A", "G1"), ("A", "G1")]
+    rows += [("B", CONTROL_LABEL), ("B", "G0"), ("B", "G0")]
+    contexts, targets = zip(*rows)
+    real = cells(np.ones((len(rows), 2)), list(contexts), list(targets), "csr")
+    pred = cells(np.ones((6, 2)), ["A"] * 4 + ["B"] * 2, ["G0", "G0", "G1", "G1", "G0", "G0"], "csr")
+    monkeypatch.setattr(scoring, "_get_real_bundle", lambda real_context, path: tmp_path)
+    monkeypatch.setattr(scoring, "_run_cell_eval2", lambda *arguments: None)
+    monkeypatch.setattr(scoring, "_cell_eval2_flags", lambda: scoring.CELL_EVAL2_FLAGS)
+    monkeypatch.setattr(pd, "read_csv", lambda path: pd.DataFrame({"metric": ["avg_score"], "from_replicate": [0.5]}))
+
+    assert scoring._score(write(real, tmp_path / "real.h5ad"), write(pred, tmp_path / "pred.h5ad")) == {"avg_score": 0.5}
+
+
 def test_scoring_fails_when_no_context_is_scorable(tmp_path, monkeypatch):
     real = cells([[1, 1], [1, 1]], ["A", "A"], [CONTROL_LABEL, "G0"], "csr")
     pred = cells([[1, 1]], ["A"], ["G0"], "csr")
