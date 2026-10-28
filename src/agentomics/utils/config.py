@@ -53,6 +53,9 @@ class Config:
     DEFAULT_LLM_RESPONSE_TIMEOUT: ClassVar[int] = 60 * 10
     DEFAULT_BASH_TOOL_TIMEOUT: ClassVar[int] = 60 * 3
     DEFAULT_MAX_TOOL_RETRIES: ClassVar[int] = 5
+    DEFAULT_SUPPLEMENTARY_TOOL_MAX_CALL_CHARS: ClassVar[int] = 5000
+    DEFAULT_SUPPLEMENTARY_TOOL_MAX_CALLS: ClassVar[int] = 50
+    DEFAULT_SUPPLEMENTARY_TOOL_MAX_TOTAL_CHARS: ClassVar[int] = 100_000
     DEFAULT_RUN_PYTHON_TOOL_TIMEOUT: ClassVar[int] = 60 * 60 * 6
     DEFAULT_USER_PROMPT: ClassVar[str] = "Develop a machine learning model that generalizes well to new unseen data."
     DEFAULT_ENVIRONMENTS_DIR: ClassVar[str] = "/tmp/agentomics/envs"
@@ -94,6 +97,9 @@ class Config:
     llm_response_timeout: int = DEFAULT_LLM_RESPONSE_TIMEOUT
     bash_tool_timeout: int = DEFAULT_BASH_TOOL_TIMEOUT
     max_tool_retries: int = DEFAULT_MAX_TOOL_RETRIES
+    supplementary_tool_max_call_chars: int = DEFAULT_SUPPLEMENTARY_TOOL_MAX_CALL_CHARS
+    supplementary_tool_max_calls: int = DEFAULT_SUPPLEMENTARY_TOOL_MAX_CALLS
+    supplementary_tool_max_total_chars: int = DEFAULT_SUPPLEMENTARY_TOOL_MAX_TOTAL_CHARS
     label_to_scalar: dict[str, int] | None = None
     wandb_run_id: str | None = None
     environments_dir: str = DEFAULT_ENVIRONMENTS_DIR
