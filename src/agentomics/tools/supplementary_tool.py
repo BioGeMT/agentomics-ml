@@ -4,7 +4,7 @@ Not in TOOL_FACTORY_REGISTRY.
 """
 
 import functools
-import re
+import subprocess
 from pathlib import Path
 
 from pydantic_ai import Tool
@@ -25,7 +25,7 @@ def create_supplementary_tools(config: Config) -> list[Tool]:
         def wrapper(*args, **kwargs) -> str:
             try:
                 text, hint = fn(*args, **kwargs)
-            except (ValueError, OSError, re.error) as e:
+            except (ValueError, OSError) as e:
                 return f"Error: {e}"
             if len(text) > MAX_OUTPUT_CHARS:
                 head = text[: MAX_OUTPUT_CHARS - 100]  # leave room for the hint
@@ -42,14 +42,9 @@ def create_supplementary_tools(config: Config) -> list[Tool]:
             raise ValueError(f"path {path!r} does not exist")
         return target
 
-    def text_lines(file: Path) -> list[str]:
-        try:
-            text = file.read_text(encoding="utf-8")
-        except UnicodeDecodeError:
-            text = "\0"
-        if "\0" in text:
-            raise ValueError(f"{file.relative_to(root)} is a binary file and cannot be read")
-        return text.splitlines()
+    def run(*command: str) -> str:
+        done = subprocess.run(command, cwd=root, capture_output=True, text=True, timeout=30)
+        return done.stdout or done.stderr
 
     narrow = lambda _: "[truncated; narrow the request]"
 
@@ -62,48 +57,22 @@ def create_supplementary_tools(config: Config) -> list[Tool]:
         Args:
             path: Directory relative to the supplementary folder. Empty means the folder itself.
         """
-        entries = sorted(e for e in resolve(path).iterdir() if e.resolve().is_relative_to(root))
-        return "\n".join(f"{e.relative_to(root)}{'/' if e.is_dir() else f'  ({e.stat().st_size} B)'}" for e in entries), narrow
+        return run("ls", "-lAp", "--", str(resolve(path).relative_to(root))), narrow
 
     @tool
-    def grep(
-        pattern: str,
-        path: str = "",
-        case_sensitive: bool = False,
-        context_lines: int = 0,
-        max_matches: int = 50,
-        recursive: bool = True,
-    ):
+    def grep(pattern: str, path: str = "", case_sensitive: bool = False, context_lines: int = 0):
         """
-        Search the text files of the supplementary folder with a regular expression (binary files are skipped).
+        Search the text files of the supplementary folder recursively with a regular expression (binary files are skipped).
 
         Args:
-            pattern: Regular expression to look for.
+            pattern: Extended regular expression to look for.
             path: File or directory relative to the supplementary folder. Empty means the folder itself.
             case_sensitive: Whether matching is case sensitive.
             context_lines: Lines of context to show around each match.
-            max_matches: Maximum number of matches to return.
-            recursive: Whether to search subdirectories when path is a directory.
         """
-        regex = re.compile(pattern, 0 if case_sensitive else re.IGNORECASE)
-        target = resolve(path)
-        files = [target] if target.is_file() else sorted(target.rglob("*") if recursive else target.iterdir())
-        out, matches = [], 0
-        for file in files:
-            if not file.resolve().is_relative_to(root) or not file.is_file():
-                continue
-            try:
-                lines = text_lines(file)
-            except ValueError:
-                continue
-            for i, line in enumerate(lines):
-                if regex.search(line) and matches < max_matches:
-                    matches += 1
-                    for j in range(max(i - context_lines, 0), min(i + context_lines + 1, len(lines))):
-                        out.append(f"{file.relative_to(root)}{':' if j == i else '-'}{j + 1}: {lines[j]}")
-        if matches >= max_matches:
-            out.append(f"[stopped at max_matches={max_matches}; narrow the pattern to see more]")
-        return "\n".join(out) or "No matches.", narrow
+        target = str(resolve(path).relative_to(root))
+        flags = "-rInE" + ("" if case_sensitive else "i")
+        return run("grep", flags, f"-C{max(context_lines, 0)}", "-e", pattern, "--", target) or "No matches.", narrow
 
     @tool
     def read_file(path: str, start_line: int = 1, max_lines: int = 200):
@@ -115,8 +84,14 @@ def create_supplementary_tools(config: Config) -> list[Tool]:
             start_line: First line to return, 1-based.
             max_lines: Maximum number of lines to return.
         """
-        start = max(start_line, 1)
-        lines = text_lines(resolve(path))[start - 1 : start - 1 + max_lines]
+        target, start = resolve(path), max(start_line, 1)
+        try:
+            text = target.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            text = "\0"
+        if "\0" in text:
+            raise ValueError(f"{path!r} is a binary file and cannot be read")
+        lines = text.splitlines()[start - 1 : start - 1 + max_lines]
         return "\n".join(f"{start + i}: {line}" for i, line in enumerate(lines)), lambda kept: f"[truncated; continue with start_line={start + kept}]"
 
     options = dict(takes_ctx=False, max_retries=config.max_tool_retries, require_parameter_descriptions=True, sequential=True)
