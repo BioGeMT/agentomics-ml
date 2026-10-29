@@ -156,6 +156,7 @@ class ModelTrainingStep(AgenticStep):
         - Validation split: {data_split.val_path}
         - Mini train split (for quick debugging/test runs): {data_split.mini_train_path}
         Use the mini train split to quickly test your script while developing. The final submitted model must be an output of the training script when the --train-data uses the full training split.
+        Before training on the full split, use the mini train split to estimate how long full training will take.
         """
 
     def build_deps(self, step_started_at: datetime) -> dict[str, object]:
