@@ -118,10 +118,6 @@ validation metrics and plots. Held-out test metrics and plots appear in the
 selected best iteration's report when available. Plots are also saved in
 `reports/pdf/plots/`.
 
-PDF reports and plots share a navy, teal, and warm accent palette. Best-iteration
-and optimized-metric highlights are labeled in text as well, so color is not the
-only way to identify them.
-
 ## Metrics
 
 Metrics are tracked for each iteration:
