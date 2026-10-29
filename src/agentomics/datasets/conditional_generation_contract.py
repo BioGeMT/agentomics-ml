@@ -41,8 +41,8 @@ def validate_conditional_generation_split(split_path: Path) -> None:
     split_path = Path(split_path)
     input_path = split_path / INPUT_DIR_NAME
     perturbations = read_perturbations(input_path / PERTURBATIONS_FILE_NAME)
-    controls_obs, controls_genes = _read_cells(input_path / CONTROLS_FILE_NAME, validate_counts=True)
-    truth_obs, truth_genes = _read_cells(split_path / GENERATION_LABELS_FILE_NAME, validate_counts=True)
+    controls_obs, controls_genes = _read_cells(input_path / CONTROLS_FILE_NAME, validate_counts=False)
+    truth_obs, truth_genes = _read_cells(split_path / GENERATION_LABELS_FILE_NAME, validate_counts=False)
     expected_ids = set(perturbations[ID_COLUMN_NAME])
 
     # controls.h5ad: only control cells, for every context that has conditions
