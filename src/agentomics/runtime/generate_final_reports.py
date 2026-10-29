@@ -31,6 +31,7 @@ from reportlab.platypus import (
     Paragraph,
     Spacer,
     Table,
+    LongTable,
     TableStyle,
     PageBreak,
     Image as RLImage,
@@ -38,6 +39,28 @@ from reportlab.platypus import (
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 from agentomics.datasets.data_contract import LABELS_FILE_NAME, NUMERIC_LABEL_COLUMN_NAME, TRAIN_SPLIT, VALIDATION_SPLIT
+
+# Shared palette for report PDFs and plots. The high-contrast navy and teal
+# carry the main structure; orange and vermilion distinguish secondary series.
+REPORT_PALETTE = {
+    "navy": "#17324D",
+    "teal": "#007F86",
+    "green": "#00876C",
+    "orange": "#E69F00",
+    "vermilion": "#D55E00",
+    "slate": "#526575",
+    "grid": "#D5DEE5",
+    "pale_blue": "#EAF1F5",
+    "pale_teal": "#DCEFEA",
+    "pale_gold": "#FFF1CC",
+    "pale_gray": "#F3F6F8",
+    "white": "#FFFFFF",
+}
+
+
+def _pdf_color(name: str):
+    return colors.HexColor(REPORT_PALETTE[name])
+
 
 # Data models
 @dataclass(frozen=True)
@@ -69,6 +92,16 @@ class IterationInputs:
     report_md: Optional[Path]
     splits: List[SplitArtifacts]
 
+@dataclass(frozen=True)
+class IterationSummary:
+    iteration: int
+    approach: str
+    split_version: int | None
+    validation_value: float | None
+    change_from_previous: float | None
+    split_changed: bool
+    is_best: bool
+
 @dataclass
 class Step:
     title: str
@@ -83,7 +116,7 @@ def build_styles():
             parent=styles["Heading1"],
             fontName="Helvetica-Bold",
             fontSize=18,
-            textColor=colors.black,
+            textColor=_pdf_color("navy"),
             spaceAfter=12,
         )
     )
@@ -93,7 +126,7 @@ def build_styles():
             parent=styles["Heading2"],
             fontName="Helvetica-Bold",
             fontSize=13,
-            textColor=colors.black,
+            textColor=_pdf_color("teal"),
             spaceBefore=12,
             spaceAfter=6,
         )
@@ -105,7 +138,7 @@ def build_styles():
             fontName="Helvetica",
             fontSize=10,
             leading=14,
-            textColor=colors.black,
+            textColor=_pdf_color("slate"),
             spaceAfter=6,
         )
     )
@@ -116,7 +149,7 @@ def build_styles():
             fontName="Helvetica",
             fontSize=9.5,
             leading=12,
-            textColor=colors.Color(0.25, 0.25, 0.25),
+            textColor=_pdf_color("slate"),
             spaceAfter=6,
         )
     )
@@ -127,7 +160,7 @@ def build_styles():
             fontName="Helvetica-Oblique",
             fontSize=9.8,
             leading=13,
-            textColor=colors.Color(0.15, 0.15, 0.15),
+            textColor=_pdf_color("navy"),
             leftIndent=14,
             spaceBefore=4,
             spaceAfter=8,
@@ -139,7 +172,7 @@ def build_styles():
             parent=styles["Body"],
             fontName="Helvetica-Bold",
             fontSize=10.5,
-            textColor=colors.black,
+            textColor=_pdf_color("teal"),
             spaceBefore=8,
             spaceAfter=4,
         )
@@ -151,8 +184,8 @@ def build_styles():
             fontName="Courier",
             fontSize=9,
             leading=11,
-            textColor=colors.black,
-            backColor=colors.Color(0.96, 0.96, 0.96),
+            textColor=_pdf_color("navy"),
+            backColor=_pdf_color("pale_gray"),
             borderPadding=6,
             spaceBefore=4,
             spaceAfter=8,
@@ -173,7 +206,8 @@ def apply_pub_style() -> None:
             "ytick.labelsize": 9,
             "legend.fontsize": 9,
             "axes.grid": True,
-            "grid.alpha": 0.25,
+            "grid.color": REPORT_PALETTE["grid"],
+            "grid.alpha": 0.8,
             "grid.linestyle": "-",
             "grid.linewidth": 0.6,
             "axes.spines.top": False,
@@ -181,6 +215,21 @@ def apply_pub_style() -> None:
             "axes.linewidth": 0.8,
             "lines.linewidth": 1.6,
             "lines.markersize": 4,
+            "axes.prop_cycle": plt.cycler(
+                color=[
+                    REPORT_PALETTE["teal"],
+                    REPORT_PALETTE["vermilion"],
+                    REPORT_PALETTE["navy"],
+                    REPORT_PALETTE["orange"],
+                    REPORT_PALETTE["green"],
+                ]
+            ),
+            "axes.labelcolor": REPORT_PALETTE["navy"],
+            "xtick.color": REPORT_PALETTE["slate"],
+            "ytick.color": REPORT_PALETTE["slate"],
+            "text.color": REPORT_PALETTE["navy"],
+            "figure.facecolor": REPORT_PALETTE["white"],
+            "axes.facecolor": REPORT_PALETTE["white"],
             "savefig.bbox": "tight",
             "savefig.pad_inches": 0.08,
         }
@@ -356,8 +405,13 @@ def plot_regression(y_true: pd.Series, y_pred: pd.Series, out_prefix: Path, titl
 
     pva_path = out_prefix.with_name(out_prefix.name + "_pred_vs_actual.png")
     plt.figure()
-    plt.scatter(df["y"], df["p"], s=18, alpha=0.85, edgecolors="none")
-    plt.plot([lo, hi], [lo, hi], linestyle="--", linewidth=1.2, alpha=0.9)
+    plt.scatter(
+        df["y"], df["p"], s=18, alpha=0.82, color=REPORT_PALETTE["teal"], edgecolors="none"
+    )
+    plt.plot(
+        [lo, hi], [lo, hi], color=REPORT_PALETTE["orange"],
+        linestyle="--", linewidth=1.2, alpha=0.95,
+    )
     plt.xlim(lo, hi)
     plt.ylim(lo, hi)
     plt.xlabel("Actual")
@@ -371,8 +425,12 @@ def plot_regression(y_true: pd.Series, y_pred: pd.Series, out_prefix: Path, titl
     resid = df["p"] - df["y"]
     rvp_path = out_prefix.with_name(out_prefix.name + "_residuals_vs_pred.png")
     plt.figure()
-    plt.scatter(df["p"], resid, s=18, alpha=0.85, edgecolors="none")
-    plt.axhline(0, linestyle="--", linewidth=1.2, alpha=0.9)
+    plt.scatter(
+        df["p"], resid, s=18, alpha=0.82, color=REPORT_PALETTE["teal"], edgecolors="none"
+    )
+    plt.axhline(
+        0, color=REPORT_PALETTE["vermilion"], linestyle="--", linewidth=1.2, alpha=0.95
+    )
     plt.xlabel("Predicted")
     plt.ylabel("Residual (pred − actual)")
     plt.title(f"{title_prefix} - Residuals vs Predicted")
@@ -383,8 +441,16 @@ def plot_regression(y_true: pd.Series, y_pred: pd.Series, out_prefix: Path, titl
 
     rh_path = out_prefix.with_name(out_prefix.name + "_residuals_hist.png")
     plt.figure()
-    plt.hist(resid.dropna(), bins=min(30, max(8, int(len(resid) / 2))), alpha=0.9)
-    plt.axvline(0, linestyle="--", linewidth=1.2, alpha=0.9)
+    plt.hist(
+        resid.dropna(),
+        bins=min(30, max(8, int(len(resid) / 2))),
+        color=REPORT_PALETTE["teal"],
+        alpha=0.86,
+        edgecolor=REPORT_PALETTE["white"],
+    )
+    plt.axvline(
+        0, color=REPORT_PALETTE["vermilion"], linestyle="--", linewidth=1.2, alpha=0.95
+    )
     plt.xlabel("Residual (pred − actual)")
     plt.ylabel("Count")
     plt.title(f"{title_prefix} - Residual distribution")
@@ -430,8 +496,11 @@ def plot_classification(y_true: pd.Series, y_score: pd.Series, out_prefix: Path,
 
     roc_path = out_prefix.with_name(out_prefix.name + "_roc.png")
     plt.figure()
-    plt.plot(fpr, tpr)
-    plt.plot([0, 1], [0, 1], linestyle="--", linewidth=1.1, alpha=0.8)
+    plt.plot(fpr, tpr, color=REPORT_PALETTE["teal"], linewidth=2.0)
+    plt.plot(
+        [0, 1], [0, 1], color=REPORT_PALETTE["slate"],
+        linestyle="--", linewidth=1.1, alpha=0.75,
+    )
     plt.xlabel("False positive rate")
     plt.ylabel("True positive rate")
     plt.title(f"{title_prefix} - ROC curve")
@@ -445,7 +514,7 @@ def plot_classification(y_true: pd.Series, y_score: pd.Series, out_prefix: Path,
     recall = [tps[i] / P for i in range(len(tps))]
     pr_path = out_prefix.with_name(out_prefix.name + "_pr.png")
     plt.figure()
-    plt.plot(recall, precision)
+    plt.plot(recall, precision, color=REPORT_PALETTE["vermilion"], linewidth=2.0)
     plt.xlabel("Recall")
     plt.ylabel("Precision")
     plt.title(f"{title_prefix} - Precision–Recall curve")
@@ -652,8 +721,9 @@ def plots_compare_splits_page_flowables(
     tbl.setStyle(TableStyle([
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
         ("FONTSIZE", (0, 0), (-1, 0), 10),
-        ("BACKGROUND", (0, 0), (-1, 0), colors.whitesmoke),
-        ("GRID", (0, 0), (-1, -1), 0.25, colors.lightgrey),
+        ("BACKGROUND", (0, 0), (-1, 0), _pdf_color("navy")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), _pdf_color("white")),
+        ("GRID", (0, 0), (-1, -1), 0.35, _pdf_color("grid")),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("LEFTPADDING", (0, 0), (-1, -1), 3),
         ("RIGHTPADDING", (0, 0), (-1, -1), 3),
@@ -682,8 +752,10 @@ def run_meta_flowables(meta: RunMeta):
             [
                 ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
                 ("FONTSIZE", (0, 0), (-1, -1), 9),
-                ("BACKGROUND", (0, 0), (-1, -1), colors.whitesmoke),
-                ("GRID", (0, 0), (-1, -1), 0.25, colors.lightgrey),
+                ("BACKGROUND", (0, 0), (0, -1), _pdf_color("pale_blue")),
+                ("TEXTCOLOR", (0, 0), (0, -1), _pdf_color("navy")),
+                ("BACKGROUND", (1, 0), (1, -1), _pdf_color("white")),
+                ("GRID", (0, 0), (-1, -1), 0.35, _pdf_color("grid")),
                 ("LEFTPADDING", (0, 0), (-1, -1), 6),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 6),
                 ("TOPPADDING", (0, 0), (-1, -1), 4),
@@ -765,13 +837,13 @@ def metrics_table_flowable(metrics_by_split, split_order, val_metric, styles):
     tbl = Table(data, hAlign="LEFT")
     ts = TableStyle(
         [
-            ("BACKGROUND", (0, 0), (-1, 0), colors.whitesmoke),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+            ("BACKGROUND", (0, 0), (-1, 0), _pdf_color("navy")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), _pdf_color("white")),
             ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
             ("FONTSIZE", (0, 0), (-1, 0), 9),
             ("FONTSIZE", (0, 1), (-1, -1), 9),
-            ("GRID", (0, 0), (-1, -1), 0.25, colors.lightgrey),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.Color(0.97, 0.97, 0.97)]),
+            ("GRID", (0, 0), (-1, -1), 0.35, _pdf_color("grid")),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [_pdf_color("white"), _pdf_color("pale_gray")]),
             ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
         ]
     )
@@ -783,7 +855,7 @@ def metrics_table_flowable(metrics_by_split, split_order, val_metric, styles):
                     "BACKGROUND",
                     (0, row_index),
                     (-1, row_index),
-                    colors.Color(1.0, 0.98, 0.90),
+                    _pdf_color("pale_gold"),
                 )
     elif val_metric and val_metric in keys:
         row_index = 1 + keys.index(val_metric)
@@ -791,7 +863,7 @@ def metrics_table_flowable(metrics_by_split, split_order, val_metric, styles):
             "BACKGROUND",
             (0, row_index),
             (-1, row_index),
-            colors.Color(1.0, 0.98, 0.90),
+            _pdf_color("pale_gold"),
         )
 
     tbl.setStyle(ts)
@@ -852,11 +924,374 @@ def write_iteration_pdf(
 
     def on_page(c, d):
         c.setFont("Helvetica", 8)
-        c.setFillColor(colors.grey)
+        c.setFillColor(_pdf_color("slate"))
         c.drawRightString(A4[0] - 1.6 * cm, 1.0 * cm, f"Page {d.page}")
-        c.setFillColor(colors.black)
+        c.setFillColor(_pdf_color("navy"))
 
     doc.build(story, onFirstPage=on_page, onLaterPages=on_page)
+
+
+def _iteration_approach(config: Config, iteration: int) -> str:
+    output = load_step_output(config, "model_architecture", config.iteration_dir(iteration))
+    architecture = getattr(output, "architecture", None)
+    if not isinstance(architecture, str) or not architecture.strip():
+        return "Not recorded"
+
+    compact = " ".join(architecture.split())
+    if len(compact) > 100:
+        compact = compact[:97].rsplit(" ", 1)[0] + "…"
+    return compact
+
+
+def _metric_value(metrics: Dict[str, float], metric_name: str | None) -> float | None:
+    if not metric_name:
+        return None
+    normalized_name = metric_name.casefold()
+    for name, value in metrics.items():
+        if name.casefold() == normalized_name:
+            return value
+    return None
+
+
+def _all_iteration_summaries(
+    config: Config,
+    iterations: List[int],
+    best_iteration: int | None,
+    val_metric: str | None,
+) -> List[IterationSummary]:
+    rows: List[IterationSummary] = []
+    previous_split_version: int | None = None
+    previous_value: float | None = None
+    for iteration in iterations:
+        inputs = gather_iteration_inputs(config, iteration)
+        validation = next(
+            (split for split in inputs.splits if split.split_name == VALIDATION_SPLIT),
+            None,
+        )
+        split_output = load_step_output(config, "data_split", config.iteration_dir(iteration))
+        split_version = getattr(split_output, "split_version", None)
+        validation_value = _metric_value(
+            validation.metrics if validation else {}, val_metric
+        )
+        split_changed = (
+            bool(rows)
+            and split_version is not None
+            and previous_split_version is not None
+            and split_version != previous_split_version
+        )
+        split_comparable = (
+            bool(rows)
+            and split_version is not None
+            and previous_split_version is not None
+            and split_version == previous_split_version
+        )
+        change_from_previous = None
+        if (
+            split_comparable
+            and validation_value is not None
+            and previous_value is not None
+        ):
+            change_from_previous = validation_value - previous_value
+
+        rows.append(
+            IterationSummary(
+                iteration=iteration,
+                approach=_iteration_approach(config, iteration),
+                split_version=split_version,
+                validation_value=validation_value,
+                change_from_previous=change_from_previous,
+                split_changed=split_changed,
+                is_best=iteration == best_iteration,
+            )
+        )
+        previous_split_version = split_version
+        previous_value = validation_value
+    return rows
+
+
+def _best_iteration_test_metrics(
+    config: Config,
+    best_iteration: int | None,
+) -> List[Tuple[str, str, float]]:
+    if best_iteration is None:
+        return []
+    inputs = gather_iteration_inputs(config, best_iteration)
+    return [
+        (split.split_name, metric_name, value)
+        for split in inputs.splits
+        if split.split_name.casefold().startswith("test")
+        for metric_name, value in sorted(split.metrics.items())
+    ]
+
+
+def _pivot_test_metrics(
+    test_metric_rows: List[Tuple[str, str, float]],
+) -> Tuple[List[str], List[str], Dict[Tuple[str, str], float]]:
+    split_names = list(dict.fromkeys(split for split, _, _ in test_metric_rows))
+    metric_names = sorted({metric for _, metric, _ in test_metric_rows})
+    values = {
+        (split, metric): value
+        for split, metric, value in test_metric_rows
+    }
+    return split_names, metric_names, values
+
+
+def _format_metric_change(summary: IterationSummary) -> str:
+    if summary.split_changed:
+        return "— (split changed)"
+    if summary.change_from_previous is None:
+        return "—"
+    return f"{summary.change_from_previous:+.6g}"
+
+
+def write_all_iterations_markdown(
+    path: Path,
+    run_meta: RunMeta,
+    best_iteration: int | None,
+    summaries: List[IterationSummary],
+    test_metric_rows: List[Tuple[str, str, float]],
+) -> None:
+    best_summary = next((row for row in summaries if row.is_best), None)
+    best_score = (
+        _fmt_metric(best_summary.validation_value)
+        if best_summary and best_summary.validation_value is not None
+        else "not recorded"
+    )
+    lines = [
+        "# All Iterations Summary",
+        "",
+        f"**Agent ID:** `{run_meta.agent_id}`  ",
+        f"**Dataset:** `{run_meta.dataset}`  ",
+        f"**Model:** `{run_meta.model_name}`  ",
+        f"**Task:** `{run_meta.task_type}`  ",
+        f"**Optimized metric:** `{run_meta.val_metric or 'Not specified'}`  ",
+        f"**Best validation {run_meta.val_metric or 'score'}:** {best_score} "
+        f"(iteration {best_iteration if best_iteration is not None else 'not identified'})  ",
+        f"**Archived iterations:** {len(summaries)}",
+        "",
+        "Detailed reports are available for each iteration in `markdown/` and `pdf/`.",
+        "",
+        f"| Iteration | Model / approach | Split | Validation {run_meta.val_metric or 'metric'} | Change vs previous | Best |",
+        "| ---: | :--- | :---: | ---: | ---: | :---: |",
+    ]
+    if summaries:
+        lines.extend(
+            "| {iteration} | {approach} | {split} | {value} | {change} | {best} |".format(
+                iteration=summary.iteration,
+                approach=summary.approach.replace("|", "\\|"),
+                split=(f"split_{summary.split_version}" if summary.split_version is not None else "—"),
+                value=_fmt_metric(summary.validation_value),
+                change=_format_metric_change(summary),
+                best="Yes" if summary.is_best else "",
+            )
+            for summary in summaries
+        )
+    else:
+        lines.append("| — | — | — | No iteration data available | — | — |")
+    lines.extend(
+        [
+            "",
+            "Change is the current validation score minus the previous archived iteration's score. "
+            "It is omitted when split versions differ, a split version is missing, or a score is missing.",
+            "Other train and validation metrics are included in each detailed iteration report.",
+            "",
+            "## Held-out test results for the selected best iteration",
+            "",
+        ]
+    )
+    if test_metric_rows:
+        test_splits, test_metrics, test_values = _pivot_test_metrics(test_metric_rows)
+        lines.extend(
+            [
+                "These results are for the selected best iteration only.",
+                "",
+                "| Metric | " + " | ".join(test_splits) + " |",
+                "| :--- | " + " | ".join("---:" for _ in test_splits) + " |",
+            ]
+        )
+        lines.extend(
+            "| " + metric_name + " | " + " | ".join(
+                _fmt_metric(test_values.get((split, metric_name)))
+                for split in test_splits
+            ) + " |"
+            for metric_name in test_metrics
+        )
+    else:
+        lines.append("_No held-out test metrics were recorded for this run._")
+    lines.append("")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def write_all_iterations_pdf(
+    path: Path,
+    run_meta: RunMeta,
+    best_iteration: int | None,
+    summaries: List[IterationSummary],
+    test_metric_rows: List[Tuple[str, str, float]],
+) -> None:
+    styles = build_styles()
+    doc = SimpleDocTemplate(
+        str(path),
+        pagesize=A4,
+        leftMargin=2 * cm,
+        rightMargin=2 * cm,
+        topMargin=2 * cm,
+        bottomMargin=1.6 * cm,
+    )
+    best_summary = next((row for row in summaries if row.is_best), None)
+    best_score = (
+        _fmt_metric(best_summary.validation_value)
+        if best_summary and best_summary.validation_value is not None
+        else "not recorded"
+    )
+    story = [
+        Paragraph("All Iterations Summary", styles["H1"]),
+        run_meta_flowables(run_meta),
+        Spacer(1, 8),
+        Paragraph(
+            f"Best validation { _esc(run_meta.val_metric or 'score') }: "
+            f"{_esc(best_score)} (iteration "
+            f"{best_iteration if best_iteration is not None else 'not identified'}). "
+            f"Archived iterations: {len(summaries)}.",
+            styles["Body"],
+        ),
+        Paragraph(
+            "Change is the current validation score minus the previous archived iteration's score. "
+            "It is omitted when split versions differ, a split version is missing, or a score is missing. "
+            "Detailed reports in markdown/ and pdf/ contain the other metrics and step details.",
+            styles["Muted"],
+        ),
+        Spacer(1, 8),
+    ]
+    table_data = [["Iteration", "Model / approach", "Split", "Validation", "Change", "Best"]]
+    if summaries:
+        table_data.extend(
+            [
+                str(summary.iteration),
+                Paragraph(_esc(summary.approach), styles["Muted"]),
+                f"split_{summary.split_version}" if summary.split_version is not None else "—",
+                _fmt_metric(summary.validation_value),
+                _esc(_format_metric_change(summary)),
+                "Yes" if summary.is_best else "",
+            ]
+            for summary in summaries
+        )
+    else:
+        table_data.append(["—", "No iteration data available", "—", "—", "—", "—"])
+
+    table = LongTable(
+        table_data,
+        colWidths=[1.4 * cm, 6.6 * cm, 2.0 * cm, 2.7 * cm, 2.8 * cm, 1.2 * cm],
+        repeatRows=1,
+        hAlign="LEFT",
+    )
+    table_style = [
+        ("BACKGROUND", (0, 0), (-1, 0), _pdf_color("navy")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), _pdf_color("white")),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("GRID", (0, 0), (-1, -1), 0.35, _pdf_color("grid")),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [_pdf_color("white"), _pdf_color("pale_gray")]),
+        ("ALIGN", (0, 0), (2, -1), "LEFT"),
+        ("ALIGN", (3, 1), (4, -1), "RIGHT"),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+    ]
+    for row_index, summary in enumerate(summaries, start=1):
+        if summary.is_best:
+            table_style.extend(
+                [
+                    ("BACKGROUND", (0, row_index), (-1, row_index), _pdf_color("pale_teal")),
+                    ("FONTNAME", (0, row_index), (0, row_index), "Helvetica-Bold"),
+                    ("TEXTCOLOR", (0, row_index), (0, row_index), _pdf_color("navy")),
+                ]
+            )
+    table.setStyle(TableStyle(table_style))
+    story.append(table)
+    if test_metric_rows:
+        story.extend(
+            [
+                Spacer(1, 12),
+                Paragraph("Held-out test results for the selected best iteration", styles["H2"]),
+                Paragraph(
+                    "Test results below are for the selected best iteration only.",
+                    styles["Muted"],
+                ),
+            ]
+        )
+        test_splits, test_metrics, test_values = _pivot_test_metrics(test_metric_rows)
+        test_table_data = [["Metric"] + [split.title() for split in test_splits]]
+        test_table_data.extend(
+            [metric_name]
+            + [
+                _fmt_metric(test_values.get((split, metric_name)))
+                for split in test_splits
+            ]
+            for metric_name in test_metrics
+        )
+        available_width = A4[0] - 4 * cm
+        metric_column_width = min(3.5 * cm, available_width * 0.3)
+        split_column_width = (available_width - metric_column_width) / max(1, len(test_splits))
+        test_table = LongTable(
+            test_table_data,
+            colWidths=[metric_column_width] + [split_column_width] * len(test_splits),
+            repeatRows=1,
+            hAlign="LEFT",
+        )
+        test_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), _pdf_color("navy")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), _pdf_color("white")),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 8),
+                    ("GRID", (0, 0), (-1, -1), 0.35, _pdf_color("grid")),
+                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [_pdf_color("white"), _pdf_color("pale_gray")]),
+                    ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ]
+            )
+        )
+        story.append(test_table)
+    else:
+        story.extend(
+            [
+                Spacer(1, 12),
+                Paragraph("Held-out test results", styles["H2"]),
+                Paragraph("No held-out test metrics were recorded for this run.", styles["Muted"]),
+            ]
+        )
+    doc.build(story)
+
+
+def write_all_iterations_summary(
+    config: Config,
+    run_meta: RunMeta,
+    iterations: List[int],
+    best_iteration: int | None,
+) -> None:
+    summaries = _all_iteration_summaries(
+        config, iterations, best_iteration, run_meta.val_metric
+    )
+    test_metric_rows = _best_iteration_test_metrics(config, best_iteration)
+    write_all_iterations_markdown(
+        config.reports_dir / "all_iterations.md",
+        run_meta,
+        best_iteration,
+        summaries,
+        test_metric_rows,
+    )
+    write_all_iterations_pdf(
+        config.reports_dir / "all_iterations.pdf",
+        run_meta,
+        best_iteration,
+        summaries,
+        test_metric_rows,
+    )
 
 def main() -> None:
     os.environ.setdefault("MPLCONFIGDIR", "/tmp/mplconfig")
@@ -931,6 +1366,7 @@ def main() -> None:
         )
 
     best_iteration = load_best_iteration_snapshot_iteration(config)
+    write_all_iterations_summary(config, run_meta, iterations, best_iteration)
     if best_iteration in iterations:
         shutil.copy2(
             config.markdown_reports_dir / f"run_report_iter_{best_iteration}.md",

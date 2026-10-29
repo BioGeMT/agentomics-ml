@@ -201,6 +201,8 @@ outputs/<agent_id>/
 │   ├── iteration_1/
 │   └── ...
 ├── reports/
+│   ├── all_iterations.md
+│   ├── all_iterations.pdf
 │   ├── best_iteration.md        # Selected iteration report
 │   ├── best_iteration.pdf       # Selected iteration PDF
 │   ├── markdown/
@@ -225,10 +227,11 @@ completed iterations are archived as `iteration_N/`.
 The best iteration's exported model, scripts, and environment — updated whenever
 a new best iteration is achieved. Use it for inference and re-training.
 
-### reports/ and extras/
+### reports/ and logs/
 
-Per-iteration markdown and PDF reports, plus logs and auxiliary artifacts,
-written directly to the workspace as the run progresses.
+Per-iteration markdown and PDF reports, plus the all-iteration summary and
+selected-best report, are written to `reports/`. Logs and auxiliary artifacts
+are written to `logs/`.
 
 ## File Notes
 
