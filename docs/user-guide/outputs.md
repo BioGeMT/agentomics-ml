@@ -95,13 +95,9 @@ run/iteration_N/
 
 ## Reports
 
-`reports/all_iterations.md` and `reports/all_iterations.pdf` summarize the run
-with one row per archived iteration, showing the model approach, the optimized
-validation metric, its change from the previous iteration, and the selected best
-iteration. The change is omitted when split versions differ or are missing,
-because the scores would not be directly comparable. Held-out test results are
-shown for the selected best iteration only. Other metrics and step details are in
-each iteration's report.
+`reports/all_iterations.md` and `reports/all_iterations.pdf` show each iteration's
+approach, validation score, score change on comparable splits, and best status.
+Test results are shown for the best iteration; other details are in its report.
 
 `reports/best_iteration.md` and `reports/best_iteration.pdf` are copies of the
 selected iteration's reports and provide stable paths to the final result.
