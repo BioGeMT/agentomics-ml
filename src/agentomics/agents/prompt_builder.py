@@ -51,6 +51,9 @@ def get_system_prompt(config: Config):
     This is an iterative process. Each iteration takes all of these steps. You will have multiple iterations to refine your approach based on validation performance. 
     You are using a linux system.
     You have access to the following resources: {available_resources}. Use them efficiently to train models.
+    Use all the resources available, in every step and script, not only during training. Single-threaded code leaves most of the machine idle and wastes your time.
+    Parallelize CPU-bound work across all CPU cores, including data loading, preprocessing and reading large files in chunks.
+    Keep the combined memory of parallel workers within the available RAM.
     {'If a model architecture is fit for being accelerated by GPU, ensure your code uses GPU correctly before you run training.' if gpu_available else ''}
     You are provided with your own already activated environment
     Use this environment to install any packages you need (use non-verbose mode for installations, run conda installations with -y option).
