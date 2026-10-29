@@ -96,8 +96,9 @@ run/iteration_N/
 ## Reports
 
 `reports/all_iterations.md` and `reports/all_iterations.pdf` show each iteration's
-approach, validation score, score change on comparable splits, and best status.
-Test results are shown for the best iteration; other details are in its report.
+approach, validation score and sample count, direction-aware change on comparable
+splits, and best status. Test metrics include sample counts for the best iteration.
+Other details are in each iteration's report.
 
 `reports/best_iteration.md` and `reports/best_iteration.pdf` are copies of the
 selected iteration's reports and provide stable paths to the final result.
