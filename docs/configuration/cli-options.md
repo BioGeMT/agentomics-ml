@@ -74,7 +74,7 @@ See [Forking a Run](../user-guide/forking.md) for a full guide and examples.
 ### Basic Run
 
 ```bash
-agentomics-run --model openai/gpt-5.1-codex-max --dataset breast_cancer --iterations 10
+agentomics-run --provider openai --model openai/gpt-6.1-sol --dataset breast_cancer --iterations 10
 ```
 
 ### Interactive Run
@@ -86,13 +86,13 @@ agentomics-run
 ### With Time Limit
 
 ```bash
-agentomics-run --timeout 3600 --model openai/gpt-5.1-codex-max --dataset my_data
+agentomics-run --timeout 3600 --provider openai --model openai/gpt-6.1-sol --dataset my_data
 ```
 
 ### Custom Optimization Goal
 
 ```bash
-agentomics-run --user-prompt "Focus on interpretable models only" --model openai/gpt-5.1-codex-max
+agentomics-run --user-prompt "Focus on interpretable models only" --provider openai --model openai/gpt-6.1-sol
 ```
 
 ### Using Ollama
@@ -105,7 +105,7 @@ agentomics-run --provider ollama --model llama3.1 --dataset my_data
 ### CPU Only
 
 ```bash
-agentomics-run --cpu-only --model openai/gpt-5.1-codex-max --dataset my_data
+agentomics-run --cpu-only --provider openai --model openai/gpt-6.1-sol --dataset my_data
 ```
 
 ## Validation Metrics

@@ -92,8 +92,11 @@ Then run Agentomics with the `codex` provider:
 
 ```bash
 agentomics-run --provider codex --list-models
-agentomics-run --provider codex --model gpt-5.4 --dataset my_data
+agentomics-run --provider codex --model <model-id-from-list> --dataset my_data
 ```
+
+Available model IDs can change, so use `--list-models` to check which ones your
+Codex login currently supports.
 
 This provider reads your local Codex auth state from `~/.codex/auth.json` and
 uses the ChatGPT Codex backend instead of `OPENAI_API_KEY`.
