@@ -7,6 +7,8 @@ import sys
 import time
 from pathlib import Path
 
+os.environ.setdefault("WEAVE_LOG_LEVEL", "ERROR")
+
 import wandb
 
 from agentomics.cli.run_arguments import add_run_arguments

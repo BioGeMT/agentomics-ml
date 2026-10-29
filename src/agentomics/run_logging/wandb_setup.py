@@ -1,6 +1,8 @@
-import wandb
 import os
 
+os.environ.setdefault("WEAVE_LOG_LEVEL", "ERROR")
+
+import wandb
 from wandb.errors import CommError
 from agentomics.run_logging.logging_helpers import login_to_wandb
 from agentomics.utils.config import Config
@@ -13,8 +15,6 @@ def setup_logging(config: Config, dir=None):
     wandb_entity = os.getenv("WANDB_ENTITY")
 
     os.environ.setdefault("WANDB_SILENT", "true")
-    os.environ.setdefault("WEAVE_LOG_LEVEL", "ERROR")
-
     success = login_to_wandb(api_key)
     if not success:
         print("W&B login failed - skipping experiment logging")
