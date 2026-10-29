@@ -61,7 +61,7 @@ class RuntimeStep(ABC):
         except IterationRunFailed:
             if self.failure_is_fatal:
                 raise
-            print(f"{self.display_name} failed, keeping the iteration")
+            _console.print(f"{self.display_name} failed, keeping the iteration")
             output = self.build_failure_output()
         self.on_step_success(output)
 
