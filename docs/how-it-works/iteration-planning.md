@@ -53,6 +53,10 @@ IterationPlanOutput
 - Remaining time (if timeout set)
 - Training duration of previous models
 
+## Supplementary Material
+
+If the dataset has a `supplementary/` folder, the planner can read its text files itself and keeps notes between iterations so it does not have to re-read them.
+
 ## Iteration-Plan Examples
 
 ### Overfitting Detected

@@ -20,10 +20,13 @@ from agentomics.runtime.read_write_utils import (
 )
 from agentomics.runtime.step_outputs import load_step_output, load_step_outputs
 from agentomics.runtime.system_resources import get_resources_summary
+from agentomics.tools.supplementary_tool import create_supplementary_tools
 from agentomics.tools.tool_registry import get_tool_names
+from agentomics.utils.config import Config
 from agentomics.utils.metrics import describe_metric
 from agentomics.utils.printing_utils import truncate_float
 from agentomics.datasets.data_contract import SUPPLEMENTARY_DIR_NAME
+
 
 
 class IterationPlanOutput(AgenticStepOutput):
@@ -67,12 +70,22 @@ class IterationPlanOutput(AgenticStepOutput):
         Any other instructions that don't fit only one step (optional).
         """
     )
+    notes: str | None = Field(
+        default=None,
+        exclude=True,
+        max_length=Config.PLANNER_NOTES_MAX_CHARS,
+        description="""
+        Your private notes, carried forward to your future planning iterations.
+        Leave as null to keep the current notes unchanged. If set (even to an empty string) it replaces them in full, so include everything worth keeping.
+        """,
+    )
 
 class IterationPlanStep(AgenticStep):
     step_id = "iteration_plan"
     display_name = "ITERATION PLAN"
     output_type = IterationPlanOutput
     history_excluded_step_ids = {step_id, ValidationEvaluationStep.step_id}
+    NOTES_FILENAME = "planner_notes.md"
 
     class IterationHistoryRecord(TypedDict):
         outputs: list[Any]
@@ -91,7 +104,26 @@ class IterationPlanStep(AgenticStep):
             ),
             output_type=IterationPlanOutput,
             deps_type=dict,
+            tools=create_supplementary_tools(self.config) if self._has_supplementary() else [],
         )
+
+    def _has_supplementary(self) -> bool:
+        return (self.config.dataset_dir / SUPPLEMENTARY_DIR_NAME).is_dir()
+
+    def on_step_success(self, output: IterationPlanOutput) -> None:
+        # Written before the base class archives the step folder and commits the checkpoint.
+        if self._has_supplementary():
+            notes = output.notes if output.notes is not None else self._load_notes()
+            (self.config.current_step_dir / self.NOTES_FILENAME).write_text(notes, encoding="utf-8")
+        super().on_step_success(output)
+
+    def _load_notes(self) -> str:
+        """Notes saved by the latest archived iteration that has a notes file; empty if none."""
+        for iteration in reversed(get_archived_iterations(self.config)):
+            notes_path = self.config.iteration_dir(iteration) / self.step_id / self.NOTES_FILENAME
+            if notes_path.is_file():
+                return notes_path.read_text(encoding="utf-8")
+        return ""
 
     def build_user_prompt(self) -> str:
         return self.step_prompt()
@@ -104,6 +136,7 @@ class IterationPlanStep(AgenticStep):
         tools_info = ", ".join(get_tool_names(self.config, self.config.tool_ids))
         best_iteration_model_info = self._build_best_iteration_model_info()
         supplementary_info = self._build_supplementary_info()
+        notes_info = self._build_notes_info()
 
         return f"""
         <prompt_of_the_iteration_agents>
@@ -115,6 +148,7 @@ class IterationPlanStep(AgenticStep):
         </dataset_knowledge_from_dataset_description_md>
 
         {iteration_history_info}
+        {notes_info}
         <your_instructions>
         {f"<exploration_guidance>{exploration_info}</exploration_guidance>" if exploration_info else ""}
         The main goal of the run is to maximize the hidden test set generalization performance (main metric: {describe_metric(self.config.val_metric)}) that will use the 'best iteration model'. {best_iteration_model_info}
@@ -131,7 +165,6 @@ class IterationPlanStep(AgenticStep):
         For example if you want to instruct to re-use the same data representation from iteration 5, instruct "Re-use the data representation from iteration 5".
         The data exploration and splitting steps can be instructed to be skipped completely if they're not needed.
         If any exploration step discovered important id-to-sample information (e.g., how label IDs relate to data in input/, file formats, column semantics) that are not already included in the dataset_knowledge_from_dataset_description_md, include those details in your instructions for relevant downstream steps so the iteration agent doesn't have to re-explore the structure.
-        Similarly, if the exploration step found useful insights from supplementary materials, carry those forward in your instructions.
         {splitting_info}
 
         You're providing instructions to an LLM agent, never offer that you will take any actions to fix or implement fixes yourself.
@@ -297,10 +330,21 @@ class IterationPlanStep(AgenticStep):
         return f"{iterations_left} iterations (including the current one)"
     
     def _build_supplementary_info(self) -> str:
-        dataset_supplementary_path = self.config.dataset_dir / SUPPLEMENTARY_DIR_NAME
-        if dataset_supplementary_path.is_dir():
-            return f"The agent has access to the supplementary/ folder with supplementary dataset materials."
-        return ""
+        if not self._has_supplementary():
+            return ""
+        return """
+        The dataset has a supplementary/ folder (papers, notes, code, docs) that you can browse with the supplementary tools and the iteration agents can open.
+        When a supplementary file is relevant to a step, cite it in that step's instructions by its path relative to the supplementary folder (plus the section heading if only part of it applies).
+        Treat supplementary material as inspiration, not a checklist or a plan. Weigh it against your own reasoning, the iteration history and the metrics so far: try an idea only when you judge it worth running now, and don't skip a promising direction just because the material doesn't mention it.
+        """
+
+    def _build_notes_info(self) -> str:
+        if not self._has_supplementary():
+            return ""
+        return (
+            f'<your_notes>\n'
+            f"{self._load_notes()}\n</your_notes>"
+        )
 
     def _build_exploration_info(self) -> str:
         iteration = load_current_iteration_index(self.config)

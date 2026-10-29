@@ -82,6 +82,8 @@ Supporting/supplementary materials (PDFs, papers, helper scripts, foundation mod
 You can describe what the supplementary folder contains and how it relates to
 the task in `supplementary/README.md` to help the agent use it effectively.
 
+The iteration planner can read the text files in this folder itself and keeps notes between iterations.
+
 #### Using existing / foundation models
 
 To make models available to the agent, copy the models or their docs
