@@ -29,8 +29,7 @@ Supply parameters directly to skip the prompts:
 
 ```bash
 agentomics-run \
-  --provider openai \
-  --model openai/gpt-6.1-sol \
+  --model openai/gpt-5.1-codex-max \
   --dataset breast_cancer \
   --iterations 10
 ```
@@ -52,7 +51,7 @@ A few common ones:
 
 ```bash
 # Set a deadline for the whole run (whichever of this or --iterations hits first)
-agentomics-run --timeout 7200 --provider openai --model openai/gpt-6.1-sol --dataset my_data
+agentomics-run --timeout 7200 --model openai/gpt-5.1-codex-max --dataset my_data
 
 # Control how long the agent explores baselines / may re-split the data
 agentomics-run --split-allowed-iterations 1 --exploration-iterations 4 ...

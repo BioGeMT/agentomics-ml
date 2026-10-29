@@ -16,8 +16,7 @@ the source workspace read-only in the container:
 ```bash
 agentomics-run \
   --fork-from-run outputs/my_source_run \
-  --provider openai \
-  --model openai/gpt-6.1-sol \
+  --model openai/gpt-5.1-codex-max \
   --iterations 3
 ```
 

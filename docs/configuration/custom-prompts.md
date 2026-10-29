@@ -71,8 +71,7 @@ Custom prompts work with all other options:
 ```bash
 agentomics-run \
   --user-prompt "Use only sklearn models, no neural networks" \
-  --provider openai \
-  --model openai/gpt-6.1-sol \
+  --model openai/gpt-5.1-codex-max \
   --dataset my_data \
   --iterations 15 \
   --val-metric AUROC
