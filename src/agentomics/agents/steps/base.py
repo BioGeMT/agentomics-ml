@@ -30,6 +30,7 @@ from agentomics.runtime.read_write_utils import (
 )
 from agentomics.runtime.step_outputs import load_step_outputs, save_step_output
 from agentomics.utils.config import Config
+from agentomics.utils.exceptions import IterationRunFailed
 from agentomics.utils.providers.provider import Provider
 
 
@@ -39,6 +40,7 @@ class RuntimeStep(ABC):
     step_id: str
     display_name: str
     output_type: Any = None
+    failure_is_fatal: bool = True
 
     def __init__(self, config: Config, model: Model, iteration_plan_model: Model, provider: Provider, tools: list) -> None:
         self.config = config
@@ -54,7 +56,13 @@ class RuntimeStep(ABC):
             self.on_step_success(self.build_simulated_output())
             return
         self.on_step_start()
-        output = await self._execute()
+        try:
+            output = await self._execute()
+        except IterationRunFailed:
+            if self.failure_is_fatal:
+                raise
+            _console.print(f"{self.display_name} failed, keeping the iteration")
+            output = self.build_failure_output()
         self.on_step_success(output)
 
     def should_run(self) -> bool:
@@ -65,6 +73,9 @@ class RuntimeStep(ABC):
 
     def build_simulated_output(self) -> Any:
         raise RuntimeError(f"Step '{self.step_id}' does not support being simulated.")
+
+    def build_failure_output(self) -> Any:
+        raise RuntimeError(f"Step '{self.step_id}' does not support a failure output.")
 
     @abstractmethod
     async def _execute(self) -> Any:

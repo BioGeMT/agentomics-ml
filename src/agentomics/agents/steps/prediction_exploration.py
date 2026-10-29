@@ -29,6 +29,13 @@ class PredictionExplorationStep(AgenticStep):
     step_id = "prediction_exploration"
     display_name = "PREDICTION EXPLORATION"
     output_type = PredictionExplorationOutput
+    failure_is_fatal = False
+
+    def build_failure_output(self) -> PredictionExplorationOutput:
+        return PredictionExplorationOutput(
+            statistics="Not available: prediction exploration failed in this iteration.",
+            insights="Not available: prediction exploration failed in this iteration.",
+        )
 
     def step_prompt(self) -> str:
         #TODO all requires should be deps?
