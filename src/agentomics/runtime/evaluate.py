@@ -16,6 +16,7 @@ from agentomics.run_logging.wandb_setup import resume_wandb_run
 from agentomics.runtime.evaluate_result import get_metrics
 from agentomics.runtime.read_write_utils import load_config_from_run_dir_and_reroot
 from agentomics.utils.config import Config
+from agentomics.utils.rich_display import print_metrics_table
 from agentomics.utils.task_types import TaskTypes
 
 
@@ -59,7 +60,7 @@ def evaluate_predictions(
                 for metric_name, value in metrics.items()
             })
             wandb_run.finish()
-    print(json.dumps(metrics, indent=2))
+    print_metrics_table(metrics, title="Evaluation Metrics")
     print(f"Metrics written to {output_path}")
     return metrics
 
