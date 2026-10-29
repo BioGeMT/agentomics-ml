@@ -8,7 +8,7 @@ def add_run_arguments(parser: argparse.ArgumentParser) -> None:
     run_arguments = parser.add_argument_group("run configuration")
     run_arguments.add_argument(
         "--model",
-        help="LLM model used by the agent (for example, 'gpt-6.1-sol' with --provider codex)",
+        help="LLM model used by the agent (for example, 'gpt-6.1-sol')",
     )
     run_arguments.add_argument(
         "--iteration-plan-model",
