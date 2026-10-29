@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import ClassVar
 
+from rich import box
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -189,9 +190,15 @@ class Config:
             ("User prompt", self.user_prompt),
             ("Resources", get_resources_summary()),
         ]
-        table = Table.grid(padding=(0, 2), expand=True)
-        table.add_column(style="bold cyan", no_wrap=True)
-        table.add_column(overflow="fold")
+        table = Table(
+            box=box.SIMPLE,
+            show_header=True,
+            header_style="bold white",
+            padding=(0, 1),
+            expand=True,
+        )
+        table.add_column("Setting", style="bold cyan", no_wrap=True)
+        table.add_column("Value", overflow="fold")
         for label, value in rows:
             table.add_row(label, str(value))
 
