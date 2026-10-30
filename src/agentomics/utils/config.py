@@ -27,7 +27,7 @@ class Config:
 
     DEFAULT_ITERATIONS: ClassVar[int] = 5
     DEFAULT_SPLIT_ALLOWED_ITERATIONS: ClassVar[int] = 1
-    DEFAULT_EXPLORATION_ITERATIONS: ClassVar[int] = 2
+    DEFAULT_EXPLORATION_ITERATIONS: ClassVar[int] = 0
     DEFAULT_STEP_SEQUENCE: ClassVar[list[str]] = [
         "iteration_plan",
         "data_exploration",
@@ -45,15 +45,15 @@ class Config:
         "run_python",
         "replace",
     ]
-    DEFAULT_MAX_STEPS: ClassVar[int] = 100
+    DEFAULT_MAX_STEPS: ClassVar[int] = 200
     DEFAULT_TEMPERATURE: ClassVar[float] = 0.7
-    DEFAULT_MAX_VALIDATION_RETRIES: ClassVar[int] = 5
+    DEFAULT_MAX_VALIDATION_RETRIES: ClassVar[int] = 10
     DEFAULT_USE_PROXY: ClassVar[bool] = True
     DEFAULT_LLM_RESPONSE_TIMEOUT: ClassVar[int] = 60 * 10
     DEFAULT_BASH_TOOL_TIMEOUT: ClassVar[int] = 60 * 3
     DEFAULT_MAX_TOOL_RETRIES: ClassVar[int] = 5
     PLANNER_NOTES_MAX_CHARS: ClassVar[int] = 6000
-    DEFAULT_RUN_PYTHON_TOOL_TIMEOUT: ClassVar[int] = 60 * 60 * 6
+    DEFAULT_RUN_PYTHON_TOOL_TIMEOUT: ClassVar[int] = 60 * 60 * 24
     DEFAULT_USER_PROMPT: ClassVar[str] = "Develop a machine learning model that generalizes well to new unseen data."
     DEFAULT_ENVIRONMENTS_DIR: ClassVar[str] = "/tmp/agentomics/envs"
 

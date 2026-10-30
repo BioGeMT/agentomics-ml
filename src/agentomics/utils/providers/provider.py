@@ -113,7 +113,7 @@ class Provider():
     
     def get_high_reasoning_model_settings(self, kwargs) -> ModelSettings:
         return OpenAIResponsesModelSettings( #TODO needs implemented for non-OpenAI compatible providers
-            openai_reasoning_effort="high",
+            openai_reasoning_effort="xhigh",
             **kwargs,
         )
 
