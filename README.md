@@ -43,7 +43,8 @@ Start an Agentomics run and follow instructions
 agentomics-run
 ```
 
-Recommended model: `gpt-5.1-codex-max`
+For Codex, use `agentomics-run --provider codex --list-models` to see the model
+IDs available to your login, then pass one with `--model`.
 
 Outputs are saved to `outputs/<agent_id>/`, including PDF reports in `outputs/<agent_id>/reports/pdf`.
 
@@ -92,12 +93,20 @@ outputs/<agent_id>/
 │   │   └── splits/
 │   └── iteration_*/
 └── reports/
+    ├── all_iterations.md
+    ├── all_iterations.pdf
+    ├── best_iteration.md
+    ├── best_iteration.pdf
     ├── markdown/
+    │   └── run_report_iter_N.md
     └── pdf/
+        ├── iteration_N.pdf
+        └── plots/
 ```
 
 Use `best_iteration_snapshot/` for inference or re-training. `run/` keeps the
-full iterative workspace, and `reports/` contains the human-readable summaries.
+full iterative workspace, and `reports/` contains an all-iteration summary and
+the detailed reports for each iteration.
 
 ## Roadmap
 Agentomics is in active development. We welcome any raised Issues and suggestions. You can also [Email Us](mailto:martinekvlastimil95@gmail.com).

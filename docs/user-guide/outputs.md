@@ -29,6 +29,8 @@ outputs/<agent_id>/
 │   ├── iteration_1/
 │   └── ...
 ├── reports/
+│   ├── all_iterations.md
+│   ├── all_iterations.pdf
 │   ├── best_iteration.md
 │   ├── best_iteration.pdf
 │   ├── markdown/
@@ -93,6 +95,11 @@ run/iteration_N/
 
 ## Reports
 
+`reports/all_iterations.md` and `reports/all_iterations.pdf` show each iteration's
+approach, validation score and sample count, direction-aware change on comparable
+splits, and best status. Test metrics include sample counts for the best iteration.
+Other details are in each iteration's report.
+
 `reports/best_iteration.md` and `reports/best_iteration.pdf` are copies of the
 selected iteration's reports and provide stable paths to the final result.
 
@@ -107,8 +114,9 @@ selected iteration's reports and provide stable paths to the final result.
 
 ### PDF Reports
 
-`reports/pdf/iteration_N.pdf` - PDF report per iteration, including metrics and
-plots for every evaluated held-out test split, plus plots in
+`reports/pdf/iteration_N.pdf` - PDF report per iteration, including train and
+validation metrics and plots. Held-out test metrics and plots appear in the
+selected best iteration's report when available. Plots are also saved in
 `reports/pdf/plots/`.
 
 ## Metrics

@@ -1,11 +1,11 @@
 import argparse
-import json
 import sys
 
 import pandas as pd
 
 from agentomics.datasets.data_contract import ID_COLUMN_NAME, NUMERIC_LABEL_COLUMN_NAME, PREDICTION_COLUMN_NAME
 from agentomics.utils.metrics import get_classification_metrics_functions, get_regression_metrics_functions
+from agentomics.utils.rich_display import print_metrics_table
 from agentomics.utils.task_types import TaskTypes
 
 
@@ -95,7 +95,7 @@ def main():
             numeric_label_col=args.numeric_label_col,
             task_type=args.task_type,
         )
-        print(json.dumps(metrics, indent=2))
+        print_metrics_table(metrics, title="Evaluation Metrics")
     except Exception as e:
         sys.exit(f"Error: {e}")
 
