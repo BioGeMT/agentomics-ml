@@ -115,6 +115,7 @@ class ModelInferenceStep(AgenticStep):
         - No control ('{CONTROL_LABEL}') cells.
         - Genes (var_names): those of {INPUT_DIR_NAME}/{CONTROLS_FILE_NAME}, in the same order.
         - X: finite, non-negative whole counts, at most {MAX_COUNTS_PER_CELL} in total per cell. Store X as a scipy sparse matrix. Predictions must not contain NaN or infinity.
+        - X can hold more than 2^31 stored values. If you build its sparse arrays yourself (for example when writing it in chunks), keep indptr and any running offsets in int64.
         - Input controls may contain NaN for unavailable measurements. Handle them consistently with training and generate predictions for the full input gene panel; do not copy missing values into the output or omit those genes.
         - Sample each cell from the predicted distribution of its condition, so the cells of one condition vary like real cells do. Repeating one profile for all cells of a condition removes that variation and breaks the differential-expression based metrics."""
 
