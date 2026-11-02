@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/BioGeMT/agentomics-ml/compare/v1.2.0...v1.2.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* keep the iteration when prediction exploration fails ([#177](https://github.com/BioGeMT/agentomics-ml/issues/177)) ([5501414](https://github.com/BioGeMT/agentomics-ml/commit/55014147e9a1a2733f33241bd43b218951e36c4b))
+
 ## [1.2.0](https://github.com/BioGeMT/agentomics-ml/compare/v1.1.0...v1.2.0) (2026-10-14)
 
 
