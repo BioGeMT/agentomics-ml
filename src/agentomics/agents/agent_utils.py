@@ -49,6 +49,19 @@ async def run_agent(agent: Agent, user_prompt: str, max_steps: int, message_hist
                 exception_trace=trace,
             )
 
+def extract_step_messages(
+    run_messages: list[ModelMessage], message_history: list[ModelMessage] | None
+) -> list[ModelMessage]:
+    return run_messages[len(message_history or []):]
+
+def extract_prompt_messages(message_history: list[ModelMessage] | None) -> list[ModelMessage]:
+    return [
+        message
+        for message in message_history or []
+        if isinstance(message, ModelRequest)
+        and any(isinstance(part, (SystemPromptPart, UserPromptPart)) for part in message.parts)
+    ]
+
 def fabricate_final_result_messages(structured_output, model_name):
     if hasattr(structured_output, "model_dump"):
         output_dict = structured_output.model_dump()

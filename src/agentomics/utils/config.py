@@ -24,6 +24,7 @@ class Config:
     ITERATION_STATE_FILENAME: ClassVar[str] = "iteration_state.json"
     ENVIRONMENT_DESCRIPTOR_FILENAME: ClassVar[str] = "environment.yml"
     STEP_OUTPUT_FILENAME: ClassVar[str] = "output.json"
+    ITERATIONS_LESSONS_FILENAME: ClassVar[str] = "iterations_lessons.md"
 
     DEFAULT_ITERATIONS: ClassVar[int] = 5
     DEFAULT_SPLIT_ALLOWED_ITERATIONS: ClassVar[int] = 1
@@ -75,6 +76,7 @@ class Config:
     user_prompt: str = DEFAULT_USER_PROMPT
     iterations: int = DEFAULT_ITERATIONS
     provider_name: str | None = None
+    trace_analysis_model_name: str | None = None
     split_allowed_iterations: int = DEFAULT_SPLIT_ALLOWED_ITERATIONS
     exploration_iterations: int = DEFAULT_EXPLORATION_ITERATIONS
     time_deadline: int | None = None
@@ -130,6 +132,10 @@ class Config:
         return self.run_dir / self.SHARED_DIRNAME
 
     @property
+    def iterations_lessons_path(self) -> Path:
+        return self.shared_dir / self.ITERATIONS_LESSONS_FILENAME
+
+    @property
     def config_path(self) -> Path:
         return self.shared_dir / self.CONFIG_FILENAME
 
@@ -163,6 +169,7 @@ class Config:
         print("=== AGENTOMICS CONFIGURATION ===")
         print("MAIN MODEL:", self.model_name)
         print("ITERATION PLAN MODEL:", self.iteration_plan_model_name)
+        print("TRACE ANALYSIS MODEL:", self.trace_analysis_model_name)
         print("DATASET:", self.dataset)
         print("TASK TYPE:", self.task_type)
         print("VAL METRIC:", self.val_metric)
