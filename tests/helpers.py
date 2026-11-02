@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import Mock
 
 from pydantic import BaseModel
-from pydantic_ai.messages import ModelResponse, ToolCallPart
+from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
 from pydantic_ai.models.function import FunctionModel
 
 from agentomics.utils.config import Config
@@ -38,12 +38,13 @@ def run_git_cli_command(
     )
 
 
-def create_runtime_step(step_type, config: Config, *, model):
+def create_runtime_step(step_type, config: Config, *, model, trace_analysis_model=None):
     """Construct a runtime step with unused external dependencies replaced."""
     return step_type(
         config,
         model,
         Mock(),
+        trace_analysis_model or Mock(),
         Mock(),
         [],
     )
@@ -63,6 +64,19 @@ def create_model_calling_output_tool(output: BaseModel) -> FunctionModel:
         )
 
     return FunctionModel(respond)
+
+
+def create_failing_model() -> FunctionModel:
+    """Create a local model whose every request fails."""
+    def respond(_messages, _agent_info):
+        raise RuntimeError("runtime error")
+
+    return FunctionModel(respond)
+
+
+def message_part_kinds(messages: list[ModelMessage]) -> list[list[str]]:
+    """Describe messages by their part kinds, ignoring run-specific ids and timestamps."""
+    return [[part.part_kind for part in message.parts] for message in messages]
 
 
 def write_step_file(config: Config, filename: str, content: str) -> Path:

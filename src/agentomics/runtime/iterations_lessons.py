@@ -1,17 +1,9 @@
 from __future__ import annotations
 
-import traceback
-from collections.abc import Callable
-from typing import Any
+from dataclasses import replace
 
 from pydantic_ai import Agent
-from pydantic_ai.messages import (
-    ModelMessage,
-    RetryPromptPart,
-    TextPart,
-    ToolCallPart,
-    ToolReturnPart,
-)
+from pydantic_ai.messages import ModelMessage, ModelRequest, SystemPromptPart, UserPromptPart
 from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 
@@ -21,105 +13,118 @@ from agentomics.utils.exceptions import IterationRunFailed
 
 ITERATIONS_LESSONS_AGENT_MAX_REQUESTS = 5
 NO_NEW_ITERATIONS_LESSONS = "NO NEW LESSONS"
-MAX_PART_CHARS = 1500
-MAX_TRANSCRIPT_CHARS = 60000
+MAX_ERROR_CHARS = 1500
 
-# Parts not listed here (system prompt, user prompt, thinking) are left out of the transcript
-# Only the text needed for lessons is taken from each listed part
-_PART_CONTENT: dict[type, Callable[[Any], str]] = {
-    ToolCallPart: lambda part: f"{part.tool_name} {part.args_as_json_str()}",
-    ToolReturnPart: lambda part: f"{part.tool_name} {part.model_response_str()}",
-    RetryPromptPart: lambda part: part.model_response(),
-    TextPart: lambda part: part.content,
-}
+ITERATIONS_LESSONS_INSTRUCTIONS = """
+Maintain iterations_lessons.md: a list of lessons that help agents avoid mistakes and wasted work when they work in the future.
 
-ITERATIONS_LESSONS_SYSTEM_PROMPT = """
-You maintain iterations_lessons.md, the memory of mistakes made by an autonomous ML agent that runs the same sequence of steps over several iterations on one dataset.
-After every step, successful or failed, you receive the current file and the transcript of that step.
+You receive:
+- the current contents of iterations_lessons.md
+- the prompts the agent was given in one step
+- the trace of that step, with its iteration number and step ID
 
-A lesson is a mistake the agent made and what to do instead, such as:
-- an error or dead end and its root cause
-- a validator complaint and how it was satisfied
-- an environment problem, such as a missing package, a timeout, or a wrong path
-- a workflow problem, such as repeating the same tool call or not finishing the step
-Don't record findings about the data or the model unless they caused a mistake, good practices, plans, or generic ML advice. Never invent anything the transcript doesn't show.
+Record a lesson when the trace shows:
+- a crash, an incorrect result, substantial wasted work (for example, repeated failed attempts), or context bloat (for example, huge outputs read into the conversation), or
+- a problem that was caught before it caused damage, but that another agent could easily miss and that would have caused one of the above.
+The cause may be the agent, the plan it was given, the dataset, or the environment. Do not record every precaution or minor correction.
 
-Write each lesson as an instruction for the next agent, under about 25 words:
-- <Step or "Any step">: <what to do or avoid>. <short reason>.
-For example:
-- Training: `xgboost` is not installed. Use `sklearn.ensemble.HistGradientBoostingClassifier` instead.
-- Any step: `write_python` rejects paths outside the current step folder. Save new scripts there.
-Keep the names the next agent needs, such as columns, packages, and functions. Leave out full error messages, absolute paths, script names, names of functions or variables the agent wrote itself, and the story of how the fix was found.
+Write each lesson as a short bullet that says what to do or avoid, and why. Describe how to avoid the problem in future work, not how to fix one script. Keep the conditions under which the problem occurs (dataset property, library, model, input size). Drop incidental details such as variable names, script names and values that only made sense for that script.
 
-Return the complete new file as plain markdown, without code fences or commentary:
-- Keep every existing lesson unless the transcript shows it is wrong. In that case, correct or remove it.
-- Write one lesson per root cause, not one per symptom. If several errors come from the same mistake, describe it once.
-- If the file already states the same mistake in other words, merge the new detail into that bullet instead of adding a near-duplicate.
-- Keep the file under 60 bullets.
-- If the step made no new mistakes, return exactly: NO NEW LESSONS
+Examples of when to include a lesson:
+- The trace shows a crash because sequences in the dataset have different lengths.
+  Lesson: "Sequences have unequal lengths. Pad them or process them one at a time before batching."
+- The trace shows the agent repeatedly trying to install packages that are already installed.
+  Lesson: "Conda packages stay installed for all later steps. Check with `conda list` before installing."
+- The trace shows a GPU out-of-memory error that crashed a long training run and wasted its time.
+  Lesson: "Fine-tuning a 650M-parameter model with batch size 64 on 512-token inputs ran out of GPU memory. Before a long GPU training run, run a short trial and check peak memory."
+- The trace shows the agent repeatedly reading the full contents of large files, bloating its context.
+  Lesson: "Search large files for the needed section instead of reading the whole file."
+
+Examples of what to exclude:
+- "Rename `lenght` to `length`." (one typo in one script)
+- "Random forests scored worse." or "Try a transformer next." (experiment results and plans)
+- Anything already stated in the prompts the agent was given, runtime bugs, provider outages, and other failures the agent cannot prevent.
+
+Only record what the trace shows. Do not say that something worked unless the trace shows it working.
+
+Update the existing file. Keep existing lessons unless the trace contradicts them: a step in which the problem did not occur is not evidence that the lesson is wrong. Remove or correct a lesson only if the trace shows the agent doing what the lesson warns against with no problem, or shows that its advice did not work. Merge lessons that describe the same problem into one.
+
+Reference a file only if it contains working code that helps apply the lesson. Write the reference as: iteration number, step ID, and filename relative to the step folder. Never reference temporary files or use a reference just to record where something happened. The lesson must make sense without opening the file.
+Example: "Tokenize with a fixed maximum length; unbounded inputs exhausted memory. (Working code: iteration 2, step training, `train.py`.)"
+
+Return the complete updated iterations_lessons.md as plain Markdown. Do not add commentary or wrap the output in ``` markers. If nothing needs changing, return exactly:
+NO NEW LESSONS
 """
 
 
+def initialize_iterations_lessons(config: Config) -> None:
+    config.iterations_lessons_path.touch(exist_ok=True)
+
+
 def read_iterations_lessons(config: Config) -> str:
-    if not config.iterations_lessons_path.exists():
-        return ""
     return config.iterations_lessons_path.read_text(encoding="utf-8").strip()
 
 
 async def update_iterations_lessons(
     config: Config,
     model: Model,
-    step_name: str,
+    iteration: int,
+    step_id: str,
     messages: list[ModelMessage],
-    error: Exception | None = None,
+    error: IterationRunFailed | None = None,
 ) -> None:
     try:
         _, iterations_lessons = await run_agent(
             agent=_create_iterations_lessons_agent(config, model),
-            user_prompt=_build_user_prompt(config, step_name, messages, error),
+            user_prompt=_build_user_prompt(config, iteration, step_id, error),
             max_steps=ITERATIONS_LESSONS_AGENT_MAX_REQUESTS,
-            message_history=None,
+            message_history=_quote_system_prompts(messages),
             verbose=False,
         )
     except Exception:
-        print(f"WARNING: {Config.ITERATIONS_LESSONS_FILENAME} was not updated after step {step_name}.")
+        print(f"WARNING: {Config.ITERATIONS_LESSONS_FILENAME} was not updated after iteration {iteration} step {step_id}.")
         return
     # todo: test the approach with structured lessons (a DTO instead of a plain string) and compare after observability metrics are introduced
     if iterations_lessons.strip() != NO_NEW_ITERATIONS_LESSONS:
         config.iterations_lessons_path.write_text(f"{iterations_lessons.strip()}\n", encoding="utf-8")
 
 
-def _build_user_prompt(config: Config, step_name: str, messages: list[ModelMessage], error: Exception | None) -> str:
+def _build_user_prompt(config: Config, iteration: int, step_id: str, error: IterationRunFailed | None) -> str:
     result = "It succeeded." if error is None else f"It failed with:\n{_format_error(error)}"
     return f"""
 Current {Config.ITERATIONS_LESSONS_FILENAME}:
 {read_iterations_lessons(config)}
 
-Step {step_name} just ended. Below is the transcript of its agent, for you to analyze:
-{_format_transcript(messages)}
+Iteration {iteration}, step {step_id} just ended. The messages above are the prompts and the trace of its agent, for you to analyze.
 
 {result}
 """
 
 
-def _format_transcript(messages: list[ModelMessage]) -> str:
-    parts = [part for message in messages for part in message.parts if type(part) in _PART_CONTENT]
-    contents = [(type(part).__name__, _PART_CONTENT[type(part)](part)) for part in parts]
-    lines = [f"[{name}] {content[:MAX_PART_CHARS]}" for name, content in contents if content.strip()]
-    return "\n".join(lines)[-MAX_TRANSCRIPT_CHARS:]
+def _quote_system_prompts(messages: list[ModelMessage]) -> list[ModelMessage]:
+    return [
+        replace(message, parts=[_quote_system_prompt(part) for part in message.parts])
+        if isinstance(message, ModelRequest)
+        else message
+        for message in messages
+    ]
 
 
-def _format_error(error: Exception) -> str:
-    trace = (
-        error.exception_trace if isinstance(error, IterationRunFailed) else "".join(traceback.format_exception(error))
-    )
-    return trace[-MAX_PART_CHARS:]
+def _quote_system_prompt(part):
+    if not isinstance(part, SystemPromptPart):
+        return part
+    return UserPromptPart(content=f"<agent_system_prompt>\n{part.content}\n</agent_system_prompt>")
+
+
+def _format_error(error: IterationRunFailed) -> str:
+    return error.exception_trace[-MAX_ERROR_CHARS:]
 
 
 def _create_iterations_lessons_agent(config: Config, model: Model) -> Agent[None, str]:
     return Agent(
         model=model,
-        system_prompt=ITERATIONS_LESSONS_SYSTEM_PROMPT,
+        # instructions instead of system_prompt: pydantic-ai drops system_prompt when message_history is passed
+        instructions=ITERATIONS_LESSONS_INSTRUCTIONS,
         model_settings=ModelSettings(temperature=config.temperature),
         output_type=str,
         retries=config.max_validation_retries,

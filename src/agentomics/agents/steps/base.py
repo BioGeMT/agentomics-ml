@@ -15,6 +15,8 @@ from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 
 from agentomics.agents.agent_utils import (
+    extract_prompt_messages,
+    extract_step_messages,
     fabricate_final_result_messages,
     fabricate_initial_prompt_messages,
     run_agent,
@@ -44,12 +46,23 @@ class RuntimeStep(ABC):
     output_type: Any = None
     failure_is_fatal: bool = True
 
-    def __init__(self, config: Config, model: Model, iteration_plan_model: Model, provider: Provider, tools: list) -> None:
+    def __init__(
+        self,
+        config: Config,
+        model: Model,
+        iteration_plan_model: Model,
+        trace_analysis_model: Model,
+        provider: Provider,
+        tools: list,
+    ) -> None:
         self.config = config
         self.model = model
         self.iteration_plan_model = iteration_plan_model
+        self.trace_analysis_model = trace_analysis_model
         self.provider = provider
         self.tools = tools
+        self._step_prompt_messages: list[ModelMessage] = []
+        self._step_messages: list[ModelMessage] = []
 
     async def run(self) -> None:
         if not self.should_run():
@@ -95,7 +108,7 @@ class RuntimeStep(ABC):
             check=True,
         )
 
-    async def on_step_end(self, error: Exception | None = None) -> None:
+    async def on_step_end(self, error: IterationRunFailed | None = None) -> None:
         iteration = load_current_iteration_index(self.config)
         status = "FAILED" if error else "SUCCEEDED"
         _console.print(f"[bold purple]ITERATION {iteration} | {self.display_name} STEP {status}[/bold purple]")
@@ -142,13 +155,14 @@ class AgenticStep(RuntimeStep):
         super().on_step_start()
         self._setup_injected_scripts()
 
-    async def on_step_end(self, error: Exception | None = None) -> None:
+    async def on_step_end(self, error: IterationRunFailed | None = None) -> None:
         await super().on_step_end(error)
         await update_iterations_lessons(
             config=self.config,
-            model=self.iteration_plan_model,
-            step_name=self.display_name,
-            messages=self._step_messages,
+            model=self.trace_analysis_model,
+            iteration=load_current_iteration_index(self.config),
+            step_id=self.step_id,
+            messages=[*self._step_prompt_messages, *self._step_messages],
             error=error,
         )
 
@@ -224,7 +238,7 @@ class AgenticStep(RuntimeStep):
         if not iterations_lessons:
             return ""
         return (
-            "\nLessons established so far in this run. Apply the ones relevant to this step instead of re-discovering them.\n"
+            "\nLessons established so far in this run.\n"
             f"<iterations_lessons>\n{iterations_lessons}\n</iterations_lessons>"
         )
 
@@ -257,10 +271,9 @@ class AgenticStep(RuntimeStep):
         return history
 
     async def _execute(self) -> AgenticStepOutput:
-        self._step_messages: list[ModelMessage] = []
         step_started_at = datetime.now()
         message_history = self.get_message_history()
-        history_length = len(message_history or [])
+        self._step_prompt_messages = extract_prompt_messages(message_history)
         user_prompt = self.build_user_prompt()
         agent = self.create_agent()
         try:
@@ -272,9 +285,7 @@ class AgenticStep(RuntimeStep):
                 deps=self.build_deps(step_started_at),
             )
         except IterationRunFailed as error:
-            # history_length: drop the previous steps' context, keep only this step's messages
-            self._step_messages = error.context_messages[history_length:]
+            self._step_messages = extract_step_messages(error.context_messages, message_history)
             raise
-        # history_length: drop the previous steps' context, keep only this step's messages
-        self._step_messages = run_messages[history_length:]
+        self._step_messages = extract_step_messages(run_messages, message_history)
         return self._populate_files_created(output, step_started_at)
