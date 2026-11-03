@@ -26,6 +26,7 @@ from agentomics.runtime.report_data import (
 )
 from agentomics.runtime.report_styles import (
     REPORT_PALETTE,
+    apply_pub_style,
     build_styles,
     escape_report_text as _esc,
     format_metric as _fmt_metric,

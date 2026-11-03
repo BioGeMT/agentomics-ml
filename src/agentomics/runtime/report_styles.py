@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import matplotlib.pyplot as plt
 from reportlab.lib import colors
 from reportlab.lib.units import cm
 from reportlab.platypus import Paragraph, Table, TableStyle
@@ -22,6 +23,33 @@ REPORT_PALETTE = {
     "pale_gray": "#F3F6F8",
     "white": "#FFFFFF",
 }
+
+
+def apply_pub_style() -> None:
+    plt.rcParams.update(
+        {
+            "figure.dpi": 200,
+            "savefig.dpi": 300,
+            "figure.figsize": (6.2, 4.0),
+            "font.size": 10,
+            "axes.titlesize": 12,
+            "axes.labelsize": 10,
+            "xtick.labelsize": 9,
+            "ytick.labelsize": 9,
+            "legend.fontsize": 9,
+            "axes.grid": True,
+            "grid.alpha": 0.25,
+            "grid.linestyle": "-",
+            "grid.linewidth": 0.6,
+            "axes.spines.top": False,
+            "axes.spines.right": False,
+            "axes.linewidth": 0.8,
+            "lines.linewidth": 1.6,
+            "lines.markersize": 4,
+            "savefig.bbox": "tight",
+            "savefig.pad_inches": 0.08,
+        }
+    )
 
 
 def pdf_color(name: str):
