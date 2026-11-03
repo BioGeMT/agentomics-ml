@@ -1,23 +1,31 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 from pathlib import Path
 from typing import Dict, List, Tuple
 
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib.ticker import MaxNLocator
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 from reportlab.platypus import (
     LongTable,
+    PageBreak,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
     TableStyle,
+    Image as RLImage,
 )
 
-from agentomics.datasets.data_contract import VALIDATION_SPLIT
+from agentomics.datasets.data_contract import TRAIN_SPLIT, VALIDATION_SPLIT
 from agentomics.runtime.report_data import RunMeta, gather_iteration_inputs
 from agentomics.runtime.report_styles import (
+    REPORT_PALETTE,
     build_styles,
     escape_report_text,
     format_metric,
@@ -39,6 +47,15 @@ class IterationSummary:
     change_from_previous: float | None
     split_changed: bool
     is_best: bool
+
+
+@dataclass(frozen=True)
+class IterationMetricPoint:
+    iteration: int
+    split_version: int | None
+    train_metrics: Dict[str, float]
+    validation_metrics: Dict[str, float]
+    test_metrics: Dict[str, float]
 
 
 def _iteration_approach(config: Config, iteration: int) -> str:
@@ -158,6 +175,181 @@ def _best_iteration_test_metrics(
     return test_metric_rows, test_sample_counts
 
 
+def _iteration_metric_points(
+    config: Config,
+    iterations: List[int],
+    best_iteration: int | None,
+) -> List[IterationMetricPoint]:
+    points = []
+    for iteration in iterations:
+        inputs = gather_iteration_inputs(config, iteration)
+        split_output = load_step_output(config, "data_split", config.iteration_dir(iteration))
+        split_version = getattr(split_output, "split_version", None)
+        split_metrics = {split.split_name: split.metrics for split in inputs.splits}
+        points.append(
+            IterationMetricPoint(
+                iteration=iteration,
+                split_version=split_version,
+                train_metrics=split_metrics.get(TRAIN_SPLIT, {}),
+                validation_metrics=split_metrics.get(VALIDATION_SPLIT, {}),
+                test_metrics=(
+                    {
+                        metric_name: value
+                        for split in inputs.splits
+                        if split.split_name.casefold().startswith("test")
+                        for metric_name, value in split.metrics.items()
+                    }
+                    if iteration == best_iteration
+                    else {}
+                ),
+            )
+        )
+    return points
+
+
+def _find_metric_value(metrics: Dict[str, float], metric_name: str) -> float | None:
+    normalized_name = metric_name.casefold()
+    for name, value in metrics.items():
+        if name.casefold() == normalized_name:
+            try:
+                value = float(value)
+            except (TypeError, ValueError):
+                return None
+            return value if math.isfinite(value) else None
+    return None
+
+
+def _plot_metric_segment(ax, segment, color: str, label: str) -> None:
+    if segment:
+        ax.plot(
+            [point[0] for point in segment],
+            [point[1] for point in segment],
+            color=color,
+            marker="o",
+            markersize=4,
+            linewidth=1.5,
+            label=label,
+        )
+
+
+def _plot_split_metric_series(
+    ax,
+    points: List[IterationMetricPoint],
+    metric_name: str,
+    attribute: str,
+    color: str,
+    label: str,
+) -> None:
+    segment = []
+    previous_point = None
+    label_used = False
+    for point in points:
+        metrics = getattr(point, attribute)
+        value = _find_metric_value(metrics, metric_name)
+        if value is None:
+            _plot_metric_segment(ax, segment, color, label if not label_used else "_nolegend_")
+            label_used = label_used or bool(segment)
+            segment = []
+            previous_point = None
+            continue
+        if segment and (
+            point.split_version != previous_point.split_version
+            or point.iteration != previous_point.iteration + 1
+        ):
+            _plot_metric_segment(ax, segment, color, label if not label_used else "_nolegend_")
+            label_used = True
+            segment = []
+        segment.append((point.iteration, value))
+        previous_point = point
+    _plot_metric_segment(ax, segment, color, label if not label_used else "_nolegend_")
+
+
+def _plot_iteration_metric_trends(
+    path: Path,
+    points: List[IterationMetricPoint],
+    best_iteration: int | None,
+) -> Path | None:
+    metric_names = sorted(
+        {
+            metric_name
+            for point in points
+            for metrics in (point.train_metrics, point.validation_metrics, point.test_metrics)
+            for metric_name, value in metrics.items()
+            if _find_metric_value({metric_name: value}, metric_name) is not None
+        },
+        key=str.casefold,
+    )
+    if not metric_names:
+        return None
+
+    columns = 2 if len(metric_names) > 1 else 1
+    rows = math.ceil(len(metric_names) / columns)
+    figure, axes = plt.subplots(
+        rows,
+        columns,
+        figsize=(11, max(3.0, rows * 2.6)),
+        squeeze=False,
+    )
+    flat_axes = list(axes.flat)
+    for ax, metric_name in zip(flat_axes, metric_names):
+        _plot_split_metric_series(
+            ax, points, metric_name, "train_metrics", REPORT_PALETTE["teal"], "Train"
+        )
+        _plot_split_metric_series(
+            ax,
+            points,
+            metric_name,
+            "validation_metrics",
+            REPORT_PALETTE["orange"],
+            "Validation",
+        )
+        test_x = []
+        test_y = []
+        for point in points:
+            value = _find_metric_value(point.test_metrics, metric_name)
+            if value is not None:
+                test_x.append(point.iteration)
+                test_y.append(value)
+        if test_x:
+            ax.scatter(
+                test_x,
+                test_y,
+                color=REPORT_PALETTE["vermilion"],
+                marker="D",
+                s=38,
+                zorder=4,
+                label="Test (best only)",
+            )
+        if best_iteration is not None and any(
+            point.iteration == best_iteration for point in points
+        ):
+            ax.axvline(
+                best_iteration,
+                color=REPORT_PALETTE["slate"],
+                linestyle=":",
+                linewidth=1,
+                label="Best iteration",
+            )
+        ax.set_title(metric_name)
+        ax.set_xlabel("Iteration")
+        ax.set_ylabel("Score")
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True, nbins=8))
+        ax.grid(True, alpha=0.25, linewidth=0.6)
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.legend(fontsize=7, loc="best")
+
+    for ax in flat_axes[len(metric_names):]:
+        ax.set_visible(False)
+
+    figure.suptitle("Train and validation metrics across iterations", fontsize=13)
+    figure.tight_layout(rect=(0, 0, 1, 0.96))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    figure.savefig(path, dpi=220, bbox_inches="tight")
+    plt.close(figure)
+    return path
+
+
 def _pivot_test_metrics(
     test_metric_rows: List[Tuple[str, str, float]],
 ) -> Tuple[List[str], List[str], Dict[Tuple[str, str], float]]:
@@ -196,6 +388,7 @@ def write_all_iterations_markdown(
     summaries: List[IterationSummary],
     test_metric_rows: List[Tuple[str, str, float]],
     test_sample_counts: Dict[str, int | None],
+    metric_plot_path: Path | None = None,
 ) -> None:
     best_summary = next((row for row in summaries if row.is_best), None)
     best_score = (
@@ -244,6 +437,22 @@ def write_all_iterations_markdown(
             "It is omitted when split versions or scores are missing or splits differ.",
             "Other train and validation metrics are included in each detailed iteration report.",
             "",
+        ]
+    )
+    if metric_plot_path is not None:
+        lines.extend(
+            [
+                "## Train and validation metrics across iterations",
+                "",
+                "Lines stop when the data split changes. Test results are shown only for the selected best iteration.",
+                "",
+                f"![Train and validation metrics across iterations]({metric_plot_path.as_posix()})",
+                "",
+            ]
+        )
+
+    lines.extend(
+        [
             "## Held-out test results for the selected best iteration",
             "",
         ]
@@ -283,6 +492,7 @@ def write_all_iterations_pdf(
     summaries: List[IterationSummary],
     test_metric_rows: List[Tuple[str, str, float]],
     test_sample_counts: Dict[str, int | None],
+    metric_plot_path: Path | None = None,
 ) -> None:
     styles = build_styles()
     doc = SimpleDocTemplate(
@@ -373,6 +583,25 @@ def write_all_iterations_pdf(
     table.setStyle(TableStyle(table_style))
     story.append(table)
 
+    if metric_plot_path is not None:
+        image = RLImage(str(metric_plot_path))
+        max_width = A4[0] - 4 * cm
+        max_height = A4[1] - 4 * cm
+        scale = min(max_width / image.drawWidth, max_height / image.drawHeight, 1.0)
+        image.drawWidth *= scale
+        image.drawHeight *= scale
+        story.extend(
+            [
+                PageBreak(),
+                Paragraph("Train and validation metrics across iterations", styles["H2"]),
+                Paragraph(
+                    "Lines stop when the data split changes. Test results are shown only for the selected best iteration.",
+                    styles["Muted"],
+                ),
+                image,
+            ]
+        )
+
     if test_metric_rows:
         story.extend(
             [
@@ -385,7 +614,7 @@ def write_all_iterations_pdf(
         test_table_data = [
             ["Metric"]
             + [
-                _test_split_title(split.title(), test_sample_counts.get(split))
+                _test_split_title(split, test_sample_counts.get(split))
                 for split in test_splits
             ]
         ]
@@ -437,6 +666,17 @@ def write_all_iterations_summary(
 ) -> None:
     summaries = _all_iteration_summaries(config, iterations, best_iteration, run_meta.val_metric)
     test_metric_rows, test_sample_counts = _best_iteration_test_metrics(config, best_iteration)
+    metric_points = _iteration_metric_points(config, iterations, best_iteration)
+    metric_plot_path = _plot_iteration_metric_trends(
+        config.pdf_reports_dir / "plots" / "all_iterations_metrics.png",
+        metric_points,
+        best_iteration,
+    )
+    metric_plot_link = (
+        Path("pdf") / "plots" / metric_plot_path.name
+        if metric_plot_path is not None
+        else None
+    )
     write_all_iterations_markdown(
         config.reports_dir / "all_iterations.md",
         run_meta,
@@ -444,6 +684,7 @@ def write_all_iterations_summary(
         summaries,
         test_metric_rows,
         test_sample_counts,
+        metric_plot_link,
     )
     write_all_iterations_pdf(
         config.reports_dir / "all_iterations.pdf",
@@ -452,4 +693,5 @@ def write_all_iterations_summary(
         summaries,
         test_metric_rows,
         test_sample_counts,
+        metric_plot_path,
     )

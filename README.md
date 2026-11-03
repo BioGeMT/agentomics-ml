@@ -102,6 +102,7 @@ outputs/<agent_id>/
     └── pdf/
         ├── iteration_N.pdf
         └── plots/
+            └── all_iterations_metrics.png
 ```
 
 Use `best_iteration_snapshot/` for inference or re-training. `run/` keeps the

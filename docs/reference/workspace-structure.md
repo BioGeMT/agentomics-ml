@@ -211,6 +211,7 @@ outputs/<agent_id>/
 │   └── pdf/
 │       ├── iteration_0.pdf
 │       └── plots/
+│           └── all_iterations_metrics.png
 ├── logs/                   # Additional files and logs
 └── README.md                 # Run summary
 ```

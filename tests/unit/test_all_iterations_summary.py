@@ -33,6 +33,7 @@ def test_all_iteration_reports_summarize_comparable_scores_and_best_test_results
             [f"row-{iteration}-0", f"row-{iteration}-1"],
         )
         splits = [
+            SplitArtifacts("train", labels, predictions, {"AUROC": score + 0.05}),
             SplitArtifacts(
                 "validation", labels, predictions, {"AUROC": score}
             )
@@ -91,4 +92,9 @@ def test_all_iteration_reports_summarize_comparable_scores_and_best_test_results
     )
     assert "test (n=1)" in summary
     assert "| ACC | 1 |" in summary
+    assert "Train and validation metrics across iterations" in summary
+    assert "pdf/plots/all_iterations_metrics.png" in summary
     assert (config.reports_dir / "all_iterations.pdf").stat().st_size > 0
+    assert (
+        config.pdf_reports_dir / "plots" / "all_iterations_metrics.png"
+    ).stat().st_size > 0
