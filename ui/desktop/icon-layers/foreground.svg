@@ -1,0 +1,8 @@
+<!-- A layer for an Icon Composer .icon (app-icons.md: square and unmasked; the system applies the corners, highlights and Liquid Glass). The same design on the legacy macOS grid, for today's .icns, is ../icon.svg. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <g fill="none" stroke="#ffffff" stroke-linecap="round">
+    <path d="M608.0 300.8 C608.0 425.6 416.0 387.2 416.0 512.0 C416.0 636.8 608.0 598.4 608.0 723.2" stroke-width="67.2" stroke-opacity="0.42"/>
+    <path d="M473.6 512.0H550.4" stroke-width="37.0" stroke-opacity="0.42"/>
+    <path d="M416.0 300.8 C416.0 425.6 608.0 387.2 608.0 512.0 C608.0 636.8 416.0 598.4 416.0 723.2" stroke-width="67.2"/>
+  </g>
+</svg>

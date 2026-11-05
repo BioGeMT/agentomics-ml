@@ -1,0 +1,83 @@
+# The Agentomics desktop app (macOS, Linux, Windows). Run `task` from ui/ to list tasks; `task dist`
+# builds the installers for the OS it runs on. Needs Node/npm, and uv for the bundled agentomics-run
+# (it fetches its own Python).
+version: "3"
+
+tasks:
+  default:
+    cmds:
+      - task --list
+    silent: true
+
+  install:
+    desc: Install the renderer's and the desktop app's npm packages
+    cmds:
+      - npm --prefix renderer install
+      - npm --prefix desktop install
+    sources:
+      - renderer/package.json
+      - renderer/package-lock.json
+      - desktop/package.json
+      - desktop/package-lock.json
+    generates:
+      - renderer/node_modules/.package-lock.json
+      - desktop/node_modules/.package-lock.json
+
+  dev:
+    desc: Run the app in development (starts the Vite dev server for instant reloads)
+    deps: [install]
+    dir: desktop
+    cmds:
+      - npm start
+
+  typecheck:
+    desc: Typecheck the renderer and the desktop app
+    deps: [install]
+    cmds:
+      - npm --prefix renderer run typecheck
+      - npm --prefix desktop run typecheck
+
+  renderer:
+    desc: Build the UI to renderer/out
+    deps: [install]
+    dir: renderer
+    cmds:
+      - npm run build:desktop
+
+  desktop:
+    desc: Build the main process and preload to desktop/dist
+    deps: [install]
+    dir: desktop
+    cmds:
+      - npm run build
+
+  cli:
+    desc: Build the standalone agentomics-run the app carries (desktop/build/agentomics-run)
+    dir: desktop
+    cmds:
+      - npm run build:cli
+
+  preview:
+    desc: Run the built UI through agentomics://, as the packaged app does
+    deps: [renderer, desktop]
+    dir: desktop
+    cmds:
+      - AGENTOMICS_UI=export npx electron .
+
+  dist:
+    desc: Build this OS's installers into desktop/release (macOS DMG, Linux AppImage and .deb, Windows setup .exe)
+    deps: [install, typecheck]
+    dir: desktop
+    cmds:
+      - npm run dist
+
+  icon:
+    desc: Render desktop/icon.png from desktop/icon.svg (needs rsvg-convert)
+    dir: desktop
+    cmds:
+      - npm run icon
+
+  clean:
+    desc: Remove build outputs (the UI build, compiled app, CLI build and installers)
+    cmds:
+      - rm -rf renderer/out desktop/dist desktop/build desktop/release

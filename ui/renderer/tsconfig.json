@@ -1,0 +1,50 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "@agentomics/contract": [
+        "../contract/index.ts"
+      ],
+      "@agentomics/contract/*": [
+        "../contract/*.ts"
+      ],
+      "@agentomics/server": [
+        "../server/index.ts"
+      ],
+      "@/*": [
+        "./*"
+      ]
+    },
+    "types": [
+      "node",
+      "vite/client"
+    ],
+    "allowImportingTsExtensions": true
+  },
+  "include": [
+    "app",
+    "run",
+    "components",
+    "hooks",
+    "model",
+    "*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "out"
+  ]
+}

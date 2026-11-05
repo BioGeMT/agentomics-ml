@@ -215,3 +215,12 @@ wandb/
 *playground*.ipynb
 prepared_datasets
 prepared_test_sets
+
+# Desktop build outputs
+ui/renderer/out/
+ui/desktop/dist/
+ui/desktop/release/
+ui/.task/
+
+# Impeccable design tool working files
+.impeccable/
