@@ -32,7 +32,9 @@ def _write_outputs_readme(workspace_directory: Path, agent_id: str) -> None:
 - Best model and code: `best_iteration_snapshot/`
 - Iteration archives: `run/iteration_N/`
 - Reports: `reports/`
-- Logs and diagnostics: `extras/`
+- All-iteration summary: `reports/all_iterations.pdf` and `reports/all_iterations.md`
+- Best-iteration detail: `reports/best_iteration.pdf` and `reports/best_iteration.md`
+- Logs and diagnostics: `logs/`
 
 ## Inference
 

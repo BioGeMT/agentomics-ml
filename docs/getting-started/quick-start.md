@@ -88,7 +88,9 @@ The agent will:
 2. Run iterative ML development cycles
 3. Save the best model to the run's output directory (`outputs/<agent_id>/`)
 
-Results include trained models, inference scripts, markdown reports in `reports/markdown/`, and PDF reports in `reports/pdf/`.
+Results include trained models, inference scripts, an all-iteration summary at
+`reports/all_iterations.md` and `reports/all_iterations.pdf`, plus detailed
+markdown and PDF reports in `reports/markdown/` and `reports/pdf/`.
 
 ## Next Steps
 

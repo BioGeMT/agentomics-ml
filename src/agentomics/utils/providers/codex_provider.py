@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 import httpx2
 from pydantic_ai.models.openai import OpenAIResponsesModel
 from pydantic_ai.providers.openai_codex import OpenAICodexProvider
+from pydantic_ai.models.openai import OpenAIResponsesModelSettings
 from rich.panel import Panel
 
 from agentomics.utils.config import Config
@@ -124,4 +125,16 @@ class CodexProvider(Provider):
                 credential_source=self.auth_store,
                 http_client=async_http_client,
             ),
+        )
+
+    def get_model_settings(self, config: Config) -> OpenAIResponsesModelSettings:
+        # The Codex Responses API rejects temperature, so leave it unspecified.
+        return OpenAIResponsesModelSettings()
+
+    def get_high_reasoning_model_settings(self, kwargs) -> OpenAIResponsesModelSettings:
+        # The Codex Responses API rejects temperature, including on plan requests.
+        kwargs.pop("temperature", None)
+        return OpenAIResponsesModelSettings(
+            openai_reasoning_effort="high",
+            **kwargs,
         )

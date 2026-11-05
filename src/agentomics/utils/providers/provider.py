@@ -117,6 +117,9 @@ class Provider():
             **kwargs,
         )
 
+    def get_model_settings(self, config: Config) -> ModelSettings:
+        return ModelSettings(temperature=config.temperature)
+
     @staticmethod
     def get_provider_config(provider_name: str) -> Dict:
         yaml_path = Path(__file__).parent / "configured_providers.yaml"

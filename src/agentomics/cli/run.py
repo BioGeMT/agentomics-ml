@@ -420,6 +420,20 @@ def main() -> int:
                     workspace_directory,
                     agent_id,
                 )
+            snapshot_metadata = (
+                workspace_directory
+                / Config.BEST_ITERATION_SNAPSHOT_DIRNAME
+                / Config.RUNTIME_INFO_DIRNAME
+                / Config.ITERATION_METADATA_FILENAME
+            )
+            if snapshot_metadata.is_file():
+                print(f"\nRun complete. Results saved to: {workspace_directory}")
+                print(f"Reports: {workspace_directory / 'reports'}")
+                print(
+                    "To run inference, use: "
+                    f"agentomics-inference --agent-dir {workspace_directory} "
+                    "--input <input> --output <predictions.csv>"
+                )
         return exit_code
     finally:
         if _is_agent_run(arguments):

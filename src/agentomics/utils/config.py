@@ -5,6 +5,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import ClassVar
 
+from rich import box
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+
 from agentomics.runtime.system_resources import get_resources_summary
 from agentomics.utils.versioning import get_version
 
@@ -160,26 +165,47 @@ class Config:
         return self.run_dir / f"{self.ITERATION_DIR_PREFIX}{iteration}"
 
     def print_summary(self) -> None:
-        print("=== AGENTOMICS CONFIGURATION ===")
-        print("MAIN MODEL:", self.model_name)
-        print("ITERATION PLAN MODEL:", self.iteration_plan_model_name)
-        print("DATASET:", self.dataset)
-        print("TASK TYPE:", self.task_type)
-        print("VAL METRIC:", self.val_metric)
-        print("AGENT ID:", self.agent_id)
-        print("ITERATIONS:", self.iterations)
-        print("EXPLORATION ITERATIONS:", self.exploration_iterations)
-        print("SPLIT ALLOWED ITERATIONS:", self.split_allowed_iterations)
-        print(
-            "TIMEOUT IN HOURS:",
-            (self.time_deadline - time.time()) / 3600 if self.time_deadline is not None else "No timeout",
+        rows = [
+            ("Main model", self.model_name),
+            ("Iteration plan model", self.iteration_plan_model_name),
+            ("Dataset", self.dataset),
+            ("Task type", self.task_type),
+            ("Validation metric", self.val_metric),
+            ("Agent ID", self.agent_id),
+            ("Iterations", self.iterations),
+            ("Exploration iterations", self.exploration_iterations),
+            ("Split allowed iterations", self.split_allowed_iterations),
+            (
+                "Timeout in hours",
+                (self.time_deadline - time.time()) / 3600
+                if self.time_deadline is not None
+                else "No timeout",
+            ),
+            (
+                "Split timeout in hours",
+                (self.split_time_deadline - time.time()) / 3600
+                if self.split_time_deadline is not None
+                else "No timeout",
+            ),
+            ("User prompt", self.user_prompt),
+            ("Resources", get_resources_summary()),
+        ]
+        table = Table(
+            box=box.SIMPLE,
+            show_header=True,
+            header_style="bold white",
+            padding=(0, 1),
+            expand=True,
         )
-        print(
-            "SPLIT TIMEOUT IN HOURS:",
-            (self.split_time_deadline - time.time()) / 3600
-            if self.split_time_deadline is not None
-            else "No timeout",
+        table.add_column("Setting", style="bold cyan", no_wrap=True)
+        table.add_column("Value", overflow="fold")
+        for label, value in rows:
+            table.add_row(label, str(value))
+
+        Console().print(
+            Panel(
+                table,
+                title="AGENTOMICS CONFIGURATION",
+                border_style="cyan",
+            )
         )
-        print("USER PROMPT:", self.user_prompt)
-        print("RESOURCES SUMMARY:", get_resources_summary())
-        print("===============================")
