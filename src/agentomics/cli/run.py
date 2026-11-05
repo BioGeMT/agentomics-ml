@@ -113,6 +113,7 @@ def _docker_environment_arguments(agent_id: str) -> list[str]:
         "WANDB_RUN_GROUP", "WANDB_JOB_TYPE", "WANDB_NAME",
         "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
         "http_proxy", "https_proxy", "all_proxy", "no_proxy", "CUDA_VISIBLE_DEVICES",
+        "AGENTOMICS_UI_EVENTS",
     )
     docker_arguments.extend(["-e", f"AGENT_ID={agent_id}"])
     if sys.stdin.isatty() and sys.stdout.isatty():
@@ -186,6 +187,15 @@ def build_dataset_mounts(
     return mounts
 
 
+# Containers of a run carry their workspace folder's name, so a UI can find and stop them where
+# signals can't reach them (Windows).
+WORKSPACE_LABEL = "org.biogemt.agentomics.workspace"
+
+
+def _workspace_label_arguments(workspace_directory: Path) -> list[str]:
+    return ["--label", f"{WORKSPACE_LABEL}={workspace_directory.name}"]
+
+
 def _run_agent_in_docker(
     arguments: argparse.Namespace,
     workspace_directory: Path,
@@ -225,6 +235,7 @@ def _run_agent_in_docker(
         )
 
     docker_arguments = _docker_environment_arguments(agent_id)
+    docker_arguments.extend(_workspace_label_arguments(workspace_directory))
     if arguments.provider == "ollama":
         docker_arguments.extend(["--network", "host"])
     # A non-zero exit is an expected outcome (for example, no best-iteration
@@ -351,6 +362,7 @@ def _run_reporting_in_docker(
             "--agent-id",
             agent_id,
         ],
+        docker_arguments=_workspace_label_arguments(workspace_directory),
     )
 
 

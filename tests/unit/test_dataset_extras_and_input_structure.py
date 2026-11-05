@@ -124,6 +124,27 @@ def test_preparation_records_input_structure_in_metadata(
     assert metadata["input_structure"] == ["data.csv"]
 
 
+def test_preparation_ignores_os_folder_metadata(
+    default_dataset_dir: Path,
+    tmp_path: Path,
+):
+    # Finder and Windows Explorer leave these in any folder a user opens.
+    for folder in (default_dataset_dir, default_dataset_dir / "train", default_dataset_dir / "train" / "input"):
+        (folder / ".DS_Store").write_bytes(b"\x00\x00\x00\x01Bud1")
+    (default_dataset_dir / "Thumbs.db").write_bytes(b"\x00")
+    (default_dataset_dir / "._metadata.json").write_bytes(b"\x00")
+    prepared_dir = tmp_path / "prepared"
+
+    prepare_dataset(
+        source_dir=default_dataset_dir,
+        destination_dir=prepared_dir,
+        task_type="classification",
+    )
+
+    metadata = json.loads((prepared_dir / "metadata.json").read_text(encoding="utf-8"))
+    assert metadata["input_structure"] == ["data.csv"]
+
+
 def test_preparation_preserves_top_level_supplementary_content(
     default_dataset_dir: Path,
     tmp_path: Path,

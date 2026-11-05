@@ -28,6 +28,7 @@ from agentomics.runtime.read_write_utils import (
     load_current_iteration_index,
     load_current_iteration_system_prompt,
 )
+from agentomics.runtime import ui_events
 from agentomics.runtime.step_outputs import load_step_outputs, save_step_output
 from agentomics.utils.config import Config
 from agentomics.utils.exceptions import IterationRunFailed
@@ -56,13 +57,14 @@ class RuntimeStep(ABC):
             self.on_step_success(self.build_simulated_output())
             return
         self.on_step_start()
-        try:
-            output = await self._execute()
-        except IterationRunFailed:
-            if self.failure_is_fatal:
-                raise
-            _console.print(f"{self.display_name} failed, keeping the iteration")
-            output = self.build_failure_output()
+        with ui_events.step(self.config, self.display_name):
+            try:
+                output = await self._execute()
+            except IterationRunFailed:
+                if self.failure_is_fatal:
+                    raise
+                _console.print(f"{self.display_name} failed, keeping the iteration")
+                output = self.build_failure_output()
         self.on_step_success(output)
 
     def should_run(self) -> bool:

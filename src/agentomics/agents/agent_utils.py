@@ -17,12 +17,14 @@ from pydantic_ai.messages import (
 )
 import weave
 
+from agentomics.runtime import ui_events
 from agentomics.utils.exceptions import IterationRunFailed
 from agentomics.utils.printing_utils import pretty_print_node
 
 
 @weave.op(call_display_name=lambda call: f"Agent Step - {call.inputs['output_type'].__name__ if call.inputs.get('output_type', None) else call.inputs['agent']._output_type.__name__}")
 async def run_agent(agent: Agent, user_prompt: str, max_steps: int, message_history: list | None, output_type = None, verbose: bool = True, deps=None):
+    ui = ui_events.agent_events()
     with capture_run_messages() as messages:
         try:
             async with agent.iter(
@@ -35,6 +37,7 @@ async def run_agent(agent: Agent, user_prompt: str, max_steps: int, message_hist
                 async for node in agent_run:
                     if(verbose):
                         pretty_print_node(node)
+                    await ui.publish_node(node)
                 return agent_run.result.all_messages(), agent_run.result.output
 
         except Exception as e:
