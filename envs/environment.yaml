@@ -20,4 +20,5 @@ dependencies:
     - uv==0.9.26
     - openai==3.29.0
     - anthropic==1.13.0
+    - ag-ui-protocol==0.1.22 # run event log for the UI (AGENTOMICS_UI_EVENTS=1)
     - pytest==9.1.1

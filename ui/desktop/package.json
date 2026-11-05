@@ -1,0 +1,110 @@
+{
+  "name": "agentomics-desktop",
+  "productName": "Agentomics",
+  "version": "1.2.0",
+  "description": "Start Agentomics runs on a dataset folder and follow the agent's work live.",
+  "author": "BioGeMT",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit -p .",
+    "start": "npm run build && electron .",
+    "postinstall": "node scripts/dev-app-name.js",
+    "start:export": "npm --prefix ../renderer run build:desktop && npm run build && AGENTOMICS_UI=export electron .",
+    "icon": "rsvg-convert -w 1024 -h 1024 icon.svg -o icon.png && node scripts/dev-app-name.js",
+    "build:cli": "node scripts/build-cli.mjs",
+    "dist": "npm run build && npm --prefix ../renderer run build:desktop && npm run build:cli && electron-builder --publish never"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "electron": "44.4.5",
+    "electron-builder": "26.17.0",
+    "esbuild": "0.28.2",
+    "typescript": "7.0.2"
+  },
+  "build": {
+    "appId": "org.biogemt.agentomics",
+    "productName": "Agentomics",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "icon.png",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../renderer/out",
+        "to": "renderer"
+      },
+      {
+        "from": "build/agentomics-run",
+        "to": "agentomics-run"
+      }
+    ],
+    "afterPack": "scripts/after-pack.js",
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "icon.png",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "identity": null,
+      "hardenedRuntime": false,
+      "darkModeSupport": true
+    },
+    "dmg": {
+      "title": "Agentomics ${version}",
+      "artifactName": "Agentomics-${version}-arm64.dmg"
+    },
+    "linux": {
+      "category": "Science",
+      "icon": "icon.png",
+      "maintainer": "BioGeMT <https://github.com/BioGeMT>",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "appImage": {
+      "artifactName": "Agentomics-${version}-x86_64.AppImage"
+    },
+    "deb": {
+      "artifactName": "agentomics_${version}_amd64.deb"
+    },
+    "win": {
+      "icon": "icon.png",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "artifactName": "Agentomics-${version}-x64-setup.exe",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "homepage": "https://github.com/BioGeMT/agentomics-ml"
+}

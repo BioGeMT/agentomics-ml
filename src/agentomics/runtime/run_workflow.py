@@ -12,6 +12,7 @@ import wandb
 from agentomics.cli.run_arguments import add_run_arguments
 from agentomics.run_agent_interactive import run_agent_interactive
 from agentomics.run_logging.wandb_setup import resume_wandb_run
+from agentomics.runtime import ui_events
 from agentomics.runtime.filesystem import restore_host_ownership
 from agentomics.runtime.read_write_utils import load_config
 from agentomics.runtime.setup_fork import fork_run
@@ -172,7 +173,9 @@ def run_workflow(arguments: argparse.Namespace) -> int:
         _prepare_fork(arguments, agent_id, workspace_directory)
         if arguments.use_provisioning_key:
             temporary_key_hash = _create_temporary_api_key(arguments.spend_limit)
-        return _execute_workflow(arguments, agent_id, workspace_directory)
+        with ui_events.run_stream(workspace_directory, agent_id) as result:
+            result["exit_code"] = _execute_workflow(arguments, agent_id, workspace_directory)
+        return result["exit_code"]
     finally:
         if temporary_key_hash is not None:
             _finalize_temporary_api_key(

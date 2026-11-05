@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": [
+      "ES2023",
+      "DOM"
+    ],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": [
+      "node"
+    ],
+    "paths": {
+      "@agentomics/contract": [
+        "../contract/index.ts"
+      ],
+      "@agentomics/contract/*": [
+        "../contract/*.ts"
+      ],
+      "@agentomics/server": [
+        "../server/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "src"
+  ]
+}

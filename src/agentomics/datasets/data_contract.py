@@ -31,6 +31,14 @@ ALLOWED_PUBLIC_DATASET_ENTRIES = {
 }
 ALLOWED_SPLIT_ENTRIES = {INPUT_DIR_NAME, LABELS_FILE_NAME}
 
+# Files the operating system leaves in folders (Finder, Windows Explorer); never part of a dataset.
+OS_METADATA_FILE_NAMES = {".DS_Store", "Thumbs.db", "desktop.ini"}
+
+
+def is_os_metadata(name: str) -> bool:
+    """True for folder metadata the OS creates, including macOS AppleDouble "._" files."""
+    return name in OS_METADATA_FILE_NAMES or name.startswith("._")
+
 def record_input_dir_structure(input_dir: Path) -> list[str]:
     """
     Returns sorted top-level entries in input_dir. Directories are suffixed with '/'.
@@ -40,12 +48,15 @@ def record_input_dir_structure(input_dir: Path) -> list[str]:
     directories may differ between train/validation/test.
     """
     return sorted(
-        f"{item.name}/" if item.is_dir() else item.name for item in Path(input_dir).iterdir()
+        f"{item.name}/" if item.is_dir() else item.name
+        for item in Path(input_dir).iterdir()
+        if not is_os_metadata(item.name)
     )
 
 def validate_split_entries(split_path: Path, split_name: str) -> None:
     unsupported_entries = sorted(
-        item.name for item in split_path.iterdir() if item.name not in ALLOWED_SPLIT_ENTRIES
+        item.name for item in split_path.iterdir()
+        if item.name not in ALLOWED_SPLIT_ENTRIES and not is_os_metadata(item.name)
     )
     if unsupported_entries:
         raise ValueError(
@@ -59,6 +70,7 @@ def validate_public_dataset_entries(dataset_dir: Path) -> None:
         if (
             item.name not in ALLOWED_PUBLIC_DATASET_ENTRIES
             and not (item.is_dir() and item.name.startswith(TEST_SPLIT_PREFIX))
+            and not is_os_metadata(item.name)
         )
     )
     if unsupported_entries:

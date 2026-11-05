@@ -1,0 +1,64 @@
+name: Desktop app
+
+# Builds the desktop app's installers on each OS (the bundled agentomics-run can only be built on the OS
+# it is for). Started by hand; the installers are attached to the run as artifacts.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Desktop app (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS arm64
+            os: macos-latest
+          - name: Linux x64
+            os: ubuntu-latest
+          - name: Windows x64
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Install the UI's npm packages
+        run: |
+          npm --prefix ui/renderer ci
+          npm --prefix ui/desktop ci
+
+      - name: Typecheck
+        run: |
+          npm --prefix ui/renderer run typecheck
+          npm --prefix ui/desktop run typecheck
+
+      - name: Build installers
+        working-directory: ui/desktop
+        env:
+          # Unsigned builds: no signing certificate is looked for.
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npm run dist
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: agentomics-desktop-${{ runner.os }}
+          path: |
+            ui/desktop/release/*.dmg
+            ui/desktop/release/*.AppImage
+            ui/desktop/release/*.deb
+            ui/desktop/release/*.exe
+          if-no-files-found: error

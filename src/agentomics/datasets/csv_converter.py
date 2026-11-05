@@ -16,6 +16,7 @@ from agentomics.datasets.data_contract import (
     TEST_SPLIT_PREFIX,
     TRAIN_SPLIT,
     VALIDATION_SPLIT,
+    is_os_metadata,
 )
 from agentomics.runtime.filesystem import create_absolute_symlink, remove_path
 
@@ -171,7 +172,9 @@ def _load_metadata(source_dir: Path) -> dict:
 
 
 def _validate_raw_csv_dataset_entries(source_dir: Path, allowed_entries: set[str]) -> None:
-    unsupported_entries = sorted(item.name for item in source_dir.iterdir() if item.name not in allowed_entries)
+    unsupported_entries = sorted(
+        item.name for item in source_dir.iterdir() if item.name not in allowed_entries and not is_os_metadata(item.name)
+    )
     if unsupported_entries:
         raise ValueError(
             f"CSV dataset {source_dir.name} has unsupported top-level entries: {unsupported_entries}. "

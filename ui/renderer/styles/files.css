@@ -1,0 +1,164 @@
+/* The file explorer (details pane) and the read-only file viewer (over the notebook). */
+
+/* ---------- tree ---------- */
+.file-tree { padding: 8px 6px 24px; font-size: 12.5px; }
+.file-tree ul { list-style: none; margin: 0; padding: 0; }
+.tree-root { margin: 4px 10px 6px; font: 600 11px var(--sans); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tree-row {
+  display: flex; align-items: center; gap: 5px; width: 100%; height: 24px; padding-right: 8px;
+  border: 0; border-radius: 5px; background: none; font: inherit; color: var(--ink); text-align: left; cursor: pointer;
+}
+.tree-row:hover { background: rgb(var(--shade) / 0.05); }
+.tree-row.selected { background: rgb(var(--accent-rgb) / 0.12); }
+.tree-row:focus-visible { outline: 2px solid var(--ballpoint); outline-offset: -2px; }
+.tree-disclosure { display: grid; place-items: center; flex: none; width: 12px; color: var(--ink-3); }
+.tree-icon { display: grid; place-items: center; flex: none; color: var(--ink-3); }
+.tree-row[aria-expanded] .tree-icon { color: var(--folder); }
+.tree-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tree-size { flex: none; font: 10.5px var(--mono); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+/* Download sits over a file's size on hover, as row actions do in Finder's list view. */
+.file-tree li { position: relative; }
+.tree-download {
+  position: absolute; top: 2px; right: 4px; display: none; place-items: center; width: 22px; height: 20px;
+  border-radius: 5px; color: var(--ink-2);
+}
+.tree-download:hover { background: rgb(var(--shade) / 0.08); color: var(--ink); }
+.tree-download:focus-visible { display: grid; outline: 2px solid var(--ballpoint); outline-offset: -2px; }
+/* Only the row under the pointer: an open folder's li also contains its children's rows. */
+.file-tree li:has(> .tree-row:hover, > .tree-download:hover, > .tree-row:focus-visible, > .tree-download:focus-visible) > .tree-download { display: grid; }
+.file-tree li:has(> .tree-row:hover, > .tree-download:hover, > .tree-row:focus-visible, > .tree-download:focus-visible) > .tree-row .tree-size { visibility: hidden; }
+.tree-note { display: flex; align-items: center; gap: 6px; height: 24px; font-size: 12px; color: var(--ink-3); }
+.tree-note.error { color: var(--failed); }
+
+/* ---------- viewer ---------- */
+.nb > .file-viewer {
+  grid-column: 2; grid-row: 2; z-index: 6; display: flex; flex-direction: column; min-width: 0; min-height: 0;
+  background: var(--page); border-left: 1px solid var(--rule);
+}
+.viewer-head {
+  display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 8px 0 14px; flex: none;
+  border-bottom: 1px solid var(--rule); background: var(--page-tint); color: var(--ink-3);
+}
+.viewer-path { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; overflow: hidden; white-space: nowrap; font-size: 12.5px; }
+.viewer-path .crumb { color: var(--ink-3); }
+.viewer-path .crumb::after { content: "›"; margin-left: 4px; color: var(--ink-faint); }
+.viewer-path strong { color: var(--ink); font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.viewer-meta { flex: none; font-size: 11.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.viewer-button { display: grid; place-items: center; width: 28px; height: 26px; border: 0; border-radius: 6px; background: none; color: var(--ink-2); cursor: pointer; }
+.viewer-button:hover { background: rgb(var(--shade) / 0.06); color: var(--ink); }
+.viewer-button:focus-visible { outline: 2px solid var(--ballpoint); outline-offset: -2px; }
+.viewer-body { flex: 1; min-height: 0; overflow: auto; }
+.viewer-note { display: grid; justify-items: start; gap: 10px; margin: 0; padding: 20px; font-size: 13px; color: var(--ink-2); }
+.viewer-note p { margin: 0; }
+.viewer-note.error { color: var(--failed); }
+.viewer-note > svg { color: var(--ink-3); }
+
+.viewer-code { display: flex; min-width: max-content; font: 12px/1.65 var(--mono); }
+.viewer-code pre { margin: 0; padding: 12px 0; font: inherit; tab-size: 4; }
+.viewer-code .gutter {
+  position: sticky; left: 0; flex: none; padding: 12px 12px 12px 16px; text-align: right; color: var(--ink-4);
+  background: var(--page); border-right: 1px solid var(--rule); user-select: none;
+}
+.viewer-code .source { padding-left: 16px; padding-right: 24px; color: var(--ink); }
+
+.viewer-image { display: grid; place-items: center; padding: 24px; min-height: 100%; background: repeating-conic-gradient(var(--checker-a) 0 25%, var(--checker-b) 0 50%) 0 0 / 16px 16px; }
+.viewer-image img { max-width: 100%; height: auto; box-shadow: 0 1px 3px rgb(var(--shadow) / 0.12); }
+
+.viewer-table-wrap { min-width: max-content; }
+.viewer-table { border-collapse: collapse; font: 12px var(--mono); font-variant-numeric: tabular-nums; }
+.viewer-table th, .viewer-table td { padding: 4px 12px; border-bottom: 1px solid var(--rule); text-align: left; white-space: nowrap; }
+.viewer-table th { position: sticky; top: 0; z-index: 1; background: var(--page-tint); font-family: var(--sans); font-weight: 600; color: var(--ink); }
+.viewer-table .row-number { position: sticky; left: 0; background: var(--page); color: var(--ink-4); text-align: right; }
+.viewer-table th.row-number { z-index: 2; background: var(--page-tint); }
+.viewer-table-note { margin: 0; padding: 10px 12px; font-size: 12px; color: var(--ink-3); }
+
+/* Syntax colours: quiet, readable, and never amber (amber means live). */
+.hljs-keyword, .hljs-selector-tag, .hljs-literal { color: var(--code-keyword); }
+.hljs-string, .hljs-meta .hljs-string { color: var(--code-string); }
+.hljs-number { color: var(--code-number); }
+.hljs-comment, .hljs-quote { color: var(--code-comment); font-style: italic; }
+.hljs-title, .hljs-title.function_, .hljs-section { color: var(--ballpoint); }
+.hljs-built_in, .hljs-type { color: var(--code-number); }
+.hljs-attr, .hljs-attribute, .hljs-variable, .hljs-params { color: var(--code-attr); }
+.hljs-meta, .hljs-symbol { color: var(--code-meta); }
+.hljs-bullet, .hljs-link { color: var(--ballpoint); }
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: 700; }
+.viewer-pdf { display: block; width: 100%; height: 100%; border: 0; background: var(--pdf-backdrop); }
+
+/* Notebook: links to workspace files, and an open-file button on tool rows. */
+.path-link {
+  display: inline; padding: 0; border: 0; background: none; font: inherit; font-family: var(--mono); font-size: 0.92em;
+  color: var(--ballpoint); text-align: left; cursor: pointer; overflow-wrap: anywhere; text-decoration: underline;
+  text-decoration-color: rgb(var(--accent-rgb) / 0.35); text-underline-offset: 2px;
+}
+.path-link:hover { text-decoration-color: currentColor; }
+.path-link:focus-visible { outline: 2px solid var(--ballpoint); outline-offset: 2px; border-radius: 2px; }
+.step { position: relative; }
+.step-open {
+  position: absolute; top: 3px; right: 26px; display: none; place-items: center; width: 24px; height: 24px;
+  border: 0; border-radius: 5px; background: var(--page); color: var(--ballpoint); cursor: pointer;
+}
+.step:hover .step-open, .step-open:focus-visible { display: grid; }
+.step-open:focus-visible { outline: 2px solid var(--ballpoint); outline-offset: -2px; }
+.step-body { overflow-x: auto; }
+.step-body .viewer-code { font-size: 11.5px; }
+.step-body .command .viewer-code pre { padding: 8px 0; }
+.step-body .output .viewer-table-wrap { max-height: 360px; overflow: auto; }
+.output .viewer-code { min-width: 0; }
+.output .viewer-code .source { white-space: pre-wrap; word-break: break-word; min-width: 0; }
+.step-body .command .viewer-code { min-width: 0; }
+.step-body .command .viewer-code .source { white-space: pre-wrap; word-break: break-word; min-width: 0; }
+
+/* Cost: per step in the entry header, per iteration on the chapter break, and a table in Figures. */
+.entry-cost { font-variant-numeric: tabular-nums; }
+.chapter-cost { margin-left: auto; font: 500 12.5px var(--sans); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.cost-total { margin-left: auto; font-weight: 600; font-variant-numeric: tabular-nums; }
+.cost-table { margin-top: 6px; }
+.cost-table th:first-child, .cost-table tbody th { text-align: left; }
+
+/* Shell steps: one line per command in a chain; output split into text, tables and folded warnings. */
+.shell-command { margin: 0; padding: 9px 14px; font: 12px/1.65 var(--mono); white-space: pre-wrap; word-break: break-word; }
+.shell-line { display: grid; grid-template-columns: 2.2ch minmax(0, 1fr); column-gap: 8px; }
+.shell-connector { color: var(--ballpoint); font-weight: 700; text-align: right; user-select: none; }
+.dim-prefix { color: var(--ink-dim); }
+.shell-output { display: grid; }
+.shell-output > * + * { border-top: 1px solid var(--rule); }
+.shell-text { margin: 0; padding: 9px 14px; font: 12px/1.6 var(--mono); color: var(--ink-2); white-space: pre-wrap; word-break: break-word; }
+.shell-output .viewer-table-wrap { min-width: 0; overflow-x: auto; max-height: 320px; }
+.shell-warning summary { padding: 7px 14px; font-size: 12px; color: var(--ink-3); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.shell-warning summary:hover { color: var(--ink-2); }
+.shell-warning pre { margin: 0; padding: 0 14px 9px; font: 11.5px/1.55 var(--mono); color: var(--ink-3); white-space: pre-wrap; word-break: break-word; }
+
+/* Apple's content-unavailable pattern: centred when there is nothing else to show, a compact row otherwise. */
+.unavailable { display: grid; justify-items: center; gap: 10px; max-width: 46ch; margin: 12vh auto 0; text-align: center; color: var(--ink-3); }
+.unavailable-icon { color: var(--ink-3); }
+.unavailable.failed .unavailable-icon { color: var(--failed); }
+.unavailable h2 { margin: 0; font-size: 17px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+.unavailable p { margin: 4px 0 0; font-size: 13px; line-height: 1.5; color: var(--ink-2); }
+.unavailable .unavailable-detail { margin-top: 6px; font: 11.5px var(--mono); color: var(--ink-3); overflow-wrap: anywhere; }
+.unavailable-action {
+  margin-top: 4px; height: 28px; padding: 0 14px; border: 0; border-radius: 7px; cursor: pointer;
+  background: var(--page); color: var(--ink); font: 500 13px var(--sans);
+  box-shadow: 0 0 0 0.5px rgb(var(--shadow) / 0.25), 0 1px 1px rgb(var(--shadow) / 0.08);
+}
+.unavailable-action:hover { background: var(--page-tint); }
+.unavailable-action:focus-visible { outline: 2px solid var(--ballpoint); outline-offset: 2px; }
+.unavailable.compact {
+  grid-template-columns: auto minmax(0, 1fr) auto; justify-items: start; align-items: center; gap: 12px;
+  max-width: none; margin: 0 0 20px var(--margin-width); padding: 12px 16px; text-align: left;
+  border-radius: 10px; background: var(--page-tint); box-shadow: inset 0 0 0 1px var(--rule);
+}
+.unavailable.compact h2 { font-size: 13.5px; }
+.unavailable.compact p { margin-top: 2px; font-size: 12.5px; }
+
+/* The live line under a running entry: three breathing dots, Thinking, and for how long. */
+.live-line-body { display: flex; align-items: center; gap: 9px; height: 30px; font-size: 13px; color: var(--ink-2); }
+.live-line-label { font-weight: 600; color: var(--live-text); }
+.live-line-time { font: 500 11.5px var(--mono); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.typing { display: inline-flex; gap: 3px; width: 16px; justify-content: center; }
+.typing i { width: 4px; height: 4px; border-radius: 50%; background: var(--live); animation: typing 1.2s ease-in-out infinite; }
+.typing i:nth-child(2) { animation-delay: 0.15s; }
+.typing i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes typing { 0%, 60%, 100% { opacity: 0.3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-2px); } }
+@media (prefers-reduced-motion: reduce) { .typing i { animation: none; opacity: 0.8; } }
