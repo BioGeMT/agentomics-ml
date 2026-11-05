@@ -83,11 +83,11 @@ def test_all_iteration_reports_summarize_comparable_scores_and_best_test_results
     )
 
     summary = (config.reports_dir / "all_iterations.md").read_text(encoding="utf-8")
-    assert "| 0 | approach 0 | split_0 | 0.8 | 2 | — |  |" in summary
+    assert "| 0 | approach 0 | Initial split | 0.8 | 2 | — |  |" in summary
     assert "+0.05 (better)" in summary
     assert "— (split changed)" in summary
     assert (
-        "| 2 | approach 2 | split_1 | 0.82 | 2 | — (split changed) | Yes |"
+        "| 2 | approach 2 | Revised split 1 | 0.82 | 2 | — (split changed) | Yes |"
         in summary
     )
     assert "test (n=1)" in summary

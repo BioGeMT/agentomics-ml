@@ -381,6 +381,14 @@ def _test_split_title(split: str, sample_count: int | None) -> str:
     return f"{split} (n={count})"
 
 
+def _display_split_version(split_version: int | None) -> str:
+    if split_version is None:
+        return "—"
+    if split_version == 0:
+        return "Initial split"
+    return f"Revised split {split_version}"
+
+
 def write_all_iterations_markdown(
     path: Path,
     run_meta: RunMeta,
@@ -419,7 +427,7 @@ def write_all_iterations_markdown(
             "| {iteration} | {approach} | {split} | {value} | {sample_count} | {change} | {best} |".format(
                 iteration=summary.iteration,
                 approach=summary.approach.replace("|", "\\|"),
-                split=f"split_{summary.split_version}" if summary.split_version is not None else "—",
+                split=_display_split_version(summary.split_version),
                 value=format_metric(summary.validation_value),
                 sample_count=(summary.validation_sample_count if summary.validation_sample_count is not None else "—"),
                 change=_format_metric_change(summary, higher_is_better),
@@ -435,6 +443,7 @@ def write_all_iterations_markdown(
             "",
             "Change is current minus previous; ‘better’ or ‘worse’ follows the metric's optimization direction. "
             "It is omitted when split versions or scores are missing or splits differ.",
+            "‘Initial split’ is the first train/validation partition. ‘Revised split N’ marks a later partition change.",
             "Other train and validation metrics are included in each detailed iteration report.",
             "",
         ]
@@ -527,6 +536,10 @@ def write_all_iterations_pdf(
             "Detailed reports in markdown/ and pdf/ contain the other metrics and step details.",
             styles["Muted"],
         ),
+        Paragraph(
+            "‘Initial split’ is the first train/validation partition. ‘Revised split N’ marks a later partition change.",
+            styles["Muted"],
+        ),
         Spacer(1, 8),
     ]
     table_data = [
@@ -537,7 +550,7 @@ def write_all_iterations_pdf(
             [
                 str(summary.iteration),
                 Paragraph(escape_report_text(summary.approach), styles["Muted"]),
-                f"split_{summary.split_version}" if summary.split_version is not None else "—",
+                _display_split_version(summary.split_version),
                 format_metric(summary.validation_value),
                 str(summary.validation_sample_count)
                 if summary.validation_sample_count is not None
@@ -552,7 +565,7 @@ def write_all_iterations_pdf(
 
     table = LongTable(
         table_data,
-        colWidths=[1.3 * cm, 5.8 * cm, 1.7 * cm, 2.1 * cm, 1.6 * cm, 2.9 * cm, 1.2 * cm],
+        colWidths=[1.3 * cm, 5.1 * cm, 2.4 * cm, 2.1 * cm, 1.6 * cm, 2.9 * cm, 1.2 * cm],
         repeatRows=1,
         hAlign="LEFT",
     )

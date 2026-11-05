@@ -98,6 +98,8 @@ run/iteration_N/
 `reports/all_iterations.md` and `reports/all_iterations.pdf` show each iteration's
 approach, validation score and sample count, direction-aware change on comparable
 splits, and best status. Test metrics include sample counts for the best iteration.
+The split column labels the first train/validation partition as **Initial split**;
+later partitions are labeled **Revised split N** when the split changes.
 The reports also graph train and validation metrics across iterations; lines stop
 when the data split changes, and held-out test scores appear only for the best
 iteration. Other details are in each iteration's report.
