@@ -6,7 +6,7 @@ dependencies:
   - conda-pack==0.9.1
   - pandas==2.3.1
   - matplotlib==3.8.4
-  - pydantic-ai==2.55.0
+  - pydantic-ai==2.66.0
   - pip
   - pip:
     - weave==0.52.14 # Often breaks with new versions, update as necessary
@@ -18,6 +18,6 @@ dependencies:
     - rich==14.1.0
     - requests==2.32.4
     - uv==0.9.26
-    - openai==3.29.0
-    - anthropic==1.13.0
+    - openai==3.31.0
+    - anthropic==1.15.0
     - pytest==9.1.1
