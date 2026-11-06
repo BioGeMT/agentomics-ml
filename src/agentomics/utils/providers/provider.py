@@ -96,20 +96,22 @@ class Provider():
     
     def create_model(self, model_name: str, config: Config) -> Model:
           """Create a pydantic-ai model instance. Subclasses may override this method."""
-          proxy_url = os.getenv("HTTP_PROXY")
-          async_http_client = httpx2.AsyncClient(
-              proxy=proxy_url if config.use_proxy else None,
-              timeout=config.llm_response_timeout
-          )
-          client = AsyncOpenAI(
-              base_url=self.base_url,
-              api_key=self.api_key,
-              http_client=async_http_client,
-          )
           return OpenAIChatModel(
               model_name=model_name,
-              provider=OpenAIProvider(openai_client=client)
+              provider=OpenAIProvider(openai_client=self._create_openai_client(config))
           )
+
+    def _create_openai_client(self, config: Config) -> AsyncOpenAI:
+        proxy_url = os.getenv("HTTP_PROXY")
+        async_http_client = httpx2.AsyncClient(
+            proxy=proxy_url if config.use_proxy else None,
+            timeout=config.llm_response_timeout
+        )
+        return AsyncOpenAI(
+            base_url=self.base_url,
+            api_key=self.api_key,
+            http_client=async_http_client,
+        )
     
     def get_high_reasoning_model_settings(self, kwargs) -> ModelSettings:
         return OpenAIResponsesModelSettings( #TODO needs implemented for non-OpenAI compatible providers
