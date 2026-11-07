@@ -6,7 +6,7 @@ from pydantic_ai import models
 from pydantic_ai.messages import (
     ModelMessage,
     ModelResponse,
-    RetryPromptPart,
+    RetryFeedbackPart,
     ToolCallPart,
     ToolReturnPart,
     UserPromptPart,
@@ -71,7 +71,7 @@ def _current_step_tool_results(messages: list[ModelMessage]) -> list[ToolReturnP
     )
     tool_results = []
     for part in parts[current_start + 1:]:
-        if isinstance(part, RetryPromptPart):
+        if isinstance(part, RetryFeedbackPart) or (isinstance(part, ToolReturnPart) and part.outcome == "retried"):
             raise AssertionError(f"Scripted response rejected: {part.content}")
         if isinstance(part, ToolReturnPart):
             tool_results.append(part)
