@@ -33,3 +33,11 @@ def test_planning_agent_asks_for_high_reasoning(monkeypatch, create_provider, mo
     _, parameters = model.prepare_request(agent.model_settings, ModelRequestParameters())
 
     assert parameters.thinking == "high"
+
+
+def test_custom_provider_gets_its_key_and_base_url(monkeypatch):
+    monkeypatch.setattr(Provider, "get_provider_config", staticmethod(lambda name: {"base_url": "https://custom.test/v1"}))
+
+    provider = Provider.create_provider("Vercel", "test-key")
+
+    assert (provider.base_url, provider.api_key) == ("https://custom.test/v1", "test-key")

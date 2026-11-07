@@ -172,7 +172,7 @@ class Provider():
         #     from .googleai_provider import GoogleAiProvider
         #     return GoogleAiProvider(api_key, base_url, list_models_endpoint)
         else: #user given provider, must be OpenAI compatible (https://ai.pydantic.dev/models/overview/#openai-compatible-providers)
-            return Provider(provider_name, api_key, base_url)
+            return Provider(provider_name, base_url=base_url, api_key=api_key)
         
 
 def get_provided_api_keys() -> Dict[str, str]:
