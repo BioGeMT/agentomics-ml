@@ -1,36 +1,35 @@
 from types import SimpleNamespace
 
 import pytest
-from pydantic_ai.models.openai import OpenAIResponsesModel
-from pydantic_ai.models.openrouter import OpenRouterModel
+from pydantic_ai.models import ModelRequestParameters
 
+from agentomics.agents.steps.iteration_plan import IterationPlanStep
 from agentomics.utils.providers.anthropic_provider import AnthropicProvider
+from agentomics.utils.providers.codex_auth import CodexAuthStore
+from agentomics.utils.providers.codex_provider import CodexProvider
 from agentomics.utils.providers.openai_provider import OpenAiProvider
 from agentomics.utils.providers.openrouter_provider import OpenRouterProvider
+from agentomics.utils.providers.provider import Provider
 
 
-def test_openai_model_uses_responses():
-    config = SimpleNamespace(use_proxy=False, llm_response_timeout=30)
+@pytest.mark.parametrize(
+    ("create_provider", "model_name"),
+    [
+        (lambda: OpenAiProvider("test-key", "https://openai.test/v1", ""), "gpt-5.4"),
+        (CodexProvider, "gpt-6.1-sol"),
+        (lambda: AnthropicProvider("test-key", "https://anthropic.test", ""), "claude-opus-4-7"),
+        (lambda: OpenRouterProvider("test-key", "https://openrouter.test/api/v1", ""), "openai/gpt-5.4"),
+        (lambda: Provider("custom", "https://custom.test/v1", "test-key"), "gpt-5.4"),
+    ],
+    ids=["openai", "codex", "anthropic", "openrouter", "custom"],
+)
+def test_planning_agent_asks_for_high_reasoning(monkeypatch, create_provider, model_name):
+    monkeypatch.setattr(CodexAuthStore, "get_account_id", lambda self: "test-account")
+    config = SimpleNamespace(use_proxy=False, llm_response_timeout=30, max_validation_retries=1, temperature=0.7)
+    provider = create_provider()
+    model = provider.create_model(model_name, config)
 
-    model = OpenAiProvider("test-key", "https://openai.test/v1", "").create_model("gpt-5.4", config)
+    agent = IterationPlanStep(config, model, model, provider, tools=[]).create_agent()
+    _, parameters = model.prepare_request(agent.model_settings, ModelRequestParameters())
 
-    assert isinstance(model, OpenAIResponsesModel)
-    assert str(model.client.base_url) == "https://openai.test/v1/"
-
-
-def test_openrouter_model_uses_openrouter_model_class():
-    config = SimpleNamespace(use_proxy=False, llm_response_timeout=30)
-
-    model = OpenRouterProvider("test-key", "https://openrouter.test/api/v1", "").create_model("openai/gpt-5.4", config)
-
-    assert isinstance(model, OpenRouterModel)
-    assert str(model.client.base_url) == "https://openrouter.test/api/v1/"
-
-
-@pytest.mark.parametrize("provider_class", [AnthropicProvider, OpenRouterProvider])
-def test_planning_settings_ask_for_high_reasoning(provider_class):
-    provider = provider_class("test-key", "https://provider.test", "")
-
-    settings = provider.get_high_reasoning_model_settings(kwargs={"temperature": 0.7})
-
-    assert settings == {"thinking": "high", "temperature": 0.7}
+    assert parameters.thinking == "high"

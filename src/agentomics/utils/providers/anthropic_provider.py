@@ -4,7 +4,6 @@ from typing import List, Dict
 
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.providers.anthropic import AnthropicProvider as PydanticAnthropicProvider # would clash with our class name
-from pydantic_ai.settings import ModelSettings
 from rich.panel import Panel
 
 from agentomics.utils.config import Config
@@ -52,6 +51,3 @@ class AnthropicProvider(Provider):
                 http_client=async_http_client
             )
         )
-
-    def get_high_reasoning_model_settings(self, kwargs) -> ModelSettings:
-        return ModelSettings(thinking="high", **kwargs)

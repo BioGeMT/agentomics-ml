@@ -2,7 +2,6 @@ from typing import Dict, List, Optional
 
 from pydantic_ai.models.openrouter import OpenRouterModel
 from pydantic_ai.providers.openrouter import OpenRouterProvider as PydanticOpenRouterProvider
-from pydantic_ai.settings import ModelSettings
 from rich.table import Table
 from rich import box
 from rich.panel import Panel
@@ -271,6 +270,3 @@ class OpenRouterProvider(Provider):
             model_name=model_name,
             provider=PydanticOpenRouterProvider(openai_client=self._create_openai_client(config)),
         )
-
-    def get_high_reasoning_model_settings(self, kwargs) -> ModelSettings:
-        return ModelSettings(thinking="high", **kwargs)
