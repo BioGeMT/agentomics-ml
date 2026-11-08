@@ -32,7 +32,7 @@ def test_planning_agent_asks_for_high_reasoning(monkeypatch, create_provider, mo
     provider = create_provider()
     model = provider.create_model(model_name, config)
 
-    agent = IterationPlanStep(config, model, model, provider, tools=[]).create_agent()
+    agent = IterationPlanStep(config, model, model, model, provider, tools=[]).create_agent()
     _, parameters = model.prepare_request(agent.model_settings, ModelRequestParameters())
 
     assert parameters.thinking == "high"
@@ -49,7 +49,7 @@ def test_ollama_planning_agent_asks_for_high_reasoning_only_if_the_model_can_thi
     provider = OllamaProvider("http://ollama.test/v1", "http://ollama.test/api/tags")
     model = provider.create_model("some-model", config)
 
-    agent = IterationPlanStep(config, model, model, provider, tools=[]).create_agent()
+    agent = IterationPlanStep(config, model, model, model, provider, tools=[]).create_agent()
     _, parameters = model.prepare_request(agent.model_settings, ModelRequestParameters())
 
     assert parameters.thinking == expected_thinking

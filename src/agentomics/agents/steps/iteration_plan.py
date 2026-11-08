@@ -10,6 +10,7 @@ from agentomics.agents.prompt_builder import get_dataset_knowledge
 from agentomics.agents.steps.base import AgenticStep, AgenticStepOutput
 from agentomics.agents.steps.data_split import DataSplitStep
 from agentomics.agents.steps.validation_evaluation import ValidationEvaluationStep
+from agentomics.runtime.iterations_lessons import read_iterations_lessons
 from agentomics.runtime.read_write_utils import (
     get_archived_iterations,
     get_last_successful_iteration,
@@ -103,6 +104,7 @@ class IterationPlanStep(AgenticStep):
         tools_info = ", ".join(get_tool_names(self.config, self.config.tool_ids))
         best_iteration_model_info = self._build_best_iteration_model_info()
         supplementary_info = self._build_supplementary_info()
+        iterations_lessons = self._build_iterations_lessons()
 
         return f"""
         <prompt_of_the_iteration_agents>
@@ -114,6 +116,7 @@ class IterationPlanStep(AgenticStep):
         </dataset_knowledge_from_dataset_description_md>
 
         {iteration_history_info}
+        {iterations_lessons}
         <your_instructions>
         {f"<exploration_guidance>{exploration_info}</exploration_guidance>" if exploration_info else ""}
         The main goal of the run is to maximize the hidden test set generalization performance (main metric:{self.config.val_metric}) that will use the 'best iteration model'. {best_iteration_model_info}
@@ -156,6 +159,17 @@ class IterationPlanStep(AgenticStep):
 
     def get_message_history(self):
         return None
+
+    def _build_iterations_lessons(self) -> str:
+        iterations_lessons = read_iterations_lessons(self.config)
+        if not iterations_lessons:
+            return ""
+        return f"""
+        Lessons established so far in this run, including failed steps and iterations. They are automatically appended to the prompt of every step of this iteration, so don't repeat them in your instructions, but take them into account when planning.
+        <iterations_lessons>
+        {iterations_lessons}
+        </iterations_lessons>
+        """
 
     def _build_iteration_history_info(self) -> str:
         sorted_iteration_to_records = {

@@ -7,6 +7,7 @@ from timeout_function_decorator import timeout as timeout_decorator
 
 from agentomics.run_logging.wandb_setup import setup_logging
 from agentomics.runtime.git_checkpoints import initialize_repo_if_needed
+from agentomics.runtime.iterations_lessons import initialize_iterations_lessons
 from agentomics.runtime.read_write_utils import (
     initialize_run_directories,
     save_config_to_file,
@@ -24,12 +25,14 @@ def initialize_run(config: Config, dataset_metadata: dict) -> None:
     config.wandb_run_id = setup_logging(config) if are_wandb_vars_available() else None
     save_config_to_file(config)
     save_dataset_metadata(config, dataset_metadata)
+    initialize_iterations_lessons(config)
     initialize_repo_if_needed(config)
 
 
 async def run_experiment(
     model_name: str,
     iteration_plan_model_name: str,
+    trace_analysis_model_name: str,
     dataset_name: str,
     task_type: str,
     val_metric: str,
@@ -61,6 +64,7 @@ async def run_experiment(
         agent_id=agent_id,
         model_name=model_name,
         iteration_plan_model_name=iteration_plan_model_name,
+        trace_analysis_model_name=trace_analysis_model_name,
         provider_name=provider.name,
         dataset=dataset_name,
         tags=tags,
@@ -87,6 +91,7 @@ async def run_experiment(
 
     default_model = provider.create_model(config.model_name, config)
     iteration_plan_model = provider.create_model(config.iteration_plan_model_name, config)
+    trace_analysis_model = provider.create_model(config.trace_analysis_model_name, config)
 
     run_fn = run_agentomics
     if timeout is not None:
@@ -98,6 +103,7 @@ async def run_experiment(
             config=config,
             default_model=default_model,
             iteration_plan_model=iteration_plan_model,
+            trace_analysis_model=trace_analysis_model,
             provider=provider,
         )
     except TimeoutError:
