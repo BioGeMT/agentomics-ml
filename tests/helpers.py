@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import Mock
 
 from pydantic import BaseModel
-from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
+from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models.function import FunctionModel
 
 from agentomics.utils.config import Config
@@ -72,11 +72,6 @@ def create_failing_model() -> FunctionModel:
         raise RuntimeError("runtime error")
 
     return FunctionModel(respond)
-
-
-def message_part_kinds(messages: list[ModelMessage]) -> list[list[str]]:
-    """Describe messages by their part kinds, ignoring run-specific ids and timestamps."""
-    return [[part.part_kind for part in message.parts] for message in messages]
 
 
 def write_step_file(config: Config, filename: str, content: str) -> Path:

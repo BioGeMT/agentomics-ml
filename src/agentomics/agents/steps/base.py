@@ -15,8 +15,6 @@ from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 
 from agentomics.agents.agent_utils import (
-    extract_prompt_messages,
-    extract_step_messages,
     fabricate_final_result_messages,
     fabricate_initial_prompt_messages,
     run_agent,
@@ -61,7 +59,6 @@ class RuntimeStep(ABC):
         self.trace_analysis_model = trace_analysis_model
         self.provider = provider
         self.tools = tools
-        self._step_prompt_messages: list[ModelMessage] = []
         self._step_messages: list[ModelMessage] = []
 
     async def run(self) -> None:
@@ -162,7 +159,7 @@ class AgenticStep(RuntimeStep):
             model=self.trace_analysis_model,
             iteration=load_current_iteration_index(self.config),
             step_id=self.step_id,
-            messages=[*self._step_prompt_messages, *self._step_messages],
+            messages=self._step_messages,
             error=error,
         )
 
@@ -273,11 +270,10 @@ class AgenticStep(RuntimeStep):
     async def _execute(self) -> AgenticStepOutput:
         step_started_at = datetime.now()
         message_history = self.get_message_history()
-        self._step_prompt_messages = extract_prompt_messages(message_history)
         user_prompt = self.build_user_prompt()
         agent = self.create_agent()
         try:
-            run_messages, output = await run_agent(
+            self._step_messages, output = await run_agent(
                 agent=agent,
                 user_prompt=user_prompt,
                 max_steps=self.config.max_steps,
@@ -285,7 +281,6 @@ class AgenticStep(RuntimeStep):
                 deps=self.build_deps(step_started_at),
             )
         except IterationRunFailed as error:
-            self._step_messages = extract_step_messages(error.context_messages, message_history)
+            self._step_messages = error.context_messages
             raise
-        self._step_messages = extract_step_messages(run_messages, message_history)
         return self._populate_files_created(output, step_started_at)
