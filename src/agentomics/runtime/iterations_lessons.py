@@ -20,8 +20,7 @@ Maintain iterations_lessons.md: a list of lessons that help agents avoid mistake
 
 You receive:
 - the current contents of iterations_lessons.md
-- the prompts the agent was given in one step
-- the trace of that step, with its iteration number and step ID
+- the trace of one agent step: its whole context, with its iteration number and step ID
 
 Record a lesson when the trace shows:
 - a crash, an incorrect result, substantial wasted work (for example, repeated failed attempts), or context bloat (for example, huge outputs read into the conversation), or
@@ -95,7 +94,7 @@ def _build_user_prompt(config: Config, iteration: int, step_id: str, error: Iter
 Current {Config.ITERATIONS_LESSONS_FILENAME}:
 {read_iterations_lessons(config)}
 
-Iteration {iteration}, step {step_id} just ended. The messages above are the prompts and the trace of its agent, for you to analyze.
+Iteration {iteration}, step {step_id} just ended. The messages above are the whole context of its agent, for you to analyze.
 
 {result}
 """
