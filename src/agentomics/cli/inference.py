@@ -5,10 +5,10 @@ import sys
 from pathlib import Path
 
 from agentomics.cli.docker_utils import (
-    build_development_image,
     create_parser,
     docker_environment_arguments,
     run_python_in_docker,
+    use_development_image_if_requested,
 )
 
 from agentomics.runtime.filesystem import resolve_inference_paths
@@ -114,12 +114,8 @@ def _run_inference_with_resolved_paths(arguments: argparse.Namespace) -> int:
 def main() -> int:
     arguments = build_parser().parse_args()
     resolve_inference_paths(arguments)
-    if arguments.dev:
-        try:
-            arguments.image = build_development_image()
-        except RuntimeError as error:
-            print(f"Error: {error}", file=sys.stderr)
-            return 1
+    if not use_development_image_if_requested(arguments):
+        return 1
     return _run_inference_with_resolved_paths(arguments)
 
 if __name__ == "__main__":

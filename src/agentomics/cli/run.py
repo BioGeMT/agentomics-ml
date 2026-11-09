@@ -7,10 +7,12 @@ import tempfile
 from pathlib import Path
 
 from agentomics.cli.docker_utils import (
-    build_development_image,
+    PROVIDER_API_KEY_ENV_VAR_NAMES,
+    codex_credentials_mounts,
     create_parser,
     docker_environment_arguments,
     run_python_in_docker,
+    use_development_image_if_requested,
     validate_docker_gpu_access,
 )
 from agentomics.cli.inference import run_inference_in_docker
@@ -30,7 +32,6 @@ from agentomics.utils.config import Config
 
 DEFAULT_DATASETS_DIRECTORY = Path("datasets")
 DEFAULT_OUTPUTS_DIRECTORY = Path("outputs")
-CONTAINER_CODEX_DIRECTORY = Path("/mnt/codex-host")
 CONTAINER_DATASETS_DIRECTORY = Path("/datasets")
 CONTAINER_FORK_SOURCE_DIRECTORY = Path("/fork-source")
 CONTAINER_WORKSPACE_DIRECTORY = Path("/workspace")
@@ -108,7 +109,7 @@ def _build_container_arguments(arguments: argparse.Namespace) -> list[str]:
 
 def _docker_environment_arguments(agent_id: str) -> list[str]:
     docker_arguments = docker_environment_arguments(
-        "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY",
+        *PROVIDER_API_KEY_ENV_VAR_NAMES,
         "PROVISIONING_OPENROUTER_API_KEY", "OLLAMA_BASE_URL",
         "WANDB_API_KEY", "WANDB_PROJECT_NAME", "WANDB_ENTITY",
         "WANDB_RUN_GROUP", "WANDB_JOB_TYPE", "WANDB_NAME",
@@ -218,12 +219,7 @@ def _run_agent_in_docker(
             ["--fork-from-run", str(CONTAINER_FORK_SOURCE_DIRECTORY)]
         )
 
-    codex_directory = Path.home() / ".codex"
-    if codex_directory.is_dir():
-        mounts.append(
-            f"type=bind,src={codex_directory.resolve()},"
-            f"dst={CONTAINER_CODEX_DIRECTORY},readonly"
-        )
+    mounts.extend(codex_credentials_mounts())
 
     docker_arguments = _docker_environment_arguments(agent_id)
     if arguments.provider == "ollama":
@@ -384,12 +380,8 @@ def main() -> int:
     )
     agent_id = create_agent_id()
 
-    if arguments.dev:
-        try:
-            arguments.image = build_development_image()
-        except RuntimeError as error:
-            print(f"Error: {error}", file=sys.stderr)
-            return 1
+    if not use_development_image_if_requested(arguments):
+        return 1
 
     if not arguments.cpu_only:
         try:

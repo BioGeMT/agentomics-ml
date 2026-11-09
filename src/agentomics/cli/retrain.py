@@ -5,9 +5,9 @@ import sys
 from pathlib import Path
 
 from agentomics.cli.docker_utils import (
-    build_development_image,
     create_parser,
     run_python_in_docker,
+    use_development_image_if_requested,
 )
 from agentomics.runtime.training_workflow import resolve_training_paths
 from agentomics.utils.config import Config
@@ -68,12 +68,8 @@ def _run_in_docker(arguments: argparse.Namespace) -> None:
 def main() -> int:
     arguments = build_parser().parse_args()
     resolve_training_paths(arguments)
-    if arguments.dev:
-        try:
-            arguments.image = build_development_image()
-        except RuntimeError as error:
-            print(f"Error: {error}", file=sys.stderr)
-            return 1
+    if not use_development_image_if_requested(arguments):
+        return 1
     _run_in_docker(arguments)
     return 0
 

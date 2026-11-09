@@ -4,6 +4,7 @@ import argparse
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 from agentomics.utils.versioning import get_version
@@ -12,6 +13,13 @@ from agentomics.utils.versioning import get_version
 DEFAULT_IMAGE = f"biogemt/agentomics:{get_version()}"
 DEVELOPMENT_IMAGE = "agentomics:dev"
 CONTAINER_PYTHON = "/opt/conda/envs/agentomics-env/bin/python"
+CONTAINER_CODEX_DIRECTORY = Path("/mnt/codex-host")
+
+PROVIDER_API_KEY_ENV_VAR_NAMES = (
+    "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "OPENROUTER_API_KEY",
+)
 
 PROXY_ENV_VAR_NAMES = (
     "HTTP_PROXY",
@@ -101,6 +109,24 @@ def build_development_image() -> str:
     if result.returncode != 0:
         raise RuntimeError("Failed to build the Agentomics development image")
     return DEVELOPMENT_IMAGE
+
+def use_development_image_if_requested(arguments: argparse.Namespace) -> bool:
+    """Build the development image and select it when --dev is set; return False when the build fails."""
+    if not arguments.dev:
+        return True
+    try:
+        arguments.image = build_development_image()
+    except RuntimeError as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return False
+    return True
+
+def codex_credentials_mounts() -> list[str]:
+    """Return the mount that gives the container the Codex login of the host, when there is one."""
+    codex_directory = Path.home() / ".codex"
+    if not codex_directory.is_dir():
+        return []
+    return [f"type=bind,src={codex_directory.resolve()},dst={CONTAINER_CODEX_DIRECTORY},readonly"]
 
 def docker_environment_arguments(*variable_names: str) -> list[str]:
     docker_arguments: list[str] = []
