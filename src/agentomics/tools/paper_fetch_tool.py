@@ -123,6 +123,7 @@ async def download_papers(
                 paper,
                 metadata_by_paper_id.get(paper.paper_id, {}),
             )
+            # papers found by Asta that cannot be download are skipped
             for candidate in candidates:
                 try:
                     response = await client.get(candidate)
