@@ -93,8 +93,14 @@ class CollectionReport(BaseModel):
 
 
 class Review(BaseModel):
-    accepted: bool
-    issues: list[str] = []
+    accepted: bool = Field(description="Whether the files fit the request and nothing important is missing")
+    issues: list[str] = Field(default=[], description="What to fix when the files are not accepted, one issue per item")
+
+    @model_validator(mode="after")
+    def _check_issues(self) -> "Review":
+        if not self.accepted and not self.issues:
+            raise ValueError("a review that does not accept the files lists at least one issue")
+        return self
 
 
 @dataclass(kw_only=True)
