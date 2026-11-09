@@ -193,11 +193,14 @@ async def review_collection(ctx: RunContext[CollectionDeps], report: CollectionR
     return report
 
 
-def collect_data(request: DataRequest, collected_data_directory: Path, model: Model) -> int:
+def collect_data(
+    request: DataRequest, collected_data_directory: Path, model: Model, allow_local_addresses: bool = False,
+) -> int:
     max_bytes = None if request.max_download_gb is None else int(request.max_download_gb * BYTES_PER_GB)
     deps = CollectionDeps(
         collected_data_directory=collected_data_directory,
         max_bytes=max_bytes,
+        allow_local_addresses=allow_local_addresses,
         request=request,
         reviewer=build_reviewer(model, collected_data_directory),
     )

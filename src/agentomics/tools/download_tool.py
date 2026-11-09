@@ -1,6 +1,8 @@
 import gzip
 import hashlib
+import ipaddress
 import lzma
+import socket
 import tarfile
 import tempfile
 import zipfile
@@ -51,6 +53,7 @@ class DownloadDeps:
     collected_data_directory: Path
     max_bytes: int | None
     download_timeout: int = Config.DEFAULT_DOWNLOAD_TOOL_TIMEOUT
+    allow_local_addresses: bool = False
 
 
 def create_download_tools() -> list[Tool[DownloadDeps]]:
@@ -93,7 +96,7 @@ def download_file(ctx: RunContext[DownloadDeps], url: str, filename: str) -> str
         target = _target_path(deps, url, filename)
         with tempfile.TemporaryDirectory(dir=deps.collected_data_directory, prefix=SCRATCH_DIRECTORY_PREFIX) as scratch:
             downloaded = Path(scratch) / "downloaded"
-            size, sha256, content_type = _fetch(url, downloaded, current_budget(deps), deps.download_timeout)
+            size, sha256, content_type = _fetch(deps, url, downloaded)
             added = _store(deps, url, filename, downloaded, size, sha256, target)
     except DownloadError as error:
         return f"Error: {error}. {budget_text(deps)}"
@@ -122,10 +125,13 @@ def _target_path(deps: DownloadDeps, url: str, filename: str) -> Path:
     return target
 
 
-def _fetch(url: str, path: Path, budget: Budget, timeout: int) -> tuple[int, str, str]:
+def _fetch(deps: DownloadDeps, url: str, path: Path) -> tuple[int, str, str]:
     """Stream the URL to path; return the size, the SHA-256 and the content type."""
+    budget = current_budget(deps)
+    request_hooks = [] if deps.allow_local_addresses else [_refuse_non_public_address]
+    client = httpx2.Client(follow_redirects=True, timeout=deps.download_timeout, event_hooks={"request": request_hooks})
     try:
-        with httpx2.stream("GET", url, follow_redirects=True, timeout=timeout) as response:
+        with client, client.stream("GET", url) as response:
             response.raise_for_status()
             if "content-length" in response.headers:
                 # Refuse a file that cannot fit before downloading it.
@@ -136,6 +142,17 @@ def _fetch(url: str, path: Path, budget: Budget, timeout: int) -> tuple[int, str
     if size == 0:
         raise DownloadError("the download was empty")
     return size, sha256, response.headers.get("content-type", "unknown type")
+
+
+def _refuse_non_public_address(request: httpx2.Request) -> None:
+    """Refuse a request whose host is not a public address; it runs for the URL and for each redirect."""
+    try:
+        addresses = {address[4][0] for address in socket.getaddrinfo(request.url.host, None)}
+    except socket.gaierror:
+        # Only a proxy can reach a host that this machine cannot resolve, and the proxy resolves it itself.
+        return
+    if not all(ipaddress.ip_address(address).is_global for address in addresses):
+        raise DownloadError(f"{request.url.host} is not a public address")
 
 
 def _store(

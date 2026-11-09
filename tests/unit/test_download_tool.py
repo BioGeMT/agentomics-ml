@@ -18,8 +18,15 @@ from tests.helpers import serve_files
 DATA = b"x" * 100
 
 
-def _context(collected_data_directory: Path, max_bytes: int | None = None) -> RunContext[DownloadDeps]:
-    deps = DownloadDeps(collected_data_directory=collected_data_directory, max_bytes=max_bytes)
+def _context(
+    collected_data_directory: Path, max_bytes: int | None = None, allow_local_addresses: bool = True,
+) -> RunContext[DownloadDeps]:
+    """Create the context of a tool call; local addresses are allowed because the tests serve files locally."""
+    deps = DownloadDeps(
+        collected_data_directory=collected_data_directory,
+        max_bytes=max_bytes,
+        allow_local_addresses=allow_local_addresses,
+    )
     return RunContext(deps=deps, model=TestModel(), usage=RunUsage())
 
 
@@ -71,6 +78,14 @@ def test_rejected_download_records_nothing(tmp_path, url_path, limit_bytes):
         result = download_file(_context(tmp_path, limit_bytes), f"{base_url}{url_path}", "data.csv")
 
     assert result.startswith("Error")
+    assert _saved_files(tmp_path) == []
+
+
+def test_download_from_a_local_address_is_refused_unless_allowed(tmp_path):
+    with serve_files({"/data.csv": DATA}) as base_url:
+        result = download_file(_context(tmp_path, allow_local_addresses=False), f"{base_url}/data.csv", "data.csv")
+
+    assert "not a public address" in result
     assert _saved_files(tmp_path) == []
 
 

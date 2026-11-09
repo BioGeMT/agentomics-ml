@@ -1,5 +1,6 @@
 import json
 from collections.abc import Iterable
+from pathlib import Path
 
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
@@ -39,9 +40,15 @@ def _model_downloading_two_files(base_url: str, review_verdicts: Iterable[bool])
     return FunctionModel(respond)
 
 
+def _collect(collected_data_directory: Path, base_url: str, review_verdicts: Iterable[bool]) -> int:
+    """Run a collection that downloads from the local test server."""
+    model = _model_downloading_two_files(base_url, review_verdicts)
+    return collect_data(REQUEST, collected_data_directory, model, allow_local_addresses=True)
+
+
 def test_collection_keeps_the_downloads_and_ends_when_a_review_accepts(tmp_path):
     with serve_files({"/a.csv": b"a" * 100, "/b.csv": b"b" * 100}) as base_url:
-        exit_code = collect_data(REQUEST, tmp_path, _model_downloading_two_files(base_url, [False, True]))
+        exit_code = _collect(tmp_path, base_url, [False, True])
 
     assert exit_code == 0
     assert sorted(entry.path for entry in load_manifest(tmp_path)) == ["files/a.csv", "files/b.csv"]
@@ -51,7 +58,7 @@ def test_collection_keeps_the_downloads_and_ends_when_a_review_accepts(tmp_path)
 
 def test_collection_fails_when_no_review_accepts_and_keeps_the_downloads(tmp_path, capsys):
     with serve_files({"/a.csv": b"a" * 100, "/b.csv": b"b" * 100}) as base_url:
-        exit_code = collect_data(REQUEST, tmp_path, _model_downloading_two_files(base_url, [False] * MAX_REVIEWS))
+        exit_code = _collect(tmp_path, base_url, [False] * MAX_REVIEWS)
 
     assert exit_code == 1
     assert "The reviewer did not accept the files" in capsys.readouterr().err
@@ -62,7 +69,7 @@ def test_collection_fails_when_no_review_accepts_and_keeps_the_downloads(tmp_pat
 
 def test_reviews_file_holds_the_reviews_of_the_latest_run(tmp_path):
     with serve_files({"/a.csv": b"a" * 100, "/b.csv": b"b" * 100}) as base_url:
-        collect_data(REQUEST, tmp_path, _model_downloading_two_files(base_url, [False, True]))
-        collect_data(REQUEST, tmp_path, _model_downloading_two_files(base_url, [True]))
+        _collect(tmp_path, base_url, [False, True])
+        _collect(tmp_path, base_url, [True])
 
     assert [verdict["accepted"] for verdict in json.loads((tmp_path / "review.json").read_text())] == [True]
