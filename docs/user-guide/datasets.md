@@ -276,16 +276,23 @@ sources first, then the rest of the relevant data, until it reaches
 agentomics-collect-data --request request.json --collected-data-dir collected_data --provider codex --model gpt-6.1-sol
 ```
 
-The folder holds `files/`, `manifest.json` (source URL, size and SHA-256 of
-each file), `summary.md` (the agent's summary of the files, written when a
-review accepts them) and `review.json` (the reviews of the latest run). Zip, tar and gz archives are unpacked into `files/`, and the
-manifest records the archive each unpacked file came from. Both agents can
-list and read the downloaded files.
-The agent needs a provider with native web search (OpenAI, OpenRouter,
-Anthropic or Codex). Running the command again on the same folder, for example
-with a larger `max_download_gb`, continues from the files that are there: the
-agent keeps the ones that fit the request, may discard the others, and adds
-what is missing.
+The folder holds `files/`, `manifest.json` (path, source URL, size and SHA-256
+of each file), `summary.md` (the agent's summary of the files, written when a
+review accepts them) and `review.json` (the reviews of the latest run). Zip
+archives, tar archives (also compressed with gzip, bzip2 or xz) and gz files
+are unpacked into `files/`, and the manifest records the archive each unpacked
+file came from. Both agents can list and read the downloaded files. Files are
+downloaded only from public addresses.
+
+The files are reviewed up to four times. If no review accepts them, the
+command ends with exit code 1, the downloaded files stay in the folder and
+`review.json` lists the issues. Running the command again on the same folder,
+for example after such a run or with a larger `max_download_gb`, continues
+from the files that are there: the agent keeps the ones that fit the request,
+may discard the others, and adds what is missing.
+
+The agent needs a provider with native web search. It has been tested with
+Codex. OpenAI, OpenRouter and Anthropic models also search the web natively.
 
 ## Example Datasets
 
