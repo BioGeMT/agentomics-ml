@@ -58,3 +58,4 @@ def test_collection_fails_after_four_rejected_reviews(tmp_path):
             collect_data(REQUEST, tmp_path, _model_downloading_two_files(base_url, [False] * 4))
 
     assert len(json.loads((tmp_path / "review.json").read_text())) == 4
+    assert not (tmp_path / "summary.md").exists()

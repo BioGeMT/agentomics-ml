@@ -185,7 +185,6 @@ def build_collector(model: Model, collected_data_directory: Path) -> Agent[Colle
 
 async def review_collection(ctx: RunContext[CollectionDeps], report: CollectionReport) -> CollectionReport:
     deps = ctx.deps
-    (deps.collected_data_directory / SUMMARY_FILE_NAME).write_text(report.summary)
     problems = check_collected_data(deps)
     entries = load_manifest(deps.collected_data_directory)
     if not entries:
@@ -219,13 +218,14 @@ def collect_data(request: DataRequest, collected_data_directory: Path, model: Mo
     if problems:
         print("The collected data folder cannot be used:\n" + "\n".join(problems), file=sys.stderr)
         return 1
-    asyncio.run(run_agent(
+    _, report = asyncio.run(run_agent(
         build_collector(model, collected_data_directory),
         build_collector_prompt(request, collected_data_directory, max_bytes),
         max_steps=Config.DEFAULT_MAX_STEPS,
         message_history=None,
         deps=deps,
     ))
+    (collected_data_directory / SUMMARY_FILE_NAME).write_text(report.summary)
     return 0
 
 
