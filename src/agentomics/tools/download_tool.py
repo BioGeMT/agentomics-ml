@@ -240,8 +240,5 @@ def _is_plain_relative_path(path: str) -> bool:
 
 
 def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
     with path.open("rb") as file:
-        for block in iter(lambda: file.read(1 << 20), b""):
-            digest.update(block)
-    return digest.hexdigest()
+        return hashlib.file_digest(file, "sha256").hexdigest()
