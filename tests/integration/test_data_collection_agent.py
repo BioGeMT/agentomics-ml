@@ -1,14 +1,12 @@
 import json
 from collections.abc import Iterable
 
-import pytest
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from agentomics.agents.data_collection import DataRequest, collect_data
+from agentomics.agents.data_collection import MAX_REVIEWS, DataRequest, collect_data
 from agentomics.runtime.collected_data import load_manifest
 from agentomics.tools.download_tool import download_file
-from agentomics.utils.exceptions import IterationRunFailed
 from tests.helpers import serve_files
 
 SUMMARY = "files/a.csv and files/b.csv hold the measurements."
@@ -51,10 +49,20 @@ def test_collection_keeps_the_downloads_and_ends_when_a_review_accepts(tmp_path)
     assert (tmp_path / "summary.md").read_text() == SUMMARY
 
 
-def test_collection_fails_after_four_rejected_reviews(tmp_path):
+def test_collection_fails_when_no_review_accepts_and_keeps_the_downloads(tmp_path, capsys):
     with serve_files({"/a.csv": b"a" * 100, "/b.csv": b"b" * 100}) as base_url:
-        with pytest.raises(IterationRunFailed):
-            collect_data(REQUEST, tmp_path, _model_downloading_two_files(base_url, [False] * 4))
+        exit_code = collect_data(REQUEST, tmp_path, _model_downloading_two_files(base_url, [False] * MAX_REVIEWS))
 
-    assert len(json.loads((tmp_path / "review.json").read_text())) == 4
+    assert exit_code == 1
+    assert "The reviewer did not accept the files" in capsys.readouterr().err
+    assert len(json.loads((tmp_path / "review.json").read_text())) == MAX_REVIEWS
+    assert sorted(entry.path for entry in load_manifest(tmp_path)) == ["files/a.csv", "files/b.csv"]
     assert not (tmp_path / "summary.md").exists()
+
+
+def test_reviews_file_holds_the_reviews_of_the_latest_run(tmp_path):
+    with serve_files({"/a.csv": b"a" * 100, "/b.csv": b"b" * 100}) as base_url:
+        collect_data(REQUEST, tmp_path, _model_downloading_two_files(base_url, [False, True]))
+        collect_data(REQUEST, tmp_path, _model_downloading_two_files(base_url, [True]))
+
+    assert [verdict["accepted"] for verdict in json.loads((tmp_path / "review.json").read_text())] == [True]

@@ -24,10 +24,15 @@ def load_manifest(collected_data_directory: Path) -> list[ManifestEntry]:
 
 
 def save_manifest(collected_data_directory: Path, entries: list[ManifestEntry]) -> None:
-    manifest_path = collected_data_directory / MANIFEST_FILE_NAME
-    temporary_path = manifest_path.with_name(manifest_path.name + ".tmp")
-    temporary_path.write_bytes(_MANIFEST.dump_json(entries, indent=2, exclude_none=True))
-    temporary_path.replace(manifest_path)
+    content = _MANIFEST.dump_json(entries, indent=2, exclude_none=True)
+    write_atomically(collected_data_directory / MANIFEST_FILE_NAME, content)
+
+
+def write_atomically(path: Path, content: bytes) -> None:
+    """Replace the file at path in one step, so that an interrupted write leaves the earlier file."""
+    temporary_path = path.with_name(path.name + ".tmp")
+    temporary_path.write_bytes(content)
+    temporary_path.replace(path)
 
 
 def find_problems(collected_data_directory: Path, max_bytes: int | None, verify_hashes: bool) -> list[str]:

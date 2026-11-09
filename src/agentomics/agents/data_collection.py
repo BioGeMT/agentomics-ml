@@ -1,11 +1,10 @@
 import argparse
 import asyncio
-import json
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator
 from pydantic_ai import Agent, BinaryContent, ModelRetry, RunContext, Tool
 from pydantic_ai.capabilities import LocalWorkspace, WebFetch, WebSearch
 from pydantic_ai.common_tools.web_fetch import WebFetchResult, web_fetch_tool
@@ -13,7 +12,7 @@ from pydantic_ai.models import Model
 from pydantic_ai_harness import FileSystem
 
 from agentomics.agents.agent_utils import run_agent
-from agentomics.runtime.collected_data import MANIFEST_FILE_NAME, find_problems, load_manifest
+from agentomics.runtime.collected_data import MANIFEST_FILE_NAME, find_problems, load_manifest, write_atomically
 from agentomics.runtime.filesystem import restore_host_ownership
 from agentomics.runtime.run_workflow import prepare_codex_credentials
 from agentomics.tools.download_tool import (
@@ -24,12 +23,14 @@ from agentomics.tools.download_tool import (
     download_file,
 )
 from agentomics.utils.config import Config
+from agentomics.utils.exceptions import IterationRunFailed
 from agentomics.utils.providers.provider import Provider, get_provider_and_api_key
 from agentomics.utils.task_types import TaskTypes
 
 SUMMARY_FILE_NAME = "summary.md"
 REVIEW_FILE_NAME = "review.json"
 BYTES_PER_GB = 1_000_000_000
+MAX_REVIEWS = 4
 # The pydantic-ai-harness file tools both agents get.
 READ_FILE_TOOL = "read_file"
 LIST_DIRECTORY_TOOL = "list_directory"
@@ -107,6 +108,10 @@ class Review(BaseModel):
 class CollectionDeps(DownloadDeps):
     request: DataRequest
     reviewer: Agent[None, Review]
+    reviews: list[Review] = field(default_factory=list)
+
+
+_REVIEWS = TypeAdapter(list[Review])
 
 
 async def _web_fetch(url: str) -> WebFetchResult | BinaryContent | str:
@@ -164,8 +169,7 @@ def build_collector(model: Model, collected_data_directory: Path) -> Agent[Colle
         tools=create_download_tools(),
         capabilities=_capabilities(collected_data_directory),
         output_type=CollectionReport,
-        # The first answer plus three corrections: at most four reviews.
-        retries={"output": 3},
+        retries={"output": MAX_REVIEWS - 1},
     )
     collector.output_validator(review_collection)
     return collector
@@ -182,10 +186,8 @@ async def review_collection(ctx: RunContext[CollectionDeps], report: CollectionR
         f"The agent's account:\n{report.summary}",
     ])
     review = (await deps.reviewer.run(review_prompt)).output
-    review_path = deps.collected_data_directory / REVIEW_FILE_NAME
-    reviews = json.loads(review_path.read_text()) if review_path.exists() else []
-    reviews.append(review.model_dump())
-    review_path.write_text(json.dumps(reviews, indent=2))
+    deps.reviews.append(review)
+    write_atomically(deps.collected_data_directory / REVIEW_FILE_NAME, _REVIEWS.dump_json(deps.reviews, indent=2))
     if not review.accepted:
         raise ModelRetry("A reviewer checked your files and found these issues:\n" + "\n".join(review.issues))
     return report
@@ -203,18 +205,28 @@ def collect_data(request: DataRequest, collected_data_directory: Path, model: Mo
     if problems:
         print("The collected data folder cannot be used:\n" + "\n".join(problems), file=sys.stderr)
         return 1
-    _, report = asyncio.run(run_agent(
-        build_collector(model, collected_data_directory),
-        _collector_prompt(request, collected_data_directory),
-        max_steps=Config.DEFAULT_MAX_STEPS,
-        message_history=None,
-        deps=deps,
-    ))
+    try:
+        _, report = asyncio.run(run_agent(
+            build_collector(model, collected_data_directory),
+            _collector_prompt(request, collected_data_directory),
+            max_steps=Config.DEFAULT_MAX_STEPS,
+            message_history=None,
+            deps=deps,
+        ))
+    except IterationRunFailed:
+        message = "Data collection did not finish."
+        if deps.reviews and not deps.reviews[-1].accepted:
+            message += f" The reviewer did not accept the files; {REVIEW_FILE_NAME} lists the issues."
+        print(
+            f"{message} The downloaded files stay in the collected data folder; run the command again on it to continue.",
+            file=sys.stderr,
+        )
+        return 1
     problems = find_problems(collected_data_directory, max_bytes, verify_hashes=True)
     if problems:
         print("The collected data folder does not match its manifest:\n" + "\n".join(problems), file=sys.stderr)
         return 1
-    (collected_data_directory / SUMMARY_FILE_NAME).write_text(report.summary)
+    write_atomically(collected_data_directory / SUMMARY_FILE_NAME, report.summary.encode())
     return 0
 
 

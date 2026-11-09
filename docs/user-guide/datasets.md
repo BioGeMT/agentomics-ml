@@ -278,7 +278,7 @@ agentomics-collect-data --request request.json --collected-data-dir collected_da
 
 The folder holds `files/`, `manifest.json` (source URL, size and SHA-256 of
 each file), `summary.md` (the agent's account of the files, written when a
-review accepts them) and `review.json` (every review). Zip, tar and gz archives are unpacked into `files/`, and the
+review accepts them) and `review.json` (the reviews of the latest run). Zip, tar and gz archives are unpacked into `files/`, and the
 manifest records the archive each unpacked file came from. Both agents can
 list and read the downloaded files.
 The agent needs a provider with native web search (OpenAI, OpenRouter,
