@@ -17,6 +17,8 @@ MANIFEST_FILE_NAME = "manifest.json"
 PARTIAL_FILE_NAME = ".download.part"
 ARCHIVE_SUFFIXES = (".tar.gz", ".tgz", ".tar", ".zip", ".gz")
 READABLE_ZIP_COMPRESSIONS = (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED, zipfile.ZIP_BZIP2, zipfile.ZIP_LZMA)
+# Bit 0 of a zip member's general purpose flags is set when the member is encrypted.
+ZIP_ENCRYPTED_FLAG = 0x1
 CHUNK_BYTES = 1 << 20
 LISTED_UNPACKED_FILES = 20
 
@@ -178,7 +180,7 @@ class DownloadFolder:
                 with zipfile.ZipFile(archive) as bundle:
                     for member in bundle.infolist():
                         if not member.is_dir() and _is_plain_relative_path(member.filename):
-                            if member.flag_bits & 0x1 or member.compress_type not in READABLE_ZIP_COMPRESSIONS:
+                            if member.flag_bits & ZIP_ENCRYPTED_FLAG or member.compress_type not in READABLE_ZIP_COMPRESSIONS:
                                 raise zipfile.BadZipFile(f"{member.filename} is encrypted or uses an unsupported compression")
                             with bundle.open(member) as source:
                                 save(source, f"{target.name}/{member.filename}")
