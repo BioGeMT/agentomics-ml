@@ -94,14 +94,7 @@ run/iteration_N/
 
 ## Fetched Papers
 
-The `paper_fetch` tool saves PDFs to
-`outputs/<agent_id>/run/shared/fetched_papers/` on the host. Each filename is the
-Semantic Scholar paper ID followed by `.pdf`. The returned `file_path` points to
-the file inside the run's container workspace.
-
-The folder is shared across iterations of the run. Existing files with a PDF
-signature are reused on later calls for the same paper ID. Only successfully
-saved or cached PDFs are returned to the agent; no HTML fallback is used.
+`outputs/<agent_id>/run/shared/fetched_papers/` folder contains the papers fetched by the agent during the run.
 
 ## Reports
 
