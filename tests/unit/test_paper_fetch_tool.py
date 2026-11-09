@@ -6,7 +6,7 @@ import pytest
 from reportlab.pdfgen.canvas import Canvas
 
 from agentomics.tools import paper_fetch_tool
-from agentomics.tools.paper_fetch_tool import PaperSearchResult, RetrievedPaper, download_papers
+from agentomics.tools.paper_fetch_tool import AstaPaperSearchResult, RetrievedPaper, download_papers
 
 
 @pytest.mark.parametrize(
@@ -58,7 +58,7 @@ def test_download_papers_saves_pdf_from_resource(
 ):
     monkeypatch.delenv("S2_API_KEY", raising=False)
     monkeypatch.setenv("UNPAYWALL_EMAIL", "researcher@example.org")
-    paper = PaperSearchResult(paper_id="paper-id", title="Sequence models", year=2025)
+    paper = AstaPaperSearchResult(paper_id="paper-id", title="Sequence models", year=2025)
     metadata = {"paperId": paper.paper_id, "externalIds": external_ids}
     if resolver_url is None and not external_ids:
         metadata["openAccessPdf"] = {"url": pdf_url}
@@ -96,7 +96,7 @@ def test_download_papers_saves_pdf_from_resource(
     "paper,pdf_url,status,body",
     [
         pytest.param(
-            PaperSearchResult(
+            AstaPaperSearchResult(
                 paper_id="f36f5e1578017e53df01a95ecc002a44906de433",
                 title="miRBench: novel benchmark datasets for microRNA binding site prediction",
                 year=2025,
@@ -105,7 +105,7 @@ def test_download_papers_saves_pdf_from_resource(
             403, b"Forbidden", id="oup-forbidden",
         ),
         pytest.param(
-            PaperSearchResult(
+            AstaPaperSearchResult(
                 paper_id="2c3c17026138fee75aa0bf662dd25bbab601899b",
                 title="GraphTar: applying word2vec and graph neural networks to miRNA target prediction",
                 year=2023,

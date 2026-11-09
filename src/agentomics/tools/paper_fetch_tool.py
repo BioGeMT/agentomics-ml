@@ -22,18 +22,10 @@ class RetrievedPaper(BaseModel):
     file_path: str
 
 @dataclass(frozen=True)
-class PaperSearchResult:
+class AstaPaperSearchResult:
     paper_id: str
     title: str
     year: int | None
-
-    @classmethod
-    def from_asta(cls, paper: dict[str, Any]) -> PaperSearchResult:
-        return cls(
-            paper_id=paper["paperId"],
-            title=paper["title"],
-            year=paper.get("year"),
-        )
 
 def create_paper_fetch_tool(config: Config) -> Tool[Any]:
     async def paper_fetch(keywords: str) -> list[RetrievedPaper]:
@@ -62,7 +54,7 @@ def create_paper_fetch_tool(config: Config) -> Tool[Any]:
 
 async def search_asta_papers(
     keywords: str, limit: int, timeout: float
-) -> list[PaperSearchResult]:
+) -> list[AstaPaperSearchResult]:
     headers = {}
     # An optional Asta key enables higher rate limits.
     if api_key := os.getenv("ASTA_API_KEY"):
@@ -83,10 +75,17 @@ async def search_asta_papers(
     )
     if isinstance(result, str):
         result = json.loads(result)
-    return [PaperSearchResult.from_asta(paper) for paper in result]
+    return [
+        AstaPaperSearchResult(
+            paper_id=paper["paperId"],
+            title=paper["title"],
+            year=paper.get("year"),
+        )
+        for paper in result
+    ]
 
 async def download_papers(
-    papers: list[PaperSearchResult], destination: Path, timeout: float
+    papers: list[AstaPaperSearchResult], destination: Path, timeout: float
 ) -> list[RetrievedPaper]:
     destination.mkdir(parents=True, exist_ok=True)
 
@@ -148,7 +147,7 @@ async def download_papers(
 
 async def resolve_pdf_candidates(
     client: httpx.AsyncClient,
-    paper: PaperSearchResult,
+    paper: AstaPaperSearchResult,
     metadata: dict[str, Any],
 ) -> list[str]:
     candidates: list[str] = []
