@@ -53,7 +53,7 @@ from agentomics.tools.paper_fetch_tool import AstaPaperSearchResult, RetrievedPa
         ),
     ],
 )
-def test_download_papers_saves_pdf_from_resource(
+def test_download_asta_paper_pdf(
     external_ids, pdf_url, resolver_url, resolver_response, tmp_path, monkeypatch,
 ):
     monkeypatch.delenv("S2_API_KEY", raising=False)
