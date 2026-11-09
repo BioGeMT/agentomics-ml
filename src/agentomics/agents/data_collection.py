@@ -140,6 +140,8 @@ def build_collector_prompt(request: DataRequest, folder: DownloadFolder) -> str:
 def build_collector(model: Model, request: DataRequest, folder: DownloadFolder) -> Agent:
     capabilities = [
         WebSearch(local=False),
+        # TODO: drop _web_fetch and use pydantic-ai's own web fetch once
+        # https://github.com/pydantic/pydantic-ai/issues/11829 is fixed.
         WebFetch(local=Tool(_web_fetch, name="web_fetch")),
         LocalWorkspace(folder.root, read_only=True),
         FileSystem(read_only=True, tools=["read_file", "list_directory"]),
