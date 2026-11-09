@@ -12,7 +12,7 @@ from pydantic_ai.models.test import TestModel
 from pydantic_ai.usage import RunUsage
 
 from agentomics.runtime.collected_data import load_manifest
-from agentomics.tools.download_tool import DownloadDeps, check_collected_data, current_budget, discard_file, download_file
+from agentomics.tools.download_tool import DownloadDeps, current_budget, discard_file, download_file
 from tests.helpers import serve_files
 
 DATA = b"x" * 100
@@ -101,29 +101,6 @@ def test_unsafe_or_existing_file_name_is_refused(tmp_path, filename):
     assert (tmp_path / "files" / "existing.csv").read_bytes() == b"old"
 
 
-def _change_bytes(files_directory: Path):
-    (files_directory / "data.csv").write_bytes(b"y" * 100)
-
-
-def _remove_file(files_directory: Path):
-    (files_directory / "data.csv").unlink()
-
-
-def _add_unrecorded_file(files_directory: Path):
-    (files_directory / "extra.csv").write_bytes(b"extra")
-
-
-@pytest.mark.parametrize("change", [_change_bytes, _remove_file, _add_unrecorded_file])
-def test_check_reports_files_that_disagree_with_the_manifest(tmp_path, change):
-    context = _context(tmp_path)
-    with serve_files({"/data.csv": DATA}) as base_url:
-        download_file(context, f"{base_url}/data.csv", "data.csv")
-
-    change(tmp_path / "files")
-
-    assert check_collected_data(context.deps, verify_hashes=True) != []
-
-
 def test_rerun_counts_the_files_of_an_earlier_run_against_the_limit(tmp_path):
     with serve_files({"/a.csv": b"a" * 100, "/big.csv": b"c" * 200}) as base_url:
         download_file(_context(tmp_path, max_bytes=250), f"{base_url}/a.csv", "a.csv")
@@ -171,7 +148,6 @@ def test_archive_is_unpacked_into_recorded_files(tmp_path, filename, archive, un
     assert [entry.path for entry in entries] == unpacked_paths
     assert all(entry.archive == filename for entry in entries)
     assert (tmp_path / unpacked_paths[0]).read_bytes() == DATA
-    assert check_collected_data(context.deps, verify_hashes=True) == []
 
     discard_file(context, unpacked_path)
 

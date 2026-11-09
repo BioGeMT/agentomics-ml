@@ -7,7 +7,7 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from agentomics.agents.data_collection import DataRequest, collect_data
 from agentomics.runtime.collected_data import load_manifest
-from agentomics.tools.download_tool import DownloadDeps, check_collected_data, download_file
+from agentomics.tools.download_tool import download_file
 from agentomics.utils.exceptions import IterationRunFailed
 from tests.helpers import serve_files
 
@@ -47,7 +47,6 @@ def test_collection_keeps_the_downloads_and_ends_when_a_review_accepts(tmp_path)
 
     assert exit_code == 0
     assert sorted(entry.path for entry in load_manifest(tmp_path)) == ["files/a.csv", "files/b.csv"]
-    assert check_collected_data(DownloadDeps(collected_data_directory=tmp_path, max_bytes=None), verify_hashes=True) == []
     assert [verdict["accepted"] for verdict in json.loads((tmp_path / "review.json").read_text())] == [False, True]
     assert (tmp_path / "summary.md").read_text() == SUMMARY
 

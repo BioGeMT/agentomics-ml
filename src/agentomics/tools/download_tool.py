@@ -14,10 +14,9 @@ import httpx2
 from pydantic import BaseModel
 from pydantic_ai import RunContext, Tool
 
-from agentomics.runtime.collected_data import ManifestEntry, load_manifest, save_manifest
+from agentomics.runtime.collected_data import FILES_DIRECTORY_NAME, ManifestEntry, load_manifest, save_manifest
 from agentomics.utils.config import Config
 
-FILES_DIRECTORY_NAME = "files"
 SCRATCH_DIRECTORY_PREFIX = ".download-"
 READABLE_ZIP_COMPRESSIONS = (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED, zipfile.ZIP_BZIP2, zipfile.ZIP_LZMA)
 # Bit 0 of a zip member's general purpose flags is set when the member is encrypted.
@@ -261,43 +260,6 @@ def _remove_empty_folders(folder: Path, stop: Path) -> None:
         folder = folder.parent
 
 
-def check_collected_data(deps: DownloadDeps, verify_hashes: bool) -> list[str]:
-    """Return the problems that make the collected data folder disagree with its manifest or the size limit."""
-    files_directory = deps.collected_data_directory / FILES_DIRECTORY_NAME
-    if files_directory.is_symlink():
-        return ["files/ is a symbolic link."]
-    entries = load_manifest(deps.collected_data_directory)
-    problems = []
-    recorded = [entry.path for entry in entries]
-    if len(recorded) != len(set(recorded)):
-        problems.append("The manifest records a file more than once.")
-    for entry in entries:
-        path = deps.collected_data_directory / entry.path
-        if not _is_plain_relative_path(entry.path):
-            problems.append(f"The manifest path '{entry.path}' is not a plain path inside files/.")
-        elif path.is_symlink() or not path.is_file():
-            problems.append(f"{entry.path} is in the manifest but is missing or not a regular file.")
-        elif path.stat().st_size == 0:
-            problems.append(f"{entry.path} is empty.")
-        elif path.stat().st_size != entry.size_bytes or (verify_hashes and _sha256(path) != entry.sha256):
-            problems.append(f"{entry.path} differs from its manifest entry.")
-    for path in sorted(files_directory.rglob("*")):
-        relative = path.relative_to(deps.collected_data_directory).as_posix()
-        if path.is_symlink():
-            problems.append(f"{relative} is a symbolic link.")
-        elif path.is_file() and relative not in recorded:
-            problems.append(f"{relative} is not in the manifest.")
-    budget = current_budget(deps)
-    if budget.max_bytes is not None and budget.used_bytes > budget.max_bytes:
-        problems.append(f"The folder holds {budget.used_bytes} bytes, more than the size limit of {budget.max_bytes} bytes.")
-    return problems
-
-
 def _is_plain_relative_path(path: str) -> bool:
     parts = PurePosixPath(path).parts
     return bool(parts) and not PurePosixPath(path).is_absolute() and ".." not in parts
-
-
-def _sha256(path: Path) -> str:
-    with path.open("rb") as file:
-        return hashlib.file_digest(file, "sha256").hexdigest()

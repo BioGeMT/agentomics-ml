@@ -13,12 +13,11 @@ from pydantic_ai.models import Model
 from pydantic_ai_harness import FileSystem
 
 from agentomics.agents.agent_utils import run_agent
-from agentomics.runtime.collected_data import MANIFEST_FILE_NAME, load_manifest
+from agentomics.runtime.collected_data import MANIFEST_FILE_NAME, find_problems, load_manifest
 from agentomics.runtime.filesystem import restore_host_ownership
 from agentomics.runtime.run_workflow import prepare_codex_credentials
 from agentomics.tools.download_tool import (
     DownloadDeps,
-    check_collected_data,
     create_download_tools,
     current_budget,
     discard_file,
@@ -194,7 +193,7 @@ def collect_data(request: DataRequest, collected_data_directory: Path, model: Mo
         request=request,
         reviewer=build_reviewer(model, collected_data_directory),
     )
-    problems = check_collected_data(deps, verify_hashes=False)
+    problems = find_problems(collected_data_directory, max_bytes, verify_hashes=False)
     if problems:
         print("The collected data folder cannot be used:\n" + "\n".join(problems), file=sys.stderr)
         return 1
@@ -205,7 +204,7 @@ def collect_data(request: DataRequest, collected_data_directory: Path, model: Mo
         message_history=None,
         deps=deps,
     ))
-    problems = check_collected_data(deps, verify_hashes=True)
+    problems = find_problems(collected_data_directory, max_bytes, verify_hashes=True)
     if problems:
         print("The collected data folder does not match its manifest:\n" + "\n".join(problems), file=sys.stderr)
         return 1
