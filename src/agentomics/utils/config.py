@@ -52,6 +52,7 @@ class Config:
     DEFAULT_USE_PROXY: ClassVar[bool] = True
     DEFAULT_LLM_RESPONSE_TIMEOUT: ClassVar[int] = 60 * 10
     DEFAULT_BASH_TOOL_TIMEOUT: ClassVar[int] = 60 * 3
+    DEFAULT_DOWNLOAD_TOOL_TIMEOUT: ClassVar[int] = 60
     DEFAULT_MAX_TOOL_RETRIES: ClassVar[int] = 5
     DEFAULT_RUN_PYTHON_TOOL_TIMEOUT: ClassVar[int] = 60 * 60 * 6
     DEFAULT_USER_PROMPT: ClassVar[str] = "Develop a machine learning model that generalizes well to new unseen data."

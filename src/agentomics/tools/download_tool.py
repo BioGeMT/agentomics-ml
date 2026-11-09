@@ -49,6 +49,7 @@ class DownloadDeps:
 
     collected_data_directory: Path
     max_bytes: int | None
+    download_timeout: int = Config.DEFAULT_DOWNLOAD_TOOL_TIMEOUT
 
 
 def create_download_tools() -> list[Tool[DownloadDeps]]:
@@ -103,7 +104,7 @@ def download_file(ctx: RunContext[DownloadDeps], url: str, filename: str) -> str
     digest = hashlib.sha256()
     size = 0
     try:
-        with httpx2.stream("GET", url, follow_redirects=True, timeout=60) as response:
+        with httpx2.stream("GET", url, follow_redirects=True, timeout=deps.download_timeout) as response:
             response.raise_for_status()
             content_type = response.headers.get("content-type", "unknown type")
             if "content-length" in response.headers:
