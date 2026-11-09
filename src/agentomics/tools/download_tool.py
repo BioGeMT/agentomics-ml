@@ -1,7 +1,6 @@
 import gzip
 import hashlib
 import lzma
-import shutil
 import tarfile
 import tempfile
 import zipfile
@@ -102,12 +101,12 @@ def download_file(ctx: RunContext[DownloadDeps], url: str, filename: str) -> str
 
     save_manifest(deps.collected_data_directory, load_manifest(deps.collected_data_directory) + added)
     if _archive_suffix(filename) is None:
-        return f"Saved files/{filename} ({size} bytes, {content_type}). {budget_text(deps)}"
-    listing = "\n".join(f"files/{entry.path}" for entry in added[:LISTED_UNPACKED_FILES])
+        return f"Saved {added[0].path} ({size} bytes, {content_type}). {budget_text(deps)}"
+    listing = "\n".join(entry.path for entry in added[:LISTED_UNPACKED_FILES])
     if len(added) > LISTED_UNPACKED_FILES:
         listing += f"\n... and {len(added) - LISTED_UNPACKED_FILES} more"
     unpacked_bytes = sum(entry.size_bytes for entry in added)
-    return (f"Downloaded {filename} ({size} bytes, {content_type}), unpacked it into files/{target.name} and "
+    return (f"Downloaded {filename} ({size} bytes, {content_type}), unpacked it into {FILES_DIRECTORY_NAME}/{target.name} and "
             f"removed the archive: {len(added)} files, {unpacked_bytes} bytes:\n{listing}\n{budget_text(deps)}")
 
 
@@ -146,13 +145,16 @@ def _store(
     """Move the download, or the files unpacked from it, to target; return their manifest entries."""
     suffix = _archive_suffix(filename)
     if suffix is None:
-        added = [ManifestEntry(path=target.name, source_url=url, size_bytes=size, sha256=sha256)]
+        added = [ManifestEntry(path=f"{FILES_DIRECTORY_NAME}/{target.name}", source_url=url, size_bytes=size, sha256=sha256)]
     else:
         unpacked_root = downloaded.with_name("unpacked")
         # The archive is removed, so only its unpacked files count.
         unpacked = _unpack(downloaded, suffix, target.name, unpacked_root, current_budget(deps))
         added = [
-            ManifestEntry(path=path, source_url=url, size_bytes=member_size, sha256=member_sha256, archive=filename)
+            ManifestEntry(
+                path=f"{FILES_DIRECTORY_NAME}/{path}", source_url=url, size_bytes=member_size, sha256=member_sha256,
+                archive=filename,
+            )
             for path, (member_size, member_sha256) in unpacked.items()
         ]
         downloaded = unpacked_root / target.name
@@ -236,20 +238,27 @@ def discard_file(ctx: RunContext[DownloadDeps], path: str) -> str:
     """Delete a downloaded file that does not fit the request, and remove it from the manifest.
 
     Args:
-        path: The path in files/: a file, or the folder an archive was unpacked into.
+        path: The path of the file as the manifest records it, or of the folder an archive was unpacked into.
     """
     deps = ctx.deps
+    path = path.rstrip("/")
     entries = load_manifest(deps.collected_data_directory)
     discarded = [entry for entry in entries if entry.path == path or entry.path.startswith(f"{path}/")]
     if not discarded:
-        return f"Error: files/{path} is not in the manifest. {budget_text(deps)}"
-    target = deps.collected_data_directory / FILES_DIRECTORY_NAME / path
-    if target.is_dir():
-        shutil.rmtree(target)
-    else:
-        target.unlink()
+        return f"Error: {path} is not in the manifest. {budget_text(deps)}"
+    for entry in discarded:
+        file_path = deps.collected_data_directory / entry.path
+        file_path.unlink()
+        _remove_empty_folders(file_path.parent, deps.collected_data_directory / FILES_DIRECTORY_NAME)
     save_manifest(deps.collected_data_directory, [entry for entry in entries if entry not in discarded])
-    return f"Discarded files/{path}. {budget_text(deps)}"
+    return f"Discarded {path}. {budget_text(deps)}"
+
+
+def _remove_empty_folders(folder: Path, stop: Path) -> None:
+    """Remove folder and its parents below stop while they are empty."""
+    while folder != stop and not any(folder.iterdir()):
+        folder.rmdir()
+        folder = folder.parent
 
 
 def check_collected_data(deps: DownloadDeps, verify_hashes: bool) -> list[str]:
@@ -263,21 +272,21 @@ def check_collected_data(deps: DownloadDeps, verify_hashes: bool) -> list[str]:
     if len(recorded) != len(set(recorded)):
         problems.append("The manifest records a file more than once.")
     for entry in entries:
-        path = files_directory / entry.path
+        path = deps.collected_data_directory / entry.path
         if not _is_plain_relative_path(entry.path):
             problems.append(f"The manifest path '{entry.path}' is not a plain path inside files/.")
         elif path.is_symlink() or not path.is_file():
-            problems.append(f"files/{entry.path} is in the manifest but is missing or not a regular file.")
+            problems.append(f"{entry.path} is in the manifest but is missing or not a regular file.")
         elif path.stat().st_size == 0:
-            problems.append(f"files/{entry.path} is empty.")
+            problems.append(f"{entry.path} is empty.")
         elif path.stat().st_size != entry.size_bytes or (verify_hashes and _sha256(path) != entry.sha256):
-            problems.append(f"files/{entry.path} differs from its manifest entry.")
+            problems.append(f"{entry.path} differs from its manifest entry.")
     for path in sorted(files_directory.rglob("*")):
-        relative = path.relative_to(files_directory).as_posix()
+        relative = path.relative_to(deps.collected_data_directory).as_posix()
         if path.is_symlink():
-            problems.append(f"files/{relative} is a symbolic link.")
+            problems.append(f"{relative} is a symbolic link.")
         elif path.is_file() and relative not in recorded:
-            problems.append(f"files/{relative} is not in the manifest.")
+            problems.append(f"{relative} is not in the manifest.")
     budget = current_budget(deps)
     if budget.max_bytes is not None and budget.used_bytes > budget.max_bytes:
         problems.append(f"The folder holds {budget.used_bytes} bytes, more than the size limit of {budget.max_bytes} bytes.")

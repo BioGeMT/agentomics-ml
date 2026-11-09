@@ -46,7 +46,7 @@ def test_collection_keeps_the_downloads_and_ends_when_a_review_accepts(tmp_path)
         exit_code = collect_data(REQUEST, tmp_path, _model_downloading_two_files(base_url, [False, True]))
 
     assert exit_code == 0
-    assert sorted(entry.path for entry in load_manifest(tmp_path)) == ["a.csv", "b.csv"]
+    assert sorted(entry.path for entry in load_manifest(tmp_path)) == ["files/a.csv", "files/b.csv"]
     assert check_collected_data(DownloadDeps(collected_data_directory=tmp_path, max_bytes=None), verify_hashes=True) == []
     assert [verdict["accepted"] for verdict in json.loads((tmp_path / "review.json").read_text())] == [False, True]
     assert (tmp_path / "summary.md").read_text() == SUMMARY

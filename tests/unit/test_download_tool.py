@@ -52,7 +52,7 @@ def test_download_saves_file_and_records_it(tmp_path):
     assert "text/csv" in result
     assert (tmp_path / "files" / "data.csv").read_bytes() == DATA
     assert json.loads((tmp_path / "manifest.json").read_text()) == [{
-        "path": "data.csv",
+        "path": "files/data.csv",
         "source_url": f"{base_url}/data.csv",
         "size_bytes": 100,
         "sha256": hashlib.sha256(DATA).hexdigest(),
@@ -139,29 +139,29 @@ def test_rerun_can_discard_a_file_of_an_earlier_run(tmp_path):
     with serve_files({"/a.csv": b"a" * 100}) as base_url:
         download_file(_context(tmp_path), f"{base_url}/a.csv", "a.csv")
 
-    discard_file(_context(tmp_path), "a.csv")
+    discard_file(_context(tmp_path), "files/a.csv")
 
     assert _saved_files(tmp_path) == ["manifest.json"]
     assert json.loads((tmp_path / "manifest.json").read_text()) == []
 
 
 def test_discarding_a_path_that_was_not_downloaded_says_it_is_not_in_the_manifest(tmp_path):
-    result = discard_file(_context(tmp_path), "missing.csv")
+    result = discard_file(_context(tmp_path), "files/missing.csv")
 
     assert "not in the manifest" in result
 
 
 @pytest.mark.parametrize(
-    ("filename", "archive", "unpacked_name", "unpacked_paths"),
+    ("filename", "archive", "unpacked_path", "unpacked_paths"),
     [
-        ("data.zip", _zip({"a.csv": DATA, ".hidden.csv": DATA, "../escape.csv": DATA}), "data", ["data/a.csv", "data/.hidden.csv"]),
-        ("data.tar.gz", _tar({"a.csv": DATA, ".hidden.csv": DATA, "../escape.csv": DATA}, "gz"), "data", ["data/a.csv", "data/.hidden.csv"]),
-        ("data.tar.bz2", _tar({"a.csv": DATA}, "bz2"), "data", ["data/a.csv"]),
-        ("data.csv.gz", gzip.compress(DATA), "data.csv", ["data.csv"]),
+        ("data.zip", _zip({"a.csv": DATA, ".hidden.csv": DATA, "../escape.csv": DATA}), "files/data", ["files/data/a.csv", "files/data/.hidden.csv"]),
+        ("data.tar.gz", _tar({"a.csv": DATA, ".hidden.csv": DATA, "../escape.csv": DATA}, "gz"), "files/data", ["files/data/a.csv", "files/data/.hidden.csv"]),
+        ("data.tar.bz2", _tar({"a.csv": DATA}, "bz2"), "files/data", ["files/data/a.csv"]),
+        ("data.csv.gz", gzip.compress(DATA), "files/data.csv", ["files/data.csv"]),
     ],
     ids=["zip", "tar.gz", "tar.bz2", "gz"],
 )
-def test_archive_is_unpacked_into_recorded_files(tmp_path, filename, archive, unpacked_name, unpacked_paths):
+def test_archive_is_unpacked_into_recorded_files(tmp_path, filename, archive, unpacked_path, unpacked_paths):
     context = _context(tmp_path)
 
     with serve_files({f"/{filename}": archive}) as base_url:
@@ -170,10 +170,10 @@ def test_archive_is_unpacked_into_recorded_files(tmp_path, filename, archive, un
     entries = load_manifest(tmp_path)
     assert [entry.path for entry in entries] == unpacked_paths
     assert all(entry.archive == filename for entry in entries)
-    assert (tmp_path / "files" / unpacked_paths[0]).read_bytes() == DATA
+    assert (tmp_path / unpacked_paths[0]).read_bytes() == DATA
     assert check_collected_data(context.deps, verify_hashes=True) == []
 
-    discard_file(context, unpacked_name)
+    discard_file(context, unpacked_path)
 
     assert _saved_files(tmp_path) == ["manifest.json"]
     assert json.loads((tmp_path / "manifest.json").read_text()) == []
