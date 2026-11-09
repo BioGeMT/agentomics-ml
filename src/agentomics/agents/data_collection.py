@@ -153,7 +153,7 @@ def _capabilities(collected_data_directory: Path) -> list:
     ]
 
 
-def build_reviewer(model: Model, collected_data_directory: Path) -> Agent[None, Review]:
+def _build_reviewer(model: Model, collected_data_directory: Path) -> Agent[None, Review]:
     return Agent(
         model,
         instructions=REVIEWER_INSTRUCTIONS,
@@ -163,7 +163,7 @@ def build_reviewer(model: Model, collected_data_directory: Path) -> Agent[None, 
     )
 
 
-def build_collector(model: Model, collected_data_directory: Path) -> Agent[CollectionDeps, CollectionSummary]:
+def _build_collector(model: Model, collected_data_directory: Path) -> Agent[CollectionDeps, CollectionSummary]:
     collector = Agent(
         model,
         deps_type=CollectionDeps,
@@ -173,11 +173,11 @@ def build_collector(model: Model, collected_data_directory: Path) -> Agent[Colle
         output_type=CollectionSummary,
         retries={"output": MAX_REVIEWS - 1},
     )
-    collector.output_validator(review_collection)
+    collector.output_validator(_review_collection)
     return collector
 
 
-async def review_collection(ctx: RunContext[CollectionDeps], collection: CollectionSummary) -> CollectionSummary:
+async def _review_collection(ctx: RunContext[CollectionDeps], collection: CollectionSummary) -> CollectionSummary:
     deps = ctx.deps
     if not load_manifest(deps.collected_data_directory):
         raise ModelRetry("No files were downloaded.")
@@ -199,20 +199,20 @@ def collect_data(
     request: DataRequest, collected_data_directory: Path, model: Model, allow_local_addresses: bool = False,
 ) -> int:
     max_bytes = None if request.max_download_gb is None else int(request.max_download_gb * BYTES_PER_GB)
+    problems = find_problems(collected_data_directory, max_bytes, verify_hashes=False)
+    if problems:
+        print("The collected data folder cannot be used:\n" + "\n".join(problems), file=sys.stderr)
+        return 1
     deps = CollectionDeps(
         collected_data_directory=collected_data_directory,
         max_bytes=max_bytes,
         allow_local_addresses=allow_local_addresses,
         request=request,
-        reviewer=build_reviewer(model, collected_data_directory),
+        reviewer=_build_reviewer(model, collected_data_directory),
     )
-    problems = find_problems(collected_data_directory, max_bytes, verify_hashes=False)
-    if problems:
-        print("The collected data folder cannot be used:\n" + "\n".join(problems), file=sys.stderr)
-        return 1
     try:
         _, collection = asyncio.run(run_agent(
-            build_collector(model, collected_data_directory),
+            _build_collector(model, collected_data_directory),
             _collector_prompt(request, collected_data_directory),
             max_steps=Config.DEFAULT_MAX_STEPS,
             message_history=None,
