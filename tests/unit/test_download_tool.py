@@ -31,9 +31,9 @@ def _zip(members: dict[str, bytes]) -> bytes:
     return buffer.getvalue()
 
 
-def _tar_gz(members: dict[str, bytes]) -> bytes:
+def _tar(members: dict[str, bytes], compression: str) -> bytes:
     buffer = io.BytesIO()
-    with tarfile.open(fileobj=buffer, mode="w:gz") as bundle:
+    with tarfile.open(fileobj=buffer, mode=f"w:{compression}") as bundle:
         for name, data in members.items():
             member = tarfile.TarInfo(name)
             member.size = len(data)
@@ -141,10 +141,11 @@ def test_discarding_a_path_that_was_not_downloaded_says_it_is_not_in_the_manifes
     ("filename", "archive", "unpacked_name", "unpacked_paths"),
     [
         ("data.zip", _zip({"a.csv": DATA, ".hidden.csv": DATA, "../escape.csv": DATA}), "data", ["data/a.csv", "data/.hidden.csv"]),
-        ("data.tar.gz", _tar_gz({"a.csv": DATA, ".hidden.csv": DATA, "../escape.csv": DATA}), "data", ["data/a.csv", "data/.hidden.csv"]),
+        ("data.tar.gz", _tar({"a.csv": DATA, ".hidden.csv": DATA, "../escape.csv": DATA}, "gz"), "data", ["data/a.csv", "data/.hidden.csv"]),
+        ("data.tar.bz2", _tar({"a.csv": DATA}, "bz2"), "data", ["data/a.csv"]),
         ("data.csv.gz", gzip.compress(DATA), "data.csv", ["data.csv"]),
     ],
-    ids=["zip", "tar.gz", "gz"],
+    ids=["zip", "tar.gz", "tar.bz2", "gz"],
 )
 def test_archive_is_unpacked_into_recorded_files(tmp_path, filename, archive, unpacked_name, unpacked_paths):
     context = _context(tmp_path)

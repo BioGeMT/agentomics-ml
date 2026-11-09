@@ -1,9 +1,12 @@
 import gzip
 import hashlib
+import lzma
 import shutil
 import tarfile
+import tempfile
 import zipfile
 import zlib
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import BinaryIO
@@ -16,8 +19,7 @@ from agentomics.runtime.collected_data import ManifestEntry, load_manifest, save
 from agentomics.utils.config import Config
 
 FILES_DIRECTORY_NAME = "files"
-PARTIAL_FILE_NAME = ".download.part"
-ARCHIVE_SUFFIXES = (".tar.gz", ".tgz", ".tar", ".zip", ".gz")
+SCRATCH_DIRECTORY_PREFIX = ".download-"
 READABLE_ZIP_COMPRESSIONS = (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED, zipfile.ZIP_BZIP2, zipfile.ZIP_LZMA)
 # Bit 0 of a zip member's general purpose flags is set when the member is encrypted.
 ZIP_ENCRYPTED_FLAG = 0x1
@@ -25,8 +27,8 @@ CHUNK_BYTES = 1 << 20
 LISTED_UNPACKED_FILES = 20
 
 
-class DownloadBudgetExceeded(Exception):
-    pass
+class DownloadError(Exception):
+    """A download that cannot be kept; the message is for the agent."""
 
 
 class Budget(BaseModel):
@@ -37,7 +39,7 @@ class Budget(BaseModel):
 
     def consume(self, size_bytes: int) -> None:
         if self.max_bytes is not None and self.used_bytes + size_bytes > self.max_bytes:
-            raise DownloadBudgetExceeded(
+            raise DownloadError(
                 f"the size limit of {self.max_bytes} bytes would be exceeded ({self.used_bytes} bytes are used)"
             )
         self.used_bytes += size_bytes
@@ -88,60 +90,143 @@ def download_file(ctx: RunContext[DownloadDeps], url: str, filename: str) -> str
         filename: The name to save it under: a plain file name, without folders.
     """
     deps = ctx.deps
-    files_directory = deps.collected_data_directory / FILES_DIRECTORY_NAME
-    if Path(filename).name != filename or filename in ("", ".."):
-        return f"Error: '{filename}' is not a plain file name. {budget_text(deps)}"
-    unpacked_name = _unpacked_name(filename)
-    target = files_directory / (unpacked_name or filename)
-    if target.exists() or target.is_symlink():
-        return f"Error: files/{target.name} already exists. {budget_text(deps)}"
-    if not url.startswith(("http://", "https://")):
-        return (f"Error: only http and https URLs can be downloaded. Try the same address over https if the host "
-                f"offers it. {budget_text(deps)}")
-
-    budget = current_budget(deps)
-    partial = deps.collected_data_directory / PARTIAL_FILE_NAME
-    digest = hashlib.sha256()
-    size = 0
     try:
-        with httpx2.stream("GET", url, follow_redirects=True, timeout=deps.download_timeout) as response:
-            response.raise_for_status()
-            content_type = response.headers.get("content-type", "unknown type")
-            if "content-length" in response.headers:
-                # Refuse a file that cannot fit before downloading it.
-                budget.model_copy().consume(int(response.headers["content-length"]))
-            with partial.open("wb") as output:
-                for chunk in response.iter_bytes():
-                    budget.consume(len(chunk))
-                    size += len(chunk)
-                    digest.update(chunk)
-                    output.write(chunk)
-        if size == 0:
-            return f"Error: the download was empty. {budget_text(deps)}"
-        files_directory.mkdir(exist_ok=True)
-        if unpacked_name is None:
-            partial.rename(target)
-            added = [ManifestEntry(path=filename, source_url=url, size_bytes=size, sha256=digest.hexdigest())]
-        else:
-            added = _unpack(deps, partial, filename, target, url)
-    except DownloadBudgetExceeded as error:
-        return f"Error: not kept: {error}. {budget_text(deps)}"
-    except (zipfile.BadZipFile, tarfile.TarError, gzip.BadGzipFile, zlib.error, EOFError) as error:
+        target = _target_path(deps, url, filename)
+        with tempfile.TemporaryDirectory(dir=deps.collected_data_directory, prefix=SCRATCH_DIRECTORY_PREFIX) as scratch:
+            downloaded = Path(scratch) / "downloaded"
+            size, sha256, content_type = _fetch(url, downloaded, current_budget(deps), deps.download_timeout)
+            added = _store(deps, url, filename, downloaded, size, sha256, target)
+    except DownloadError as error:
+        return f"Error: {error}. {budget_text(deps)}"
+    except (zipfile.BadZipFile, tarfile.TarError, gzip.BadGzipFile, zlib.error, lzma.LZMAError, EOFError) as error:
         return f"Error: {filename} could not be unpacked: {error}. {budget_text(deps)}"
     except (httpx2.HTTPError, OSError) as error:
         return f"Error: download failed: {error}. {budget_text(deps)}"
-    finally:
-        partial.unlink(missing_ok=True)
 
     save_manifest(deps.collected_data_directory, load_manifest(deps.collected_data_directory) + added)
-    if unpacked_name is None:
+    if _archive_suffix(filename) is None:
         return f"Saved files/{filename} ({size} bytes, {content_type}). {budget_text(deps)}"
     listing = "\n".join(f"files/{entry.path}" for entry in added[:LISTED_UNPACKED_FILES])
     if len(added) > LISTED_UNPACKED_FILES:
         listing += f"\n... and {len(added) - LISTED_UNPACKED_FILES} more"
     unpacked_bytes = sum(entry.size_bytes for entry in added)
-    return (f"Downloaded {filename} ({size} bytes, {content_type}), unpacked it into files/{unpacked_name} and "
+    return (f"Downloaded {filename} ({size} bytes, {content_type}), unpacked it into files/{target.name} and "
             f"removed the archive: {len(added)} files, {unpacked_bytes} bytes:\n{listing}\n{budget_text(deps)}")
+
+
+def _target_path(deps: DownloadDeps, url: str, filename: str) -> Path:
+    """Return where the download goes in files/, after checking that the request can be carried out."""
+    if Path(filename).name != filename or filename in ("", ".."):
+        raise DownloadError(f"'{filename}' is not a plain file name")
+    suffix = _archive_suffix(filename)
+    target = deps.collected_data_directory / FILES_DIRECTORY_NAME / (filename if suffix is None else filename.removesuffix(suffix))
+    if target.exists() or target.is_symlink():
+        raise DownloadError(f"files/{target.name} already exists")
+    if not url.startswith(("http://", "https://")):
+        raise DownloadError("only http and https URLs can be downloaded. Try the same address over https if the host offers it")
+    return target
+
+
+def _fetch(url: str, path: Path, budget: Budget, timeout: int) -> tuple[int, str, str]:
+    """Stream the URL to path; return the size, the SHA-256 and the content type."""
+    with httpx2.stream("GET", url, follow_redirects=True, timeout=timeout) as response:
+        response.raise_for_status()
+        if "content-length" in response.headers:
+            # Refuse a file that cannot fit before downloading it.
+            budget.model_copy().consume(int(response.headers["content-length"]))
+        size, sha256 = _write_stream(response.iter_bytes(), path, budget)
+    if size == 0:
+        raise DownloadError("the download was empty")
+    return size, sha256, response.headers.get("content-type", "unknown type")
+
+
+def _store(
+    deps: DownloadDeps, url: str, filename: str, downloaded: Path, size: int, sha256: str, target: Path,
+) -> list[ManifestEntry]:
+    """Move the download, or the files unpacked from it, to target; return their manifest entries."""
+    suffix = _archive_suffix(filename)
+    if suffix is None:
+        added = [ManifestEntry(path=target.name, source_url=url, size_bytes=size, sha256=sha256)]
+    else:
+        unpacked_root = downloaded.with_name("unpacked")
+        # The archive is removed, so only its unpacked files count.
+        unpacked = _unpack(downloaded, suffix, target.name, unpacked_root, current_budget(deps))
+        added = [
+            ManifestEntry(path=path, source_url=url, size_bytes=member_size, sha256=member_sha256, archive=filename)
+            for path, (member_size, member_sha256) in unpacked.items()
+        ]
+        downloaded = unpacked_root / target.name
+    target.parent.mkdir(exist_ok=True)
+    downloaded.rename(target)
+    return added
+
+
+def _unpack(archive: Path, suffix: str, name: str, unpacked_root: Path, budget: Budget) -> dict[str, tuple[int, str]]:
+    """Unpack the archive's files under unpacked_root/name; return the size and the SHA-256 of each by its path."""
+    unpacked = {}
+    for member_name, source in _ARCHIVE_READERS[suffix](archive):
+        path = (PurePosixPath(name) / member_name).as_posix()
+        unpacked[path] = _write_stream(iter(lambda: source.read(CHUNK_BYTES), b""), unpacked_root / path, budget)
+    if not unpacked:
+        raise DownloadError("the archive holds no files")
+    return unpacked
+
+
+def _write_stream(chunks: Iterable[bytes], path: Path, budget: Budget) -> tuple[int, str]:
+    """Write the chunks to path and count them against the budget; return the size and the SHA-256."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    digest = hashlib.sha256()
+    size = 0
+    with path.open("wb") as output:
+        for chunk in chunks:
+            budget.consume(len(chunk))
+            size += len(chunk)
+            digest.update(chunk)
+            output.write(chunk)
+    return size, digest.hexdigest()
+
+
+def _zip_members(archive: Path) -> Iterator[tuple[str, BinaryIO]]:
+    with zipfile.ZipFile(archive) as bundle:
+        for member in bundle.infolist():
+            if not member.is_dir() and _is_plain_relative_path(member.filename):
+                if member.flag_bits & ZIP_ENCRYPTED_FLAG or member.compress_type not in READABLE_ZIP_COMPRESSIONS:
+                    raise DownloadError(f"{member.filename} in the archive is encrypted or uses an unsupported compression")
+                with bundle.open(member) as source:
+                    yield member.filename, source
+
+
+def _tar_members(archive: Path) -> Iterator[tuple[str, BinaryIO]]:
+    with tarfile.open(archive) as bundle:
+        for member in bundle:
+            if member.isfile() and _is_plain_relative_path(member.name):
+                with bundle.extractfile(member) as source:
+                    yield member.name, source
+
+
+def _gzip_member(archive: Path) -> Iterator[tuple[str, BinaryIO]]:
+    with gzip.open(archive) as source:
+        yield "", source
+
+
+# How the files of an archive are read, by the suffix of its file name. A gz file holds one file without a name.
+_ARCHIVE_READERS: dict[str, Callable[[Path], Iterator[tuple[str, BinaryIO]]]] = {
+    ".zip": _zip_members,
+    ".tar": _tar_members,
+    ".tar.gz": _tar_members,
+    ".tgz": _tar_members,
+    ".tar.bz2": _tar_members,
+    ".tbz2": _tar_members,
+    ".tar.xz": _tar_members,
+    ".txz": _tar_members,
+    ".gz": _gzip_member,
+}
+
+
+def _archive_suffix(filename: str) -> str | None:
+    """Return the longest archive suffix the file name ends with, unless the name is only the suffix."""
+    suffixes = [suffix for suffix in _ARCHIVE_READERS if filename.endswith(suffix) and filename != suffix]
+    return max(suffixes, key=len, default=None)
 
 
 def discard_file(ctx: RunContext[DownloadDeps], path: str) -> str:
@@ -194,70 +279,6 @@ def check_collected_data(deps: DownloadDeps) -> list[str]:
     if budget.max_bytes is not None and budget.used_bytes > budget.max_bytes:
         problems.append(f"The folder holds {budget.used_bytes} bytes, more than the size limit of {budget.max_bytes} bytes.")
     return problems
-
-
-def _unpack(deps: DownloadDeps, archive: Path, filename: str, target: Path, url: str) -> list[ManifestEntry]:
-    added: list[ManifestEntry] = []
-    # The archive is removed, so only its unpacked files count.
-    budget = current_budget(deps)
-
-    def save(source: BinaryIO, relative: str) -> None:
-        relative = PurePosixPath(relative).as_posix()
-        saved = _save_unpacked(source, target.parent / relative, budget)
-        if saved is not None:
-            size, sha256 = saved
-            added.append(ManifestEntry(path=relative, source_url=url, size_bytes=size, sha256=sha256, archive=filename))
-
-    try:
-        if filename.endswith(".zip"):
-            with zipfile.ZipFile(archive) as bundle:
-                for member in bundle.infolist():
-                    if not member.is_dir() and _is_plain_relative_path(member.filename):
-                        if member.flag_bits & ZIP_ENCRYPTED_FLAG or member.compress_type not in READABLE_ZIP_COMPRESSIONS:
-                            raise zipfile.BadZipFile(f"{member.filename} is encrypted or uses an unsupported compression")
-                        with bundle.open(member) as source:
-                            save(source, f"{target.name}/{member.filename}")
-        elif filename.endswith(".gz") and not filename.endswith(".tar.gz"):
-            with gzip.open(archive) as source:
-                save(source, target.name)
-        else:
-            with tarfile.open(archive) as bundle:
-                for member in bundle:
-                    if member.isfile() and _is_plain_relative_path(member.name):
-                        with bundle.extractfile(member) as source:
-                            save(source, f"{target.name}/{member.name}")
-        if not added:
-            raise EOFError("it holds no files")
-    except BaseException:
-        if target.is_dir():
-            shutil.rmtree(target)
-        else:
-            target.unlink(missing_ok=True)
-        raise
-    return added
-
-
-def _save_unpacked(source: BinaryIO, path: Path, budget: Budget) -> tuple[int, str] | None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    digest = hashlib.sha256()
-    size = 0
-    with path.open("xb") as output:
-        for chunk in iter(lambda: source.read(CHUNK_BYTES), b""):
-            budget.consume(len(chunk))
-            size += len(chunk)
-            digest.update(chunk)
-            output.write(chunk)
-    if size == 0:
-        path.unlink()
-        return None
-    return size, digest.hexdigest()
-
-
-def _unpacked_name(filename: str) -> str | None:
-    for suffix in ARCHIVE_SUFFIXES:
-        if filename.endswith(suffix) and len(filename) > len(suffix):
-            return filename[: -len(suffix)]
-    return None
 
 
 def _is_plain_relative_path(path: str) -> bool:
