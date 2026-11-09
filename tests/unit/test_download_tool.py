@@ -74,6 +74,20 @@ def test_rejected_download_records_nothing(tmp_path, url_path, limit_bytes):
     assert _saved_files(tmp_path) == []
 
 
+def test_url_that_cannot_be_parsed_is_refused_without_ending_the_run(tmp_path):
+    result = download_file(_context(tmp_path), "http://example.org:port/data.csv", "data.csv")
+
+    assert "the download failed" in result
+
+
+def test_archive_that_cannot_be_read_is_refused(tmp_path):
+    with serve_files({"/data.zip": b"not a zip archive"}) as base_url:
+        result = download_file(_context(tmp_path), f"{base_url}/data.zip", "data.zip")
+
+    assert "could not be unpacked" in result
+    assert _saved_files(tmp_path) == []
+
+
 @pytest.mark.parametrize("filename", ["../data.csv", "existing.csv"])
 def test_unsafe_or_existing_file_name_is_refused(tmp_path, filename):
     (tmp_path / "files").mkdir()

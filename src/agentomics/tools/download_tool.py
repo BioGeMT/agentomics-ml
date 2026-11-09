@@ -24,6 +24,7 @@ READABLE_ZIP_COMPRESSIONS = (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED, zipfile.Z
 # Bit 0 of a zip member's general purpose flags is set when the member is encrypted.
 ZIP_ENCRYPTED_FLAG = 0x1
 CHUNK_BYTES = 1 << 20
+UNREADABLE_ARCHIVE_ERRORS = (zipfile.BadZipFile, tarfile.TarError, gzip.BadGzipFile, zlib.error, lzma.LZMAError, EOFError)
 LISTED_UNPACKED_FILES = 20
 
 
@@ -98,10 +99,6 @@ def download_file(ctx: RunContext[DownloadDeps], url: str, filename: str) -> str
             added = _store(deps, url, filename, downloaded, size, sha256, target)
     except DownloadError as error:
         return f"Error: {error}. {budget_text(deps)}"
-    except (zipfile.BadZipFile, tarfile.TarError, gzip.BadGzipFile, zlib.error, lzma.LZMAError, EOFError) as error:
-        return f"Error: {filename} could not be unpacked: {error}. {budget_text(deps)}"
-    except (httpx2.HTTPError, OSError) as error:
-        return f"Error: download failed: {error}. {budget_text(deps)}"
 
     save_manifest(deps.collected_data_directory, load_manifest(deps.collected_data_directory) + added)
     if _archive_suffix(filename) is None:
@@ -129,12 +126,15 @@ def _target_path(deps: DownloadDeps, url: str, filename: str) -> Path:
 
 def _fetch(url: str, path: Path, budget: Budget, timeout: int) -> tuple[int, str, str]:
     """Stream the URL to path; return the size, the SHA-256 and the content type."""
-    with httpx2.stream("GET", url, follow_redirects=True, timeout=timeout) as response:
-        response.raise_for_status()
-        if "content-length" in response.headers:
-            # Refuse a file that cannot fit before downloading it.
-            budget.model_copy().consume(int(response.headers["content-length"]))
-        size, sha256 = _write_stream(response.iter_bytes(), path, budget)
+    try:
+        with httpx2.stream("GET", url, follow_redirects=True, timeout=timeout) as response:
+            response.raise_for_status()
+            if "content-length" in response.headers:
+                # Refuse a file that cannot fit before downloading it.
+                budget.model_copy().consume(int(response.headers["content-length"]))
+            size, sha256 = _write_stream(response.iter_bytes(), path, budget)
+    except (httpx2.HTTPError, httpx2.InvalidURL) as error:
+        raise DownloadError(f"the download failed: {error}") from error
     if size == 0:
         raise DownloadError("the download was empty")
     return size, sha256, response.headers.get("content-type", "unknown type")
@@ -164,9 +164,12 @@ def _store(
 def _unpack(archive: Path, suffix: str, name: str, unpacked_root: Path, budget: Budget) -> dict[str, tuple[int, str]]:
     """Unpack the archive's files under unpacked_root/name; return the size and the SHA-256 of each by its path."""
     unpacked = {}
-    for member_name, source in _ARCHIVE_READERS[suffix](archive):
-        path = (PurePosixPath(name) / member_name).as_posix()
-        unpacked[path] = _write_stream(iter(lambda: source.read(CHUNK_BYTES), b""), unpacked_root / path, budget)
+    try:
+        for member_name, source in _ARCHIVE_READERS[suffix](archive):
+            path = (PurePosixPath(name) / member_name).as_posix()
+            unpacked[path] = _write_stream(iter(lambda: source.read(CHUNK_BYTES), b""), unpacked_root / path, budget)
+    except UNREADABLE_ARCHIVE_ERRORS as error:
+        raise DownloadError(f"the archive could not be unpacked: {error}") from error
     if not unpacked:
         raise DownloadError("the archive holds no files")
     return unpacked
