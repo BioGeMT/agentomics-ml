@@ -50,8 +50,6 @@ they open now."""
 
 DEFAULT_STRATEGY = "Download the most relevant, highest-quality sources first, then the rest of the relevant data."
 
-_fetch_page = web_fetch_tool().function
-
 
 class DataRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -112,7 +110,7 @@ async def _web_fetch(url: str) -> WebFetchResult | BinaryContent | str:
     Args:
         url: The URL to fetch.
     """
-    result = await _fetch_page(url)
+    result = await web_fetch_tool().function(url)
     # pydantic-ai passes a fetched non-text file to the model as is, and its OpenAI models raise RuntimeError on
     # most types other than images and PDFs, which ends the run: https://github.com/pydantic/pydantic-ai/issues/11829
     if isinstance(result, BinaryContent) and not (result.is_image or result.media_type == "application/pdf"):
