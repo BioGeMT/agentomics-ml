@@ -36,17 +36,19 @@ class PaperSearchResult:
         )
 
 def create_paper_fetch_tool(config: Config) -> Tool[Any]:
-    async def paper_fetch(query: str) -> list[RetrievedPaper]:
+    async def paper_fetch(keywords: str) -> list[RetrievedPaper]:
         """
         Find and download open-access scientific papers relevant to a research question.
         Save available PDFs. Each result includes the paper's title,
         publication year, and local file_path.
 
         Args:
-            query: One focused scientific topic or question to search for.
+            keywords: Concise scientific search terms in one space-separated
+                string, e.g. "microRNA target prediction graph neural networks".
+                Use keywords rather than instructions or a full question.
         """
         search_results = await search_asta_papers(
-            query=query,
+            keywords=keywords,
             limit=config.paper_fetch_max_results,
             timeout=config.paper_fetch_timeout,
         )
@@ -59,7 +61,7 @@ def create_paper_fetch_tool(config: Config) -> Tool[Any]:
     return Tool(paper_fetch, name="paper_fetch")
 
 async def search_asta_papers(
-    query: str, limit: int, timeout: float
+    keywords: str, limit: int, timeout: float
 ) -> list[PaperSearchResult]:
     headers = {}
     # An optional Asta key enables higher rate limits.
@@ -74,7 +76,7 @@ async def search_asta_papers(
     result = await asta_mcp.direct_call_tool(
         "search_papers_by_relevance",
         {
-            "keyword": query,
+            "keyword": keywords,
             "fields": "title,year",
             "limit": limit,
         },
