@@ -270,8 +270,7 @@ optional. By default the agent downloads the most relevant, highest-quality
 sources first, then the rest of the relevant data, until it reaches
 `max_download_gb`; without a limit it downloads all the relevant data it finds.
 `strategy` replaces this default with your own instruction, for example
-`"only datasets with expert-checked labels"`. An empty `strategy` keeps the
-default.
+`"only datasets with expert-checked labels"`.
 
 ```bash
 agentomics-collect-data --request request.json --collected-data-dir collected_data --provider codex --model gpt-6.1-sol

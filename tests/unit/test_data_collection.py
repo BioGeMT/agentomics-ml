@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from agentomics.agents.data_collection import DEFAULT_STRATEGY, DataRequest, build_collector_prompt
+from agentomics.agents.data_collection import DataRequest
 from agentomics.cli import collect_data as collect_data_cli
 
 
@@ -14,15 +14,6 @@ from agentomics.cli import collect_data as collect_data_cli
 def test_request_rejects_classes_that_do_not_fit_the_task_type(task_type, classes):
     with pytest.raises(ValidationError):
         DataRequest(task_type=task_type, description="d", inputs=["i"], label="l", classes=classes)
-
-
-def test_request_strategy_replaces_the_default_strategy_in_the_collector_prompt(tmp_path):
-    request = DataRequest(task_type="regression", description="d", inputs=["i"], label="l", strategy="only curated datasets")
-
-    prompt = build_collector_prompt(request, tmp_path, max_bytes=None)
-
-    assert "only curated datasets" in prompt
-    assert DEFAULT_STRATEGY not in prompt
 
 
 def test_command_runs_the_worker_in_docker_with_the_request_and_collected_data_mounted(tmp_path, monkeypatch):

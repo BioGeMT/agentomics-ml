@@ -13,10 +13,10 @@ from pydantic_ai.models import Model
 from pydantic_ai_harness import FileSystem
 
 from agentomics.agents.agent_utils import run_agent
-from agentomics.runtime.collected_data import ManifestEntry, load_manifest
+from agentomics.runtime.collected_data import MANIFEST_FILE_NAME, load_manifest
 from agentomics.runtime.filesystem import restore_host_ownership
 from agentomics.runtime.run_workflow import prepare_codex_credentials
-from agentomics.tools.download_tool import DownloadDeps, budget_text, check_collected_data, create_download_tools
+from agentomics.tools.download_tool import DownloadDeps, check_collected_data, create_download_tools, current_budget
 from agentomics.utils.config import Config
 from agentomics.utils.providers.provider import Provider, get_provider_and_api_key
 from agentomics.utils.task_types import TaskTypes
@@ -30,7 +30,11 @@ Search the web and read pages to find data that fit the request. Download the or
 and discard with discard_file any downloaded file that turns out not to fit. download_file unpacks zip, tar and \
 gz archives into files/ and removes the archive. Look inside downloaded files with list_directory and read_file. \
 Search, read, download and discard in any order and as often as you need.
-Choose what to download as the request's strategy says.
+Choose what to download as the request's strategy says, and start from the request's known_sources when it lists any.
+When the request sets max_download_gb, all files together must stay within that many GB; download_file reports the \
+bytes used and the size limit.
+A manifest below the request lists files that an earlier run left in files/. They count against the size limit: keep \
+the ones that fit the request, discard the others and add what is missing.
 Download the files as their sources publish them, with the documentation that describes them. Do not process, \
 convert or label the data.
 If a source cannot be reached or needs a login, skip it and say so. Do not claim that you found all the data that exist.
@@ -38,8 +42,8 @@ When you are done, give your final answer: what each file in the folder contains
 what you looked for but did not find."""
 
 REVIEWER_INSTRUCTIONS = """You review the files another agent downloaded for a machine-learning task. You receive the \
-request, the manifest of downloaded files with their sources and their paths inside files/, and the agent's \
-account of them.
+request, the manifest of downloaded files with their sources and their paths inside files/, the bytes they take \
+with the size limit, and the agent's account of them.
 Use web search, page reading, and list_directory and read_file on the downloaded files to check that each file is \
 what the account says and fits the request, whether relevant public data were missed, including the user's known \
 sources, and whether the files were chosen as the request's strategy says.
@@ -63,7 +67,7 @@ class DataRequest(BaseModel):
     classes: list[str] | None = None
     known_sources: list[str] = []
     max_download_gb: float | None = Field(default=None, gt=0, allow_inf_nan=False)
-    strategy: str = ""
+    strategy: str = Field(default=DEFAULT_STRATEGY, min_length=1)
 
     @model_validator(mode="after")
     def _check_classes(self) -> "DataRequest":
@@ -89,29 +93,6 @@ class CollectionDeps(DownloadDeps):
     reviewer: Agent[None, Review]
 
 
-def _request_text(request: DataRequest) -> str:
-    lines = [f"Task type: {request.task_type}", f"Description: {request.description}", "Inputs:"]
-    lines += [f"- {item}" for item in request.inputs]
-    lines.append(f"Label: {request.label}")
-    if request.classes:
-        lines.append(f"Classes: {', '.join(request.classes)}")
-    if request.known_sources:
-        lines.append("Known sources:")
-        lines += [f"- {source}" for source in request.known_sources]
-    lines.append(f"Strategy: {request.strategy or DEFAULT_STRATEGY}")
-    return "\n".join(lines)
-
-
-def _files_text(entries: list[ManifestEntry]) -> str:
-    lines = []
-    for entry in entries:
-        line = f"- files/{entry.path}: {entry.size_bytes} bytes, from {entry.source_url}"
-        if entry.archive is not None:
-            line += f", unpacked from {entry.archive}"
-        lines.append(line)
-    return "\n".join(lines)
-
-
 async def _web_fetch(url: str) -> WebFetchResult | BinaryContent | str:
     """Fetches the content of a web page at the given URL and returns it as markdown or binary content.
 
@@ -127,23 +108,14 @@ async def _web_fetch(url: str) -> WebFetchResult | BinaryContent | str:
     return result
 
 
-def build_collector_prompt(request: DataRequest, collected_data_directory: Path, max_bytes: int | None) -> str:
-    if max_bytes is None:
-        limit = "There is no size limit."
-    else:
-        limit = (f"You can keep at most {request.max_download_gb} GB ({max_bytes} bytes) of files in total. "
-                 "download_file reports how much of the limit remains.")
-    sections = [f"Request:\n{_request_text(request)}", limit]
-    if request.known_sources:
-        sections.append("Start from the known sources in the request.")
-    entries = load_manifest(collected_data_directory)
-    if entries:
-        sections.append("These files are already in files/ from an earlier run and count against the limit. Keep "
-                        "the ones that fit the request, discard the others and add what is missing:\n"
-                        f"{_files_text(entries)}")
+def _collector_prompt(request: DataRequest, collected_data_directory: Path) -> str:
+    sections = [f"Request:\n{request.model_dump_json(indent=2)}"]
+    manifest_path = collected_data_directory / MANIFEST_FILE_NAME
+    if manifest_path.exists():
+        sections.append(f"Manifest of the files an earlier run left:\n{manifest_path.read_text()}")
     summary_path = collected_data_directory / SUMMARY_FILE_NAME
     if summary_path.exists():
-        sections.append(f"The account from an earlier run:\n{summary_path.read_text()}")
+        sections.append(f"Summary of the last accepted run:\n{summary_path.read_text()}")
     return "\n\n".join(sections)
 
 
@@ -185,12 +157,12 @@ def build_collector(model: Model, collected_data_directory: Path) -> Agent[Colle
 
 async def review_collection(ctx: RunContext[CollectionDeps], report: CollectionReport) -> CollectionReport:
     deps = ctx.deps
-    entries = load_manifest(deps.collected_data_directory)
-    if not entries:
+    if not load_manifest(deps.collected_data_directory):
         raise ModelRetry("No files were downloaded.")
     review_prompt = "\n\n".join([
-        f"Request:\n{_request_text(deps.request)}",
-        f"Manifest:\n{_files_text(entries)}\n{budget_text(deps)}",
+        f"Request:\n{deps.request.model_dump_json(indent=2)}",
+        f"Manifest:\n{(deps.collected_data_directory / MANIFEST_FILE_NAME).read_text()}",
+        f"Bytes used and size limit:\n{current_budget(deps).model_dump_json()}",
         f"The agent's account:\n{report.summary}",
     ])
     review = (await deps.reviewer.run(review_prompt)).output
@@ -217,7 +189,7 @@ def collect_data(request: DataRequest, collected_data_directory: Path, model: Mo
         return 1
     _, report = asyncio.run(run_agent(
         build_collector(model, collected_data_directory),
-        build_collector_prompt(request, collected_data_directory, max_bytes),
+        _collector_prompt(request, collected_data_directory),
         max_steps=Config.DEFAULT_MAX_STEPS,
         message_history=None,
         deps=deps,
