@@ -258,13 +258,9 @@ directory only for the post-run evaluation.
 that fit a request, downloads the original files into a folder, and has a
 second agent review them. It does not process the files into a dataset.
 
-Describe the data in a JSON file. Copy the
-[example request](https://github.com/BioGeMT/Agentomics-ML/blob/main/scripts/collect_data_request_example.json),
-which asks for breast tumour data, and edit it:
-
-```bash
-cp scripts/collect_data_request_example.json request.json
-```
+Describe the data in a JSON file. Save the
+[example request](collect_data_request_example.json), which asks for breast
+tumour data, as `request.json` and edit it.
 
 `description` says what the model predicts, `inputs` what it predicts from,
 and `label` the value it predicts.
