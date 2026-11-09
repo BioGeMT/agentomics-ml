@@ -132,8 +132,8 @@ def test_rerun_keeps_earlier_files_and_their_budget(tmp_path):
 @pytest.mark.parametrize(
     ("filename", "archive", "unpacked_name", "unpacked_paths"),
     [
-        ("data.zip", _zip({"a.csv": DATA, "../escape.csv": DATA}), "data", ["data/a.csv"]),
-        ("data.tar.gz", _tar_gz({"a.csv": DATA, "../escape.csv": DATA}), "data", ["data/a.csv"]),
+        ("data.zip", _zip({"a.csv": DATA, ".hidden.csv": DATA, "../escape.csv": DATA}), "data", ["data/a.csv", "data/.hidden.csv"]),
+        ("data.tar.gz", _tar_gz({"a.csv": DATA, ".hidden.csv": DATA, "../escape.csv": DATA}), "data", ["data/a.csv", "data/.hidden.csv"]),
         ("data.csv.gz", gzip.compress(DATA), "data.csv", ["data.csv"]),
     ],
     ids=["zip", "tar.gz", "gz"],

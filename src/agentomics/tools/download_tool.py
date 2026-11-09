@@ -63,7 +63,7 @@ class DownloadFolder:
             url: The http or https URL of the file.
             filename: The name to save it under: a plain file name, without folders.
         """
-        if Path(filename).name != filename or filename in ("", ".", "..") or filename.startswith("."):
+        if Path(filename).name != filename or filename in ("", ".."):
             return f"Error: '{filename}' is not a plain file name. {self.budget_text()}"
         unpacked_name = _unpacked_name(filename)
         target = self.files_directory / (unpacked_name or filename)
@@ -236,9 +236,7 @@ def _unpacked_name(filename: str) -> str | None:
 
 def _is_plain_relative_path(path: str) -> bool:
     parts = PurePosixPath(path).parts
-    return bool(parts) and not PurePosixPath(path).is_absolute() and not any(
-        part in ("..", ".") or part.startswith(".") for part in parts
-    )
+    return bool(parts) and not PurePosixPath(path).is_absolute() and ".." not in parts
 
 
 def _sha256(path: Path) -> str:
