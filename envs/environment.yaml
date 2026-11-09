@@ -23,4 +23,4 @@ dependencies:
     - openai==3.31.0
     - anthropic==1.15.0
     - pytest==9.1.1
-    - mcp==1.28.0
+    - pydantic-ai-slim[mcp]==2.66.0

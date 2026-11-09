@@ -11,7 +11,7 @@ from urllib.parse import quote
 import httpx
 from pydantic import BaseModel
 from pydantic_ai import Tool
-from pydantic_ai.mcp import MCPServerStreamableHTTP
+from pydantic_ai.mcp import MCPToolset
 
 from agentomics.utils.config import Config
 
@@ -60,10 +60,11 @@ async def search_asta_papers(
     if api_key := os.getenv("ASTA_API_KEY"):
         headers["x-api-key"] = api_key
 
-    asta_mcp = MCPServerStreamableHTTP(
-        url="https://asta-tools.allen.ai/mcp/v1",
+    asta_mcp = MCPToolset(
+        "https://asta-tools.allen.ai/mcp/v1",
         headers=headers,
-        timeout=timeout,
+        init_timeout=timeout,
+        read_timeout=timeout,
     )
     result = await asta_mcp.direct_call_tool(
         "search_papers_by_relevance",
