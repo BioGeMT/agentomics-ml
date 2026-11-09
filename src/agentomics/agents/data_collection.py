@@ -185,12 +185,9 @@ def build_collector(model: Model, collected_data_directory: Path) -> Agent[Colle
 
 async def review_collection(ctx: RunContext[CollectionDeps], report: CollectionReport) -> CollectionReport:
     deps = ctx.deps
-    problems = check_collected_data(deps)
     entries = load_manifest(deps.collected_data_directory)
     if not entries:
-        problems.append("No files were downloaded.")
-    if problems:
-        raise ModelRetry("Fix these problems with the downloaded files:\n" + "\n".join(problems))
+        raise ModelRetry("No files were downloaded.")
     review_prompt = "\n\n".join([
         f"Request:\n{_request_text(deps.request)}",
         f"Manifest:\n{_files_text(entries)}\n{budget_text(deps)}",
@@ -214,7 +211,7 @@ def collect_data(request: DataRequest, collected_data_directory: Path, model: Mo
         request=request,
         reviewer=build_reviewer(model, collected_data_directory),
     )
-    problems = check_collected_data(deps)
+    problems = check_collected_data(deps, verify_hashes=False)
     if problems:
         print("The collected data folder cannot be used:\n" + "\n".join(problems), file=sys.stderr)
         return 1
@@ -225,6 +222,10 @@ def collect_data(request: DataRequest, collected_data_directory: Path, model: Mo
         message_history=None,
         deps=deps,
     ))
+    problems = check_collected_data(deps, verify_hashes=True)
+    if problems:
+        print("The collected data folder does not match its manifest:\n" + "\n".join(problems), file=sys.stderr)
+        return 1
     (collected_data_directory / SUMMARY_FILE_NAME).write_text(report.summary)
     return 0
 

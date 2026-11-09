@@ -249,7 +249,7 @@ def discard_file(ctx: RunContext[DownloadDeps], path: str) -> str:
     return f"Discarded files/{path}. {budget_text(deps)}"
 
 
-def check_collected_data(deps: DownloadDeps) -> list[str]:
+def check_collected_data(deps: DownloadDeps, verify_hashes: bool) -> list[str]:
     """Return the problems that make the collected data folder disagree with its manifest or the size limit."""
     files_directory = deps.collected_data_directory / FILES_DIRECTORY_NAME
     if files_directory.is_symlink():
@@ -267,7 +267,7 @@ def check_collected_data(deps: DownloadDeps) -> list[str]:
             problems.append(f"files/{entry.path} is in the manifest but is missing or not a regular file.")
         elif path.stat().st_size == 0:
             problems.append(f"files/{entry.path} is empty.")
-        elif path.stat().st_size != entry.size_bytes or _sha256(path) != entry.sha256:
+        elif path.stat().st_size != entry.size_bytes or (verify_hashes and _sha256(path) != entry.sha256):
             problems.append(f"files/{entry.path} differs from its manifest entry.")
     for path in sorted(files_directory.rglob("*")):
         relative = path.relative_to(files_directory).as_posix()

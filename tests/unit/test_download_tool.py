@@ -107,7 +107,7 @@ def test_check_reports_files_that_disagree_with_the_manifest(tmp_path, change):
 
     change(tmp_path / "files")
 
-    assert check_collected_data(context.deps) != []
+    assert check_collected_data(context.deps, verify_hashes=True) != []
 
 
 def test_rerun_counts_the_files_of_an_earlier_run_against_the_limit(tmp_path):
@@ -157,7 +157,7 @@ def test_archive_is_unpacked_into_recorded_files(tmp_path, filename, archive, un
     assert [entry.path for entry in entries] == unpacked_paths
     assert all(entry.archive == filename for entry in entries)
     assert (tmp_path / "files" / unpacked_paths[0]).read_bytes() == DATA
-    assert check_collected_data(context.deps) == []
+    assert check_collected_data(context.deps, verify_hashes=True) == []
 
     discard_file(context, unpacked_name)
 
