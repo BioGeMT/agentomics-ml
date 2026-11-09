@@ -252,6 +252,44 @@ config. The held-out `test/` split is not part of this prepared data — it is
 excluded from the agent's mounts and prepared separately in a temporary
 directory only for the post-run evaluation.
 
+## Collecting Public Data
+
+`agentomics-collect-data` runs an agent that searches the web for public data
+that fit a request, downloads the original files into a folder, and has a
+second agent review them. It does not process the files into a dataset.
+
+Describe the data in a JSON file. Copy the
+[example request](https://github.com/BioGeMT/Agentomics-ML/blob/main/scripts/collect_data_request_example.json),
+which asks for breast tumour data, and edit it:
+
+```bash
+cp scripts/collect_data_request_example.json request.json
+```
+
+`description` says what the model predicts, `inputs` what it predicts from,
+and `label` the value it predicts.
+`task_type` is `classification` (with at least two `classes`) or `regression`
+(without `classes`). `known_sources`, `max_download_gb` and `strategy` are
+optional. By default the agent downloads the most relevant, highest-quality
+sources first, then the rest of the relevant data, until it reaches
+`max_download_gb`; without a limit it downloads all the relevant data it finds.
+`strategy` replaces this default with your own instruction, for example
+`"only datasets with expert-checked labels"`. An empty `strategy` keeps the
+default.
+
+```bash
+agentomics-collect-data --request request.json --collected-data-dir collected_data --provider codex --model gpt-6.1-sol
+```
+
+The folder holds `files/`, `manifest.json` (source URL, size and SHA-256 of
+each file), `summary.md` (the agent's account of the files) and `review.json`
+(every review). Zip, tar and gz archives are unpacked into `files/`, and the
+manifest records the archive each unpacked file came from. Both agents can
+list and read the downloaded files.
+The agent needs a provider with native web search (OpenAI, OpenRouter,
+Anthropic or Codex). Running the command again on the same folder, for example
+with a larger `max_download_gb`, keeps the existing files and only adds new ones.
+
 ## Example Datasets
 
 List available example datasets:

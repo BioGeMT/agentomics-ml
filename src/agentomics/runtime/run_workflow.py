@@ -20,7 +20,7 @@ from agentomics.utils.api_keys import create_new_api_key, delete_api_key, get_ap
 from agentomics.utils.config import Config
 
 
-def _prepare_codex_credentials() -> None:
+def prepare_codex_credentials() -> None:
     source_directory = Path("/mnt/codex-host")
     if not source_directory.is_dir():
         return
@@ -168,7 +168,7 @@ def run_workflow(arguments: argparse.Namespace) -> int:
     try:
         agent_id = _resolve_agent_id()
         _configure_runtime_environment(arguments, agent_id)
-        _prepare_codex_credentials()
+        prepare_codex_credentials()
         _prepare_fork(arguments, agent_id, workspace_directory)
         if arguments.use_provisioning_key:
             temporary_key_hash = _create_temporary_api_key(arguments.spend_limit)

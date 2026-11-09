@@ -1,0 +1,10 @@
+{
+  "task_type": "classification",
+  "description": "Predict whether a breast tumour is benign or malignant from cell nucleus measurements.",
+  "inputs": ["cell nucleus measurements from a fine-needle aspirate image"],
+  "label": "tumour diagnosis",
+  "classes": ["benign", "malignant"],
+  "known_sources": ["https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic"],
+  "max_download_gb": 1,
+  "strategy": ""
+}

@@ -1,7 +1,12 @@
+import os
 import subprocess
 import sys
+import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from pydantic import BaseModel
 from pydantic_ai.messages import ModelResponse, ToolCallPart
@@ -91,3 +96,33 @@ def write_split_folder(split_path: Path, row_id: str = "row-1") -> None:
         f"id,numeric_label\n{row_id},0\n",
         encoding="utf-8",
     )
+
+
+@contextmanager
+def serve_files(files: dict[str, bytes]) -> Iterator[str]:
+    """Serve files over local HTTP and yield the base URL; paths under /nolength/ are sent without Content-Length."""
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            body = files.get(self.path.removeprefix("/nolength"))
+            if body is None:
+                self.send_error(404)
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", "text/csv")
+            if not self.path.startswith("/nolength/"):
+                self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *arguments):
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with patch.dict(os.environ, {"NO_PROXY": "127.0.0.1", "no_proxy": "127.0.0.1"}):
+            yield f"http://127.0.0.1:{server.server_address[1]}"
+    finally:
+        server.shutdown()
+        server.server_close()

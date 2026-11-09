@@ -20,4 +20,6 @@ dependencies:
     - uv==0.9.26
     - openai==3.31.0
     - anthropic==1.15.0
+    - markdownify==1.2.3 # page reading for the data collection agent (pydantic-ai web-fetch)
+    - pydantic-ai-harness==0.66.0
     - pytest==9.1.1
