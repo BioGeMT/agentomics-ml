@@ -65,6 +65,9 @@ def resolve_run_arguments(arguments: argparse.Namespace) -> Config | None:
         arguments.iteration_plan_model = (
             arguments.iteration_plan_model or existing_config.iteration_plan_model_name
         )
+        arguments.trace_analysis_model = (
+            arguments.trace_analysis_model or existing_config.trace_analysis_model_name
+        )
         arguments.provider = arguments.provider or existing_config.provider_name
         arguments.iterations = (
             existing_config.iterations
@@ -172,6 +175,7 @@ def run_agent_interactive(arguments: argparse.Namespace) -> int:
 
     dataset, model_name, iterations = _resolve_interactive_parameters(arguments, provider)
     iteration_plan_model_name = arguments.iteration_plan_model or model_name
+    trace_analysis_model_name = arguments.trace_analysis_model or iteration_plan_model_name
     prepared_datasets_dir = arguments.workspace_dir / PREPARED_DATASETS_DIR_NAME
     inherited_dataset_metadata = (
         load_dataset_metadata(existing_config)
@@ -199,6 +203,7 @@ def run_agent_interactive(arguments: argparse.Namespace) -> int:
         run_experiment(
             model_name=model_name,
             iteration_plan_model_name=iteration_plan_model_name,
+            trace_analysis_model_name=trace_analysis_model_name,
             dataset_name=dataset,
             task_type=task_type,
             dataset_metadata=dataset_metadata,

@@ -15,6 +15,10 @@ def add_run_arguments(parser: argparse.ArgumentParser) -> None:
         help="LLM model used to generate the iteration plan; defaults to --model",
     )
     run_arguments.add_argument(
+        "--trace-analysis-model",
+        help="LLM model used to extract iterations lessons from step traces; defaults to --iteration-plan-model",
+    )
+    run_arguments.add_argument(
         "--provider",
         help="Provider override when multiple API-key providers are configured",
     )

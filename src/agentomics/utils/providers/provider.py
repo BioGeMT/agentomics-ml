@@ -10,7 +10,6 @@ from pydantic_ai.models import Model
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.settings import ModelSettings
-from pydantic_ai.models.openai import OpenAIResponsesModelSettings
 from openai import AsyncOpenAI
 from rich.console import Console
 from rich.panel import Panel
@@ -96,26 +95,26 @@ class Provider():
     
     def create_model(self, model_name: str, config: Config) -> Model:
           """Create a pydantic-ai model instance. Subclasses may override this method."""
-          proxy_url = os.getenv("HTTP_PROXY")
-          async_http_client = httpx2.AsyncClient(
-              proxy=proxy_url if config.use_proxy else None,
-              timeout=config.llm_response_timeout
-          )
-          client = AsyncOpenAI(
-              base_url=self.base_url,
-              api_key=self.api_key,
-              http_client=async_http_client,
-          )
           return OpenAIChatModel(
               model_name=model_name,
-              provider=OpenAIProvider(openai_client=client)
+              provider=OpenAIProvider(openai_client=self._create_openai_client(config)),
+              profile={"supports_thinking": True},
           )
+
+    def _create_openai_client(self, config: Config) -> AsyncOpenAI:
+        proxy_url = os.getenv("HTTP_PROXY")
+        async_http_client = httpx2.AsyncClient(
+            proxy=proxy_url if config.use_proxy else None,
+            timeout=config.llm_response_timeout
+        )
+        return AsyncOpenAI(
+            base_url=self.base_url,
+            api_key=self.api_key,
+            http_client=async_http_client,
+        )
     
     def get_high_reasoning_model_settings(self, kwargs) -> ModelSettings:
-        return OpenAIResponsesModelSettings( #TODO needs implemented for non-OpenAI compatible providers
-            openai_reasoning_effort="high",
-            **kwargs,
-        )
+        return ModelSettings(thinking="high", **kwargs)
 
     def get_model_settings(self, config: Config) -> ModelSettings:
         return ModelSettings(temperature=config.temperature)
@@ -177,7 +176,7 @@ class Provider():
         #     from .googleai_provider import GoogleAiProvider
         #     return GoogleAiProvider(api_key, base_url, list_models_endpoint)
         else: #user given provider, must be OpenAI compatible (https://ai.pydantic.dev/models/overview/#openai-compatible-providers)
-            return Provider(provider_name, api_key, base_url)
+            return Provider(provider_name, base_url=base_url, api_key=api_key)
         
 
 def get_provided_api_keys() -> Dict[str, str]:

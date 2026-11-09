@@ -38,12 +38,13 @@ def run_git_cli_command(
     )
 
 
-def create_runtime_step(step_type, config: Config, *, model):
+def create_runtime_step(step_type, config: Config, *, model, trace_analysis_model=None):
     """Construct a runtime step with unused external dependencies replaced."""
     return step_type(
         config,
         model,
         Mock(),
+        trace_analysis_model or Mock(),
         Mock(),
         [],
     )
@@ -61,6 +62,14 @@ def create_model_calling_output_tool(output: BaseModel) -> FunctionModel:
                 )
             ]
         )
+
+    return FunctionModel(respond)
+
+
+def create_failing_model() -> FunctionModel:
+    """Create a local model whose every request fails."""
+    def respond(_messages, _agent_info):
+        raise RuntimeError("runtime error")
 
     return FunctionModel(respond)
 

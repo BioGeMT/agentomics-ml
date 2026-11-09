@@ -1,11 +1,14 @@
 from typing import Dict, List, Optional
 
+from pydantic_ai.models.openrouter import OpenRouterModel
+from pydantic_ai.providers.openrouter import OpenRouterProvider as PydanticOpenRouterProvider
 from rich.table import Table
 from rich import box
 from rich.panel import Panel
 from rich.columns import Columns
 from rich.console import Group
 
+from agentomics.utils.config import Config
 from agentomics.utils.user_input import get_user_input_for_int
 from .provider import Provider
 
@@ -261,3 +264,9 @@ class OpenRouterProvider(Provider):
             return display_order_models[choice - 1].get("id")
 
         return None
+
+    def create_model(self, model_name: str, config: Config) -> OpenRouterModel:
+        return OpenRouterModel(
+            model_name=model_name,
+            provider=PydanticOpenRouterProvider(openai_client=self._create_openai_client(config)),
+        )

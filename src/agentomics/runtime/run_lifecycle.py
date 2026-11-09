@@ -30,7 +30,9 @@ from pydantic_ai.models import Model
 
 
 @weave.op(call_display_name=lambda call: f"Agentomics run - agent_id: {call.inputs['config'].agent_id}")
-async def run_agentomics(config: Config, default_model: Model, iteration_plan_model: Model, provider: Provider) -> None:
+async def run_agentomics(
+    config: Config, default_model: Model, iteration_plan_model: Model, trace_analysis_model: Model, provider: Provider
+) -> None:
     total_iterations = config.iterations
     initialize_shared_environment(config)
     tools = create_tools(config, config.tool_ids)
@@ -46,14 +48,18 @@ async def run_agentomics(config: Config, default_model: Model, iteration_plan_mo
             iteration=iteration, 
             default_model=default_model,
             iteration_plan_model=iteration_plan_model,
+            trace_analysis_model=trace_analysis_model,
             provider=provider,
             tools=tools
         )
 
 @weave.op(call_display_name=lambda call: f"Iteration: {call.inputs['iteration']}")
-async def _run_iteration(config: Config, iteration: int, default_model: Model, iteration_plan_model: Model, provider: Provider, tools: list[Tool]):
+async def _run_iteration(config: Config, iteration: int, default_model: Model, iteration_plan_model: Model, trace_analysis_model: Model, provider: Provider, tools: list[Tool]):
     prepare_iteration_workspace(config=config, iteration=iteration)
-    steps = [step_cls(config, default_model, iteration_plan_model, provider, tools) for step_cls in get_step_sequence(config)]
+    steps = [
+        step_cls(config, default_model, iteration_plan_model, trace_analysis_model, provider, tools)
+        for step_cls in get_step_sequence(config)
+    ]
     for step in steps:
         step.on_iteration_start(iteration)
     try:

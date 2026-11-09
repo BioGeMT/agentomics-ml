@@ -1,5 +1,6 @@
 import requests
 from typing import List, Optional, Dict
+from urllib.parse import urljoin
 
 from rich.panel import Panel
 from rich.columns import Columns
@@ -105,5 +106,11 @@ class OllamaProvider(Provider):
           """Ovveriding method in Provider class. Create OpenAI model instance (Ollama compatible)."""
           return OpenAIChatModel(
               model_name=model_name,
-              provider=OpenAIProvider(base_url=self.base_url)
+              provider=OpenAIProvider(base_url=self.base_url),
+              profile={"supports_thinking": self._can_think(model_name)},
           )
+
+    def _can_think(self, model_name: str) -> bool:
+        response = requests.post(urljoin(self.base_url, "/api/show"), json={"model": model_name}, timeout=10)
+        response.raise_for_status()
+        return "thinking" in response.json()["capabilities"]

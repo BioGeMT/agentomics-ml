@@ -71,6 +71,7 @@ def _build_container_arguments(arguments: argparse.Namespace) -> list[str]:
     for option, value in (
         ("--model", arguments.model),
         ("--iteration-plan-model", arguments.iteration_plan_model),
+        ("--trace-analysis-model", arguments.trace_analysis_model),
         ("--provider", arguments.provider),
         ("--dataset", arguments.dataset),
         ("--task-type", arguments.task_type),
