@@ -1,7 +1,5 @@
 import gzip
 import hashlib
-import json
-import os
 import shutil
 import tarfile
 import zipfile
@@ -11,9 +9,10 @@ from typing import BinaryIO
 
 import httpx2
 
+from agentomics.runtime.collected_data import ManifestEntry, load_manifest, save_manifest
+
 BYTES_PER_GB = 1_000_000_000
 FILES_DIRECTORY_NAME = "files"
-MANIFEST_FILE_NAME = "manifest.json"
 PARTIAL_FILE_NAME = ".download.part"
 ARCHIVE_SUFFIXES = (".tar.gz", ".tgz", ".tar", ".zip", ".gz")
 READABLE_ZIP_COMPRESSIONS = (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED, zipfile.ZIP_BZIP2, zipfile.ZIP_LZMA)
@@ -33,15 +32,12 @@ class DownloadFolder:
     def __init__(self, root: Path, max_download_gb: float | None):
         self.root = root
         self.files_directory = root / FILES_DIRECTORY_NAME
-        self.manifest_path = root / MANIFEST_FILE_NAME
         self.max_bytes = None if max_download_gb is None else int(max_download_gb * BYTES_PER_GB)
         self.files_directory.mkdir(parents=True, exist_ok=True)
-        self.entries: list[dict] = (
-            json.loads(self.manifest_path.read_text()) if self.manifest_path.exists() else []
-        )
+        self.entries = load_manifest(root)
 
     def retained_bytes(self) -> int:
-        return sum(entry["size_bytes"] for entry in self.entries)
+        return sum(entry.size_bytes for entry in self.entries)
 
     def remaining_bytes(self) -> int | None:
         return None if self.max_bytes is None else self.max_bytes - self.retained_bytes()
@@ -93,7 +89,7 @@ class DownloadFolder:
                 return f"Error: the download was empty. {self.budget_text()}"
             if unpacked_name is None:
                 partial.rename(target)
-                added = [{"path": filename, "source_url": url, "size_bytes": size, "sha256": digest.hexdigest()}]
+                added = [ManifestEntry(path=filename, source_url=url, size_bytes=size, sha256=digest.hexdigest())]
             else:
                 added = self._unpack(partial, filename, target, url, remaining)
         except DownloadBudgetExceeded as error:
@@ -106,13 +102,13 @@ class DownloadFolder:
             partial.unlink(missing_ok=True)
 
         self.entries.extend(added)
-        self._write_manifest()
+        save_manifest(self.root, self.entries)
         if unpacked_name is None:
             return f"Saved files/{filename} ({size} bytes, {content_type}). {self.budget_text()}"
-        listing = "\n".join(f"files/{entry['path']}" for entry in added[:LISTED_UNPACKED_FILES])
+        listing = "\n".join(f"files/{entry.path}" for entry in added[:LISTED_UNPACKED_FILES])
         if len(added) > LISTED_UNPACKED_FILES:
             listing += f"\n... and {len(added) - LISTED_UNPACKED_FILES} more"
-        unpacked_bytes = sum(entry["size_bytes"] for entry in added)
+        unpacked_bytes = sum(entry.size_bytes for entry in added)
         return (f"Downloaded {filename} ({size} bytes, {content_type}), unpacked it into files/{unpacked_name} and "
                 f"removed the archive: {len(added)} files, {unpacked_bytes} bytes:\n{listing}\n{self.budget_text()}")
 
@@ -122,7 +118,7 @@ class DownloadFolder:
         Args:
             path: The path in files/: a file, or the folder an archive was unpacked into.
         """
-        discarded = [entry for entry in self.entries if entry["path"] == path or entry["path"].startswith(f"{path}/")]
+        discarded = [entry for entry in self.entries if entry.path == path or entry.path.startswith(f"{path}/")]
         if not discarded:
             return f"Error: files/{path} is not in the manifest. {self.budget_text()}"
         target = self.files_directory / path
@@ -131,7 +127,7 @@ class DownloadFolder:
         else:
             target.unlink()
         self.entries = [entry for entry in self.entries if entry not in discarded]
-        self._write_manifest()
+        save_manifest(self.root, self.entries)
         return f"Discarded files/{path}. {self.budget_text()}"
 
     def check(self) -> list[str]:
@@ -139,19 +135,19 @@ class DownloadFolder:
         if self.files_directory.is_symlink():
             return ["files/ is a symbolic link."]
         problems = []
-        recorded = [entry["path"] for entry in self.entries]
+        recorded = [entry.path for entry in self.entries]
         if len(recorded) != len(set(recorded)):
             problems.append("The manifest records a file more than once.")
         for entry in self.entries:
-            path = self.files_directory / entry["path"]
-            if not _is_plain_relative_path(entry["path"]):
-                problems.append(f"The manifest path '{entry['path']}' is not a plain path inside files/.")
+            path = self.files_directory / entry.path
+            if not _is_plain_relative_path(entry.path):
+                problems.append(f"The manifest path '{entry.path}' is not a plain path inside files/.")
             elif path.is_symlink() or not path.is_file():
-                problems.append(f"files/{entry['path']} is in the manifest but is missing or not a regular file.")
+                problems.append(f"files/{entry.path} is in the manifest but is missing or not a regular file.")
             elif path.stat().st_size == 0:
-                problems.append(f"files/{entry['path']} is empty.")
-            elif path.stat().st_size != entry["size_bytes"] or _sha256(path) != entry["sha256"]:
-                problems.append(f"files/{entry['path']} differs from its manifest entry.")
+                problems.append(f"files/{entry.path} is empty.")
+            elif path.stat().st_size != entry.size_bytes or _sha256(path) != entry.sha256:
+                problems.append(f"files/{entry.path} differs from its manifest entry.")
         for path in sorted(self.files_directory.rglob("*")):
             relative = path.relative_to(self.files_directory).as_posix()
             if path.is_symlink():
@@ -162,14 +158,16 @@ class DownloadFolder:
             problems.append(f"The folder holds {self.retained_bytes()} bytes, more than the limit of {self.max_bytes}.")
         return problems
 
-    def _unpack(self, archive: Path, filename: str, target: Path, url: str, remaining: int | None) -> list[dict]:
-        added: list[dict] = []
+    def _unpack(self, archive: Path, filename: str, target: Path, url: str, remaining: int | None) -> list[ManifestEntry]:
+        added: list[ManifestEntry] = []
 
         def save(source: BinaryIO, relative: str) -> None:
-            left = None if remaining is None else remaining - sum(entry["size_bytes"] for entry in added)
-            entry = self._save_unpacked(source, relative, left)
-            if entry is not None:
-                added.append({**entry, "source_url": url, "archive": filename})
+            relative = PurePosixPath(relative).as_posix()
+            left = None if remaining is None else remaining - sum(entry.size_bytes for entry in added)
+            saved = self._save_unpacked(source, relative, left)
+            if saved is not None:
+                size, sha256 = saved
+                added.append(ManifestEntry(path=relative, source_url=url, size_bytes=size, sha256=sha256, archive=filename))
 
         try:
             if filename.endswith(".zip"):
@@ -199,8 +197,7 @@ class DownloadFolder:
             raise
         return added
 
-    def _save_unpacked(self, source: BinaryIO, relative: str, remaining: int | None) -> dict | None:
-        relative = PurePosixPath(relative).as_posix()
+    def _save_unpacked(self, source: BinaryIO, relative: str, remaining: int | None) -> tuple[int, str] | None:
         path = self.files_directory / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         digest = hashlib.sha256()
@@ -215,12 +212,7 @@ class DownloadFolder:
         if size == 0:
             path.unlink()
             return None
-        return {"path": relative, "size_bytes": size, "sha256": digest.hexdigest()}
-
-    def _write_manifest(self) -> None:
-        temporary = self.manifest_path.with_name(self.manifest_path.name + ".tmp")
-        temporary.write_text(json.dumps(self.entries, indent=2))
-        os.replace(temporary, self.manifest_path)
+        return size, digest.hexdigest()
 
 
 def _unpacked_name(filename: str) -> str | None:

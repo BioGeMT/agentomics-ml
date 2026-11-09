@@ -149,8 +149,8 @@ def test_archive_is_unpacked_into_recorded_files(tmp_path, filename, archive, un
     with serve_files({f"/{filename}": archive}) as base_url:
         folder.download_file(f"{base_url}/{filename}", filename)
 
-    assert [entry["path"] for entry in folder.entries] == unpacked_paths
-    assert all(entry["archive"] == filename for entry in folder.entries)
+    assert [entry.path for entry in folder.entries] == unpacked_paths
+    assert all(entry.archive == filename for entry in folder.entries)
     assert (tmp_path / "files" / unpacked_paths[0]).read_bytes() == DATA
     assert folder.check() == []
 

@@ -12,6 +12,7 @@ from pydantic_ai.models import Model
 from pydantic_ai_harness import FileSystem
 
 from agentomics.agents.agent_utils import run_agent
+from agentomics.runtime.collected_data import ManifestEntry
 from agentomics.runtime.filesystem import restore_host_ownership
 from agentomics.runtime.run_workflow import prepare_codex_credentials
 from agentomics.tools.download_tool import DownloadFolder
@@ -93,12 +94,12 @@ def _request_text(request: DataRequest) -> str:
     return "\n".join(lines)
 
 
-def _files_text(entries: list[dict]) -> str:
+def _files_text(entries: list[ManifestEntry]) -> str:
     lines = []
     for entry in entries:
-        line = f"- files/{entry['path']}: {entry['size_bytes']} bytes, from {entry['source_url']}"
-        if "archive" in entry:
-            line += f", unpacked from {entry['archive']}"
+        line = f"- files/{entry.path}: {entry.size_bytes} bytes, from {entry.source_url}"
+        if entry.archive is not None:
+            line += f", unpacked from {entry.archive}"
         lines.append(line)
     return "\n".join(lines)
 

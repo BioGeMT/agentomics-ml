@@ -50,7 +50,7 @@ def test_collection_keeps_the_downloads_and_ends_when_a_review_accepts(tmp_path)
         assert collect_data(REQUEST, tmp_path, FunctionModel(respond)) == 0
 
     folder = DownloadFolder(tmp_path, None)
-    assert sorted(entry["path"] for entry in folder.entries) == ["a.csv", "b.csv"]
+    assert sorted(entry.path for entry in folder.entries) == ["a.csv", "b.csv"]
     assert folder.check() == []
     assert [verdict["accepted"] for verdict in json.loads((tmp_path / "review.json").read_text())] == [False, True]
     assert (tmp_path / "summary.md").read_text() == SUMMARY
