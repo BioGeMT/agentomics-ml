@@ -39,8 +39,6 @@ class DownloadFolder:
         self.entries: list[dict] = (
             json.loads(self.manifest_path.read_text()) if self.manifest_path.exists() else []
         )
-        # Only files downloaded in this run may be discarded; earlier runs' files are kept.
-        self.added_this_run: set[str] = set()
 
     def retained_bytes(self) -> int:
         return sum(entry["size_bytes"] for entry in self.entries)
@@ -108,7 +106,6 @@ class DownloadFolder:
             partial.unlink(missing_ok=True)
 
         self.entries.extend(added)
-        self.added_this_run.update(entry["path"] for entry in added)
         self._write_manifest()
         if unpacked_name is None:
             return f"Saved files/{filename} ({size} bytes, {content_type}). {self.budget_text()}"
@@ -120,13 +117,13 @@ class DownloadFolder:
                 f"removed the archive: {len(added)} files, {unpacked_bytes} bytes:\n{listing}\n{self.budget_text()}")
 
     def discard_file(self, path: str) -> str:
-        """Delete a file downloaded in this run that does not fit the request, and remove it from the manifest.
+        """Delete a downloaded file that does not fit the request, and remove it from the manifest.
 
         Args:
             path: The path in files/: a file, or the folder an archive was unpacked into.
         """
         discarded = [entry for entry in self.entries if entry["path"] == path or entry["path"].startswith(f"{path}/")]
-        if not discarded or any(entry["path"] not in self.added_this_run for entry in discarded):
+        if not discarded:
             return f"Error: only files downloaded in this run can be discarded. {self.budget_text()}"
         target = self.files_directory / path
         if target.is_dir():
@@ -134,7 +131,6 @@ class DownloadFolder:
         else:
             target.unlink()
         self.entries = [entry for entry in self.entries if entry not in discarded]
-        self.added_this_run.difference_update(entry["path"] for entry in discarded)
         self._write_manifest()
         return f"Discarded files/{path}. {self.budget_text()}"
 

@@ -24,7 +24,7 @@ REVIEW_FILE_NAME = "review.json"
 
 COLLECTOR_INSTRUCTIONS = """You collect public data for a machine-learning task described in the request below.
 Search the web and read pages to find data that fit the request. Download the original files with download_file, \
-and discard with discard_file any file you downloaded that turns out not to fit. download_file unpacks zip, tar and \
+and discard with discard_file any downloaded file that turns out not to fit. download_file unpacks zip, tar and \
 gz archives into files/ and removes the archive. Look inside downloaded files with list_directory and read_file. \
 Search, read, download and discard in any order and as often as you need.
 Choose what to download as the request's strategy says.
@@ -128,8 +128,9 @@ def build_collector_prompt(request: DataRequest, folder: DownloadFolder) -> str:
     if request.known_sources:
         sections.append("Start from the known sources in the request.")
     if folder.entries:
-        sections.append("These files are already in files/ from an earlier run. They stay and count against the "
-                        f"limit; add only what is missing:\n{_files_text(folder.entries)}")
+        sections.append("These files are already in files/ from an earlier run and count against the limit. Keep "
+                        "the ones that fit the request, discard the others and add what is missing:\n"
+                        f"{_files_text(folder.entries)}")
     summary_path = folder.root / SUMMARY_FILE_NAME
     if summary_path.exists():
         sections.append(f"The account from an earlier run:\n{summary_path.read_text()}")

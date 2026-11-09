@@ -106,27 +106,26 @@ def test_check_reports_files_that_disagree_with_the_manifest(tmp_path, change):
     assert folder.check() != []
 
 
-def test_rerun_keeps_earlier_files_and_their_budget(tmp_path):
+def test_rerun_counts_the_files_of_an_earlier_run_against_the_limit(tmp_path):
     limit_gb = 250 / BYTES_PER_GB
-    with serve_files({"/a.csv": b"a" * 100, "/b.csv": b"b" * 100, "/big.csv": b"c" * 200}) as base_url:
+    with serve_files({"/a.csv": b"a" * 100, "/big.csv": b"c" * 200}) as base_url:
         DownloadFolder(tmp_path, limit_gb).download_file(f"{base_url}/a.csv", "a.csv")
-        earlier_entry = json.loads((tmp_path / "manifest.json").read_text())[0]
 
         rerun = DownloadFolder(tmp_path, limit_gb)
-        discarded_earlier = rerun.discard_file("a.csv")
         over_limit = rerun.download_file(f"{base_url}/big.csv", "big.csv")
-        rerun.download_file(f"{base_url}/b.csv", "b.csv")
 
-    assert discarded_earlier.startswith("Error")
     assert over_limit.startswith("Error")
-    assert rerun.remaining_bytes() == 50
-
-    rerun.discard_file("b.csv")
-
     assert rerun.remaining_bytes() == 150
-    assert _folder_contents(tmp_path) == ["files", "files/a.csv", "manifest.json"]
-    assert json.loads((tmp_path / "manifest.json").read_text()) == [earlier_entry]
-    assert (tmp_path / "files" / "a.csv").read_bytes() == b"a" * 100
+
+
+def test_rerun_can_discard_a_file_of_an_earlier_run(tmp_path):
+    with serve_files({"/a.csv": b"a" * 100}) as base_url:
+        DownloadFolder(tmp_path, None).download_file(f"{base_url}/a.csv", "a.csv")
+
+    DownloadFolder(tmp_path, None).discard_file("a.csv")
+
+    assert _folder_contents(tmp_path) == ["files", "manifest.json"]
+    assert json.loads((tmp_path / "manifest.json").read_text()) == []
 
 
 @pytest.mark.parametrize(

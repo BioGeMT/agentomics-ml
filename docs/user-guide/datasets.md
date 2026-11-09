@@ -284,7 +284,9 @@ manifest records the archive each unpacked file came from. Both agents can
 list and read the downloaded files.
 The agent needs a provider with native web search (OpenAI, OpenRouter,
 Anthropic or Codex). Running the command again on the same folder, for example
-with a larger `max_download_gb`, keeps the existing files and only adds new ones.
+with a larger `max_download_gb`, continues from the files that are there: the
+agent keeps the ones that fit the request, may discard the others, and adds
+what is missing.
 
 ## Example Datasets
 
