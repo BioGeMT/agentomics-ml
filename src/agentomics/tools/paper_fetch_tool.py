@@ -127,7 +127,7 @@ async def download_papers(
                 try:
                     response = await client.get(candidate)
                     response.raise_for_status()
-                    if not response.content.startswith(b"%PDF-"):
+                    if not response.content.startswith(b"%PDF-"): # consider supporting other formats, e.g. HTML
                         continue
                     pdf_path.write_bytes(response.content)
                 except (httpx.HTTPError, OSError):
