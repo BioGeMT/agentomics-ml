@@ -10,7 +10,7 @@ from unittest.mock import Mock, patch
 
 from pydantic import BaseModel
 from pydantic_ai.messages import ModelResponse, ToolCallPart
-from pydantic_ai.models.function import FunctionModel
+from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from agentomics.utils.config import Config
 
@@ -55,18 +55,23 @@ def create_runtime_step(step_type, config: Config, *, model, trace_analysis_mode
     )
 
 
+def call_output_tool(agent_info: AgentInfo, output: BaseModel) -> ModelResponse:
+    """Create a model response that calls the agent's sole structured-output tool."""
+    assert len(agent_info.output_tools) == 1
+    return ModelResponse(
+        parts=[
+            ToolCallPart(
+                tool_name=agent_info.output_tools[0].name,
+                args=output.model_dump(),
+            )
+        ]
+    )
+
+
 def create_model_calling_output_tool(output: BaseModel) -> FunctionModel:
     """Create a local model that calls the agent's sole structured-output tool."""
     def respond(_messages, agent_info):
-        assert len(agent_info.output_tools) == 1
-        return ModelResponse(
-            parts=[
-                ToolCallPart(
-                    tool_name=agent_info.output_tools[0].name,
-                    args=output.model_dump(),
-                )
-            ]
-        )
+        return call_output_tool(agent_info, output)
 
     return FunctionModel(respond)
 
@@ -99,17 +104,17 @@ def write_split_folder(split_path: Path, row_id: str = "row-1") -> None:
 
 
 @contextmanager
-def serve_files(files: dict[str, bytes]) -> Iterator[str]:
-    """Serve files over local HTTP and yield the base URL; paths under /nolength/ are sent without Content-Length."""
+def serve_files(files: dict[str, bytes], send_content_length: bool = True) -> Iterator[str]:
+    """Serve files over local HTTP and yield the base URL."""
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
-            body = files.get(self.path.removeprefix("/nolength"))
+            body = files.get(self.path)
             if body is None:
                 self.send_error(404)
                 return
             self.send_response(200)
             self.send_header("Content-Type", "text/csv")
-            if not self.path.startswith("/nolength/"):
+            if send_content_length:
                 self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)

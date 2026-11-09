@@ -1,14 +1,17 @@
 import json
 from collections.abc import Iterable
 from pathlib import Path
+from types import SimpleNamespace
 
+from pydantic_ai import BinaryContent
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from agentomics.agents.data_collection import MAX_REVIEWS, DataRequest, collect_data
+from agentomics.agents import data_collection
+from agentomics.agents.data_collection import MAX_REVIEWS, CollectionSummary, DataRequest, Review, collect_data
 from agentomics.runtime.collected_data import load_manifest
 from agentomics.tools.download_tool import download_file
-from tests.helpers import serve_files
+from tests.helpers import call_output_tool, create_failing_model, serve_files
 
 SUMMARY = "files/a.csv and files/b.csv hold the measurements."
 REQUEST = DataRequest(
@@ -20,30 +23,33 @@ REQUEST = DataRequest(
 )
 
 
-def _model_downloading_two_files(base_url: str, review_verdicts: Iterable[bool]) -> FunctionModel:
-    """Create a local model that downloads a.csv and b.csv as the collector and gives the verdicts as the reviewer."""
-    verdicts = iter(review_verdicts)
+def _is_reviewer(info: AgentInfo) -> bool:
+    return all(tool.name != download_file.__name__ for tool in info.function_tools)
 
-    def respond(messages, info: AgentInfo) -> ModelResponse:
-        output_tool = info.output_tools[0].name
-        if all(tool.name != download_file.__name__ for tool in info.function_tools):
-            accepted = next(verdicts)
-            issues = [] if accepted else ["a known source is missing"]
-            return ModelResponse(parts=[ToolCallPart(output_tool, {"accepted": accepted, "issues": issues})])
-        if len(messages) == 1:
-            return ModelResponse(parts=[
-                ToolCallPart(download_file.__name__, {"url": f"{base_url}/a.csv", "filename": "a.csv"}),
-                ToolCallPart(download_file.__name__, {"url": f"{base_url}/b.csv", "filename": "b.csv"}),
-            ])
-        return ModelResponse(parts=[ToolCallPart(output_tool, {"summary": SUMMARY})])
 
-    return FunctionModel(respond)
+def _review(info: AgentInfo, accepted: bool) -> ModelResponse:
+    return call_output_tool(info, Review(accepted=accepted, issues=[] if accepted else ["a known source is missing"]))
+
+
+def _download(base_url: str, *filenames: str) -> ModelResponse:
+    return ModelResponse(parts=[
+        ToolCallPart(download_file.__name__, {"url": f"{base_url}/{filename}", "filename": filename})
+        for filename in filenames
+    ])
 
 
 def _collect(collected_data_directory: Path, base_url: str, review_verdicts: Iterable[bool]) -> int:
-    """Run a collection that downloads from the local test server."""
-    model = _model_downloading_two_files(base_url, review_verdicts)
-    return collect_data(REQUEST, collected_data_directory, model, allow_local_addresses=True)
+    """Run a collection in which the collector downloads a.csv and b.csv and the reviewer gives the verdicts."""
+    verdicts = iter(review_verdicts)
+
+    def respond(messages, info: AgentInfo) -> ModelResponse:
+        if _is_reviewer(info):
+            return _review(info, accepted=next(verdicts))
+        if len(messages) == 1:
+            return _download(base_url, "a.csv", "b.csv")
+        return call_output_tool(info, CollectionSummary(summary=SUMMARY))
+
+    return collect_data(REQUEST, collected_data_directory, FunctionModel(respond), allow_local_addresses=True)
 
 
 def test_collection_keeps_the_downloads_and_ends_when_a_review_accepts(tmp_path):
@@ -73,3 +79,37 @@ def test_reviews_file_holds_the_reviews_of_the_latest_run(tmp_path):
         _collect(tmp_path, base_url, [True])
 
     assert [verdict["accepted"] for verdict in json.loads((tmp_path / "review.json").read_text())] == [True]
+
+
+def test_collection_does_not_start_on_a_folder_that_disagrees_with_its_manifest(tmp_path, capsys):
+    (tmp_path / "files").mkdir()
+    (tmp_path / "files" / "unrecorded.csv").write_bytes(b"x")
+
+    exit_code = collect_data(REQUEST, tmp_path, create_failing_model())
+
+    assert exit_code == 1
+    assert "files/unrecorded.csv is not in the manifest" in capsys.readouterr().err
+
+
+def test_page_reading_points_to_the_download_tool_for_a_file_the_model_cannot_take(tmp_path, monkeypatch):
+    async def fetch_archive(url: str) -> BinaryContent:
+        return BinaryContent(data=b"PK", media_type="application/zip")
+
+    monkeypatch.setattr(data_collection, "web_fetch_tool", lambda: SimpleNamespace(function=fetch_archive))
+    page_reading_results = []
+
+    def respond(messages, info: AgentInfo) -> ModelResponse:
+        if _is_reviewer(info):
+            return _review(info, accepted=True)
+        if len(messages) == 1:
+            return ModelResponse(parts=[ToolCallPart("web_fetch", {"url": "https://example.org/data.zip"})])
+        if not page_reading_results:
+            page_reading_results.append(messages[-1].parts[0].content)
+            return _download(base_url, "a.csv")
+        return call_output_tool(info, CollectionSummary(summary=SUMMARY))
+
+    with serve_files({"/a.csv": b"a" * 100}) as base_url:
+        exit_code = collect_data(REQUEST, tmp_path, FunctionModel(respond), allow_local_addresses=True)
+
+    assert exit_code == 0
+    assert download_file.__name__ in page_reading_results[0]

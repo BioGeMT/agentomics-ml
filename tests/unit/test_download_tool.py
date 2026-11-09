@@ -48,6 +48,12 @@ def _tar(members: dict[str, bytes], compression: str) -> bytes:
     return buffer.getvalue()
 
 
+def _mark_first_member_encrypted(archive: bytes) -> bytes:
+    """Set the encryption flag of the first member in the central directory of a zip archive."""
+    flags_offset = archive.index(b"PK\x01\x02") + 8
+    return archive[:flags_offset] + bytes([archive[flags_offset] | 0x1]) + archive[flags_offset + 1:]
+
+
 def _saved_files(root: Path) -> list[str]:
     return sorted(path.relative_to(root).as_posix() for path in root.rglob("*") if path.is_file())
 
@@ -66,18 +72,20 @@ def test_download_saves_file_and_records_it(tmp_path):
     }]
 
 
-@pytest.mark.parametrize(
-    ("url_path", "limit_bytes", "reason"),
-    [
-        ("/nolength/data.csv", 50, "size limit"),  # the streamed bytes go over the limit
-        ("/missing.csv", None, "the download failed"),  # the server answers 404
-    ],
-)
-def test_rejected_download_records_nothing(tmp_path, url_path, limit_bytes, reason):
-    with serve_files({"/data.csv": DATA}) as base_url:
-        result = download_file(_context(tmp_path, limit_bytes), f"{base_url}{url_path}", "data.csv")
+@pytest.mark.parametrize("send_content_length", [True, False], ids=["size-announced", "size-not-announced"])
+def test_download_over_the_size_limit_is_refused(tmp_path, send_content_length):
+    with serve_files({"/data.csv": DATA}, send_content_length=send_content_length) as base_url:
+        result = download_file(_context(tmp_path, max_bytes=50), f"{base_url}/data.csv", "data.csv")
 
-    assert reason in result.error
+    assert "size limit" in result.error
+    assert _saved_files(tmp_path) == []
+
+
+def test_download_that_the_server_does_not_have_is_refused(tmp_path):
+    with serve_files({}) as base_url:
+        result = download_file(_context(tmp_path), f"{base_url}/missing.csv", "data.csv")
+
+    assert "the download failed" in result.error
     assert _saved_files(tmp_path) == []
 
 
@@ -93,14 +101,6 @@ def test_url_that_cannot_be_parsed_is_refused_without_ending_the_run(tmp_path):
     result = download_file(_context(tmp_path), "http://example.org:port/data.csv", "data.csv")
 
     assert "the download failed" in result.error
-
-
-def test_archive_that_cannot_be_read_is_refused(tmp_path):
-    with serve_files({"/data.zip": b"not a zip archive"}) as base_url:
-        result = download_file(_context(tmp_path), f"{base_url}/data.zip", "data.zip")
-
-    assert "could not be unpacked" in result.error
-    assert _saved_files(tmp_path) == []
 
 
 @pytest.mark.parametrize(
@@ -136,7 +136,7 @@ def test_rerun_can_discard_a_file_of_an_earlier_run(tmp_path):
     discard_file(_context(tmp_path), "files/a.csv")
 
     assert _saved_files(tmp_path) == ["manifest.json"]
-    assert json.loads((tmp_path / "manifest.json").read_text()) == []
+    assert load_manifest(tmp_path) == []
 
 
 def test_discarding_a_path_that_was_not_downloaded_says_it_is_not_in_the_manifest(tmp_path):
@@ -146,35 +146,50 @@ def test_discarding_a_path_that_was_not_downloaded_says_it_is_not_in_the_manifes
 
 
 @pytest.mark.parametrize(
-    ("filename", "archive", "unpacked_path", "unpacked_paths"),
+    ("filename", "archive", "unpacked_paths"),
     [
-        ("data.zip", _zip({"a.csv": DATA, ".hidden.csv": DATA, "../escape.csv": DATA}), "files/data", ["files/data/a.csv", "files/data/.hidden.csv"]),
-        ("data.tar.gz", _tar({"a.csv": DATA, ".hidden.csv": DATA, "../escape.csv": DATA}, "gz"), "files/data", ["files/data/a.csv", "files/data/.hidden.csv"]),
-        ("data.tar.bz2", _tar({"a.csv": DATA}, "bz2"), "files/data", ["files/data/a.csv"]),
-        ("data.csv.gz", gzip.compress(DATA), "files/data.csv", ["files/data.csv"]),
+        ("data.zip", _zip({"a.csv": DATA, ".hidden.csv": DATA, "../escape.csv": DATA}), ["files/data/a.csv", "files/data/.hidden.csv"]),
+        ("data.tar.gz", _tar({"a.csv": DATA, ".hidden.csv": DATA, "../escape.csv": DATA}, "gz"), ["files/data/a.csv", "files/data/.hidden.csv"]),
+        ("data.tar.bz2", _tar({"a.csv": DATA}, "bz2"), ["files/data/a.csv"]),
+        ("data.csv.gz", gzip.compress(DATA), ["files/data.csv"]),
     ],
     ids=["zip", "tar.gz", "tar.bz2", "gz"],
 )
-def test_archive_is_unpacked_into_recorded_files(tmp_path, filename, archive, unpacked_path, unpacked_paths):
-    context = _context(tmp_path)
-
+def test_archive_is_unpacked_into_recorded_files(tmp_path, filename, archive, unpacked_paths):
     with serve_files({f"/{filename}": archive}) as base_url:
-        download_file(context, f"{base_url}/{filename}", filename)
+        download_file(_context(tmp_path), f"{base_url}/{filename}", filename)
 
     entries = load_manifest(tmp_path)
     assert [entry.path for entry in entries] == unpacked_paths
     assert all(entry.archive == filename for entry in entries)
+    assert _saved_files(tmp_path) == sorted([*unpacked_paths, "manifest.json"])
     assert (tmp_path / unpacked_paths[0]).read_bytes() == DATA
 
-    discard_file(context, unpacked_path)
+
+def test_discarding_the_folder_of_an_unpacked_archive_removes_all_its_files(tmp_path):
+    context = _context(tmp_path)
+    with serve_files({"/data.zip": _zip({"a.csv": DATA, "b.csv": DATA})}) as base_url:
+        download_file(context, f"{base_url}/data.zip", "data.zip")
+
+    discard_file(context, "files/data")
 
     assert _saved_files(tmp_path) == ["manifest.json"]
-    assert json.loads((tmp_path / "manifest.json").read_text()) == []
+    assert not (tmp_path / "files" / "data").exists()
+    assert load_manifest(tmp_path) == []
 
 
-def test_archive_whose_unpacked_files_exceed_the_limit_is_not_kept(tmp_path):
-    with serve_files({"/data.zip": _zip({"a.csv": b"x" * 1000, "b.csv": b"x" * 1000})}) as base_url:
+@pytest.mark.parametrize(
+    ("archive", "reason"),
+    [
+        (b"not a zip archive", "could not be unpacked"),
+        (_mark_first_member_encrypted(_zip({"a.csv": DATA})), "encrypted"),
+        (_zip({"a.csv": b"x" * 1000, "b.csv": b"x" * 1000}), "size limit"),
+    ],
+    ids=["unreadable", "encrypted", "unpacked-files-over-the-size-limit"],
+)
+def test_archive_that_cannot_be_unpacked_within_the_limit_is_not_kept(tmp_path, archive, reason):
+    with serve_files({"/data.zip": archive}) as base_url:
         result = download_file(_context(tmp_path, max_bytes=1500), f"{base_url}/data.zip", "data.zip")
 
-    assert "size limit" in result.error
+    assert reason in result.error
     assert _saved_files(tmp_path) == []
