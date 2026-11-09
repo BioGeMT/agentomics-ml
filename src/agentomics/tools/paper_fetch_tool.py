@@ -118,7 +118,7 @@ async def download_papers(
         )
 
         for paper, pdf_path in papers_to_download:
-            candidates = await resolve_pdf_candidates(
+            candidates = await resolve_pdf_url_candidates(
                 client,
                 paper,
                 metadata_by_paper_id.get(paper.paper_id, {}),
@@ -144,7 +144,7 @@ async def download_papers(
 
     return downloaded_papers
 
-async def resolve_pdf_candidates(
+async def resolve_pdf_url_candidates(
     client: httpx.AsyncClient,
     paper: AstaPaperSearchResult,
     metadata: dict[str, Any],
