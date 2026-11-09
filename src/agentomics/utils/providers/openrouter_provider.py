@@ -8,7 +8,6 @@ from rich.panel import Panel
 from rich.columns import Columns
 from rich.console import Group
 
-from agentomics.utils.config import Config
 from agentomics.utils.user_input import get_user_input_for_int
 from .provider import Provider
 
@@ -265,8 +264,8 @@ class OpenRouterProvider(Provider):
 
         return None
 
-    def create_model(self, model_name: str, config: Config) -> OpenRouterModel:
+    def create_model_from_settings(self, model_name: str, use_proxy: bool, llm_response_timeout: int) -> OpenRouterModel:
         return OpenRouterModel(
             model_name=model_name,
-            provider=PydanticOpenRouterProvider(openai_client=self._create_openai_client(config)),
+            provider=PydanticOpenRouterProvider(openai_client=self._create_openai_client(use_proxy, llm_response_timeout)),
         )

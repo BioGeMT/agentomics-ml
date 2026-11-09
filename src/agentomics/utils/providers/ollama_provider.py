@@ -8,7 +8,6 @@ from rich.console import Group
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.models.openai import OpenAIChatModel
 
-from agentomics.utils.config import Config
 from agentomics.utils.user_input import get_user_input_for_int
 from .provider import Provider
 
@@ -102,7 +101,7 @@ class OllamaProvider(Provider):
         self.console.print(Columns(col_renderables, padding=(0, 1), expand=False))
         return display_order_models
 
-    def create_model(self, model_name: str, config: Config) -> OpenAIChatModel:
+    def create_model_from_settings(self, model_name: str, use_proxy: bool, llm_response_timeout: int) -> OpenAIChatModel:
           """Ovveriding method in Provider class. Create OpenAI model instance (Ollama compatible)."""
           return OpenAIChatModel(
               model_name=model_name,

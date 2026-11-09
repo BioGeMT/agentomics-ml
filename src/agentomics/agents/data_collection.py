@@ -3,7 +3,6 @@ import asyncio
 import json
 import sys
 from pathlib import Path
-from types import SimpleNamespace
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic_ai import Agent, BinaryContent, ModelRetry, Tool
@@ -217,9 +216,9 @@ def main(argv: list[str] | None = None) -> int:
     prepare_codex_credentials()
     api_key, provider_name = get_provider_and_api_key(arguments.provider)
     provider = Provider.create_provider(provider_name, api_key)
-    # create_model reads only these two settings of a run configuration.
-    model_settings = SimpleNamespace(use_proxy=Config.DEFAULT_USE_PROXY, llm_response_timeout=Config.DEFAULT_LLM_RESPONSE_TIMEOUT)
-    model = provider.create_model(arguments.model, model_settings)
+    model = provider.create_model_from_settings(
+        arguments.model, Config.DEFAULT_USE_PROXY, Config.DEFAULT_LLM_RESPONSE_TIMEOUT,
+    )
     try:
         return collect_data(request, arguments.collected_data_dir, model)
     finally:

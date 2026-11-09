@@ -3,7 +3,6 @@ import base64
 import json
 import time
 from pathlib import Path
-from types import SimpleNamespace
 
 from pydantic_ai.models.openai import OpenAIResponsesModel
 from pydantic_ai.providers.openai_codex import OpenAICodexCredentials
@@ -151,9 +150,8 @@ def test_codex_model_uses_native_codex_provider(tmp_path: Path, monkeypatch):
     auth_path = tmp_path / "auth.json"
     _write_auth_file(auth_path)
     monkeypatch.setenv("CODEX_AUTH_FILE", str(auth_path))
-    config = SimpleNamespace(use_proxy=False, llm_response_timeout=30)
 
-    model = CodexProvider("").create_model("gpt-6-sol", config)
+    model = CodexProvider("").create_model_from_settings("gpt-6-sol", use_proxy=False, llm_response_timeout=30)
 
     assert isinstance(model, OpenAIResponsesModel)
     assert model.system == "openai-codex"

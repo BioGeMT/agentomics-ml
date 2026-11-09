@@ -8,7 +8,6 @@ from pydantic_ai.models.openai import OpenAIResponsesModel
 from pydantic_ai.providers.openai_codex import OpenAICodexProvider
 from rich.panel import Panel
 
-from agentomics.utils.config import Config
 from agentomics.utils.user_input import get_user_input_for_int
 
 from .codex_auth import CodexAuthStore, get_codex_models_cache_path
@@ -109,14 +108,14 @@ class CodexProvider(Provider):
 
         return None
 
-    def create_model(self, model_name: str, config: Config) -> OpenAIResponsesModel:
+    def create_model_from_settings(self, model_name: str, use_proxy: bool, llm_response_timeout: int) -> OpenAIResponsesModel:
         # Fail early with a clear message instead of deferring until the first request.
         self.auth_store.get_account_id()
 
         proxy_url = self.get_proxy_url()
         async_http_client = httpx2.AsyncClient(
-            proxy=proxy_url if config.use_proxy else None,
-            timeout=config.llm_response_timeout,
+            proxy=proxy_url if use_proxy else None,
+            timeout=llm_response_timeout,
         )
         return OpenAIResponsesModel(
             model_name=model_name,

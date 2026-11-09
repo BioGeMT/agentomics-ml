@@ -4,7 +4,6 @@ from pydantic_ai.models.openai import OpenAIResponsesModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from rich.panel import Panel
 
-from agentomics.utils.config import Config
 from .provider import Provider
 from agentomics.utils.user_input import get_user_input_for_int
 
@@ -76,8 +75,8 @@ class OpenAiProvider(Provider):
         
         return None
 
-    def create_model(self, model_name: str, config: Config) -> OpenAIResponsesModel:
+    def create_model_from_settings(self, model_name: str, use_proxy: bool, llm_response_timeout: int) -> OpenAIResponsesModel:
         return OpenAIResponsesModel(
             model_name=model_name,
-            provider=OpenAIProvider(openai_client=self._create_openai_client(config)),
+            provider=OpenAIProvider(openai_client=self._create_openai_client(use_proxy, llm_response_timeout)),
         )
