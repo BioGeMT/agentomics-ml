@@ -51,7 +51,6 @@ class Config:
     DEFAULT_MAX_STEPS: ClassVar[int] = 100
     DEFAULT_TEMPERATURE: ClassVar[float] = 0.7
     DEFAULT_MAX_VALIDATION_RETRIES: ClassVar[int] = 5
-    DEFAULT_PAPER_FETCH_REQUEST_LIMIT: ClassVar[int] = 10
     DEFAULT_PAPER_FETCH_MAX_RESULTS: ClassVar[int] = 10
     DEFAULT_PAPER_FETCH_TIMEOUT: ClassVar[int] = 120
     DEFAULT_USE_PROXY: ClassVar[bool] = True
