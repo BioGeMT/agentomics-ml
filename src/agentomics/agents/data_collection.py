@@ -11,8 +11,17 @@ from pydantic_ai.models import Model
 from pydantic_ai_harness import FileSystem
 
 from agentomics.agents.agent_utils import run_agent
-from agentomics.runtime.collected_data import MANIFEST_FILE_NAME, find_problems, load_manifest, write_atomically
+from agentomics.runtime.collected_data import (
+    FILES_DIRECTORY_NAME,
+    MANIFEST_FILE_NAME,
+    REVIEW_FILE_NAME,
+    SUMMARY_FILE_NAME,
+    find_problems,
+    load_manifest,
+    write_atomically,
+)
 from agentomics.tools.download_tool import (
+    ARCHIVE_SUFFIXES,
     DownloadDeps,
     create_download_tools,
     current_budget,
@@ -23,8 +32,6 @@ from agentomics.utils.config import Config
 from agentomics.utils.exceptions import IterationRunFailed
 from agentomics.utils.task_types import TaskTypes
 
-SUMMARY_FILE_NAME = "summary.md"
-REVIEW_FILE_NAME = "review.json"
 BYTES_PER_GB = 1_000_000_000
 MAX_REVIEWS = 4
 # The pydantic-ai-harness file tools both agents get.
@@ -34,31 +41,30 @@ LIST_DIRECTORY_TOOL = "list_directory"
 COLLECTOR_INSTRUCTIONS = f"""You collect public data for a machine-learning task described in the request below.
 Search the web and read pages to find data that fit the request. Download the original files with \
 {download_file.__name__}, and discard with {discard_file.__name__} any downloaded file that turns out not to fit. \
-{download_file.__name__} unpacks zip, tar and gz archives into files/ and removes the archive. Look inside downloaded \
-files with {LIST_DIRECTORY_TOOL} and {READ_FILE_TOOL}. Search, read, download and discard in any order and as often \
-as you need.
+{download_file.__name__} unpacks archives ({', '.join(ARCHIVE_SUFFIXES)}) and removes the archive. The downloaded \
+files are in {FILES_DIRECTORY_NAME}/; look inside them with {LIST_DIRECTORY_TOOL} and {READ_FILE_TOOL}. Search, read, \
+download and discard in any order and as often as you need.
 Choose what to download as the request's strategy says, and start from the request's known_sources when it lists any.
 When the request sets max_download_gb, all files together must stay within that many GB; {download_file.__name__} \
 reports the bytes used and the size limit.
-A manifest below the request lists files that an earlier run left in files/. They count against the size limit: keep \
-the ones that fit the request, discard the others and add what is missing.
+A manifest below the request lists files that an earlier run left in {FILES_DIRECTORY_NAME}/. They count against the \
+size limit: keep the ones that fit the request, discard the others and add what is missing.
 Download the files as their sources publish them, with the documentation that describes them. Do not process, \
 convert or label the data.
 If a source cannot be reached or needs a login, skip it and say so. Do not claim that you found all the data that exist.
-When you are done, give your final answer: what each file in the folder contains and where it comes from, and \
-what you looked for but did not find."""
+When you are done, give your summary."""
 
 REVIEWER_INSTRUCTIONS = f"""You review the files another agent downloaded for a machine-learning task. You receive the \
-request, the manifest of downloaded files with their sources and their paths inside files/, the bytes they take \
-with the size limit, and the agent's account of them.
+request, the manifest of the downloaded files with their sources and their paths, the bytes they take with the size \
+limit, and the agent's summary of them.
 Use web search, page reading, and {LIST_DIRECTORY_TOOL} and {READ_FILE_TOOL} on the downloaded files to check that \
-each file is what the account says and fits the request, whether relevant public data were missed, including the \
+each file is what the summary says and fits the request, whether relevant public data were missed, including the \
 user's known sources, and whether the files were chosen as the request's strategy says.
 The files stay as their sources publish them, except that archives are unpacked. Do not ask for processed or \
 converted files. Do not ask for records fetched one at a time from an API when the source offers a bulk export.
 Accept when the files fit the request and nothing important is missing. Otherwise list each issue concretely, with \
 the source or URL to use. Do not reject only because the available data are limited or the size limit leaves \
-relevant data out. Do not ask again for files the account reports as unreachable unless page reading shows that \
+relevant data out. Do not ask again for files the summary reports as unreachable unless page reading shows that \
 they open now."""
 
 DEFAULT_STRATEGY = "Download the most relevant, highest-quality sources first, then the rest of the relevant data."
@@ -85,7 +91,7 @@ class DataRequest(BaseModel):
         return self
 
 
-class CollectionReport(BaseModel):
+class CollectionSummary(BaseModel):
     summary: str = Field(description="What each file contains and where it comes from, and what you looked for but did not find")
 
 
@@ -157,21 +163,21 @@ def build_reviewer(model: Model, collected_data_directory: Path) -> Agent[None, 
     )
 
 
-def build_collector(model: Model, collected_data_directory: Path) -> Agent[CollectionDeps, CollectionReport]:
+def build_collector(model: Model, collected_data_directory: Path) -> Agent[CollectionDeps, CollectionSummary]:
     collector = Agent(
         model,
         deps_type=CollectionDeps,
         instructions=COLLECTOR_INSTRUCTIONS,
         tools=create_download_tools(),
         capabilities=_capabilities(collected_data_directory),
-        output_type=CollectionReport,
+        output_type=CollectionSummary,
         retries={"output": MAX_REVIEWS - 1},
     )
     collector.output_validator(review_collection)
     return collector
 
 
-async def review_collection(ctx: RunContext[CollectionDeps], report: CollectionReport) -> CollectionReport:
+async def review_collection(ctx: RunContext[CollectionDeps], collection: CollectionSummary) -> CollectionSummary:
     deps = ctx.deps
     if not load_manifest(deps.collected_data_directory):
         raise ModelRetry("No files were downloaded.")
@@ -179,14 +185,14 @@ async def review_collection(ctx: RunContext[CollectionDeps], report: CollectionR
         f"Request:\n{deps.request.model_dump_json(indent=2)}",
         f"Manifest:\n{(deps.collected_data_directory / MANIFEST_FILE_NAME).read_text()}",
         f"Bytes used and size limit:\n{current_budget(deps).model_dump_json()}",
-        f"The agent's account:\n{report.summary}",
+        f"Summary:\n{collection.summary}",
     ])
     review = (await deps.reviewer.run(review_prompt)).output
     deps.reviews.append(review)
     write_atomically(deps.collected_data_directory / REVIEW_FILE_NAME, _REVIEWS.dump_json(deps.reviews, indent=2))
     if not review.accepted:
         raise ModelRetry("A reviewer checked your files and found these issues:\n" + "\n".join(review.issues))
-    return report
+    return collection
 
 
 def collect_data(
@@ -205,7 +211,7 @@ def collect_data(
         print("The collected data folder cannot be used:\n" + "\n".join(problems), file=sys.stderr)
         return 1
     try:
-        _, report = asyncio.run(run_agent(
+        _, collection = asyncio.run(run_agent(
             build_collector(model, collected_data_directory),
             _collector_prompt(request, collected_data_directory),
             max_steps=Config.DEFAULT_MAX_STEPS,
@@ -225,5 +231,5 @@ def collect_data(
     if problems:
         print("The collected data folder does not match its manifest:\n" + "\n".join(problems), file=sys.stderr)
         return 1
-    write_atomically(collected_data_directory / SUMMARY_FILE_NAME, report.summary.encode())
+    write_atomically(collected_data_directory / SUMMARY_FILE_NAME, collection.summary.encode())
     return 0

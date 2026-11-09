@@ -5,6 +5,8 @@ from pydantic import BaseModel, TypeAdapter
 
 FILES_DIRECTORY_NAME = "files"
 MANIFEST_FILE_NAME = "manifest.json"
+SUMMARY_FILE_NAME = "summary.md"
+REVIEW_FILE_NAME = "review.json"
 
 
 class ManifestEntry(BaseModel):
