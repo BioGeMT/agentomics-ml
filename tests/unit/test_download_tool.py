@@ -128,6 +128,12 @@ def test_rerun_can_discard_a_file_of_an_earlier_run(tmp_path):
     assert json.loads((tmp_path / "manifest.json").read_text()) == []
 
 
+def test_discarding_a_path_that_was_not_downloaded_says_it_is_not_in_the_manifest(tmp_path):
+    result = DownloadFolder(tmp_path, None).discard_file("missing.csv")
+
+    assert "not in the manifest" in result
+
+
 @pytest.mark.parametrize(
     ("filename", "archive", "unpacked_name", "unpacked_paths"),
     [

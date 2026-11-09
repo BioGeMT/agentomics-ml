@@ -124,7 +124,7 @@ class DownloadFolder:
         """
         discarded = [entry for entry in self.entries if entry["path"] == path or entry["path"].startswith(f"{path}/")]
         if not discarded:
-            return f"Error: only files downloaded in this run can be discarded. {self.budget_text()}"
+            return f"Error: files/{path} is not in the manifest. {self.budget_text()}"
         target = self.files_directory / path
         if target.is_dir():
             shutil.rmtree(target)
