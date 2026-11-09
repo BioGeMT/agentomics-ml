@@ -12,7 +12,7 @@ from pydantic_ai.models.test import TestModel
 from pydantic_ai.usage import RunUsage
 
 from agentomics.runtime.collected_data import load_manifest
-from agentomics.tools.download_tool import DownloadDeps, current_budget, discard_file, download_file
+from agentomics.tools.download_tool import DownloadDeps, discard_file, download_file
 from tests.helpers import serve_files
 
 DATA = b"x" * 100
@@ -56,7 +56,7 @@ def test_download_saves_file_and_records_it(tmp_path):
     with serve_files({"/data.csv": DATA}) as base_url:
         result = download_file(_context(tmp_path), f"{base_url}/data.csv", "data.csv")
 
-    assert "text/csv" in result
+    assert result.content_type == "text/csv"
     assert (tmp_path / "files" / "data.csv").read_bytes() == DATA
     assert json.loads((tmp_path / "manifest.json").read_text()) == [{
         "path": "files/data.csv",
@@ -67,17 +67,17 @@ def test_download_saves_file_and_records_it(tmp_path):
 
 
 @pytest.mark.parametrize(
-    ("url_path", "limit_bytes"),
+    ("url_path", "limit_bytes", "reason"),
     [
-        ("/nolength/data.csv", 50),  # the streamed bytes go over the limit
-        ("/missing.csv", None),  # the server answers 404
+        ("/nolength/data.csv", 50, "size limit"),  # the streamed bytes go over the limit
+        ("/missing.csv", None, "the download failed"),  # the server answers 404
     ],
 )
-def test_rejected_download_records_nothing(tmp_path, url_path, limit_bytes):
+def test_rejected_download_records_nothing(tmp_path, url_path, limit_bytes, reason):
     with serve_files({"/data.csv": DATA}) as base_url:
         result = download_file(_context(tmp_path, limit_bytes), f"{base_url}{url_path}", "data.csv")
 
-    assert result.startswith("Error")
+    assert reason in result.error
     assert _saved_files(tmp_path) == []
 
 
@@ -85,33 +85,36 @@ def test_download_from_a_local_address_is_refused_unless_allowed(tmp_path):
     with serve_files({"/data.csv": DATA}) as base_url:
         result = download_file(_context(tmp_path, allow_local_addresses=False), f"{base_url}/data.csv", "data.csv")
 
-    assert "not a public address" in result
+    assert "not a public address" in result.error
     assert _saved_files(tmp_path) == []
 
 
 def test_url_that_cannot_be_parsed_is_refused_without_ending_the_run(tmp_path):
     result = download_file(_context(tmp_path), "http://example.org:port/data.csv", "data.csv")
 
-    assert "the download failed" in result
+    assert "the download failed" in result.error
 
 
 def test_archive_that_cannot_be_read_is_refused(tmp_path):
     with serve_files({"/data.zip": b"not a zip archive"}) as base_url:
         result = download_file(_context(tmp_path), f"{base_url}/data.zip", "data.zip")
 
-    assert "could not be unpacked" in result
+    assert "could not be unpacked" in result.error
     assert _saved_files(tmp_path) == []
 
 
-@pytest.mark.parametrize("filename", ["../data.csv", "existing.csv"])
-def test_unsafe_or_existing_file_name_is_refused(tmp_path, filename):
+@pytest.mark.parametrize(
+    ("filename", "reason"),
+    [("../data.csv", "not a plain file name"), ("existing.csv", "already exists")],
+)
+def test_unsafe_or_existing_file_name_is_refused(tmp_path, filename, reason):
     (tmp_path / "files").mkdir()
     (tmp_path / "files" / "existing.csv").write_bytes(b"old")
 
     with serve_files({"/data.csv": DATA}) as base_url:
         result = download_file(_context(tmp_path), f"{base_url}/data.csv", filename)
 
-    assert result.startswith("Error")
+    assert reason in result.error
     assert _saved_files(tmp_path) == ["files/existing.csv"]
     assert (tmp_path / "files" / "existing.csv").read_bytes() == b"old"
 
@@ -120,11 +123,10 @@ def test_rerun_counts_the_files_of_an_earlier_run_against_the_limit(tmp_path):
     with serve_files({"/a.csv": b"a" * 100, "/big.csv": b"c" * 200}) as base_url:
         download_file(_context(tmp_path, max_bytes=250), f"{base_url}/a.csv", "a.csv")
 
-        rerun = _context(tmp_path, max_bytes=250)
-        over_limit = download_file(rerun, f"{base_url}/big.csv", "big.csv")
+        rerun_result = download_file(_context(tmp_path, max_bytes=250), f"{base_url}/big.csv", "big.csv")
 
-    assert "size limit" in over_limit
-    assert current_budget(rerun.deps).used_bytes == 100
+    assert "size limit" in rerun_result.error
+    assert rerun_result.budget.used_bytes == 100
 
 
 def test_rerun_can_discard_a_file_of_an_earlier_run(tmp_path):
@@ -140,7 +142,7 @@ def test_rerun_can_discard_a_file_of_an_earlier_run(tmp_path):
 def test_discarding_a_path_that_was_not_downloaded_says_it_is_not_in_the_manifest(tmp_path):
     result = discard_file(_context(tmp_path), "files/missing.csv")
 
-    assert "not in the manifest" in result
+    assert "not in the manifest" in result.error
 
 
 @pytest.mark.parametrize(
@@ -174,5 +176,5 @@ def test_archive_whose_unpacked_files_exceed_the_limit_is_not_kept(tmp_path):
     with serve_files({"/data.zip": _zip({"a.csv": b"x" * 1000, "b.csv": b"x" * 1000})}) as base_url:
         result = download_file(_context(tmp_path, max_bytes=1500), f"{base_url}/data.zip", "data.zip")
 
-    assert result.startswith("Error")
+    assert "size limit" in result.error
     assert _saved_files(tmp_path) == []

@@ -7,7 +7,7 @@ import tarfile
 import tempfile
 import zipfile
 import zlib
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import BinaryIO
@@ -25,15 +25,15 @@ READABLE_ZIP_COMPRESSIONS = (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED, zipfile.Z
 ZIP_ENCRYPTED_FLAG = 0x1
 CHUNK_BYTES = 1 << 20
 UNREADABLE_ARCHIVE_ERRORS = (zipfile.BadZipFile, tarfile.TarError, gzip.BadGzipFile, zlib.error, lzma.LZMAError, EOFError)
-LISTED_UNPACKED_FILES = 20
+MAX_LISTED_FILES = 20
 
 
 class DownloadError(Exception):
-    """A download that cannot be kept; the message is for the agent."""
+    """A tool call that cannot be carried out; the message is for the agent."""
 
 
 class Budget(BaseModel):
-    """The size limit of the downloaded files and the bytes they take."""
+    """The size limit of the collected files and the bytes they take."""
 
     max_bytes: int | None
     used_bytes: int
@@ -56,9 +56,28 @@ class DownloadDeps:
     allow_local_addresses: bool = False
 
 
+class ToolResult(BaseModel):
+    """What a download tool call did, as the agent receives it."""
+
+    error: str | None = None
+    content_type: str | None = None
+    files: list[ManifestEntry] = []
+    unlisted_file_count: int = 0
+    budget: Budget
+
+
+@dataclass
+class _Download:
+    url: str
+    path: Path
+    size_bytes: int
+    sha256: str
+    content_type: str | None
+
+
 def create_download_tools() -> list[Tool[DownloadDeps]]:
     return [
-        # Sequential: the tools share the manifest and the partial-download file.
+        # Sequential: the tools share the manifest.
         Tool(
             function,
             takes_ctx=True,
@@ -75,17 +94,19 @@ def current_budget(deps: DownloadDeps) -> Budget:
     return Budget(max_bytes=deps.max_bytes, used_bytes=used_bytes)
 
 
-def budget_text(deps: DownloadDeps) -> str:
-    budget = current_budget(deps)
-    if budget.max_bytes is None:
-        return f"The folder holds {budget.used_bytes} bytes; there is no size limit."
-    return f"The folder holds {budget.used_bytes} bytes; the size limit is {budget.max_bytes} bytes."
+def _result(deps: DownloadDeps, files: Sequence[ManifestEntry] = (), **fields: str | None) -> ToolResult:
+    return ToolResult(
+        files=files[:MAX_LISTED_FILES],
+        unlisted_file_count=max(len(files) - MAX_LISTED_FILES, 0),
+        budget=current_budget(deps),
+        **fields,
+    )
 
 
-def download_file(ctx: RunContext[DownloadDeps], url: str, filename: str) -> str:
+def download_file(ctx: RunContext[DownloadDeps], url: str, filename: str) -> ToolResult:
     """Download a file from a public URL into the collected data folder and record it in the manifest.
 
-    Zip, tar and gz archives are unpacked into files/ under the file name without its archive suffix.
+    An archive is unpacked under the file name without its archive suffix, and the archive is removed.
 
     Args:
         url: The http or https URL of the file.
@@ -95,38 +116,29 @@ def download_file(ctx: RunContext[DownloadDeps], url: str, filename: str) -> str
     try:
         target = _target_path(deps, url, filename)
         with tempfile.TemporaryDirectory(dir=deps.collected_data_directory, prefix=SCRATCH_DIRECTORY_PREFIX) as scratch:
-            downloaded = Path(scratch) / "downloaded"
-            size, sha256, content_type = _fetch(deps, url, downloaded)
-            added = _store(deps, url, filename, downloaded, size, sha256, target)
+            download = _fetch(deps, url, Path(scratch) / "downloaded")
+            added = _store(deps, download, filename, target)
     except DownloadError as error:
-        return f"Error: {error}. {budget_text(deps)}"
-
+        return _result(deps, error=str(error))
     save_manifest(deps.collected_data_directory, load_manifest(deps.collected_data_directory) + added)
-    if _archive_suffix(filename) is None:
-        return f"Saved {added[0].path} ({size} bytes, {content_type}). {budget_text(deps)}"
-    listing = "\n".join(entry.path for entry in added[:LISTED_UNPACKED_FILES])
-    if len(added) > LISTED_UNPACKED_FILES:
-        listing += f"\n... and {len(added) - LISTED_UNPACKED_FILES} more"
-    unpacked_bytes = sum(entry.size_bytes for entry in added)
-    return (f"Downloaded {filename} ({size} bytes, {content_type}), unpacked it into {FILES_DIRECTORY_NAME}/{target.name} and "
-            f"removed the archive: {len(added)} files, {unpacked_bytes} bytes:\n{listing}\n{budget_text(deps)}")
+    return _result(deps, files=added, content_type=download.content_type)
 
 
 def _target_path(deps: DownloadDeps, url: str, filename: str) -> Path:
-    """Return where the download goes in files/, after checking that the request can be carried out."""
+    """Return where the download goes, after checking that the tool call can be carried out."""
     if Path(filename).name != filename or filename in ("", ".."):
         raise DownloadError(f"'{filename}' is not a plain file name")
     suffix = _archive_suffix(filename)
     target = deps.collected_data_directory / FILES_DIRECTORY_NAME / (filename if suffix is None else filename.removesuffix(suffix))
     if target.exists() or target.is_symlink():
-        raise DownloadError(f"files/{target.name} already exists")
+        raise DownloadError(f"{FILES_DIRECTORY_NAME}/{target.name} already exists")
     if not url.startswith(("http://", "https://")):
         raise DownloadError("only http and https URLs can be downloaded. Try the same address over https if the host offers it")
     return target
 
 
-def _fetch(deps: DownloadDeps, url: str, path: Path) -> tuple[int, str, str]:
-    """Stream the URL to path; return the size, the SHA-256 and the content type."""
+def _fetch(deps: DownloadDeps, url: str, path: Path) -> _Download:
+    """Stream the URL to path."""
     budget = current_budget(deps)
     request_hooks = [] if deps.allow_local_addresses else [_refuse_non_public_address]
     client = httpx2.Client(follow_redirects=True, timeout=deps.download_timeout, event_hooks={"request": request_hooks})
@@ -136,12 +148,12 @@ def _fetch(deps: DownloadDeps, url: str, path: Path) -> tuple[int, str, str]:
             if "content-length" in response.headers:
                 # Refuse a file that cannot fit before downloading it.
                 budget.model_copy().consume(int(response.headers["content-length"]))
-            size, sha256 = _write_stream(response.iter_bytes(), path, budget)
+            size_bytes, sha256 = _write_stream(response.iter_bytes(), path, budget)
     except (httpx2.HTTPError, httpx2.InvalidURL) as error:
         raise DownloadError(f"the download failed: {error}") from error
-    if size == 0:
+    if size_bytes == 0:
         raise DownloadError("the download was empty")
-    return size, sha256, response.headers.get("content-type", "unknown type")
+    return _Download(url, path, size_bytes, sha256, response.headers.get("content-type"))
 
 
 def _refuse_non_public_address(request: httpx2.Request) -> None:
@@ -155,28 +167,29 @@ def _refuse_non_public_address(request: httpx2.Request) -> None:
         raise DownloadError(f"{request.url.host} is not a public address")
 
 
-def _store(
-    deps: DownloadDeps, url: str, filename: str, downloaded: Path, size: int, sha256: str, target: Path,
-) -> list[ManifestEntry]:
+def _store(deps: DownloadDeps, download: _Download, filename: str, target: Path) -> list[ManifestEntry]:
     """Move the download, or the files unpacked from it, to target; return their manifest entries."""
     suffix = _archive_suffix(filename)
     if suffix is None:
-        added = [ManifestEntry(path=f"{FILES_DIRECTORY_NAME}/{target.name}", source_url=url, size_bytes=size, sha256=sha256)]
+        stored = download.path
+        sizes_and_hashes = {target.name: (download.size_bytes, download.sha256)}
     else:
-        unpacked_root = downloaded.with_name("unpacked")
+        unpacked_root = download.path.with_name("unpacked")
+        stored = unpacked_root / target.name
         # The archive is removed, so only its unpacked files count.
-        unpacked = _unpack(downloaded, suffix, target.name, unpacked_root, current_budget(deps))
-        added = [
-            ManifestEntry(
-                path=f"{FILES_DIRECTORY_NAME}/{path}", source_url=url, size_bytes=member_size, sha256=member_sha256,
-                archive=filename,
-            )
-            for path, (member_size, member_sha256) in unpacked.items()
-        ]
-        downloaded = unpacked_root / target.name
+        sizes_and_hashes = _unpack(download.path, suffix, target.name, unpacked_root, current_budget(deps))
     target.parent.mkdir(exist_ok=True)
-    downloaded.rename(target)
-    return added
+    stored.rename(target)
+    return [
+        ManifestEntry(
+            path=f"{FILES_DIRECTORY_NAME}/{path}",
+            source_url=download.url,
+            size_bytes=size_bytes,
+            sha256=sha256,
+            archive=None if suffix is None else filename,
+        )
+        for path, (size_bytes, sha256) in sizes_and_hashes.items()
+    ]
 
 
 def _unpack(archive: Path, suffix: str, name: str, unpacked_root: Path, budget: Budget) -> dict[str, tuple[int, str]]:
@@ -197,14 +210,14 @@ def _write_stream(chunks: Iterable[bytes], path: Path, budget: Budget) -> tuple[
     """Write the chunks to path and count them against the budget; return the size and the SHA-256."""
     path.parent.mkdir(parents=True, exist_ok=True)
     digest = hashlib.sha256()
-    size = 0
+    size_bytes = 0
     with path.open("wb") as output:
         for chunk in chunks:
             budget.consume(len(chunk))
-            size += len(chunk)
+            size_bytes += len(chunk)
             digest.update(chunk)
             output.write(chunk)
-    return size, digest.hexdigest()
+    return size_bytes, digest.hexdigest()
 
 
 def _zip_members(archive: Path) -> Iterator[tuple[str, BinaryIO]]:
@@ -242,6 +255,7 @@ _ARCHIVE_READERS: dict[str, Callable[[Path], Iterator[tuple[str, BinaryIO]]]] = 
     ".txz": _tar_members,
     ".gz": _gzip_member,
 }
+ARCHIVE_SUFFIXES = tuple(_ARCHIVE_READERS)
 
 
 def _archive_suffix(filename: str) -> str | None:
@@ -250,7 +264,7 @@ def _archive_suffix(filename: str) -> str | None:
     return max(suffixes, key=len, default=None)
 
 
-def discard_file(ctx: RunContext[DownloadDeps], path: str) -> str:
+def discard_file(ctx: RunContext[DownloadDeps], path: str) -> ToolResult:
     """Delete a downloaded file that does not fit the request, and remove it from the manifest.
 
     Args:
@@ -261,13 +275,13 @@ def discard_file(ctx: RunContext[DownloadDeps], path: str) -> str:
     entries = load_manifest(deps.collected_data_directory)
     discarded = [entry for entry in entries if entry.path == path or entry.path.startswith(f"{path}/")]
     if not discarded:
-        return f"Error: {path} is not in the manifest. {budget_text(deps)}"
+        return _result(deps, error=f"{path} is not in the manifest")
     for entry in discarded:
         file_path = deps.collected_data_directory / entry.path
         file_path.unlink()
         _remove_empty_folders(file_path.parent, deps.collected_data_directory / FILES_DIRECTORY_NAME)
     save_manifest(deps.collected_data_directory, [entry for entry in entries if entry not in discarded])
-    return f"Discarded {path}. {budget_text(deps)}"
+    return _result(deps, files=discarded)
 
 
 def _remove_empty_folders(folder: Path, stop: Path) -> None:
