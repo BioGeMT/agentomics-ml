@@ -2,26 +2,28 @@ import argparse
 import asyncio
 import json
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from pydantic_ai import Agent, BinaryContent, ModelRetry, Tool
+from pydantic_ai import Agent, BinaryContent, ModelRetry, RunContext, Tool
 from pydantic_ai.capabilities import LocalWorkspace, WebFetch, WebSearch
 from pydantic_ai.common_tools.web_fetch import WebFetchResult, web_fetch_tool
 from pydantic_ai.models import Model
 from pydantic_ai_harness import FileSystem
 
 from agentomics.agents.agent_utils import run_agent
-from agentomics.runtime.collected_data import ManifestEntry
+from agentomics.runtime.collected_data import ManifestEntry, load_manifest
 from agentomics.runtime.filesystem import restore_host_ownership
 from agentomics.runtime.run_workflow import prepare_codex_credentials
-from agentomics.tools.download_tool import DownloadFolder
+from agentomics.tools.download_tool import DownloadDeps, budget_text, check_collected_data, create_download_tools
 from agentomics.utils.config import Config
 from agentomics.utils.providers.provider import Provider, get_provider_and_api_key
 from agentomics.utils.task_types import TaskTypes
 
 SUMMARY_FILE_NAME = "summary.md"
 REVIEW_FILE_NAME = "review.json"
+BYTES_PER_GB = 1_000_000_000
 
 COLLECTOR_INSTRUCTIONS = """You collect public data for a machine-learning task described in the request below.
 Search the web and read pages to find data that fit the request. Download the original files with download_file, \
@@ -81,6 +83,12 @@ class Review(BaseModel):
     issues: list[str] = []
 
 
+@dataclass(kw_only=True)
+class CollectionDeps(DownloadDeps):
+    request: DataRequest
+    reviewer: Agent[None, Review]
+
+
 def _request_text(request: DataRequest) -> str:
     lines = [f"Task type: {request.task_type}", f"Description: {request.description}", "Inputs:"]
     lines += [f"- {item}" for item in request.inputs]
@@ -119,89 +127,104 @@ async def _web_fetch(url: str) -> WebFetchResult | BinaryContent | str:
     return result
 
 
-def build_collector_prompt(request: DataRequest, folder: DownloadFolder) -> str:
-    if request.max_download_gb is None:
+def build_collector_prompt(request: DataRequest, collected_data_directory: Path, max_bytes: int | None) -> str:
+    if max_bytes is None:
         limit = "There is no size limit."
     else:
-        limit = (f"You can keep at most {request.max_download_gb} GB ({folder.max_bytes} bytes) of files in total. "
+        limit = (f"You can keep at most {request.max_download_gb} GB ({max_bytes} bytes) of files in total. "
                  "download_file reports how much of the limit remains.")
     sections = [f"Request:\n{_request_text(request)}", limit]
     if request.known_sources:
         sections.append("Start from the known sources in the request.")
-    if folder.entries:
+    entries = load_manifest(collected_data_directory)
+    if entries:
         sections.append("These files are already in files/ from an earlier run and count against the limit. Keep "
                         "the ones that fit the request, discard the others and add what is missing:\n"
-                        f"{_files_text(folder.entries)}")
-    summary_path = folder.root / SUMMARY_FILE_NAME
+                        f"{_files_text(entries)}")
+    summary_path = collected_data_directory / SUMMARY_FILE_NAME
     if summary_path.exists():
         sections.append(f"The account from an earlier run:\n{summary_path.read_text()}")
     return "\n\n".join(sections)
 
 
-def build_collector(model: Model, request: DataRequest, folder: DownloadFolder) -> Agent:
-    capabilities = [
+def _capabilities(collected_data_directory: Path) -> list:
+    return [
         WebSearch(local=False),
         # TODO: drop _web_fetch and use pydantic-ai's own web fetch once
         # https://github.com/pydantic/pydantic-ai/issues/11829 is fixed.
         WebFetch(local=Tool(_web_fetch, name="web_fetch")),
-        LocalWorkspace(folder.root, read_only=True),
+        LocalWorkspace(collected_data_directory, read_only=True),
         FileSystem(read_only=True, tools=["read_file", "list_directory"]),
     ]
-    reviewer = Agent(
+
+
+def build_reviewer(model: Model, collected_data_directory: Path) -> Agent[None, Review]:
+    return Agent(
         model,
         instructions=REVIEWER_INSTRUCTIONS,
         output_type=Review,
-        capabilities=capabilities,
+        capabilities=_capabilities(collected_data_directory),
         retries={"tools": Config.DEFAULT_MAX_TOOL_RETRIES},
     )
+
+
+def build_collector(model: Model, collected_data_directory: Path) -> Agent[CollectionDeps, CollectionReport]:
     collector = Agent(
         model,
+        deps_type=CollectionDeps,
         instructions=COLLECTOR_INSTRUCTIONS,
-        # Sequential: the tools share the manifest, the budget and the partial-download file.
-        tools=[Tool(folder.download_file, sequential=True), Tool(folder.discard_file, sequential=True)],
-        capabilities=capabilities,
+        tools=create_download_tools(),
+        capabilities=_capabilities(collected_data_directory),
         output_type=CollectionReport,
         # The first answer plus three corrections: at most four reviews.
-        retries={"output": 3, "tools": Config.DEFAULT_MAX_TOOL_RETRIES},
+        retries={"output": 3},
     )
-    review_path = folder.root / REVIEW_FILE_NAME
-    reviews = json.loads(review_path.read_text()) if review_path.exists() else []
-
-    @collector.output_validator
-    async def _check_and_review(report: CollectionReport) -> CollectionReport:
-        (folder.root / SUMMARY_FILE_NAME).write_text(report.summary)
-        problems = folder.check()
-        if not folder.entries:
-            problems.append("No files were downloaded.")
-        if problems:
-            raise ModelRetry("Fix these problems with the downloaded files:\n" + "\n".join(problems))
-        review_prompt = "\n\n".join([
-            f"Request:\n{_request_text(request)}",
-            f"Manifest:\n{_files_text(folder.entries)}\n{folder.budget_text()}",
-            f"The agent's account:\n{report.summary}",
-        ])
-        review = (await reviewer.run(review_prompt)).output
-        reviews.append(review.model_dump())
-        review_path.write_text(json.dumps(reviews, indent=2))
-        if not review.accepted:
-            raise ModelRetry("A reviewer checked your files and found these issues:\n" + "\n".join(review.issues))
-        return report
-
+    collector.output_validator(review_collection)
     return collector
 
 
-def collect_data(request: DataRequest, collected_data_directory: Path, model: Model) -> int:
-    folder = DownloadFolder(collected_data_directory, request.max_download_gb)
-    problems = folder.check()
+async def review_collection(ctx: RunContext[CollectionDeps], report: CollectionReport) -> CollectionReport:
+    deps = ctx.deps
+    (deps.collected_data_directory / SUMMARY_FILE_NAME).write_text(report.summary)
+    problems = check_collected_data(deps)
+    entries = load_manifest(deps.collected_data_directory)
+    if not entries:
+        problems.append("No files were downloaded.")
     if problems:
-        print("The output folder cannot be used:\n" + "\n".join(problems), file=sys.stderr)
+        raise ModelRetry("Fix these problems with the downloaded files:\n" + "\n".join(problems))
+    review_prompt = "\n\n".join([
+        f"Request:\n{_request_text(deps.request)}",
+        f"Manifest:\n{_files_text(entries)}\n{budget_text(deps)}",
+        f"The agent's account:\n{report.summary}",
+    ])
+    review = (await deps.reviewer.run(review_prompt)).output
+    review_path = deps.collected_data_directory / REVIEW_FILE_NAME
+    reviews = json.loads(review_path.read_text()) if review_path.exists() else []
+    reviews.append(review.model_dump())
+    review_path.write_text(json.dumps(reviews, indent=2))
+    if not review.accepted:
+        raise ModelRetry("A reviewer checked your files and found these issues:\n" + "\n".join(review.issues))
+    return report
+
+
+def collect_data(request: DataRequest, collected_data_directory: Path, model: Model) -> int:
+    max_bytes = None if request.max_download_gb is None else int(request.max_download_gb * BYTES_PER_GB)
+    deps = CollectionDeps(
+        collected_data_directory=collected_data_directory,
+        max_bytes=max_bytes,
+        request=request,
+        reviewer=build_reviewer(model, collected_data_directory),
+    )
+    problems = check_collected_data(deps)
+    if problems:
+        print("The collected data folder cannot be used:\n" + "\n".join(problems), file=sys.stderr)
         return 1
-    collector = build_collector(model, request, folder)
     asyncio.run(run_agent(
-        collector,
-        build_collector_prompt(request, folder),
+        build_collector(model, collected_data_directory),
+        build_collector_prompt(request, collected_data_directory, max_bytes),
         max_steps=Config.DEFAULT_MAX_STEPS,
         message_history=None,
+        deps=deps,
     ))
     return 0
 

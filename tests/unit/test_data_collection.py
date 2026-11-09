@@ -5,7 +5,6 @@ from pydantic import ValidationError
 
 from agentomics.agents.data_collection import DEFAULT_STRATEGY, DataRequest, build_collector_prompt
 from agentomics.cli import collect_data as collect_data_cli
-from agentomics.tools.download_tool import DownloadFolder
 
 
 @pytest.mark.parametrize(
@@ -20,7 +19,7 @@ def test_request_rejects_classes_that_do_not_fit_the_task_type(task_type, classe
 def test_request_strategy_replaces_the_default_strategy_in_the_collector_prompt(tmp_path):
     request = DataRequest(task_type="regression", description="d", inputs=["i"], label="l", strategy="only curated datasets")
 
-    prompt = build_collector_prompt(request, DownloadFolder(tmp_path, None))
+    prompt = build_collector_prompt(request, tmp_path, max_bytes=None)
 
     assert "only curated datasets" in prompt
     assert DEFAULT_STRATEGY not in prompt
