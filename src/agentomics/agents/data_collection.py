@@ -1,4 +1,3 @@
-import argparse
 import asyncio
 import sys
 from dataclasses import dataclass, field
@@ -13,8 +12,6 @@ from pydantic_ai_harness import FileSystem
 
 from agentomics.agents.agent_utils import run_agent
 from agentomics.runtime.collected_data import MANIFEST_FILE_NAME, find_problems, load_manifest, write_atomically
-from agentomics.runtime.filesystem import restore_host_ownership
-from agentomics.runtime.run_workflow import prepare_codex_credentials
 from agentomics.tools.download_tool import (
     DownloadDeps,
     create_download_tools,
@@ -24,7 +21,6 @@ from agentomics.tools.download_tool import (
 )
 from agentomics.utils.config import Config
 from agentomics.utils.exceptions import IterationRunFailed
-from agentomics.utils.providers.provider import Provider, get_provider_and_api_key
 from agentomics.utils.task_types import TaskTypes
 
 SUMMARY_FILE_NAME = "summary.md"
@@ -231,28 +227,3 @@ def collect_data(
         return 1
     write_atomically(collected_data_directory / SUMMARY_FILE_NAME, report.summary.encode())
     return 0
-
-
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Run the data collection agent inside the Agentomics image.")
-    parser.add_argument("--request", type=Path, required=True)
-    parser.add_argument("--collected-data-dir", type=Path, required=True)
-    parser.add_argument("--provider", required=True)
-    parser.add_argument("--model", required=True)
-    arguments = parser.parse_args(argv)
-
-    request = DataRequest.model_validate_json(arguments.request.read_text())
-    prepare_codex_credentials()
-    api_key, provider_name = get_provider_and_api_key(arguments.provider)
-    provider = Provider.create_provider(provider_name, api_key)
-    model = provider.create_model_from_settings(
-        arguments.model, Config.DEFAULT_USE_PROXY, Config.DEFAULT_LLM_RESPONSE_TIMEOUT,
-    )
-    try:
-        return collect_data(request, arguments.collected_data_dir, model)
-    finally:
-        restore_host_ownership(arguments.collected_data_dir)
-
-
-if __name__ == "__main__":
-    sys.exit(main())

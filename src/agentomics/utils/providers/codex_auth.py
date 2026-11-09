@@ -4,6 +4,7 @@ import base64
 import copy
 import json
 import os
+import shutil
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -22,6 +23,22 @@ def get_codex_auth_path() -> Path:
 
 def get_codex_models_cache_path() -> Path:
     return Path(os.getenv("CODEX_MODELS_CACHE_FILE", DEFAULT_CODEX_MODELS_CACHE_PATH)).expanduser()
+
+
+def prepare_codex_credentials() -> None:
+    source_directory = Path("/mnt/codex-host")
+    if not source_directory.is_dir():
+        return
+    target_directory = Path("/tmp/codex")
+    target_directory.mkdir(parents=True, exist_ok=True)
+    for filename in ("auth.json", "models_cache.json"):
+        source_path = source_directory / filename
+        if source_path.is_file():
+            shutil.copy2(source_path, target_directory / filename)
+    os.environ["CODEX_AUTH_FILE"] = str(target_directory / "auth.json")
+    os.environ["CODEX_MODELS_CACHE_FILE"] = str(
+        target_directory / "models_cache.json"
+    )
 
 
 def _decode_jwt_payload(token: str) -> dict[str, Any]:

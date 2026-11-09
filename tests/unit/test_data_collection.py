@@ -40,7 +40,7 @@ def test_command_runs_the_worker_in_docker_with_the_request_and_collected_data_m
     assert f"type=bind,src={request_path},dst=/request.json,readonly" in calls[0]["mounts"]
     assert f"type=bind,src={collected_data_directory},dst=/collected-data" in calls[0]["mounts"]
     assert calls[0]["python_arguments"] == [
-        "-m", "agentomics.agents.data_collection",
+        "-m", "agentomics.runtime.collect_data_workflow",
         "--request", "/request.json", "--collected-data-dir", "/collected-data",
         "--provider", "codex", "--model", "gpt-6.1-sol",
     ]

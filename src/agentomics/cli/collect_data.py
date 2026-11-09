@@ -57,7 +57,7 @@ def main(argv: list[str] | None = None) -> int:
         mounts.append(f"type=bind,src={codex_directory.resolve()},dst={CONTAINER_CODEX_DIRECTORY},readonly")
 
     python_arguments = [
-        "-m", "agentomics.agents.data_collection",
+        "-m", "agentomics.runtime.collect_data_workflow",
         "--request", str(CONTAINER_REQUEST_PATH),
         "--collected-data-dir", str(CONTAINER_COLLECTED_DATA_DIRECTORY),
         "--provider", arguments.provider,
