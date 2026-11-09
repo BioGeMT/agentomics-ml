@@ -7,7 +7,7 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from agentomics.agents.data_collection import DataRequest, collect_data
 from agentomics.runtime.collected_data import load_manifest
-from agentomics.tools.download_tool import DownloadDeps, check_collected_data
+from agentomics.tools.download_tool import DownloadDeps, check_collected_data, download_file
 from agentomics.utils.exceptions import IterationRunFailed
 from tests.helpers import serve_files
 
@@ -27,14 +27,14 @@ def _model_downloading_two_files(base_url: str, review_verdicts: Iterable[bool])
 
     def respond(messages, info: AgentInfo) -> ModelResponse:
         output_tool = info.output_tools[0].name
-        if all(tool.name != "download_file" for tool in info.function_tools):
+        if all(tool.name != download_file.__name__ for tool in info.function_tools):
             accepted = next(verdicts)
             issues = [] if accepted else ["a known source is missing"]
             return ModelResponse(parts=[ToolCallPart(output_tool, {"accepted": accepted, "issues": issues})])
         if len(messages) == 1:
             return ModelResponse(parts=[
-                ToolCallPart("download_file", {"url": f"{base_url}/a.csv", "filename": "a.csv"}),
-                ToolCallPart("download_file", {"url": f"{base_url}/b.csv", "filename": "b.csv"}),
+                ToolCallPart(download_file.__name__, {"url": f"{base_url}/a.csv", "filename": "a.csv"}),
+                ToolCallPart(download_file.__name__, {"url": f"{base_url}/b.csv", "filename": "b.csv"}),
             ])
         return ModelResponse(parts=[ToolCallPart(output_tool, {"summary": SUMMARY})])
 

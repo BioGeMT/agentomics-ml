@@ -16,7 +16,14 @@ from agentomics.agents.agent_utils import run_agent
 from agentomics.runtime.collected_data import MANIFEST_FILE_NAME, load_manifest
 from agentomics.runtime.filesystem import restore_host_ownership
 from agentomics.runtime.run_workflow import prepare_codex_credentials
-from agentomics.tools.download_tool import DownloadDeps, check_collected_data, create_download_tools, current_budget
+from agentomics.tools.download_tool import (
+    DownloadDeps,
+    check_collected_data,
+    create_download_tools,
+    current_budget,
+    discard_file,
+    download_file,
+)
 from agentomics.utils.config import Config
 from agentomics.utils.providers.provider import Provider, get_provider_and_api_key
 from agentomics.utils.task_types import TaskTypes
@@ -24,15 +31,19 @@ from agentomics.utils.task_types import TaskTypes
 SUMMARY_FILE_NAME = "summary.md"
 REVIEW_FILE_NAME = "review.json"
 BYTES_PER_GB = 1_000_000_000
+# The pydantic-ai-harness file tools both agents get.
+READ_FILE_TOOL = "read_file"
+LIST_DIRECTORY_TOOL = "list_directory"
 
-COLLECTOR_INSTRUCTIONS = """You collect public data for a machine-learning task described in the request below.
-Search the web and read pages to find data that fit the request. Download the original files with download_file, \
-and discard with discard_file any downloaded file that turns out not to fit. download_file unpacks zip, tar and \
-gz archives into files/ and removes the archive. Look inside downloaded files with list_directory and read_file. \
-Search, read, download and discard in any order and as often as you need.
+COLLECTOR_INSTRUCTIONS = f"""You collect public data for a machine-learning task described in the request below.
+Search the web and read pages to find data that fit the request. Download the original files with \
+{download_file.__name__}, and discard with {discard_file.__name__} any downloaded file that turns out not to fit. \
+{download_file.__name__} unpacks zip, tar and gz archives into files/ and removes the archive. Look inside downloaded \
+files with {LIST_DIRECTORY_TOOL} and {READ_FILE_TOOL}. Search, read, download and discard in any order and as often \
+as you need.
 Choose what to download as the request's strategy says, and start from the request's known_sources when it lists any.
-When the request sets max_download_gb, all files together must stay within that many GB; download_file reports the \
-bytes used and the size limit.
+When the request sets max_download_gb, all files together must stay within that many GB; {download_file.__name__} \
+reports the bytes used and the size limit.
 A manifest below the request lists files that an earlier run left in files/. They count against the size limit: keep \
 the ones that fit the request, discard the others and add what is missing.
 Download the files as their sources publish them, with the documentation that describes them. Do not process, \
@@ -41,12 +52,12 @@ If a source cannot be reached or needs a login, skip it and say so. Do not claim
 When you are done, give your final answer: what each file in the folder contains and where it comes from, and \
 what you looked for but did not find."""
 
-REVIEWER_INSTRUCTIONS = """You review the files another agent downloaded for a machine-learning task. You receive the \
+REVIEWER_INSTRUCTIONS = f"""You review the files another agent downloaded for a machine-learning task. You receive the \
 request, the manifest of downloaded files with their sources and their paths inside files/, the bytes they take \
 with the size limit, and the agent's account of them.
-Use web search, page reading, and list_directory and read_file on the downloaded files to check that each file is \
-what the account says and fits the request, whether relevant public data were missed, including the user's known \
-sources, and whether the files were chosen as the request's strategy says.
+Use web search, page reading, and {LIST_DIRECTORY_TOOL} and {READ_FILE_TOOL} on the downloaded files to check that \
+each file is what the account says and fits the request, whether relevant public data were missed, including the \
+user's known sources, and whether the files were chosen as the request's strategy says.
 The files stay as their sources publish them, except that archives are unpacked. Do not ask for processed or \
 converted files. Do not ask for records fetched one at a time from an API when the source offers a bulk export.
 Accept when the files fit the request and nothing important is missing. Otherwise list each issue concretely, with \
@@ -104,7 +115,7 @@ async def _web_fetch(url: str) -> WebFetchResult | BinaryContent | str:
     # most types other than images and PDFs, which ends the run: https://github.com/pydantic/pydantic-ai/issues/11829
     if isinstance(result, BinaryContent) and not (result.is_image or result.media_type == "application/pdf"):
         return (f"{url} is a {result.media_type} file of {len(result.data)} bytes, not a page. "
-                "Download it with download_file and look inside with read_file.")
+                f"Download it with {download_file.__name__} and look inside with {READ_FILE_TOOL}.")
     return result
 
 
@@ -126,7 +137,7 @@ def _capabilities(collected_data_directory: Path) -> list:
         # https://github.com/pydantic/pydantic-ai/issues/11829 is fixed.
         WebFetch(local=Tool(_web_fetch, name="web_fetch")),
         LocalWorkspace(collected_data_directory, read_only=True),
-        FileSystem(read_only=True, tools=["read_file", "list_directory"]),
+        FileSystem(read_only=True, tools=[READ_FILE_TOOL, LIST_DIRECTORY_TOOL]),
     ]
 
 
