@@ -8,6 +8,7 @@ from pathlib import Path, PurePosixPath
 from typing import BinaryIO
 
 import httpx2
+from pydantic import BaseModel
 
 from agentomics.runtime.collected_data import ManifestEntry, load_manifest, save_manifest
 
@@ -26,6 +27,20 @@ class DownloadBudgetExceeded(Exception):
     pass
 
 
+class Budget(BaseModel):
+    """The size limit of the downloaded files and the bytes they take."""
+
+    max_bytes: int | None
+    used_bytes: int
+
+    def consume(self, size_bytes: int) -> None:
+        if self.max_bytes is not None and self.used_bytes + size_bytes > self.max_bytes:
+            raise DownloadBudgetExceeded(
+                f"the size limit of {self.max_bytes} bytes would be exceeded ({self.used_bytes} bytes are used)"
+            )
+        self.used_bytes += size_bytes
+
+
 class DownloadFolder:
     """The output folder of the data collection agent: downloaded files and the manifest that records them."""
 
@@ -36,17 +51,14 @@ class DownloadFolder:
         self.files_directory.mkdir(parents=True, exist_ok=True)
         self.entries = load_manifest(root)
 
-    def retained_bytes(self) -> int:
-        return sum(entry.size_bytes for entry in self.entries)
-
-    def remaining_bytes(self) -> int | None:
-        return None if self.max_bytes is None else self.max_bytes - self.retained_bytes()
+    def budget(self) -> Budget:
+        return Budget(max_bytes=self.max_bytes, used_bytes=sum(entry.size_bytes for entry in self.entries))
 
     def budget_text(self) -> str:
-        remaining = self.remaining_bytes()
-        if remaining is None:
-            return f"The folder holds {self.retained_bytes()} bytes; there is no size limit."
-        return f"The folder holds {self.retained_bytes()} bytes; {max(remaining, 0)} bytes of the limit remain."
+        budget = self.budget()
+        if budget.max_bytes is None:
+            return f"The folder holds {budget.used_bytes} bytes; there is no size limit."
+        return f"The folder holds {budget.used_bytes} bytes; the size limit is {budget.max_bytes} bytes."
 
     def download_file(self, url: str, filename: str) -> str:
         """Download a file from a public URL into the output folder and record it in the manifest.
@@ -67,7 +79,7 @@ class DownloadFolder:
             return (f"Error: only http and https URLs can be downloaded. Try the same address over https if the host "
                     f"offers it. {self.budget_text()}")
 
-        remaining = self.remaining_bytes()
+        budget = self.budget()
         partial = self.root / PARTIAL_FILE_NAME
         digest = hashlib.sha256()
         size = 0
@@ -75,14 +87,13 @@ class DownloadFolder:
             with httpx2.stream("GET", url, follow_redirects=True, timeout=60) as response:
                 response.raise_for_status()
                 content_type = response.headers.get("content-type", "unknown type")
-                advertised = response.headers.get("content-length")
-                if remaining is not None and advertised is not None and int(advertised) > remaining:
-                    raise DownloadBudgetExceeded(f"the file has {advertised} bytes, more than the limit allows")
+                if "content-length" in response.headers:
+                    # Refuse a file that cannot fit before downloading it.
+                    budget.model_copy().consume(int(response.headers["content-length"]))
                 with partial.open("wb") as output:
                     for chunk in response.iter_bytes():
+                        budget.consume(len(chunk))
                         size += len(chunk)
-                        if remaining is not None and size > remaining:
-                            raise DownloadBudgetExceeded(f"the file has more than the {remaining} bytes the limit allows")
                         digest.update(chunk)
                         output.write(chunk)
             if size == 0:
@@ -91,7 +102,7 @@ class DownloadFolder:
                 partial.rename(target)
                 added = [ManifestEntry(path=filename, source_url=url, size_bytes=size, sha256=digest.hexdigest())]
             else:
-                added = self._unpack(partial, filename, target, url, remaining)
+                added = self._unpack(partial, filename, target, url)
         except DownloadBudgetExceeded as error:
             return f"Error: not kept: {error}. {self.budget_text()}"
         except (zipfile.BadZipFile, tarfile.TarError, gzip.BadGzipFile, zlib.error, EOFError) as error:
@@ -154,17 +165,19 @@ class DownloadFolder:
                 problems.append(f"files/{relative} is a symbolic link.")
             elif path.is_file() and relative not in recorded:
                 problems.append(f"files/{relative} is not in the manifest.")
-        if self.max_bytes is not None and self.retained_bytes() > self.max_bytes:
-            problems.append(f"The folder holds {self.retained_bytes()} bytes, more than the limit of {self.max_bytes}.")
+        budget = self.budget()
+        if budget.max_bytes is not None and budget.used_bytes > budget.max_bytes:
+            problems.append(f"The folder holds {budget.used_bytes} bytes, more than the size limit of {budget.max_bytes} bytes.")
         return problems
 
-    def _unpack(self, archive: Path, filename: str, target: Path, url: str, remaining: int | None) -> list[ManifestEntry]:
+    def _unpack(self, archive: Path, filename: str, target: Path, url: str) -> list[ManifestEntry]:
         added: list[ManifestEntry] = []
+        # The archive is removed, so only its unpacked files count.
+        budget = self.budget()
 
         def save(source: BinaryIO, relative: str) -> None:
             relative = PurePosixPath(relative).as_posix()
-            left = None if remaining is None else remaining - sum(entry.size_bytes for entry in added)
-            saved = self._save_unpacked(source, relative, left)
+            saved = self._save_unpacked(source, relative, budget)
             if saved is not None:
                 size, sha256 = saved
                 added.append(ManifestEntry(path=relative, source_url=url, size_bytes=size, sha256=sha256, archive=filename))
@@ -197,16 +210,15 @@ class DownloadFolder:
             raise
         return added
 
-    def _save_unpacked(self, source: BinaryIO, relative: str, remaining: int | None) -> tuple[int, str] | None:
+    def _save_unpacked(self, source: BinaryIO, relative: str, budget: Budget) -> tuple[int, str] | None:
         path = self.files_directory / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         digest = hashlib.sha256()
         size = 0
         with path.open("xb") as output:
             for chunk in iter(lambda: source.read(CHUNK_BYTES), b""):
+                budget.consume(len(chunk))
                 size += len(chunk)
-                if remaining is not None and size > remaining:
-                    raise DownloadBudgetExceeded(f"its unpacked files need more than the {remaining} bytes the limit allows")
                 digest.update(chunk)
                 output.write(chunk)
         if size == 0:

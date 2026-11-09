@@ -114,8 +114,8 @@ def test_rerun_counts_the_files_of_an_earlier_run_against_the_limit(tmp_path):
         rerun = DownloadFolder(tmp_path, limit_gb)
         over_limit = rerun.download_file(f"{base_url}/big.csv", "big.csv")
 
-    assert over_limit.startswith("Error")
-    assert rerun.remaining_bytes() == 150
+    assert "size limit" in over_limit
+    assert rerun.budget().used_bytes == 100
 
 
 def test_rerun_can_discard_a_file_of_an_earlier_run(tmp_path):
