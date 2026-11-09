@@ -110,15 +110,14 @@ async def download_papers(
                 )
                 continue
 
-            papers_to_download.append(paper)
+            papers_to_download.append((paper, pdf_path))
 
         metadata_by_paper_id = await _get_semantic_scholar_metadata(
             client,
-            [paper.paper_id for paper in papers_to_download],
+            [paper.paper_id for paper, _ in papers_to_download],
         )
 
-        for paper in papers_to_download:
-            pdf_path = destination / f"{paper.paper_id}.pdf"
+        for paper, pdf_path in papers_to_download:
             candidates = await resolve_pdf_candidates(
                 client,
                 paper,
