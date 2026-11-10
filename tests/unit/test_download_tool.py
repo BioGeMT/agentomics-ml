@@ -16,6 +16,7 @@ from agentomics.tools.download_tool import DownloadDeps, discard_file, download_
 from tests.helpers import serve_files
 
 DATA = b"x" * 100
+FILE_NAME_THAT_IS_NOT_UTF_8 = b"caf\xe9.csv".decode(errors="surrogateescape")
 
 
 def _context(
@@ -187,17 +188,18 @@ def test_discarding_the_folder_of_an_unpacked_archive_removes_all_its_files(tmp_
 
 
 @pytest.mark.parametrize(
-    ("archive", "reason"),
+    ("filename", "archive", "reason"),
     [
-        (b"not a zip archive", "could not be unpacked"),
-        (_mark_first_member_encrypted(_zip({"a.csv": DATA})), "encrypted"),
-        (_zip({"a.csv": b"x" * 1000, "b.csv": b"x" * 1000}), "size limit"),
+        ("data.zip", b"not a zip archive", "could not be unpacked"),
+        ("data.zip", _mark_first_member_encrypted(_zip({"a.csv": DATA})), "encrypted"),
+        ("data.zip", _zip({"a.csv": b"x" * 1000, "b.csv": b"x" * 1000}), "size limit"),
+        ("data.tar.gz", _tar({FILE_NAME_THAT_IS_NOT_UTF_8: DATA}, "gz"), "could not be unpacked"),
     ],
-    ids=["unreadable", "encrypted", "unpacked-files-over-the-size-limit"],
+    ids=["unreadable", "encrypted", "unpacked-files-over-the-size-limit", "file-name-that-is-not-utf-8"],
 )
-def test_archive_that_cannot_be_unpacked_within_the_limit_is_not_kept(tmp_path, archive, reason):
-    with serve_files({"/data.zip": archive}) as base_url:
-        result = download_file(_context(tmp_path, max_bytes=1500), f"{base_url}/data.zip", "data.zip")
+def test_archive_that_cannot_be_unpacked_within_the_limit_is_not_kept(tmp_path, filename, archive, reason):
+    with serve_files({f"/{filename}": archive}) as base_url:
+        result = download_file(_context(tmp_path, max_bytes=1500), f"{base_url}/{filename}", filename)
 
     assert reason in result.error
     assert _saved_files(tmp_path) == []

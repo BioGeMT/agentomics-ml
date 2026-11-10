@@ -24,7 +24,9 @@ READABLE_ZIP_COMPRESSIONS = (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED, zipfile.Z
 # Bit 0 of a zip member's general purpose flags is set when the member is encrypted.
 ZIP_ENCRYPTED_FLAG = 0x1
 CHUNK_BYTES = 1 << 20
-UNREADABLE_ARCHIVE_ERRORS = (zipfile.BadZipFile, tarfile.TarError, gzip.BadGzipFile, zlib.error, lzma.LZMAError, EOFError)
+UNREADABLE_ARCHIVE_ERRORS = (
+    zipfile.BadZipFile, tarfile.TarError, gzip.BadGzipFile, zlib.error, lzma.LZMAError, EOFError, UnicodeDecodeError,
+)
 MAX_LISTED_FILES = 20
 
 
@@ -234,7 +236,8 @@ def _zip_members(archive: Path) -> Iterator[tuple[str, BinaryIO]]:
 
 
 def _tar_members(archive: Path) -> Iterator[tuple[str, BinaryIO]]:
-    with tarfile.open(archive) as bundle:
+    # Strict: a file name that is not UTF-8 is an error, because the manifest cannot record it.
+    with tarfile.open(archive, errors="strict") as bundle:
         for member in bundle:
             if member.isfile() and _is_plain_relative_path(member.name):
                 with bundle.extractfile(member) as source:
