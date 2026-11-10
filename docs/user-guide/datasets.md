@@ -276,6 +276,9 @@ sources first, then the rest of the relevant data, until it reaches
 agentomics-collect-data --request request.json --collected-data-dir collected_data --provider codex --model gpt-6.1-sol
 ```
 
+`--download-timeout <seconds>` changes how long a download waits for a server
+that does not answer.
+
 The folder holds `files/`, `manifest.json` (path, source URL, size and SHA-256
 of each file), `summary.md` (the agent's summary of the files, written when a
 review accepts them) and `review.json` (the reviews of the latest run). Zip

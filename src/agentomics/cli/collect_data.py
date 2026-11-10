@@ -14,6 +14,7 @@ from agentomics.cli.docker_utils import (
     use_development_image_if_requested,
 )
 from agentomics.runtime.filesystem import resolve_existing_path
+from agentomics.utils.config import Config
 
 CONTAINER_REQUEST_PATH = Path("/request.json")
 CONTAINER_COLLECTED_DATA_DIRECTORY = Path("/collected-data")
@@ -25,6 +26,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--collected-data-dir", type=Path, required=True, help="Folder for the downloaded files; rerun on it to add files")
     parser.add_argument("--provider", required=True, help="LLM provider, for example codex or openrouter")
     parser.add_argument("--model", required=True, help="LLM model for the collector and the reviewer")
+    parser.add_argument(
+        "--download-timeout", type=int, default=Config.DEFAULT_DOWNLOAD_TOOL_TIMEOUT,
+        help="Seconds a download waits for a server that does not answer (default: %(default)s)",
+    )
     return parser
 
 
@@ -42,6 +47,7 @@ def _build_container_arguments(arguments: argparse.Namespace) -> list[str]:
         "--collected-data-dir", str(CONTAINER_COLLECTED_DATA_DIRECTORY),
         "--provider", arguments.provider,
         "--model", arguments.model,
+        "--download-timeout", str(arguments.download_timeout),
     ]
 
 

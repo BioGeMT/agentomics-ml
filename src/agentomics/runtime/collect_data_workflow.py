@@ -21,7 +21,7 @@ def run_collect_data_workflow(arguments: Namespace) -> int:
         arguments.model, Config.DEFAULT_USE_PROXY, Config.DEFAULT_LLM_RESPONSE_TIMEOUT,
     )
     try:
-        return collect_data(request, arguments.collected_data_dir, model)
+        return collect_data(request, arguments.collected_data_dir, model, arguments.download_timeout)
     finally:
         restore_host_ownership(arguments.collected_data_dir)
 
