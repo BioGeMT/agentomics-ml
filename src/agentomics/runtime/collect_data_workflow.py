@@ -5,6 +5,7 @@ from argparse import Namespace
 
 from agentomics.agents.data_collection import DataRequest, collect_data
 from agentomics.cli.collect_data import build_parser
+from agentomics.cli.docker_utils import CONTAINER_CODEX_DIRECTORY
 from agentomics.runtime.filesystem import restore_host_ownership
 from agentomics.utils.config import Config
 from agentomics.utils.providers.codex_auth import prepare_codex_credentials
@@ -13,7 +14,7 @@ from agentomics.utils.providers.provider import Provider, get_provider_and_api_k
 
 def run_collect_data_workflow(arguments: Namespace) -> int:
     request = DataRequest.model_validate_json(arguments.request.read_text())
-    prepare_codex_credentials()
+    prepare_codex_credentials(CONTAINER_CODEX_DIRECTORY)
     api_key, provider_name = get_provider_and_api_key(arguments.provider)
     provider = Provider.create_provider(provider_name, api_key)
     model = provider.create_model_from_settings(

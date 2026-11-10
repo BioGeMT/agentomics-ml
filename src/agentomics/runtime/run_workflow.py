@@ -8,6 +8,7 @@ from pathlib import Path
 
 import wandb
 
+from agentomics.cli.docker_utils import CONTAINER_CODEX_DIRECTORY
 from agentomics.cli.run_arguments import add_run_arguments
 from agentomics.run_agent_interactive import run_agent_interactive
 from agentomics.run_logging.wandb_setup import resume_wandb_run
@@ -152,7 +153,7 @@ def run_workflow(arguments: argparse.Namespace) -> int:
     try:
         agent_id = _resolve_agent_id()
         _configure_runtime_environment(arguments, agent_id)
-        prepare_codex_credentials()
+        prepare_codex_credentials(CONTAINER_CODEX_DIRECTORY)
         _prepare_fork(arguments, agent_id, workspace_directory)
         if arguments.use_provisioning_key:
             temporary_key_hash = _create_temporary_api_key(arguments.spend_limit)

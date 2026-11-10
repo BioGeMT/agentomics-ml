@@ -12,8 +12,6 @@ from typing import Any
 
 from pydantic_ai.providers.openai_codex import OpenAICodexCredentials, OpenAICodexCredentialSource
 
-from agentomics.cli.docker_utils import CONTAINER_CODEX_DIRECTORY
-
 
 DEFAULT_CODEX_AUTH_PATH = Path.home() / ".codex" / "auth.json"
 DEFAULT_CODEX_MODELS_CACHE_PATH = Path.home() / ".codex" / "models_cache.json"
@@ -27,8 +25,7 @@ def get_codex_models_cache_path() -> Path:
     return Path(os.getenv("CODEX_MODELS_CACHE_FILE", DEFAULT_CODEX_MODELS_CACHE_PATH)).expanduser()
 
 
-def prepare_codex_credentials() -> None:
-    source_directory = CONTAINER_CODEX_DIRECTORY
+def prepare_codex_credentials(source_directory: Path) -> None:
     if not source_directory.is_dir():
         return
     target_directory = Path("/tmp/codex")
