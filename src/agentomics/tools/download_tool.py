@@ -130,7 +130,7 @@ def _target_path(deps: DownloadDeps, url: str, filename: str) -> Path:
     if Path(name).name != name or name in ("", ".."):
         raise DownloadError(f"'{filename}' is not a plain file name")
     target = deps.collected_data_directory / FILES_DIRECTORY_NAME / name
-    if target.exists() or target.is_symlink():
+    if target.exists():
         raise DownloadError(f"{FILES_DIRECTORY_NAME}/{target.name} already exists")
     if not url.startswith(("http://", "https://")):
         raise DownloadError("only http and https URLs can be downloaded. Try the same address over https if the host offers it")
