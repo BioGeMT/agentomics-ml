@@ -192,7 +192,7 @@ async def _review_collection(ctx: RunContext[CollectionDeps], collection: Collec
     deps.reviews.append(review)
     write_atomically(deps.collected_data_directory / REVIEW_FILE_NAME, _REVIEWS.dump_json(deps.reviews, indent=2))
     if not review.accepted:
-        raise ModelRetry("A reviewer checked your files and found these issues:\n" + "\n".join(review.issues))
+        raise ModelRetry(f"A reviewer did not accept your files:\n{review.model_dump_json(indent=2)}")
     return collection
 
 
