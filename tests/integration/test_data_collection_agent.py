@@ -88,6 +88,17 @@ def test_reviews_file_holds_the_reviews_of_the_latest_run(tmp_path):
     assert [verdict["accepted"] for verdict in json.loads((tmp_path / "review.json").read_text())] == [True]
 
 
+def test_rerun_that_does_not_finish_removes_the_summary_and_the_reviews_of_the_earlier_run(tmp_path):
+    with serve_files({"/a.csv": b"a" * 100, "/b.csv": b"b" * 100}) as base_url:
+        _collect(tmp_path, base_url, [True])
+
+    exit_code = collect_data(REQUEST, tmp_path, create_failing_model())
+
+    assert exit_code == 1
+    assert not (tmp_path / "summary.md").exists()
+    assert not (tmp_path / "review.json").exists()
+
+
 def test_collection_does_not_start_on_a_folder_that_disagrees_with_its_manifest(tmp_path, capsys):
     (tmp_path / "files").mkdir()
     (tmp_path / "files" / "unrecorded.csv").write_bytes(b"x")

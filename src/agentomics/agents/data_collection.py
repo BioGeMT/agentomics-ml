@@ -208,10 +208,14 @@ def collect_data(request: DataRequest, collected_data_directory: Path, model: Mo
         request=request,
         reviewer=_build_reviewer(model, collected_data_directory),
     )
+    prompt = _collector_prompt(request, collected_data_directory)
+    # The summary and the reviews of an earlier run do not describe what this run leaves in the folder.
+    for file_name in (SUMMARY_FILE_NAME, REVIEW_FILE_NAME):
+        (collected_data_directory / file_name).unlink(missing_ok=True)
     try:
         _, collection = asyncio.run(run_agent(
             _build_collector(model, collected_data_directory),
-            _collector_prompt(request, collected_data_directory),
+            prompt,
             max_steps=Config.DEFAULT_MAX_STEPS,
             message_history=None,
             deps=deps,
