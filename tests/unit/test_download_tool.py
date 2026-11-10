@@ -113,7 +113,7 @@ def test_url_that_cannot_be_parsed_is_refused_without_ending_the_run(tmp_path, u
 
 @pytest.mark.parametrize(
     ("filename", "reason"),
-    [("../data.csv", "not a plain file name"), ("existing.csv", "already exists")],
+    [("../data.csv", "not a plain file name"), ("..zip", "not a plain file name"), ("existing.csv", "already exists")],
 )
 def test_unsafe_or_existing_file_name_is_refused(tmp_path, filename, reason):
     (tmp_path / "files").mkdir()

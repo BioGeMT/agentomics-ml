@@ -126,10 +126,11 @@ def download_file(ctx: RunContext[DownloadDeps], url: str, filename: str) -> Too
 
 def _target_path(deps: DownloadDeps, url: str, filename: str) -> Path:
     """Return where the download goes, after checking that the tool call can be carried out."""
-    if Path(filename).name != filename or filename in ("", ".."):
-        raise DownloadError(f"'{filename}' is not a plain file name")
     suffix = _archive_suffix(filename)
-    target = deps.collected_data_directory / FILES_DIRECTORY_NAME / (filename if suffix is None else filename.removesuffix(suffix))
+    name = filename if suffix is None else filename.removesuffix(suffix)
+    if Path(name).name != name or name in ("", ".."):
+        raise DownloadError(f"'{filename}' is not a plain file name")
+    target = deps.collected_data_directory / FILES_DIRECTORY_NAME / name
     if target.exists() or target.is_symlink():
         raise DownloadError(f"{FILES_DIRECTORY_NAME}/{target.name} already exists")
     if not url.startswith(("http://", "https://")):
