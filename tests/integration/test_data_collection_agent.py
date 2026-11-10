@@ -8,7 +8,14 @@ from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from agentomics.agents import data_collection
-from agentomics.agents.data_collection import MAX_REVIEWS, CollectionSummary, DataRequest, Review, collect_data
+from agentomics.agents.data_collection import (
+    MAX_REVIEWS,
+    WEB_FETCH_TOOL,
+    CollectionSummary,
+    DataRequest,
+    Review,
+    collect_data,
+)
 from agentomics.runtime.collected_data import load_manifest
 from agentomics.tools.download_tool import download_file
 from tests.helpers import call_output_tool, create_failing_model, serve_files
@@ -102,7 +109,7 @@ def test_page_reading_points_to_the_download_tool_for_a_file_the_model_cannot_ta
         if _is_reviewer(info):
             return _review(info, accepted=True)
         if len(messages) == 1:
-            return ModelResponse(parts=[ToolCallPart("web_fetch", {"url": "https://example.org/data.zip"})])
+            return ModelResponse(parts=[ToolCallPart(WEB_FETCH_TOOL, {"url": "https://example.org/data.zip"})])
         if not page_reading_results:
             page_reading_results.append(messages[-1].parts[0].content)
             return _download(base_url, "a.csv")

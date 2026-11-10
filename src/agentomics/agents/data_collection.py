@@ -34,6 +34,7 @@ from agentomics.utils.task_types import TaskTypes
 
 BYTES_PER_GB = 1_000_000_000
 MAX_REVIEWS = 4
+WEB_FETCH_TOOL = "web_fetch"
 # The pydantic-ai-harness file tools both agents get.
 READ_FILE_TOOL = "read_file"
 LIST_DIRECTORY_TOOL = "list_directory"
@@ -147,7 +148,7 @@ def _capabilities(collected_data_directory: Path) -> list:
         WebSearch(local=False),
         # TODO: drop _web_fetch and use pydantic-ai's own web fetch once
         # https://github.com/pydantic/pydantic-ai/issues/11829 is fixed.
-        WebFetch(local=Tool(_web_fetch, name="web_fetch")),
+        WebFetch(local=Tool(_web_fetch, name=WEB_FETCH_TOOL)),
         LocalWorkspace(collected_data_directory, read_only=True),
         FileSystem(read_only=True, tools=[READ_FILE_TOOL, LIST_DIRECTORY_TOOL]),
     ]
