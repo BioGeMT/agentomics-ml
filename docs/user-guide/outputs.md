@@ -24,7 +24,8 @@ outputs/<agent_id>/
 │   ├── shared/
 │   │   ├── config.json
 │   │   ├── dataset_metadata.json
-│   │   └── splits/
+│   │   ├── splits/
+│   │   └── fetched_papers/    # PDFs downloaded by paper_fetch, when used
 │   ├── iteration_0/
 │   ├── iteration_1/
 │   └── ...
@@ -92,6 +93,10 @@ run/iteration_N/
 │   └── iteration_state.json
 └── ...                       # Other iteration artifacts
 ```
+
+## Fetched Papers
+
+`outputs/<agent_id>/run/shared/fetched_papers/` folder contains the papers fetched by the agent during the run.
 
 ## Reports
 

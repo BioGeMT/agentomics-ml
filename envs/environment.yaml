@@ -7,6 +7,8 @@ dependencies:
   - pandas==2.3.1
   - matplotlib==3.8.4
   - pydantic-ai==2.66.0
+  - markdownify==1.2.3
+  - ddgs==9.14.4
   - pip
   - pip:
     - weave==0.52.14 # Often breaks with new versions, update as necessary
@@ -21,3 +23,4 @@ dependencies:
     - openai==3.31.0
     - anthropic==1.15.0
     - pytest==9.1.1
+    - pydantic-ai-slim[mcp]==2.66.0
