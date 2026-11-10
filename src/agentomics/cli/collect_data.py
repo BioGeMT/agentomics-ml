@@ -28,14 +28,14 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def build_mounts(request_path: Path, collected_data_directory: Path) -> list[str]:
+def _build_mounts(request_path: Path, collected_data_directory: Path) -> list[str]:
     return [
         f"type=bind,src={request_path},dst={CONTAINER_REQUEST_PATH},readonly",
         f"type=bind,src={collected_data_directory},dst={CONTAINER_COLLECTED_DATA_DIRECTORY}",
     ]
 
 
-def build_container_arguments(arguments: argparse.Namespace) -> list[str]:
+def _build_container_arguments(arguments: argparse.Namespace) -> list[str]:
     return [
         "-m", "agentomics.runtime.collect_data_workflow",
         "--request", str(CONTAINER_REQUEST_PATH),
@@ -56,8 +56,8 @@ def main() -> int:
     return run_python_in_docker(
         image=arguments.image,
         cpu_only=True,
-        mounts=[*build_mounts(request_path, collected_data_directory), *codex_credentials_mounts()],
-        python_arguments=build_container_arguments(arguments),
+        mounts=[*_build_mounts(request_path, collected_data_directory), *codex_credentials_mounts()],
+        python_arguments=_build_container_arguments(arguments),
         docker_arguments=docker_environment_arguments(
             *PROVIDER_API_KEY_ENV_VAR_NAMES,
             *PROXY_ENV_VAR_NAMES,
