@@ -8,6 +8,7 @@ from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models.function import FunctionModel
 
 from agentomics.utils.config import Config
+from agentomics.utils.providers.provider import Provider
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PR_TITLE_VALIDATOR = REPO_ROOT / "scripts" / "validate_pr_title.py"
@@ -45,7 +46,7 @@ def create_runtime_step(step_type, config: Config, *, model, trace_analysis_mode
         model,
         Mock(),
         trace_analysis_model or Mock(),
-        Mock(),
+        Provider("test", base_url=""),
         [],
     )
 

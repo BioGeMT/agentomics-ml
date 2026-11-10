@@ -12,7 +12,6 @@ from pydantic.json_schema import SkipJsonSchema
 from pydantic_ai import Agent, ModelRetry, RunContext
 from pydantic_ai.messages import ModelMessage
 from pydantic_ai.models import Model
-from pydantic_ai.settings import ModelSettings
 
 from agentomics.agents.agent_utils import (
     fabricate_final_result_messages,
@@ -186,7 +185,7 @@ class AgenticStep(RuntimeStep):
             model=self.model,
             system_prompt=self.get_system_prompt(),
             tools=self.tools,
-            model_settings=ModelSettings(temperature=self.config.temperature),
+            model_settings=self.provider.get_model_settings(self.config),
             output_type=self.output_type,
             retries=self.config.max_validation_retries,
             deps_type=dict,

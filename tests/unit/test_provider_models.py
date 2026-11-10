@@ -35,7 +35,12 @@ def test_planning_agent_asks_for_high_reasoning(monkeypatch, create_provider, mo
     agent = IterationPlanStep(config, model, model, model, provider, tools=[]).create_agent()
     _, parameters = model.prepare_request(agent.model_settings, ModelRequestParameters())
 
-    assert parameters.thinking == "high"
+    if isinstance(provider, CodexProvider):
+        # The Codex Responses API carries reasoning effort as a model setting,
+        # rather than the generic `thinking` request parameter.
+        assert agent.model_settings["openai_reasoning_effort"] == "high"
+    else:
+        assert parameters.thinking == "high"
 
 
 @pytest.mark.parametrize(

@@ -145,16 +145,11 @@ def _execute_workflow(
     run_succeeded = snapshot_metadata.is_file()
 
     if run_succeeded:
-        print(f"Run finished. Files can be found in {workspace_directory}")
-        print(
-            "To run inference, use: "
-            f"agentomics-inference --agent-dir {workspace_directory} "
-            "--input <input> --output <predictions.csv>"
-        )
+        print("Run finished. Output files are in the mounted workspace.")
     else:
         print(
             "Warning: Agent did not produce a valid best iteration snapshot. "
-            f"Run artifacts are in {workspace_directory}.",
+            "Any run artifacts are in the mounted workspace.",
             file=sys.stderr,
         )
     if exit_code != 0:
