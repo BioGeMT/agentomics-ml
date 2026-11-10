@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -25,6 +26,7 @@ class Config:
     ENVIRONMENT_DESCRIPTOR_FILENAME: ClassVar[str] = "environment.yml"
     STEP_OUTPUT_FILENAME: ClassVar[str] = "output.json"
     ITERATIONS_LESSONS_FILENAME: ClassVar[str] = "iterations_lessons.md"
+    FETCHED_PAPERS_DIRNAME: ClassVar[str] = "fetched_papers"
 
     DEFAULT_ITERATIONS: ClassVar[int] = 5
     DEFAULT_SPLIT_ALLOWED_ITERATIONS: ClassVar[int] = 1
@@ -41,6 +43,7 @@ class Config:
         "prediction_exploration",
     ]
     DEFAULT_TOOL_IDS: ClassVar[list[str]] = [
+        "paper_fetch",
         "bash",
         "write_python",
         "run_python",
@@ -49,6 +52,8 @@ class Config:
     DEFAULT_MAX_STEPS: ClassVar[int] = 100
     DEFAULT_TEMPERATURE: ClassVar[float] = 0.7
     DEFAULT_MAX_VALIDATION_RETRIES: ClassVar[int] = 5
+    DEFAULT_PAPER_FETCH_MAX_RESULTS: ClassVar[int] = 10
+    DEFAULT_PAPER_FETCH_TIMEOUT: ClassVar[int] = 120
     DEFAULT_USE_PROXY: ClassVar[bool] = True
     DEFAULT_LLM_RESPONSE_TIMEOUT: ClassVar[int] = 60 * 10
     DEFAULT_BASH_TOOL_TIMEOUT: ClassVar[int] = 60 * 3
@@ -88,12 +93,17 @@ class Config:
     # Optional, default values can not be overwritten through the CLI
     max_steps: int = DEFAULT_MAX_STEPS
     step_sequence: list[str] = field(default_factory=lambda: Config.DEFAULT_STEP_SEQUENCE.copy())
-    tool_ids: list[str] = field(default_factory=lambda: Config.DEFAULT_TOOL_IDS.copy())
+    tool_ids: list[str] = field(default_factory=lambda: [
+        tool_id for tool_id in Config.DEFAULT_TOOL_IDS
+        if tool_id != "paper_fetch" or is_paper_fetch_available()
+    ])
     temperature: float = DEFAULT_TEMPERATURE
     max_validation_retries: int = DEFAULT_MAX_VALIDATION_RETRIES
     use_proxy: bool = DEFAULT_USE_PROXY
     llm_response_timeout: int = DEFAULT_LLM_RESPONSE_TIMEOUT
     bash_tool_timeout: int = DEFAULT_BASH_TOOL_TIMEOUT
+    paper_fetch_timeout: int = DEFAULT_PAPER_FETCH_TIMEOUT
+    paper_fetch_max_results: int = DEFAULT_PAPER_FETCH_MAX_RESULTS
     max_tool_retries: int = DEFAULT_MAX_TOOL_RETRIES
     label_to_scalar: dict[str, int] | None = None
     wandb_run_id: str | None = None
@@ -148,6 +158,10 @@ class Config:
         return self.current_iteration_dir / "current_step"
 
     @property
+    def fetched_papers_dir(self) -> Path:
+        return self.shared_dir / self.FETCHED_PAPERS_DIRNAME
+
+    @property
     def current_iteration_runtime_info_dir(self) -> Path:
         return self.current_iteration_dir / self.RUNTIME_INFO_DIRNAME
 
@@ -177,6 +191,7 @@ class Config:
         print("ITERATIONS:", self.iterations)
         print("EXPLORATION ITERATIONS:", self.exploration_iterations)
         print("SPLIT ALLOWED ITERATIONS:", self.split_allowed_iterations)
+        print("PAPER FETCH:", "ENABLED" if "paper_fetch" in self.tool_ids else "DISABLED")
         print(
             "TIMEOUT IN HOURS:",
             (self.time_deadline - time.time()) / 3600 if self.time_deadline is not None else "No timeout",
@@ -190,3 +205,9 @@ class Config:
         print("USER PROMPT:", self.user_prompt)
         print("RESOURCES SUMMARY:", get_resources_summary())
         print("===============================")
+
+def is_paper_fetch_available() -> bool:
+    return all(
+        os.getenv(variable, "").strip()
+        for variable in ("ASTA_API_KEY", "S2_API_KEY", "UNPAYWALL_EMAIL")
+    )
