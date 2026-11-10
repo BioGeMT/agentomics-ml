@@ -19,6 +19,7 @@ These must be run from the repository root.
 agentomics-run --dev --dataset <name>
 agentomics-inference --dev <options>
 agentomics-retrain --dev <options>
+agentomics-collect-data --dev <options>
 ```
 
 ## How it works
