@@ -281,8 +281,7 @@ of each file), `summary.md` (the agent's summary of the files, written when a
 review accepts them) and `review.json` (the reviews of the latest run). Zip
 archives, tar archives (also compressed with gzip, bzip2 or xz) and gz files
 are unpacked into `files/`, and the manifest records the archive each unpacked
-file came from. Both agents can list and read the downloaded files. Files are
-downloaded only from public addresses.
+file came from. Both agents can list and read the downloaded files.
 
 The files are reviewed up to four times. If no review accepts them, the
 command ends with exit code 1, the downloaded files stay in the folder and

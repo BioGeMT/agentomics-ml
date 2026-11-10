@@ -56,7 +56,7 @@ def _collect(collected_data_directory: Path, base_url: str, review_verdicts: Ite
             return _download(base_url, "a.csv", "b.csv")
         return call_output_tool(info, CollectionSummary(summary=SUMMARY))
 
-    return collect_data(REQUEST, collected_data_directory, FunctionModel(respond), allow_local_addresses=True)
+    return collect_data(REQUEST, collected_data_directory, FunctionModel(respond))
 
 
 def test_collection_keeps_the_downloads_and_ends_when_a_review_accepts(tmp_path):
@@ -116,7 +116,7 @@ def test_page_reading_points_to_the_download_tool_for_a_file_the_model_cannot_ta
         return call_output_tool(info, CollectionSummary(summary=SUMMARY))
 
     with serve_files({"/a.csv": b"a" * 100}) as base_url:
-        exit_code = collect_data(REQUEST, tmp_path, FunctionModel(respond), allow_local_addresses=True)
+        exit_code = collect_data(REQUEST, tmp_path, FunctionModel(respond))
 
     assert exit_code == 0
     assert download_file.__name__ in page_reading_results[0]
@@ -141,7 +141,7 @@ def test_collection_continues_after_page_reads_fail_in_a_row(tmp_path, monkeypat
             response = next(collector_responses, None)
             return call_output_tool(info, CollectionSummary(summary=SUMMARY)) if response is None else response
 
-        exit_code = collect_data(REQUEST, tmp_path, FunctionModel(respond), allow_local_addresses=True)
+        exit_code = collect_data(REQUEST, tmp_path, FunctionModel(respond))
 
     assert exit_code == 0
     assert [entry.path for entry in load_manifest(tmp_path)] == ["files/a.csv"]

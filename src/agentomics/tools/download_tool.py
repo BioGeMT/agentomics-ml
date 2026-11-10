@@ -1,8 +1,6 @@
 import gzip
 import hashlib
-import ipaddress
 import lzma
-import socket
 import tarfile
 import tempfile
 import zipfile
@@ -55,7 +53,6 @@ class DownloadDeps:
     collected_data_directory: Path
     max_bytes: int | None
     download_timeout: int = Config.DEFAULT_DOWNLOAD_TOOL_TIMEOUT
-    allow_local_addresses: bool = False
 
 
 class ToolResult(BaseModel):
@@ -143,8 +140,7 @@ def _target_path(deps: DownloadDeps, url: str, filename: str) -> Path:
 def _fetch(deps: DownloadDeps, url: str, path: Path) -> _Download:
     """Stream the URL to path."""
     budget = current_budget(deps)
-    request_hooks = [] if deps.allow_local_addresses else [_refuse_non_public_address]
-    client = httpx2.Client(follow_redirects=True, timeout=deps.download_timeout, event_hooks={"request": request_hooks})
+    client = httpx2.Client(follow_redirects=True, timeout=deps.download_timeout)
     try:
         with client, client.stream("GET", url) as response:
             response.raise_for_status()
@@ -152,24 +148,12 @@ def _fetch(deps: DownloadDeps, url: str, path: Path) -> _Download:
                 # Refuse a file that cannot fit before downloading it.
                 budget.model_copy().consume(int(response.headers["content-length"]))
             size_bytes, sha256 = _write_stream(response.iter_bytes(), path, budget)
-    except (httpx2.HTTPError, httpx2.InvalidURL) as error:
+    # UnicodeError: the host name cannot be encoded, for example because a label is empty.
+    except (httpx2.HTTPError, httpx2.InvalidURL, UnicodeError) as error:
         raise DownloadError(f"the download failed: {error}") from error
     if size_bytes == 0:
         raise DownloadError("the download was empty")
     return _Download(url, path, size_bytes, sha256, response.headers.get("content-type"))
-
-
-def _refuse_non_public_address(request: httpx2.Request) -> None:
-    """Refuse a request whose host is not a public address; it runs for the URL and for each redirect."""
-    try:
-        addresses = {address[4][0] for address in socket.getaddrinfo(request.url.host, None)}
-    except socket.gaierror:
-        # Only a proxy can reach a host that this machine cannot resolve, and the proxy resolves it itself.
-        return
-    except UnicodeError as error:
-        raise DownloadError(f"{request.url.host} is not a valid host name") from error
-    if not all(ipaddress.ip_address(address).is_global for address in addresses):
-        raise DownloadError(f"{request.url.host} is not a public address")
 
 
 def _store(deps: DownloadDeps, download: _Download, filename: str, target: Path) -> list[ManifestEntry]:

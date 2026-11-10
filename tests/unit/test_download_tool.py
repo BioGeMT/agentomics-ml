@@ -19,15 +19,8 @@ DATA = b"x" * 100
 FILE_NAME_THAT_IS_NOT_UTF_8 = b"caf\xe9.csv".decode(errors="surrogateescape")
 
 
-def _context(
-    collected_data_directory: Path, max_bytes: int | None = None, allow_local_addresses: bool = True,
-) -> RunContext[DownloadDeps]:
-    """Create the context of a tool call; local addresses are allowed because the tests serve files locally."""
-    deps = DownloadDeps(
-        collected_data_directory=collected_data_directory,
-        max_bytes=max_bytes,
-        allow_local_addresses=allow_local_addresses,
-    )
+def _context(collected_data_directory: Path, max_bytes: int | None = None) -> RunContext[DownloadDeps]:
+    deps = DownloadDeps(collected_data_directory=collected_data_directory, max_bytes=max_bytes)
     return RunContext(deps=deps, model=TestModel(), usage=RunUsage())
 
 
@@ -90,26 +83,15 @@ def test_download_that_the_server_does_not_have_is_refused(tmp_path):
     assert _saved_files(tmp_path) == []
 
 
-def test_download_from_a_local_address_is_refused_unless_allowed(tmp_path):
-    with serve_files({"/data.csv": DATA}) as base_url:
-        result = download_file(_context(tmp_path, allow_local_addresses=False), f"{base_url}/data.csv", "data.csv")
-
-    assert "not a public address" in result.error
-    assert _saved_files(tmp_path) == []
-
-
 @pytest.mark.parametrize(
-    ("url", "reason"),
-    [
-        ("http://example.org:port/data.csv", "the download failed"),
-        ("http://example..com/data.csv", "not a valid host name"),
-    ],
+    "url",
+    ["http://example.org:port/data.csv", "http://example..com/data.csv"],
     ids=["port-that-is-not-a-number", "host-with-an-empty-label"],
 )
-def test_url_that_cannot_be_parsed_is_refused_without_ending_the_run(tmp_path, url, reason):
-    result = download_file(_context(tmp_path, allow_local_addresses=False), url, "data.csv")
+def test_url_that_cannot_be_parsed_is_refused_without_ending_the_run(tmp_path, url):
+    result = download_file(_context(tmp_path), url, "data.csv")
 
-    assert reason in result.error
+    assert "the download failed" in result.error
 
 
 @pytest.mark.parametrize(

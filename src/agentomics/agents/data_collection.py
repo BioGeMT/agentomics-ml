@@ -196,9 +196,7 @@ async def _review_collection(ctx: RunContext[CollectionDeps], collection: Collec
     return collection
 
 
-def collect_data(
-    request: DataRequest, collected_data_directory: Path, model: Model, allow_local_addresses: bool = False,
-) -> int:
+def collect_data(request: DataRequest, collected_data_directory: Path, model: Model) -> int:
     max_bytes = None if request.max_download_gb is None else int(request.max_download_gb * BYTES_PER_GB)
     problems = find_problems(collected_data_directory, max_bytes, verify_hashes=False)
     if problems:
@@ -207,7 +205,6 @@ def collect_data(
     deps = CollectionDeps(
         collected_data_directory=collected_data_directory,
         max_bytes=max_bytes,
-        allow_local_addresses=allow_local_addresses,
         request=request,
         reviewer=_build_reviewer(model, collected_data_directory),
     )
