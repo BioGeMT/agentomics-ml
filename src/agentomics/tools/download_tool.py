@@ -163,6 +163,8 @@ def _refuse_non_public_address(request: httpx2.Request) -> None:
     except socket.gaierror:
         # Only a proxy can reach a host that this machine cannot resolve, and the proxy resolves it itself.
         return
+    except UnicodeError as error:
+        raise DownloadError(f"{request.url.host} is not a valid host name") from error
     if not all(ipaddress.ip_address(address).is_global for address in addresses):
         raise DownloadError(f"{request.url.host} is not a public address")
 

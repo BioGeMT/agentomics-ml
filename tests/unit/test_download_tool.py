@@ -97,10 +97,18 @@ def test_download_from_a_local_address_is_refused_unless_allowed(tmp_path):
     assert _saved_files(tmp_path) == []
 
 
-def test_url_that_cannot_be_parsed_is_refused_without_ending_the_run(tmp_path):
-    result = download_file(_context(tmp_path), "http://example.org:port/data.csv", "data.csv")
+@pytest.mark.parametrize(
+    ("url", "reason"),
+    [
+        ("http://example.org:port/data.csv", "the download failed"),
+        ("http://example..com/data.csv", "not a valid host name"),
+    ],
+    ids=["port-that-is-not-a-number", "host-with-an-empty-label"],
+)
+def test_url_that_cannot_be_parsed_is_refused_without_ending_the_run(tmp_path, url, reason):
+    result = download_file(_context(tmp_path, allow_local_addresses=False), url, "data.csv")
 
-    assert "the download failed" in result.error
+    assert reason in result.error
 
 
 @pytest.mark.parametrize(
