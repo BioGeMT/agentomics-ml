@@ -3,7 +3,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from types import SimpleNamespace
 
-from pydantic_ai import BinaryContent
+from pydantic_ai import BinaryContent, ModelRetry
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
@@ -120,3 +120,28 @@ def test_page_reading_points_to_the_download_tool_for_a_file_the_model_cannot_ta
 
     assert exit_code == 0
     assert download_file.__name__ in page_reading_results[0]
+
+
+def test_collection_continues_after_page_reads_fail_in_a_row(tmp_path, monkeypatch):
+    async def fail_to_fetch(url: str) -> None:
+        raise ModelRetry(f"{url} could not be fetched")
+
+    monkeypatch.setattr(data_collection, "web_fetch_tool", lambda: SimpleNamespace(function=fail_to_fetch))
+
+    with serve_files({"/a.csv": b"a" * 100}) as base_url:
+        collector_responses = iter([
+            ModelResponse(parts=[ToolCallPart(WEB_FETCH_TOOL, {"url": "https://example.org/one"})]),
+            ModelResponse(parts=[ToolCallPart(WEB_FETCH_TOOL, {"url": "https://example.org/two"})]),
+            _download(base_url, "a.csv"),
+        ])
+
+        def respond(messages, info: AgentInfo) -> ModelResponse:
+            if _is_reviewer(info):
+                return _review(info, accepted=True)
+            response = next(collector_responses, None)
+            return call_output_tool(info, CollectionSummary(summary=SUMMARY)) if response is None else response
+
+        exit_code = collect_data(REQUEST, tmp_path, FunctionModel(respond), allow_local_addresses=True)
+
+    assert exit_code == 0
+    assert [entry.path for entry in load_manifest(tmp_path)] == ["files/a.csv"]

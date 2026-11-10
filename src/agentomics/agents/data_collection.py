@@ -172,7 +172,7 @@ def _build_collector(model: Model, collected_data_directory: Path) -> Agent[Coll
         tools=create_download_tools(),
         capabilities=_capabilities(collected_data_directory),
         output_type=CollectionSummary,
-        retries={"output": MAX_REVIEWS - 1},
+        retries={"output": MAX_REVIEWS - 1, "tools": Config.DEFAULT_MAX_TOOL_RETRIES},
     )
     collector.output_validator(_review_collection)
     return collector
