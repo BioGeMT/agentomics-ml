@@ -52,21 +52,20 @@ OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxx
 
 ## Paper Fetching
 
-The paper-fetch tool reads these optional variables. Export them in your shell
-or add them to `.env`; `agentomics-run` forwards them into Docker.
+To enable paper fetching, set all three variables below. Export them in your
+shell or add them to `.env`; `agentomics-run` forwards them into Docker.
+If any value is missing or blank, the tool is not offered to the agent.
 
 | Variable | Purpose |
 |----------|---------|
 | `ASTA_API_KEY` | Authenticate Asta MCP search requests. This is separate from the Semantic Scholar key. |
 | `S2_API_KEY` | Authenticate Semantic Scholar batch requests for paper identifiers and PDF metadata. |
-| `UNPAYWALL_EMAIL` | Contact email sent with DOI lookups. Unpaywall is skipped if this is unset. |
+| `UNPAYWALL_EMAIL` | Contact email sent with Unpaywall DOI lookups. |
 
-Asta and Semantic Scholar requests are attempted without keys when they are
-unset, but may encounter rate limits or service failures. Crossref and the
-repository resolvers do not require credentials in this implementation.
+Crossref and the repository resolvers do not require additional credentials.
 
 ```bash
-# Optional paper-fetch credentials
+# Set all three to enable paper fetching
 # ASTA_API_KEY=your_asta_key
 # S2_API_KEY=your_semantic_scholar_key
 # UNPAYWALL_EMAIL=you@your-institution.org

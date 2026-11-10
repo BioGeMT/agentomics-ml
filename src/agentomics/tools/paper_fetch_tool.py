@@ -369,3 +369,9 @@ def _is_pdf_file(path: Path) -> bool:
         return False
     with path.open("rb") as pdf_file:
         return pdf_file.read(5) == b"%PDF-"
+
+def is_paper_fetch_available() -> bool:
+    return all(
+        os.getenv(variable, "").strip()
+        for variable in ("ASTA_API_KEY", "S2_API_KEY", "UNPAYWALL_EMAIL")
+    )
