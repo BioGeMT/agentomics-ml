@@ -161,38 +161,41 @@ def _store(deps: DownloadDeps, download: _Download, filename: str, target: Path)
     suffix = _archive_suffix(filename)
     if suffix is None:
         stored = download.path
-        sizes_and_hashes = {target.name: (download.size_bytes, download.sha256)}
+        entries = [ManifestEntry(
+            path=f"{FILES_DIRECTORY_NAME}/{target.name}",
+            source_url=download.url,
+            size_bytes=download.size_bytes,
+            sha256=download.sha256,
+        )]
     else:
-        unpacked_root = download.path.with_name("unpacked")
-        stored = unpacked_root / target.name
+        stored = download.path.with_name("unpacked") / target.name
         # The archive is removed, so only its unpacked files count.
-        sizes_and_hashes = _unpack(download.path, suffix, target.name, unpacked_root, current_budget(deps))
+        entries = _unpack(download, filename, suffix, stored, current_budget(deps))
     target.parent.mkdir(exist_ok=True)
     stored.rename(target)
-    return [
-        ManifestEntry(
-            path=f"{FILES_DIRECTORY_NAME}/{path}",
-            source_url=download.url,
-            size_bytes=size_bytes,
-            sha256=sha256,
-            archive=None if suffix is None else filename,
-        )
-        for path, (size_bytes, sha256) in sizes_and_hashes.items()
-    ]
+    return entries
 
 
-def _unpack(archive: Path, suffix: str, name: str, unpacked_root: Path, budget: Budget) -> dict[str, tuple[int, str]]:
-    """Unpack the archive's files under unpacked_root/name; return the size and the SHA-256 of each by its path."""
-    unpacked = {}
+def _unpack(download: _Download, filename: str, suffix: str, destination: Path, budget: Budget) -> list[ManifestEntry]:
+    """Unpack the files of the downloaded archive to destination; return their manifest entries."""
+    # By path: a file that the archive holds twice is written twice and recorded once.
+    entries = {}
     try:
-        for member_name, source in _ARCHIVE_READERS[suffix](archive):
-            path = (PurePosixPath(name) / member_name).as_posix()
-            unpacked[path] = _write_stream(iter(lambda: source.read(CHUNK_BYTES), b""), unpacked_root / path, budget)
+        for member_name, source in _ARCHIVE_READERS[suffix](download.path):
+            path = (PurePosixPath(destination.name) / member_name).as_posix()
+            size_bytes, sha256 = _write_stream(iter(lambda: source.read(CHUNK_BYTES), b""), destination.parent / path, budget)
+            entries[path] = ManifestEntry(
+                path=f"{FILES_DIRECTORY_NAME}/{path}",
+                source_url=download.url,
+                size_bytes=size_bytes,
+                sha256=sha256,
+                archive=filename,
+            )
     except UNREADABLE_ARCHIVE_ERRORS as error:
         raise DownloadError(f"the archive could not be unpacked: {error}") from error
-    if not unpacked:
+    if not entries:
         raise DownloadError("the archive holds no files")
-    return unpacked
+    return list(entries.values())
 
 
 def _write_stream(chunks: Iterable[bytes], path: Path, budget: Budget) -> tuple[int, str]:
