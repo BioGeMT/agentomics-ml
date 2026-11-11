@@ -12,6 +12,8 @@ from typing import Any
 
 from pydantic_ai.providers.openai_codex import OpenAICodexCredentials, OpenAICodexCredentialSource
 
+from agentomics.runtime.filesystem import write_atomically
+
 
 DEFAULT_CODEX_AUTH_PATH = Path.home() / ".codex" / "auth.json"
 DEFAULT_CODEX_MODELS_CACHE_PATH = Path.home() / ".codex" / "models_cache.json"
@@ -134,10 +136,9 @@ class CodexAuthStore(OpenAICodexCredentialSource):
 
     def _write_state(self, raw_data: dict[str, Any]) -> None:
         self.auth_path.parent.mkdir(parents=True, exist_ok=True)
-        tmp_path = self.auth_path.with_suffix(f"{self.auth_path.suffix}.tmp")
-        tmp_path.write_text(json.dumps(raw_data, indent=2) + "\n")
-        try:
-            os.chmod(tmp_path, 0o600)
-        except OSError:
-            pass
-        tmp_path.replace(self.auth_path)
+        with write_atomically(self.auth_path) as tmp_path:
+            tmp_path.write_text(json.dumps(raw_data, indent=2) + "\n")
+            try:
+                os.chmod(tmp_path, 0o600)
+            except OSError:
+                pass
