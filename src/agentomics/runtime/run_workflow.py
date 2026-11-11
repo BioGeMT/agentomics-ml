@@ -8,7 +8,7 @@ from pathlib import Path
 
 import wandb
 
-from agentomics.cli.docker_utils import CONTAINER_CODEX_DIRECTORY
+from agentomics.cli.run import CONTAINER_CODEX_DIRECTORY
 from agentomics.cli.run_arguments import add_run_arguments
 from agentomics.run_agent_interactive import run_agent_interactive
 from agentomics.run_logging.wandb_setup import resume_wandb_run

@@ -15,14 +15,16 @@ from pydantic_ai.providers.openai_codex import OpenAICodexCredentials, OpenAICod
 
 DEFAULT_CODEX_AUTH_PATH = Path.home() / ".codex" / "auth.json"
 DEFAULT_CODEX_MODELS_CACHE_PATH = Path.home() / ".codex" / "models_cache.json"
+CODEX_AUTH_FILE_ENV_VAR_NAME = "CODEX_AUTH_FILE"
+CODEX_MODELS_CACHE_FILE_ENV_VAR_NAME = "CODEX_MODELS_CACHE_FILE"
 
 
 def get_codex_auth_path() -> Path:
-    return Path(os.getenv("CODEX_AUTH_FILE", DEFAULT_CODEX_AUTH_PATH)).expanduser()
+    return Path(os.getenv(CODEX_AUTH_FILE_ENV_VAR_NAME, DEFAULT_CODEX_AUTH_PATH)).expanduser()
 
 
 def get_codex_models_cache_path() -> Path:
-    return Path(os.getenv("CODEX_MODELS_CACHE_FILE", DEFAULT_CODEX_MODELS_CACHE_PATH)).expanduser()
+    return Path(os.getenv(CODEX_MODELS_CACHE_FILE_ENV_VAR_NAME, DEFAULT_CODEX_MODELS_CACHE_PATH)).expanduser()
 
 
 def prepare_codex_credentials(source_directory: Path) -> None:
@@ -30,13 +32,13 @@ def prepare_codex_credentials(source_directory: Path) -> None:
         return
     target_directory = Path("/tmp/codex")
     target_directory.mkdir(parents=True, exist_ok=True)
-    for filename in ("auth.json", "models_cache.json"):
+    for filename in (DEFAULT_CODEX_AUTH_PATH.name, DEFAULT_CODEX_MODELS_CACHE_PATH.name):
         source_path = source_directory / filename
         if source_path.is_file():
             shutil.copy2(source_path, target_directory / filename)
-    os.environ["CODEX_AUTH_FILE"] = str(target_directory / "auth.json")
-    os.environ["CODEX_MODELS_CACHE_FILE"] = str(
-        target_directory / "models_cache.json"
+    os.environ[CODEX_AUTH_FILE_ENV_VAR_NAME] = str(target_directory / DEFAULT_CODEX_AUTH_PATH.name)
+    os.environ[CODEX_MODELS_CACHE_FILE_ENV_VAR_NAME] = str(
+        target_directory / DEFAULT_CODEX_MODELS_CACHE_PATH.name
     )
 
 
