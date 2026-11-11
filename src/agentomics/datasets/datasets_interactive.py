@@ -14,7 +14,7 @@ from agentomics.datasets.data_contract import (
     TRAIN_SPLIT,
     VALIDATION_SPLIT,
 )
-from agentomics.utils.task_types import TaskTypes
+from agentomics.utils.task_types import TaskTypes, is_generation_task
 from agentomics.utils.user_input import get_user_input_for_int
 
 console = Console()
@@ -31,11 +31,14 @@ def _get_single_dataset_info(dataset_dir: Path) -> dict | None:
         return {**base, "status": f"Invalid metadata.json: {exc}"}
 
     try:
-        if metadata.get("task_type") == TaskTypes.CONDITIONAL_GENERATION:
-            from agentomics.datasets.conditional_generation_contract import PERTURBATIONS_FILE_NAME, read_perturbations
+        if is_generation_task(metadata.get("task_type")):
+            from agentomics.datasets.conditional_generation_contract import PERTURBATIONS_FILE_NAME
+            from agentomics.datasets.data_contract import read_generation_conditions
 
             counts = [
-                len(read_perturbations(dataset_dir / split / INPUT_DIR_NAME / PERTURBATIONS_FILE_NAME))
+                len(read_generation_conditions(
+                    dataset_dir / split / INPUT_DIR_NAME / PERTURBATIONS_FILE_NAME, metadata["task_type"]
+                ))
                 if (dataset_dir / split).is_dir() else None
                 for split in (TRAIN_SPLIT, VALIDATION_SPLIT)
             ]

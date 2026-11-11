@@ -16,7 +16,7 @@ from agentomics.run_logging.wandb_setup import resume_wandb_run
 from agentomics.runtime.evaluate_result import get_metrics
 from agentomics.runtime.read_write_utils import load_config_from_run_dir_and_reroot
 from agentomics.utils.config import Config
-from agentomics.utils.task_types import TaskTypes
+from agentomics.utils.task_types import TaskTypes, is_generation_task
 
 
 def _read_numeric_labels(labels_path: Path, config: Config) -> pd.DataFrame:
@@ -40,7 +40,7 @@ def evaluate_predictions(
 ) -> dict:
     config = load_config_from_run_dir_and_reroot(agent_dir / Config.RUN_DIRNAME)
 
-    if config.task_type == TaskTypes.CONDITIONAL_GENERATION:
+    if is_generation_task(config.task_type):
         # Scored against labels.h5ad and the controls in its split.
         test_file = labels_path
     else:

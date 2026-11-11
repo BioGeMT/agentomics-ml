@@ -20,7 +20,7 @@ from agentomics.runtime.step_outputs import load_step_output, require_step_outpu
 from agentomics.utils.config import Config
 from agentomics.utils.exceptions import AgentScriptFailed, IterationRunFailed
 from agentomics.utils.metrics import get_higher_is_better_map
-from agentomics.utils.task_types import TaskTypes
+from agentomics.utils.task_types import TaskTypes, is_generation_task
 from agentomics.datasets.data_contract import NUMERIC_LABEL_COLUMN_NAME, labels_file_name, predictions_file_suffix
 
 
@@ -104,7 +104,7 @@ class ValidationEvaluationStep(RuntimeStep):
         # Generated cells for a conditional-generation train split can be as large as the measured data
         # (millions of cells, terabytes), too large to generate and score every iteration.
         evaluation_stages = (
-            ["validation"] if self.config.task_type == TaskTypes.CONDITIONAL_GENERATION else ["validation", "train"]
+            ["validation"] if is_generation_task(self.config.task_type) else ["validation", "train"]
         )
         for evaluation_stage in evaluation_stages:
             print(f"  Running {evaluation_stage} inference...")

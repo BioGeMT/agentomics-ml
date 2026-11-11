@@ -6,6 +6,7 @@ import pandas as pd
 
 from agentomics.datasets.data_contract import ID_COLUMN_NAME, NUMERIC_LABEL_COLUMN_NAME, PREDICTION_COLUMN_NAME
 from agentomics.runtime.conditional_generation_evaluation import get_conditional_generation_metrics
+from agentomics.runtime.temporal_generation_evaluation import get_temporal_generation_metrics
 from agentomics.utils.metrics import get_classification_metrics_functions, get_regression_metrics_functions
 from agentomics.utils.task_types import TaskTypes
 
@@ -18,6 +19,9 @@ def get_metrics(
     pred_col=PREDICTION_COLUMN_NAME,
     prob_col_prefix='probability_',
 ):
+    if task_type == TaskTypes.TEMPORAL_GENERATION:
+        # Both files hold cells; test_file is the split's labels.h5ad.
+        return get_temporal_generation_metrics(results_file, test_file)
     if task_type == TaskTypes.CONDITIONAL_GENERATION:
         # Both files hold cells; test_file is the split's labels.h5ad.
         return get_conditional_generation_metrics(results_file, test_file)

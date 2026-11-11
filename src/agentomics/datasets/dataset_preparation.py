@@ -43,7 +43,7 @@ from agentomics.datasets.label_processing import (
     validate_single_label_classification,
 )
 from agentomics.runtime.filesystem import create_absolute_symlink, find_symlinks_in_dir
-from agentomics.utils.task_types import TaskTypes
+from agentomics.utils.task_types import TaskTypes, is_generation_task
 
 console = Console()
 
@@ -110,7 +110,7 @@ def _build_binary_label_mapping(
 
 def _link_generation_labels(source_split: Path, dest_split: Path, task_type: str) -> None:
     """Conditional generation keeps its ground-truth cells in labels.h5ad."""
-    if task_type != TaskTypes.CONDITIONAL_GENERATION:
+    if not is_generation_task(task_type):
         return
     source_labels = source_split / GENERATION_LABELS_FILE_NAME
     if not source_labels.is_file():
@@ -129,7 +129,7 @@ def _build_output_metadata(
         "train_rows": len(split_labels[TRAIN_SPLIT]),
         "validation_rows": len(split_labels[VALIDATION_SPLIT]) if VALIDATION_SPLIT in split_labels else None,
     }
-    if resolved_task_type == TaskTypes.CONDITIONAL_GENERATION:
+    if is_generation_task(resolved_task_type):
         metadata.pop("numeric_label_col", None)
     else:
         metadata["numeric_label_col"] = NUMERIC_LABEL_COLUMN_NAME
@@ -231,7 +231,7 @@ def prepare_dataset(
             split_name: convert_regression_labels(labels, split_name)
             for split_name, labels in split_labels.items()
         }
-    elif resolved_task_type != TaskTypes.CONDITIONAL_GENERATION:
+    elif not is_generation_task(resolved_task_type):
         raise ValueError(f"Unknown task_type: {resolved_task_type}. Expected one of {TaskTypes}.")
 
     destination_dir.mkdir(parents=True, exist_ok=True)
@@ -240,7 +240,7 @@ def prepare_dataset(
         dest_split = destination_dir / split_name
         dest_split.mkdir(exist_ok=True)
         create_absolute_symlink(source_split / INPUT_DIR_NAME, dest_split / INPUT_DIR_NAME)
-        if resolved_task_type != TaskTypes.CONDITIONAL_GENERATION:
+        if not is_generation_task(resolved_task_type):
             numeric_split_labels[split_name].to_csv(dest_split / LABELS_FILE_NAME, index=False)
         _link_generation_labels(source_split, dest_split, resolved_task_type)
         destination_splits[split_name] = dest_split
@@ -365,7 +365,7 @@ def prepare_test_dataset(
         numeric_labels = convert_classification_labels(test_labels[TEST_SPLIT_PREFIX], label_to_scalar, TEST_SPLIT_PREFIX)
     elif task_type == TaskTypes.REGRESSION:
         numeric_labels = convert_regression_labels(test_labels[TEST_SPLIT_PREFIX], TEST_SPLIT_PREFIX)
-    elif task_type != TaskTypes.CONDITIONAL_GENERATION:
+    elif not is_generation_task(task_type):
         raise ValueError(f"Unknown task_type: {task_type}. Expected one of {TaskTypes}.")
 
     dest_test = destination_dir / TEST_SPLIT_PREFIX
@@ -377,7 +377,7 @@ def prepare_test_dataset(
             test_source / INPUT_DIR_NAME,
             dest_test / INPUT_DIR_NAME,
         )
-    if task_type != TaskTypes.CONDITIONAL_GENERATION:
+    if not is_generation_task(task_type):
         numeric_labels.to_csv(dest_test / LABELS_FILE_NAME, index=False)
     _link_generation_labels(test_source, dest_test, task_type)
 
@@ -389,7 +389,7 @@ def prepare_test_dataset(
         "input_structure": input_structure,
         "prepared": True,
     }
-    if task_type != TaskTypes.CONDITIONAL_GENERATION:
+    if not is_generation_task(task_type):
         test_metadata["numeric_label_col"] = NUMERIC_LABEL_COLUMN_NAME
     if task_type == TaskTypes.CLASSIFICATION:
         test_metadata["label_to_scalar"] = label_to_scalar

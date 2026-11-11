@@ -15,7 +15,7 @@ from agentomics.datasets.data_contract import (
     LABELS_FILE_NAME,
     predictions_file_suffix,
 )
-from agentomics.utils.task_types import TaskTypes
+from agentomics.utils.task_types import TaskTypes, is_generation_task
 from agentomics.runtime.step_outputs import require_step_output
 
 
@@ -42,17 +42,21 @@ class PredictionExplorationStep(AgenticStep):
         current_iteration_dir = self.config.current_iteration_dir
         data_split = require_step_output(self.config, DataSplitStep.step_id, current_iteration_dir)
         validation_path = data_split.val_path
-        is_generation = self.config.task_type == TaskTypes.CONDITIONAL_GENERATION
+        is_generation = is_generation_task(self.config.task_type)
         labels_path = Path(validation_path) / (GENERATION_LABELS_FILE_NAME if is_generation else LABELS_FILE_NAME)
         predictions_path = (
             self.config.archived_step_dir(ValidationEvaluationStep.step_id)
             / f"eval_predictions_validation{predictions_file_suffix(self.config.task_type)}"
         )
-        controls_note = (
-            f" The control cells the predicted effects are measured against are in {Path(validation_path) / INPUT_DIR_NAME / CONTROLS_FILE_NAME}."
-            if is_generation
-            else ""
-        )
+        if self.config.task_type == TaskTypes.TEMPORAL_GENERATION:
+            controls_note = (
+                f" The observed earlier-stage cells the model forecast from (the latest of which the changes are measured "
+                f"against) are in {Path(validation_path) / INPUT_DIR_NAME / CONTROLS_FILE_NAME}."
+            )
+        elif is_generation:
+            controls_note = f" The control cells the predicted effects are measured against are in {Path(validation_path) / INPUT_DIR_NAME / CONTROLS_FILE_NAME}."
+        else:
+            controls_note = ""
         return f"""
             Your next task: Identify where the model's predictions on the validation set ({validation_path}) succeed, fail, and prediction biases.
             The predictions of the inference script on the validation set are already in {predictions_path}, and the validation labels are in {labels_path}.{controls_note}

@@ -15,7 +15,6 @@ from agentomics.datasets.conditional_generation_contract import (
     N_CELLS_COLUMN_NAME,
     PERTURBATIONS_FILE_NAME,
     TARGET_GENE_COLUMN_NAME,
-    validate_generated_cells,
 )
 from agentomics.datasets.data_contract import (
     GENERATION_LABELS_FILE_NAME,
@@ -30,7 +29,9 @@ from agentomics.datasets.data_contract import (
     VALIDATION_SPLIT,
     labels_file_name,
     predictions_file_suffix,
+    validate_generated_cells,
 )
+from agentomics.agents import temporal_generation_prompts
 
 from agentomics.agents.steps.base import AgenticStep, AgenticStepOutput
 from agentomics.agents.steps.data_split import DataSplitStep
@@ -43,7 +44,7 @@ from agentomics.runtime.read_write_utils import (
     load_dataset_metadata,
 )
 from agentomics.runtime.step_outputs import require_step_output
-from agentomics.utils.task_types import TaskTypes
+from agentomics.utils.task_types import TaskTypes, is_generation_task
 from agentomics.utils.text_processing_utils import collapse_repeated_lines, concise_output
 
 
@@ -82,6 +83,8 @@ class ModelInferenceStep(AgenticStep):
             output_file_description = "A csv with columns 'id' and 'prediction', where 'prediction' contains the predicted continuous value."
         elif self.config.task_type == TaskTypes.CONDITIONAL_GENERATION:
             output_file_description = self._generated_cells_description()
+        elif self.config.task_type == TaskTypes.TEMPORAL_GENERATION:
+            output_file_description = temporal_generation_prompts.generated_cells_description()
         else:
             raise ValueError(f"Unknown task type: {self.config.task_type}. Supported types are {TaskTypes}.")
 
@@ -98,6 +101,8 @@ class ModelInferenceStep(AgenticStep):
         """
 
     def _coverage_requirement(self) -> str:
+        if self.config.task_type == TaskTypes.TEMPORAL_GENERATION:
+            return temporal_generation_prompts.coverage_requirement()
         if self.config.task_type == TaskTypes.CONDITIONAL_GENERATION:
             return (
                 f"The inference script must generate cells for every condition listed in {INPUT_DIR_NAME}/{PERTURBATIONS_FILE_NAME}. "
@@ -190,7 +195,7 @@ class ModelInferenceStep(AgenticStep):
             print("DRY RUN EVAL FAIL during inference:", inference_result.stderr)
             message = collapse_repeated_lines(f"Inference script validation failed: {str(inference_result)}")
             raise ModelRetry(concise_output(message))
-        if self.config.task_type == TaskTypes.CONDITIONAL_GENERATION:
+        if is_generation_task(self.config.task_type):
             self._validate_dry_run_generated_cells(
                 input_path=split_path / INPUT_DIR_NAME,
                 predictions_path=output_path,
@@ -254,7 +259,7 @@ class ModelInferenceStep(AgenticStep):
             inference_summary = concise_output(collapse_repeated_lines(str(inference_result)))
             raise ModelRetry(f"Inference doesn't produce generated cells. Stderr/stdout: {inference_summary}")
         try:
-            validate_generated_cells(predictions_path, input_path)
+            validate_generated_cells(predictions_path, input_path, self.config.task_type)
         except ValueError as error:
             raise ModelRetry(f"Inference produced invalid generated cells: {error}") from error
 

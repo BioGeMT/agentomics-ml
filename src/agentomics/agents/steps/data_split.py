@@ -19,7 +19,8 @@ from agentomics.runtime.filesystem import (
     rewrite_symlinks_to_absolute,
     validate_symlinks_targets_in,
 )
-from agentomics.utils.task_types import TaskTypes
+from agentomics.agents import temporal_generation_prompts
+from agentomics.utils.task_types import TaskTypes, is_generation_task
 from agentomics.runtime.read_write_utils import (
     get_archived_iterations,
     load_current_iteration_index,
@@ -172,6 +173,24 @@ class DataSplitStep(AgenticStep):
                 f"system check of the model would always fail. Choose other conditions. Refused contexts: {reasons}"
             )
 
+    @staticmethod
+    def _validate_mini_train_temporal(train_df: pd.DataFrame, mini_train_df: pd.DataFrame, mini_train_path: Path) -> None:
+        """mini_train forecasts every training target stage from small cell samples, so the dry run is quick."""
+        from agentomics.datasets.temporal_generation_contract import read_cells
+
+        limit = temporal_generation_prompts.MINI_TRAIN_CELLS_PER_STAGE
+        missing = sorted(set(train_df[ID_COLUMN_NAME]) - set(mini_train_df[ID_COLUMN_NAME]))
+        if missing:
+            raise ModelRetry(f"mini_train must contain every target stage of train; missing {missing}")
+        for file_path in (mini_train_path / INPUT_DIR_NAME / CONTROLS_FILE_NAME, mini_train_path / GENERATION_LABELS_FILE_NAME):
+            obs, _ = read_cells(file_path)
+            counts = obs.iloc[:, 0].value_counts()
+            too_many = counts[counts > limit]
+            if len(too_many):
+                raise ModelRetry(
+                    f"mini_train {file_path.name} must hold at most {limit} cells per stage; found {too_many.to_dict()}"
+                )
+
     def _move_split_to_versioned_dir(self, result: DataSplitOutput, flag_as_changed: bool) -> DataSplitOutput:
         train_path = Path(result.train_path)
         val_path = Path(result.val_path)
@@ -236,6 +255,8 @@ class DataSplitStep(AgenticStep):
             elif self.config.task_type == TaskTypes.CONDITIONAL_GENERATION:
                 self._validate_mini_train_count(mini_train_df, train_df, self.GENERATION_MINI_TRAIN_CONDITION_COUNT)
                 self._validate_mini_train_scorable(mini_train_path)
+            elif self.config.task_type == TaskTypes.TEMPORAL_GENERATION:
+                self._validate_mini_train_temporal(train_df, mini_train_df, mini_train_path)
             else:
                 self._validate_mini_train_count(mini_train_df, train_df, self.REGRESSION_MINI_TRAIN_SAMPLE_COUNT)
 
@@ -264,6 +285,8 @@ class DataSplitStep(AgenticStep):
             return result
 
     def _split_files_instructions(self) -> str:
+        if self.config.task_type == TaskTypes.TEMPORAL_GENERATION:
+            return temporal_generation_prompts.split_files_instructions()
         if self.config.task_type != TaskTypes.CONDITIONAL_GENERATION:
             return ""
         return (
@@ -282,9 +305,12 @@ class DataSplitStep(AgenticStep):
         iteration = load_current_iteration_index(self.config)
         latest_split_dir = self._get_latest_split_dir()
         current_step_dir = self.config.current_step_dir
-        is_generation = self.config.task_type == TaskTypes.CONDITIONAL_GENERATION
+        is_generation = is_generation_task(self.config.task_type)
         sample_index = f"{INPUT_DIR_NAME}/{PERTURBATIONS_FILE_NAME}" if is_generation else LABELS_FILE_NAME
-        sample_identity = "(context, target_gene) pairs" if is_generation else "ids"
+        if self.config.task_type == TaskTypes.TEMPORAL_GENERATION:
+            sample_identity = temporal_generation_prompts.SAMPLE_IDENTITY
+        else:
+            sample_identity = "(context, target_gene) pairs" if is_generation else "ids"
         split_contents = (
             f"an {INPUT_DIR_NAME}/ folder and {GENERATION_LABELS_FILE_NAME}"
             if is_generation else f"an {INPUT_DIR_NAME}/ folder and {LABELS_FILE_NAME}"
@@ -313,6 +339,9 @@ class DataSplitStep(AgenticStep):
                 "cell-eval2 must be able to score it: the system checks this and rejects conditions whose real data "
                 "it refuses (too little signal, e.g. very few cells per condition)"
             )
+        elif self.config.task_type == TaskTypes.TEMPORAL_GENERATION:
+            validation_instructions = temporal_generation_prompts.validation_instructions()
+            mini_train_size_instructions = temporal_generation_prompts.mini_train_size_instructions()
         else:
             raise ValueError(f"Unknown task type: {self.config.task_type}. Supported types are {TaskTypes}.")
 

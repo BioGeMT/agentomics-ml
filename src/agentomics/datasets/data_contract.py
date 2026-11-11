@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from agentomics.utils.task_types import TaskTypes
+from agentomics.utils.task_types import TaskTypes, is_generation_task
 
 TRAIN_SPLIT = "train"
 VALIDATION_SPLIT = "validation"
@@ -37,21 +37,42 @@ GENERATION_ALLOWED_SPLIT_ENTRIES = {INPUT_DIR_NAME, GENERATION_LABELS_FILE_NAME}
 
 def labels_file_name(task_type: str | None) -> str:
     """Return the measured-response filename for a task."""
-    return GENERATION_LABELS_FILE_NAME if task_type == TaskTypes.CONDITIONAL_GENERATION else LABELS_FILE_NAME
+    return GENERATION_LABELS_FILE_NAME if is_generation_task(task_type) else LABELS_FILE_NAME
 
 
 def read_split_samples(split_path: Path, task_type: str | None, value_column: str = NUMERIC_LABEL_COLUMN_NAME) -> pd.DataFrame:
     """Read condition requests for generation, or sample labels for other tasks."""
-    if task_type == TaskTypes.CONDITIONAL_GENERATION:
-        from agentomics.datasets.conditional_generation_contract import PERTURBATIONS_FILE_NAME, read_perturbations
+    if is_generation_task(task_type):
+        from agentomics.datasets.conditional_generation_contract import PERTURBATIONS_FILE_NAME
 
-        return read_perturbations(Path(split_path) / INPUT_DIR_NAME / PERTURBATIONS_FILE_NAME)
+        return read_generation_conditions(Path(split_path) / INPUT_DIR_NAME / PERTURBATIONS_FILE_NAME, task_type)
     return validate_and_read_labels(Path(split_path) / LABELS_FILE_NAME, value_column)
 
 
 def predictions_file_suffix(task_type: str) -> str:
     """Conditional generation predicts cells (h5ad); the other task types predict one value per id (csv)."""
-    return ".h5ad" if task_type == TaskTypes.CONDITIONAL_GENERATION else ".csv"
+    return ".h5ad" if is_generation_task(task_type) else ".csv"
+
+
+def read_generation_conditions(conditions_path: Path, task_type: str) -> pd.DataFrame:
+    """Reads the conditions file of a generation split with the contract of its task type."""
+    # Imported here: the generation contract modules import this one.
+    if task_type == TaskTypes.TEMPORAL_GENERATION:
+        from agentomics.datasets.temporal_generation_contract import read_conditions
+
+        return read_conditions(conditions_path)
+    from agentomics.datasets.conditional_generation_contract import read_perturbations
+
+    return read_perturbations(conditions_path)
+
+
+def validate_generated_cells(predictions_path: Path, input_path: Path, task_type: str) -> None:
+    """Validates generated cells with the contract of the task type."""
+    if task_type == TaskTypes.TEMPORAL_GENERATION:
+        from agentomics.datasets.temporal_generation_contract import validate_generated_cells as validate
+    else:
+        from agentomics.datasets.conditional_generation_contract import validate_generated_cells as validate
+    validate(predictions_path, input_path)
 
 def record_input_dir_structure(input_dir: Path) -> list[str]:
     """
@@ -68,7 +89,7 @@ def record_input_dir_structure(input_dir: Path) -> list[str]:
 def validate_split_entries(split_path: Path, split_name: str, task_type: str | None = None) -> None:
     allowed_entries = (
         GENERATION_ALLOWED_SPLIT_ENTRIES
-        if task_type == TaskTypes.CONDITIONAL_GENERATION
+        if is_generation_task(task_type)
         else ALLOWED_SPLIT_ENTRIES
     )
     unsupported_entries = sorted(
@@ -130,7 +151,11 @@ def _validate_split_folder(
 
     validate_split_entries(split_path, split_name, task_type)
     _validate_input_structure(input_path, expected_input_structure)
-    if task_type == TaskTypes.CONDITIONAL_GENERATION:
+    if task_type == TaskTypes.TEMPORAL_GENERATION:
+        from agentomics.datasets.temporal_generation_contract import validate_temporal_generation_split
+
+        validate_temporal_generation_split(split_path)
+    elif task_type == TaskTypes.CONDITIONAL_GENERATION:
         # Imported here: the generation contract module imports this one.
         from agentomics.datasets.conditional_generation_contract import validate_conditional_generation_split
 

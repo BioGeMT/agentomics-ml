@@ -17,7 +17,8 @@ from agentomics.datasets.data_contract import (
 from agentomics.runtime.read_write_utils import load_dataset_metadata
 from agentomics.runtime.system_resources import check_gpu_availability, get_resources_summary
 from agentomics.utils.config import Config
-from agentomics.utils.task_types import TaskTypes
+from agentomics.agents import temporal_generation_prompts
+from agentomics.utils.task_types import TaskTypes, is_generation_task
 
 
 def get_system_prompt(config: Config):
@@ -78,6 +79,8 @@ def get_system_prompt(config: Config):
 
 def describe_split_folder(task_type: str) -> str:
     """Completes the sentence 'Each split folder ...' / 'This folder ...'."""
+    if task_type == TaskTypes.TEMPORAL_GENERATION:
+        return temporal_generation_prompts.describe_split_folder()
     if task_type == TaskTypes.CONDITIONAL_GENERATION:
         cell_obs = f"obs '{CONTEXT_COLUMN_NAME}' and '{TARGET_GENE_COLUMN_NAME}'"
         return (
@@ -89,11 +92,13 @@ def describe_split_folder(task_type: str) -> str:
     return "contains an input/ folder with the data files and labels.csv with labels keyed by id."
 
 def _label_files(task_type: str) -> str:
-    if task_type == TaskTypes.CONDITIONAL_GENERATION:
+    if is_generation_task(task_type):
         return GENERATION_LABELS_FILE_NAME
     return LABELS_FILE_NAME
 
 def _task_description(task_type: str) -> str:
+    if task_type == TaskTypes.TEMPORAL_GENERATION:
+        return temporal_generation_prompts.task_description()
     if task_type != TaskTypes.CONDITIONAL_GENERATION:
         return ""
     return """    - Task: given the control cells of a cell context and a target gene, generate the cells that would be measured after knocking that gene down.

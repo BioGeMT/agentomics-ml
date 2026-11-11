@@ -185,6 +185,61 @@ def get_conditional_generation_metrics_functions():
         for name, (member, description) in CONDITIONAL_GENERATION_METRICS.items()
     }
 
+# name -> (ve_t1_scoring member, higher is better, description)
+TEMPORAL_GENERATION_METRICS = {
+    "VE_SCORE": (
+        "SCORE",
+        True,
+        "Virtual Embryo Challenge Task 1 score, reconstructed locally from the published definitions (the official "
+        "scorer is not public; the reconstruction reproduces the published E10.5 floor and ceiling anchors closely, "
+        "but values only approximate the leaderboard): 100 * (0.25 DE_SCORE + 0.25 DE_DIRECTION + "
+        "0.30 MMD + 0.20 VARIOGRAM skills), averaged over target stages. Each metric becomes a skill in (0, 1]: 0.5 for "
+        "copy_last (predicting the latest observed stage unchanged), 1 for an experimental replicate (half of the real "
+        "target cells scored against the other half), decaying towards 0 below copy_last. So 50 = copy_last, "
+        "100 = replicate; higher is better. A population collapsed to an average cell scores below copy_last.",
+    ),
+    "VE_DE_SCORE": (
+        "DE_SCORE",
+        True,
+        "DE gene recovery: real DE genes of the target against the latest observed stage (two-sided Mann-Whitney U, "
+        "BH FDR 0.05, |mean log1p difference| >= 0.25; all genes; target cells subsampled to 10%). The prediction proposes the "
+        "same numbers of up and down genes, ranked by its own mean change against the latest observed stage; overlap "
+        "rescaled so 0 = ranking genes by expression level alone and 1 = exact.",
+    ),
+    "VE_DE_DIRECTION": (
+        "DE_DIRECTION",
+        True,
+        "Change direction: rank partial correlation between the predicted and the real mean change per gene (against "
+        "the latest observed stage), controlling for the latest observed stage's expression rank.",
+    ),
+    "VE_MMD": (
+        "MMD",
+        False,
+        "Cell-state distribution: unbiased MMD^2 between up to 2000 predicted and real cells in a 30-component PCA "
+        "fitted on the real target cells, averaged over RBF kernels exp(-s * d^2 / median d^2), s in {0.25, 0.5, 1, 2, 4}. "
+        "Lower is better.",
+    ),
+    "VE_VARIOGRAM": (
+        "VARIOGRAM",
+        False,
+        "Gene-gene co-variation: mean squared difference between predicted and real variograms (order 0.5, mean of "
+        "|x_i - x_j|^0.5 over cells) on 20,000 random gene pairs, up to 2000 cells each. Lower is better.",
+    ),
+}
+
+def get_temporal_generation_metrics_functions():
+    from agentomics.utils.ve_t1_scoring import score_t1_split
+
+    return {
+        name: Metric(
+            function=lambda split_path, pred, member=member: score_t1_split(split_path, pred)[member],
+            needs_probabilities=False,
+            higher_is_better=higher_is_better,
+            description=description,
+        )
+        for name, (member, higher_is_better, description) in TEMPORAL_GENERATION_METRICS.items()
+    }
+
 def get_classification_metrics_names():
     return list(get_classification_metrics_functions().keys())
 
@@ -194,11 +249,15 @@ def get_regression_metrics_names():
 def get_conditional_generation_metrics_names():
     return list(get_conditional_generation_metrics_functions().keys())
 
+def get_temporal_generation_metrics_names():
+    return list(TEMPORAL_GENERATION_METRICS.keys())
+
 def get_task_to_metrics_names():
     return {
         TaskTypes.CLASSIFICATION: get_classification_metrics_names(),
         TaskTypes.REGRESSION: get_regression_metrics_names(),
         TaskTypes.CONDITIONAL_GENERATION: get_conditional_generation_metrics_names(),
+        TaskTypes.TEMPORAL_GENERATION: get_temporal_generation_metrics_names(),
     }
 
 def get_higher_is_better_map():
@@ -207,6 +266,7 @@ def get_higher_is_better_map():
         **get_classification_metrics_functions(),
         **get_regression_metrics_functions(),
         **get_conditional_generation_metrics_functions(),
+        **get_temporal_generation_metrics_functions(),
     }
     return {name: metric.higher_is_better for name, metric in all_metrics.items()}
 
@@ -216,6 +276,7 @@ def describe_metric(name: str) -> str:
         **get_classification_metrics_functions(),
         **get_regression_metrics_functions(),
         **get_conditional_generation_metrics_functions(),
+        **get_temporal_generation_metrics_functions(),
     }
     description = all_metrics[name].description
     return f"{name} ({description})" if description else name
@@ -227,6 +288,8 @@ def get_default_val_metric(task_type: str) -> str:
         return "MAE"
     if task_type == TaskTypes.CONDITIONAL_GENERATION:
         return "AVG_SCORE"
+    if task_type == TaskTypes.TEMPORAL_GENERATION:
+        return "VE_SCORE"
     raise ValueError(f"Unknown task_type: {task_type}. Expected one of {TaskTypes}.")
 
 def resolve_val_metric(task_type: str, val_metric: Optional[str] = None) -> str:
