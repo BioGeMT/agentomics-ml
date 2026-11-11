@@ -1,27 +1,25 @@
+import asyncio
 import json
 from collections.abc import Iterable
-from pathlib import Path
 from types import SimpleNamespace
 
-from pydantic_ai import BinaryContent, ModelRetry
+import pytest
+from pydantic_ai import ModelRetry
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from agentomics.agents import data_collection
-from agentomics.agents.data_collection import (
-    MAX_REVIEWS,
-    WEB_FETCH_TOOL,
-    CollectionSummary,
-    DataRequest,
-    Review,
-    collect_data,
-)
-from agentomics.runtime.collected_data import load_manifest
-from agentomics.tools.download_tool import download_file
-from tests.helpers import call_output_tool, create_failing_model, serve_files
+from agentomics.agents.data_collection.collector import DataCollectionOutput, collect_data
+from agentomics.agents.data_collection.reviewer import DataCollectionReview
+from agentomics.agents.data_collection.spec import DataCollectionSpec
+from agentomics.runtime.collected_data_directory import load_manifest
+from agentomics.tools import web_fetch_tool
+from agentomics.tools.web_fetch_tool import create_web_fetch_tool
+from agentomics.utils.exceptions import IterationRunFailed
+from tests.helpers import create_response_calling_output_tool, mock_downloads
 
-SUMMARY = "files/a.csv and files/b.csv hold the measurements."
-REQUEST = DataRequest(
+SUMMARY = "Measurements from one source, with the documentation that describes them."
+URL = "https://example.org"
+SPEC = DataCollectionSpec(
     task_type="classification",
     description="Predict a binary label.",
     inputs=["measurements"],
@@ -30,129 +28,85 @@ REQUEST = DataRequest(
 )
 
 
-def _is_reviewer(info: AgentInfo) -> bool:
-    return all(tool.name != download_file.__name__ for tool in info.function_tools)
+def _create_collector_model(responses: list[ModelResponse]) -> FunctionModel:
+    """Create a model that gives the responses in turn and then its summary, as often as it is asked."""
+    remaining_responses = iter(responses)
+
+    def respond(_messages, info: AgentInfo) -> ModelResponse:
+        response = next(remaining_responses, None)
+        if response is None:
+            return create_response_calling_output_tool(info, DataCollectionOutput(summary=SUMMARY))
+        return response
+
+    return FunctionModel(respond)
 
 
-def _review(info: AgentInfo, accepted: bool) -> ModelResponse:
-    return call_output_tool(info, Review(accepted=accepted, issues=[] if accepted else ["a known source is missing"]))
+def _create_reviewer_model(review_verdicts: Iterable[bool]) -> FunctionModel:
+    verdicts = iter(review_verdicts)
+
+    def respond(_messages, info: AgentInfo) -> ModelResponse:
+        accepted = next(verdicts)
+        review = DataCollectionReview(accepted=accepted, issues=[] if accepted else ["a known source is missing"])
+        return create_response_calling_output_tool(info, review)
+
+    return FunctionModel(respond)
 
 
-def _download(base_url: str, *filenames: str) -> ModelResponse:
+def _create_download_response(download_file_tool, *filenames: str) -> ModelResponse:
     return ModelResponse(parts=[
-        ToolCallPart(download_file.__name__, {"url": f"{base_url}/{filename}", "filename": filename})
+        ToolCallPart(download_file_tool.name, {"url": f"{URL}/{filename}", "filename": filename})
         for filename in filenames
     ])
 
 
-def _collect(collected_data_directory: Path, base_url: str, review_verdicts: Iterable[bool]) -> int:
-    """Run a collection in which the collector downloads a.csv and b.csv and the reviewer gives the verdicts."""
-    verdicts = iter(review_verdicts)
-
-    def respond(messages, info: AgentInfo) -> ModelResponse:
-        if _is_reviewer(info):
-            return _review(info, accepted=next(verdicts))
-        if len(messages) == 1:
-            return _download(base_url, "a.csv", "b.csv")
-        return call_output_tool(info, CollectionSummary(summary=SUMMARY))
-
-    return collect_data(REQUEST, collected_data_directory, FunctionModel(respond))
+def _load_review_verdicts(config) -> list[bool]:
+    return [json.loads(line)["accepted"] for line in config.reviews_path.read_text(encoding="utf-8").splitlines()]
 
 
-def test_collection_keeps_the_downloads_and_ends_when_a_review_accepts(tmp_path):
-    with serve_files({"/a.csv": b"a" * 100, "/b.csv": b"b" * 100}) as base_url:
-        exit_code = _collect(tmp_path, base_url, [False, True])
+def test_collection_keeps_the_downloads_and_ends_when_a_review_accepts(data_module_config, download_file_tool, monkeypatch):
+    mock_downloads(monkeypatch, {f"{URL}/a.csv": b"a" * 100, f"{URL}/b.csv": b"b" * 100})
+    collector_model = _create_collector_model([_create_download_response(download_file_tool, "a.csv", "b.csv")])
 
-    assert exit_code == 0
-    assert sorted(entry.path for entry in load_manifest(tmp_path)) == ["files/a.csv", "files/b.csv"]
-    assert [verdict["accepted"] for verdict in json.loads((tmp_path / "review.json").read_text())] == [False, True]
-    assert (tmp_path / "summary.md").read_text() == SUMMARY
+    asyncio.run(collect_data(data_module_config, SPEC, collector_model, _create_reviewer_model([False, True])))
 
-
-def test_collection_fails_when_no_review_accepts_and_keeps_the_downloads(tmp_path, capsys):
-    with serve_files({"/a.csv": b"a" * 100, "/b.csv": b"b" * 100}) as base_url:
-        exit_code = _collect(tmp_path, base_url, [False] * MAX_REVIEWS)
-
-    assert exit_code == 1
-    assert "The reviewer did not accept the files" in capsys.readouterr().err
-    assert len(json.loads((tmp_path / "review.json").read_text())) == MAX_REVIEWS
-    assert sorted(entry.path for entry in load_manifest(tmp_path)) == ["files/a.csv", "files/b.csv"]
-    assert not (tmp_path / "summary.md").exists()
+    assert [entry.path for entry in load_manifest(data_module_config)] == ["files/a.csv", "files/b.csv"]
+    assert _load_review_verdicts(data_module_config) == [False, True]
+    assert json.loads(data_module_config.output_path.read_text(encoding="utf-8")) == {"summary": SUMMARY}
 
 
-def test_reviews_file_holds_the_reviews_of_the_latest_run(tmp_path):
-    with serve_files({"/a.csv": b"a" * 100, "/b.csv": b"b" * 100}) as base_url:
-        _collect(tmp_path, base_url, [False, True])
-        _collect(tmp_path, base_url, [True])
+def test_collection_fails_when_no_review_accepts_and_keeps_the_downloads(data_module_config, download_file_tool, monkeypatch):
+    mock_downloads(monkeypatch, {f"{URL}/a.csv": b"a" * 100})
+    collector_model = _create_collector_model([_create_download_response(download_file_tool, "a.csv")])
+    review_count = data_module_config.max_validation_retries + 1
 
-    assert [verdict["accepted"] for verdict in json.loads((tmp_path / "review.json").read_text())] == [True]
+    with pytest.raises(IterationRunFailed):
+        asyncio.run(collect_data(data_module_config, SPEC, collector_model, _create_reviewer_model([False] * review_count)))
 
-
-def test_rerun_that_does_not_finish_removes_the_summary_and_the_reviews_of_the_earlier_run(tmp_path):
-    with serve_files({"/a.csv": b"a" * 100, "/b.csv": b"b" * 100}) as base_url:
-        _collect(tmp_path, base_url, [True])
-
-    exit_code = collect_data(REQUEST, tmp_path, create_failing_model())
-
-    assert exit_code == 1
-    assert not (tmp_path / "summary.md").exists()
-    assert not (tmp_path / "review.json").exists()
+    assert _load_review_verdicts(data_module_config) == [False] * review_count
+    assert [entry.path for entry in load_manifest(data_module_config)] == ["files/a.csv"]
+    assert not data_module_config.output_path.exists()
 
 
-def test_collection_does_not_start_on_a_folder_that_disagrees_with_its_manifest(tmp_path, capsys):
-    (tmp_path / "files").mkdir()
-    (tmp_path / "files" / "unrecorded.csv").write_bytes(b"x")
+def test_summary_without_downloaded_files_is_not_reviewed(data_module_config):
+    with pytest.raises(IterationRunFailed):
+        asyncio.run(collect_data(data_module_config, SPEC, _create_collector_model([]), _create_reviewer_model([])))
 
-    exit_code = collect_data(REQUEST, tmp_path, create_failing_model())
-
-    assert exit_code == 1
-    assert "files/unrecorded.csv is not in the manifest" in capsys.readouterr().err
+    assert not data_module_config.reviews_path.exists()
 
 
-def test_page_reading_points_to_the_download_tool_for_a_file_the_model_cannot_take(tmp_path, monkeypatch):
-    async def fetch_archive(url: str) -> BinaryContent:
-        return BinaryContent(data=b"PK", media_type="application/zip")
-
-    monkeypatch.setattr(data_collection, "web_fetch_tool", lambda: SimpleNamespace(function=fetch_archive))
-    page_reading_results = []
-
-    def respond(messages, info: AgentInfo) -> ModelResponse:
-        if _is_reviewer(info):
-            return _review(info, accepted=True)
-        if len(messages) == 1:
-            return ModelResponse(parts=[ToolCallPart(WEB_FETCH_TOOL, {"url": "https://example.org/data.zip"})])
-        if not page_reading_results:
-            page_reading_results.append(messages[-1].parts[0].content)
-            return _download(base_url, "a.csv")
-        return call_output_tool(info, CollectionSummary(summary=SUMMARY))
-
-    with serve_files({"/a.csv": b"a" * 100}) as base_url:
-        exit_code = collect_data(REQUEST, tmp_path, FunctionModel(respond))
-
-    assert exit_code == 0
-    assert download_file.__name__ in page_reading_results[0]
-
-
-def test_collection_continues_after_page_reads_fail_in_a_row(tmp_path, monkeypatch):
+def test_collection_continues_after_page_reads_fail_in_a_row(data_module_config, download_file_tool, monkeypatch):
     async def fail_to_fetch(url: str) -> None:
         raise ModelRetry(f"{url} could not be fetched")
 
-    monkeypatch.setattr(data_collection, "web_fetch_tool", lambda: SimpleNamespace(function=fail_to_fetch))
+    monkeypatch.setattr(web_fetch_tool, "web_fetch_tool", lambda: SimpleNamespace(function=fail_to_fetch))
+    mock_downloads(monkeypatch, {f"{URL}/a.csv": b"a" * 100})
+    web_fetch_tool_name = create_web_fetch_tool(data_module_config).name
+    collector_model = _create_collector_model([
+        ModelResponse(parts=[ToolCallPart(web_fetch_tool_name, {"url": f"{URL}/one"})]),
+        ModelResponse(parts=[ToolCallPart(web_fetch_tool_name, {"url": f"{URL}/two"})]),
+        _create_download_response(download_file_tool, "a.csv"),
+    ])
 
-    with serve_files({"/a.csv": b"a" * 100}) as base_url:
-        collector_responses = iter([
-            ModelResponse(parts=[ToolCallPart(WEB_FETCH_TOOL, {"url": "https://example.org/one"})]),
-            ModelResponse(parts=[ToolCallPart(WEB_FETCH_TOOL, {"url": "https://example.org/two"})]),
-            _download(base_url, "a.csv"),
-        ])
+    asyncio.run(collect_data(data_module_config, SPEC, collector_model, _create_reviewer_model([True])))
 
-        def respond(messages, info: AgentInfo) -> ModelResponse:
-            if _is_reviewer(info):
-                return _review(info, accepted=True)
-            response = next(collector_responses, None)
-            return call_output_tool(info, CollectionSummary(summary=SUMMARY)) if response is None else response
-
-        exit_code = collect_data(REQUEST, tmp_path, FunctionModel(respond))
-
-    assert exit_code == 0
-    assert [entry.path for entry in load_manifest(tmp_path)] == ["files/a.csv"]
+    assert [entry.path for entry in load_manifest(data_module_config)] == ["files/a.csv"]
