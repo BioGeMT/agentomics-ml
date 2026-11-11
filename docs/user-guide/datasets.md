@@ -252,50 +252,6 @@ config. The held-out `test/` split is not part of this prepared data — it is
 excluded from the agent's mounts and prepared separately in a temporary
 directory only for the post-run evaluation.
 
-## Collecting Public Data
-
-`agentomics-collect-data` runs an agent that searches the web for public data
-that fit a request, downloads the original files into a folder, and has a
-second agent review them. It does not process the files into a dataset.
-
-Describe the data in a JSON file. Save the
-[example request](collect_data_request_example.json), which asks for breast
-tumour data, as `request.json` and edit it.
-
-`description` says what the model predicts, `inputs` what it predicts from,
-and `label` the value it predicts.
-`task_type` is `classification` (with at least two `classes`) or `regression`
-(without `classes`). `known_sources`, `max_download_gb` and `strategy` are
-optional. By default the agent downloads the most relevant, highest-quality
-sources first, then the rest of the relevant data, until it reaches
-`max_download_gb`; without a limit it downloads all the relevant data it finds.
-`strategy` replaces this default with your own instruction, for example
-`"only datasets with expert-checked labels"`.
-
-```bash
-agentomics-collect-data --request request.json --collected-data-dir collected_data --provider codex --model gpt-6.1-sol
-```
-
-`--download-timeout <seconds>` changes how long a download waits for a server
-that does not answer.
-
-The folder holds `files/`, `manifest.json` (path, source URL, size and SHA-256
-of each file), `summary.md` (the agent's summary of the files, written when a
-review accepts them) and `review.json` (the reviews of the latest run). Zip
-archives, tar archives (also compressed with gzip, bzip2 or xz) and gz files
-are unpacked into `files/`, and the manifest records the archive each unpacked
-file came from. Both agents can list and read the downloaded files.
-
-The files are reviewed up to four times. If no review accepts them, the
-command ends with exit code 1, the downloaded files stay in the folder and
-`review.json` lists the issues. Running the command again on the same folder,
-for example after such a run or with a larger `max_download_gb`, continues
-from the files that are there: the agent keeps the ones that fit the request,
-may discard the others, and adds what is missing.
-
-The agent needs a provider with native web search. It has been tested with
-Codex. OpenAI, OpenRouter and Anthropic models also search the web natively.
-
 ## Example Datasets
 
 List available example datasets:
