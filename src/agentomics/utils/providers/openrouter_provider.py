@@ -264,7 +264,7 @@ class OpenRouterProvider(Provider):
 
         return None
 
-    def create_model_from_settings(self, model_name: str, use_proxy: bool, llm_response_timeout: int) -> OpenRouterModel:
+    def create_model(self, model_name: str, use_proxy: bool, llm_response_timeout: int) -> OpenRouterModel:
         return OpenRouterModel(
             model_name=model_name,
             provider=PydanticOpenRouterProvider(openai_client=self._create_openai_client(use_proxy, llm_response_timeout)),

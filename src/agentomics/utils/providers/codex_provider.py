@@ -108,7 +108,7 @@ class CodexProvider(Provider):
 
         return None
 
-    def create_model_from_settings(self, model_name: str, use_proxy: bool, llm_response_timeout: int) -> OpenAIResponsesModel:
+    def create_model(self, model_name: str, use_proxy: bool, llm_response_timeout: int) -> OpenAIResponsesModel:
         # Fail early with a clear message instead of deferring until the first request.
         self.auth_store.get_account_id()
 

@@ -151,7 +151,7 @@ def test_codex_model_uses_native_codex_provider(tmp_path: Path, monkeypatch):
     _write_auth_file(auth_path)
     monkeypatch.setenv("CODEX_AUTH_FILE", str(auth_path))
 
-    model = CodexProvider("").create_model_from_settings("gpt-6-sol", use_proxy=False, llm_response_timeout=30)
+    model = CodexProvider("").create_model("gpt-6-sol", use_proxy=False, llm_response_timeout=30)
 
     assert isinstance(model, OpenAIResponsesModel)
     assert model.system == "openai-codex"

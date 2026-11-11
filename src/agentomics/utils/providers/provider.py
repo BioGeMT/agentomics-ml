@@ -93,11 +93,11 @@ class Provider():
         
         return None
     
-    def create_model(self, model_name: str, config: Config) -> Model:
+    def create_model_from_config(self, model_name: str, config: Config) -> Model:
           """Create a pydantic-ai model instance with the settings of a run."""
-          return self.create_model_from_settings(model_name, config.use_proxy, config.llm_response_timeout)
+          return self.create_model(model_name, config.use_proxy, config.llm_response_timeout)
 
-    def create_model_from_settings(self, model_name: str, use_proxy: bool, llm_response_timeout: int) -> Model:
+    def create_model(self, model_name: str, use_proxy: bool, llm_response_timeout: int) -> Model:
           """Create a pydantic-ai model instance. Subclasses may override this method."""
           return OpenAIChatModel(
               model_name=model_name,

@@ -34,7 +34,7 @@ class AnthropicProvider(Provider):
                      title_align="left", border_style="cyan", width=panel_width)
         self.console.print(panel)
 
-    def create_model_from_settings(self, model_name: str, use_proxy: bool, llm_response_timeout: int) -> AnthropicModel:
+    def create_model(self, model_name: str, use_proxy: bool, llm_response_timeout: int) -> AnthropicModel:
         """Ovveriding method in Provider class. Create Anthropic model instance."""
         proxy_url = os.getenv("HTTP_PROXY")
 
