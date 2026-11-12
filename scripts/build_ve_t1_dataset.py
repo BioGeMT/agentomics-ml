@@ -1,11 +1,14 @@
 """Build a temporal generation dataset for the Virtual Embryo Challenge 2026, Task 1.
 
 The source is the challenge's T1 training data (T1/E8.5_RNA.h5ad and T1/E9.5_RNA.h5ad, downloaded with the
-challenge API) and, once requested, the E10.5 validation answers. The dataset has a single train/ split:
-    input/controls.h5ad      the earliest stage (E8.5): the observed cells
-    input/perturbations.csv  the later stages as targets (E9.5, E10.5), with n_cells each
+challenge API) and, once requested, the E10.5 validation answers. Each split folder holds:
+    input/controls.h5ad      the observed cells (the earlier stages)
+    input/perturbations.csv  the target stage(s), with n_cells each
     labels.h5ad              the measured cells of those targets
-The agent splits it by target stage itself (e.g. train E8.5 -> E9.5, validation E8.5 + E9.5 -> E10.5).
+With E10.5 (real or mock) the dataset has a fixed split, mirroring the challenge's own forecasting step:
+    train/       E8.5 -> E9.5
+    validation/  E8.5 + E9.5 -> E10.5
+The agent then only builds mini_train. Without E10.5 there is a single train/ split (E8.5 -> E9.5).
 The challenge's E12.5 test is forecast by scripts/ve_t1_submission.py, from every observed stage.
 
 Without the E10.5 answers, --mock-e105 adds a synthetic E10.5 (E9.5 shifted once more by the E8.5 -> E9.5
@@ -36,6 +39,7 @@ from agentomics.datasets.data_contract import (
     INPUT_DIR_NAME,
     METADATA_FILE_NAME,
     TRAIN_SPLIT,
+    VALIDATION_SPLIT,
 )
 from agentomics.datasets.dataset_preparation import check_dataset
 from agentomics.datasets.temporal_generation_contract import STAGE_COLUMN_NAME
@@ -54,17 +58,10 @@ def build(source_dir: Path, output_dir: Path, *, e105: Path | None, mock_e105: b
     elif mock_e105:
         targets.append(_mock_next_stage(observed, targets[0], "E10.5", seed))
 
-    split_dir = output_dir / TRAIN_SPLIT
-    write_cells(observed, split_dir / INPUT_DIR_NAME / CONTROLS_FILE_NAME)
-    labels = concat_stages(targets)
-    write_cells(labels, split_dir / GENERATION_LABELS_FILE_NAME)
-    counts = labels.obs[STAGE_COLUMN_NAME].value_counts()
-    conditions = pd.DataFrame(
-        [(target.obs[STAGE_COLUMN_NAME].iloc[0], min(n_cells, int(counts[target.obs[STAGE_COLUMN_NAME].iloc[0]])))
-         for target in targets],
-        columns=[STAGE_COLUMN_NAME, N_CELLS_COLUMN_NAME],
-    )
-    conditions.to_csv(split_dir / INPUT_DIR_NAME / PERTURBATIONS_FILE_NAME, index=False)
+    e95 = targets[0]
+    _write_split(output_dir / TRAIN_SPLIT, observed, [e95], n_cells)
+    if len(targets) > 1:
+        _write_split(output_dir / VALIDATION_SPLIT, concat_stages([observed, e95]), targets[1:], n_cells)
 
     (output_dir / METADATA_FILE_NAME).write_text(
         json.dumps({"task_type": TaskTypes.TEMPORAL_GENERATION, "mock_e105": bool(mock_e105 and e105 is None)}, indent=4)
@@ -76,6 +73,16 @@ def build(source_dir: Path, output_dir: Path, *, e105: Path | None, mock_e105: b
     )
     for target in targets:
         print(f"target {target.obs[STAGE_COLUMN_NAME].iloc[0]}: {target.n_obs} cells", flush=True)
+
+
+def _write_split(split_dir: Path, observed: ad.AnnData, targets: list[ad.AnnData], n_cells: int) -> None:
+    write_cells(observed, split_dir / INPUT_DIR_NAME / CONTROLS_FILE_NAME)
+    write_cells(concat_stages(targets), split_dir / GENERATION_LABELS_FILE_NAME)
+    conditions = pd.DataFrame(
+        [(target.obs[STAGE_COLUMN_NAME].iloc[0], min(n_cells, target.n_obs)) for target in targets],
+        columns=[STAGE_COLUMN_NAME, N_CELLS_COLUMN_NAME],
+    )
+    conditions.to_csv(split_dir / INPUT_DIR_NAME / PERTURBATIONS_FILE_NAME, index=False)
 
 
 def _mock_next_stage(previous: ad.AnnData, current: ad.AnnData, stage: str, seed: int) -> ad.AnnData:
@@ -140,7 +147,12 @@ each rescaled so that copy_last (predicting the latest observed stage unchanged)
 replicate of the real cells = 100. The organisers report that their neural ODE baseline does not beat a constant
 per-cell-type mean shift, and that predicting one average cell scores near nothing on the population metrics.
 
-## Data format
+## Splits
+- train/: observes E8.5, targets E9.5.
+- validation/ (when E10.5 is present): observes E8.5 and E9.5, targets E10.5, the challenge's leaderboard stage.
+  This split is fixed: use it as given.
+
+## Data format (each split folder)
 - input/controls.h5ad: observed cells; obs 'stage' (e.g. 'E8.5') and 'celltype'. Sparse CSR float32.
 - input/perturbations.csv: the target stages (stage, n_cells) to generate cells for.
 - labels.h5ad: the measured cells of every target stage; obs 'stage' and 'celltype'.

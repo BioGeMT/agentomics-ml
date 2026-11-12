@@ -15,8 +15,12 @@ PYTHONPATH=src python scripts/build_ve_t1_dataset.py \
     --source <t1_dir> --e105 <E10.5 answers .h5ad> --output <datasets_dir>/ve_t1
 ```
 
-The dataset has one `train/` split: E8.5 observed, E9.5 and E10.5 as targets. The agent makes its own
-train/validation split by target stage, for example train E8.5 -> E9.5 and validation E8.5 + E9.5 -> E10.5.
+The dataset has a fixed split, mirroring the leaderboard:
+
+- `train/`: E8.5 observed, E9.5 as target.
+- `validation/`: E8.5 and E9.5 observed, E10.5 as target.
+
+The agent keeps this split and only builds `mini_train`.
 
 Before the E10.5 answers arrive, `--mock-e105` adds a synthetic E10.5 so the pipeline can be tested.
 Its scores mean nothing biologically.
