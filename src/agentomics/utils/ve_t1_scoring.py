@@ -29,7 +29,9 @@ from __future__ import annotations
 import hashlib
 import json
 import tempfile
-from dataclasses import dataclass
+import os
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
@@ -58,6 +60,24 @@ class StageData:
     """Dense float32 cell x gene matrices for one target stage, on the same genes."""
     reference: np.ndarray
     truth: np.ndarray
+    # What scoring needs from reference and truth alone, computed once and shared by every prediction.
+    truth_side: "TruthSide | None" = field(default=None, init=False, repr=False, compare=False)
+
+
+@dataclass
+class TruthSide:
+    reference_mean: np.ndarray
+    true_change: np.ndarray
+    up: np.ndarray
+    down: np.ndarray
+    population_truth: np.ndarray
+    pca: object
+    truth_embedding: np.ndarray
+    gamma0: float
+    truth_kernel_terms: list[float]
+    gene_pairs: tuple[np.ndarray, np.ndarray]
+    observed_variogram: np.ndarray
+    rng_state: dict
 
 
 def make_stage(reference: np.ndarray, truth: np.ndarray, seed: int = SEED) -> StageData:
@@ -73,21 +93,64 @@ def make_stage(reference: np.ndarray, truth: np.ndarray, seed: int = SEED) -> St
 
 def raw_metrics(reference: np.ndarray, truth: np.ndarray, prediction: np.ndarray, seed: int = SEED) -> dict[str, float]:
     """The four unscaled T1 metrics of a prediction."""
+    return _prediction_metrics(truth_side(reference, truth, seed), prediction)
+
+
+def truth_side(reference: np.ndarray, truth: np.ndarray, seed: int = SEED) -> TruthSide:
+    """Everything the metrics need that does not depend on the prediction."""
+    from scipy.spatial.distance import pdist
+    from sklearn.decomposition import PCA
+
     rng = np.random.default_rng(seed)
     de_reference = _subsample(reference, DE_MAX_CELLS, rng)
     de_truth = _subsample(truth, DE_MAX_CELLS, rng)
     reference_mean = reference.mean(axis=0)
     true_change = de_truth.mean(axis=0) - reference_mean
-    predicted_change = prediction.mean(axis=0) - reference_mean
     up, down = _truth_de_genes(de_reference, de_truth, true_change)
 
     population_truth = _subsample(truth, POPULATION_MAX_CELLS, rng)
+    components = min(PCA_COMPONENTS, len(population_truth) - 1, population_truth.shape[1])
+    pca = PCA(n_components=components, svd_solver="randomized", random_state=SEED).fit(population_truth)
+    x = pca.transform(population_truth)
+    median_squared_distance = np.median(pdist(x, "sqeuclidean"))
+    gamma0 = 1.0 / median_squared_distance if median_squared_distance > 0 else 1.0
+    d_xx = _squared_distances(x, x)
+    n = len(x)
+    truth_kernel_terms = [
+        float((np.exp(-scale * gamma0 * d_xx).sum() - n) / (n * (n - 1))) for scale in MMD_SCALES
+    ]
+
+    pair_rng = np.random.default_rng([seed, 1])
+    n_genes = truth.shape[1]
+    first = pair_rng.integers(0, n_genes, VARIOGRAM_PAIRS)
+    second = (first + pair_rng.integers(1, n_genes, VARIOGRAM_PAIRS)) % n_genes  # never the same gene
+    return TruthSide(
+        reference_mean=reference_mean,
+        true_change=true_change,
+        up=up,
+        down=down,
+        population_truth=population_truth,
+        pca=pca,
+        truth_embedding=x,
+        gamma0=gamma0,
+        truth_kernel_terms=truth_kernel_terms,
+        gene_pairs=(first, second),
+        observed_variogram=_variogram(population_truth, first, second),
+        rng_state=rng.bit_generator.state,
+    )
+
+
+def _prediction_metrics(side: TruthSide, prediction: np.ndarray) -> dict[str, float]:
+    rng = np.random.default_rng()
+    rng.bit_generator.state = side.rng_state
+    predicted_change = prediction.mean(axis=0) - side.reference_mean
     population_prediction = _subsample(prediction, POPULATION_MAX_CELLS, rng)
+    predicted_variogram = _variogram(population_prediction, *side.gene_pairs)
     return {
-        "DE_SCORE": _de_score(predicted_change, up, down, reference_mean),
-        "DE_DIRECTION": _partial_rank_correlation(predicted_change, true_change, reference_mean),
-        "MMD": _mmd(population_truth, population_prediction),
-        "VARIOGRAM": _variogram_distance(population_truth, population_prediction, rng),
+        "DE_SCORE": _de_score(predicted_change, side.up, side.down, side.reference_mean),
+        "DE_DIRECTION": _partial_rank_correlation(predicted_change, side.true_change, side.reference_mean),
+        "MMD": _mmd(side, population_prediction),
+        "VARIOGRAM": float(np.mean((predicted_variogram - side.observed_variogram) ** 2)),
     }
 
 
@@ -113,7 +176,9 @@ def skill(name: str, value: float, floor: float, ceiling: float) -> float:
 
 def score_stage(stage: StageData, prediction: np.ndarray, stage_anchors: dict | None = None) -> dict[str, float]:
     stage_anchors = stage_anchors or anchors(stage)
-    metrics = raw_metrics(stage.reference, stage.truth, prediction)
+    if stage.truth_side is None:
+        stage.truth_side = truth_side(stage.reference, stage.truth)
+    metrics = _prediction_metrics(stage.truth_side, prediction)
     skills = {
         name: skill(name, metrics[name], stage_anchors["floor"][name], stage_anchors["ceiling"][name])
         for name in WEIGHTS
@@ -169,7 +234,7 @@ def _cached_anchors(stage: StageData, key_parts) -> dict:
         else:
             digest.update(str(part).encode())
     digest.update(json.dumps(
-        [WEIGHTS, DE_MAX_CELLS, POPULATION_MAX_CELLS, SEED, VARIOGRAM_PAIRS, STAGE_FRACTION, STAGE_MIN_CELLS, "v4"]
+        [WEIGHTS, DE_MAX_CELLS, POPULATION_MAX_CELLS, SEED, VARIOGRAM_PAIRS, STAGE_FRACTION, STAGE_MIN_CELLS, "v5"]
     ).encode())
     cache_path = ANCHOR_CACHE_DIR / f"{digest.hexdigest()}.json"
     if cache_path.is_file():
@@ -202,9 +267,14 @@ def _truth_de_genes(reference: np.ndarray, truth: np.ndarray, true_change: np.nd
     p_values = np.ones(reference.shape[1])
     # Genes zero in every cell of both groups have no test; they keep p = 1.
     detected = np.flatnonzero((reference > 0).any(axis=0) | (truth > 0).any(axis=0))
-    for start in range(0, len(detected), chunk):
-        genes = detected[start:start + chunk]
-        p_values[genes] = mannwhitneyu(truth[:, genes], reference[:, genes], axis=0).pvalue
+    chunks = [detected[start:start + chunk] for start in range(0, len(detected), chunk)]
+
+    def test(genes):
+        return genes, mannwhitneyu(truth[:, genes], reference[:, genes], axis=0).pvalue
+
+    with ThreadPoolExecutor(max_workers=_workers()) as executor:
+        for genes, chunk_p_values in executor.map(test, chunks):
+            p_values[genes] = chunk_p_values
     p_values = np.nan_to_num(p_values, nan=1.0)
     significant = (false_discovery_control(p_values) < DE_FDR) & (np.abs(true_change) >= DE_EFFECT_FLOOR)
     return np.flatnonzero(significant & (true_change > 0)), np.flatnonzero(significant & (true_change < 0))
@@ -241,34 +311,27 @@ def _partial_rank_correlation(x: np.ndarray, y: np.ndarray, control: np.ndarray)
     return float((r_xy - r_xz * r_yz) / denominator) if denominator > 0 else 0.0
 
 
-def _mmd(truth: np.ndarray, prediction: np.ndarray) -> float:
-    from scipy.spatial.distance import cdist, pdist
-    from sklearn.decomposition import PCA
-
-
-    components = min(PCA_COMPONENTS, len(truth) - 1, truth.shape[1])
-    pca = PCA(n_components=components, svd_solver="randomized", random_state=SEED).fit(truth)
-    x, y = pca.transform(truth), pca.transform(prediction)
-    median_squared_distance = np.median(pdist(x, "sqeuclidean"))
-    gamma0 = 1.0 / median_squared_distance if median_squared_distance > 0 else 1.0
-    d_xx, d_yy, d_xy = cdist(x, x, "sqeuclidean"), cdist(y, y, "sqeuclidean"), cdist(x, y, "sqeuclidean")
-    n, m = len(x), len(y)
+def _mmd(side: TruthSide, prediction: np.ndarray) -> float:
+    """Unbiased MMD^2 in the truth's PCA space, averaged over the RBF kernels exp(-s * gamma0 * d^2)."""
+    y = side.pca.transform(prediction)
+    d_yy, d_xy = _squared_distances(y, y), _squared_distances(side.truth_embedding, y)
+    m = len(y)
     values = []
-    for scale in MMD_SCALES:
-        gamma = scale * gamma0
-        k_xx, k_yy, k_xy = np.exp(-gamma * d_xx), np.exp(-gamma * d_yy), np.exp(-gamma * d_xy)
-        values.append(
-            (k_xx.sum() - np.trace(k_xx)) / (n * (n - 1))
-            + (k_yy.sum() - np.trace(k_yy)) / (m * (m - 1))
-            - 2 * k_xy.mean()
-        )
+    for scale, truth_term in zip(MMD_SCALES, side.truth_kernel_terms):
+        gamma = scale * side.gamma0
+        values.append(truth_term + (np.exp(-gamma * d_yy).sum() - m) / (m * (m - 1)) - 2 * np.exp(-gamma * d_xy).mean())
     return float(np.mean(values))
 
 
-def _variogram_distance(truth: np.ndarray, prediction: np.ndarray, rng: np.random.Generator) -> float:
-    n_genes = truth.shape[1]
-    first = rng.integers(0, n_genes, VARIOGRAM_PAIRS)
-    second = (first + rng.integers(1, n_genes, VARIOGRAM_PAIRS)) % n_genes  # never the same gene
-    observed = (np.abs(truth[:, first] - truth[:, second]) ** VARIOGRAM_P).mean(axis=0)
-    predicted = (np.abs(prediction[:, first] - prediction[:, second]) ** VARIOGRAM_P).mean(axis=0)
-    return float(np.mean((predicted - observed) ** 2))
+def _squared_distances(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    from scipy.spatial.distance import cdist
+
+    return cdist(a, b, "sqeuclidean")
+
+
+def _variogram(cells: np.ndarray, first: np.ndarray, second: np.ndarray) -> np.ndarray:
+    return (np.abs(cells[:, first] - cells[:, second]) ** VARIOGRAM_P).mean(axis=0)
+
+
+def _workers() -> int:
+    return max(1, min(16, len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else os.cpu_count() or 1))
