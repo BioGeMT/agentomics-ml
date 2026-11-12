@@ -17,7 +17,7 @@ from agentomics.datasets.data_contract import (
     VALIDATION_SPLIT,
 )
 
-from agentomics.agents.steps.base import AgenticStep, AgenticStepOutput
+from agentomics.agents.steps.base import AgentomicsAgenticStep, AgenticStepOutput
 from agentomics.agents.steps.data_split import DataSplitStep
 from agentomics.agents.steps.model_training import ModelTrainingStep
 from agentomics.runtime.filesystem import remove_path
@@ -43,7 +43,7 @@ class ModelInferenceOutput(AgenticStepOutput):
         )
     )
 
-class ModelInferenceStep(AgenticStep):
+class ModelInferenceStep(AgentomicsAgenticStep):
     step_id = "model_inference"
     display_name = "INFERENCE"
     output_type = ModelInferenceOutput

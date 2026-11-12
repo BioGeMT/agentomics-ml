@@ -7,7 +7,7 @@ from pydantic import Field
 from pydantic_ai import Agent
 
 from agentomics.agents.prompt_builder import get_dataset_knowledge
-from agentomics.agents.steps.base import AgenticStep, AgenticStepOutput
+from agentomics.agents.steps.base import AgentomicsAgenticStep, AgenticStepOutput
 from agentomics.agents.steps.data_split import DataSplitStep
 from agentomics.agents.steps.validation_evaluation import ValidationEvaluationStep
 from agentomics.runtime.iterations_lessons import read_iterations_lessons
@@ -68,7 +68,7 @@ class IterationPlanOutput(AgenticStepOutput):
         """
     )
 
-class IterationPlanStep(AgenticStep):
+class IterationPlanStep(AgentomicsAgenticStep):
     step_id = "iteration_plan"
     display_name = "ITERATION PLAN"
     output_type = IterationPlanOutput

@@ -11,7 +11,7 @@ from pydantic import Field
 from pydantic_ai import Agent, ModelRetry, RunContext
 
 import agentomics.agents.injectables.training_reporter as _training_reporter_module
-from agentomics.agents.steps.base import AgenticStep, AgenticStepOutput
+from agentomics.agents.steps.base import AgentomicsAgenticStep, AgenticStepOutput
 from agentomics.agents.steps.data_split import DataSplitStep
 from agentomics.datasets.data_contract import SUPPLEMENTARY_DIR_NAME
 from agentomics.utils.task_types import TaskTypes
@@ -43,7 +43,7 @@ class ModelTrainingOutput(AgenticStepOutput):
         )
     )
 
-class ModelTrainingStep(AgenticStep):
+class ModelTrainingStep(AgentomicsAgenticStep):
     step_id = "model_training"
     display_name = "TRAINING"
     output_type = ModelTrainingOutput

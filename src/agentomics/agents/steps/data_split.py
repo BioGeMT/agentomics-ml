@@ -11,7 +11,7 @@ from pydantic import Field
 from pydantic.json_schema import SkipJsonSchema
 from pydantic_ai import Agent, ModelRetry, RunContext
 
-from agentomics.agents.steps.base import AgenticStep, AgenticStepOutput
+from agentomics.agents.steps.base import AgentomicsAgenticStep, AgenticStepOutput
 from agentomics.runtime.filesystem import (
     chown_tree_to_root,
     create_absolute_symlink,
@@ -53,7 +53,7 @@ class DataSplitOutput(AgenticStepOutput):
         description="Version number of the split used in this step. Populated programmatically.",
     )
 
-class DataSplitStep(AgenticStep):
+class DataSplitStep(AgentomicsAgenticStep):
     step_id = "data_split"
     display_name = "SPLITTING"
     output_type = DataSplitOutput

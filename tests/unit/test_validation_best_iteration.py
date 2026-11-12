@@ -30,7 +30,7 @@ def _write_split_version(
     for split_name in ("train", "validation", "mini_train"):
         write_split_folder(split_dir / split_name)
     save_step_output(
-        config,
+        config.current_step_dir,
         DataSplitStep.step_id,
         DataSplitOutput(
             train_path=str(split_dir / "train"),
@@ -54,7 +54,7 @@ def _write_existing_best(
     prepare_iteration_workspace(config, iteration=best_iteration)
     _write_split_version(config, split_version)
     save_step_output(
-        config,
+        config.current_step_dir,
         ValidationEvaluationStep.step_id,
         ValidationEvaluationOutput(
             metrics=metrics,
@@ -155,7 +155,7 @@ def test_failed_prediction_exploration_keeps_the_iteration(
     prepare_iteration_workspace(config, iteration=0)
     _write_split_version(config, split_version=0)
     save_step_output(
-        config,
+        config.current_step_dir,
         ValidationEvaluationStep.step_id,
         ValidationEvaluationOutput(
             metrics={"validation/ACC": 0.9},

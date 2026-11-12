@@ -37,7 +37,7 @@ def create_archived_iteration_with_split_output(
     update_current_iteration_state(config, status=status, ended_at=time.time())
     split_dir = config.splits_dir / f"split_{split_version}"
     save_step_output(
-        config,
+        config.current_step_dir,
         step.step_id,
         DataSplitOutput(
             train_path=str(split_dir / "train"),

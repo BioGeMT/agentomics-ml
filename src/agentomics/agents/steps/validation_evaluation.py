@@ -5,7 +5,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from agentomics.agents.steps.base import RuntimeStep
+from agentomics.agents.steps.base import AgentomicsStep
 from agentomics.agents.steps.data_split import DataSplitStep
 from agentomics.agents.steps.model_inference import ModelInferenceStep
 from agentomics.agents.steps.model_training import ModelTrainingStep
@@ -28,7 +28,7 @@ class ValidationEvaluationOutput(BaseModel):
     status: str
 
 
-class ValidationEvaluationStep(RuntimeStep):
+class ValidationEvaluationStep(AgentomicsStep):
     step_id = "validation_evaluation"
     display_name = "VALIDATION EVALUATION"
     output_type = ValidationEvaluationOutput
