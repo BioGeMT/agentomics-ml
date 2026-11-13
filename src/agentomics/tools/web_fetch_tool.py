@@ -10,7 +10,7 @@ from agentomics.utils.data_module_config import DataModuleConfig
 # https://github.com/pydantic/pydantic-ai/issues/11829 is fixed.
 def create_web_fetch_tool(config: DataModuleConfig) -> Tool:
     return Tool(
-        function=_web_fetch,
+        function=_fetch_web_page,
         takes_ctx=False,
         max_retries=config.max_tool_retries,
         require_parameter_descriptions=True,
@@ -18,7 +18,7 @@ def create_web_fetch_tool(config: DataModuleConfig) -> Tool:
     )
 
 
-async def _web_fetch(url: str) -> WebFetchResult | BinaryContent | str:
+async def _fetch_web_page(url: str) -> WebFetchResult | BinaryContent | str:
     """Fetches the content of a web page at the given URL and returns it as markdown or binary content.
 
     Args:
