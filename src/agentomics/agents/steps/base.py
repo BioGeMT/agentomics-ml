@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 from abc import ABC, abstractmethod
@@ -134,7 +135,20 @@ class AgenticStepMixin(ABC):
             shutil.copy2(source_path, helpers_dir / source_path.name)
 
     def step_validators(self) -> list[Callable]:
+        """Output validators specific to this step.
+
+        A validator must not create, move, or rewrite files, because a later validator can still reject the output.
+        Do that in finalize_output().
+        """
         return []
+
+    def symlink_allowed_dirs(self, output: AgenticStepOutput) -> list[Path]:
+        """Directories in which the agent may create symlinks."""
+        return []
+
+    def finalize_output(self, output: AgenticStepOutput) -> AgenticStepOutput:
+        """Runs once, on the output that passed all validators. The place to create, move, or rewrite files."""
+        return output
 
     def build_validators(self) -> list[Callable]:
         async def _no_reserved_runtime_files(ctx: RunContext[dict], result: AgenticStepOutput) -> AgenticStepOutput:
@@ -143,8 +157,14 @@ class AgenticStepMixin(ABC):
             return result
 
         async def _no_symlinks(ctx: RunContext[dict], result: AgenticStepOutput) -> AgenticStepOutput:
+            # The agent may return a path with '..' in it. normpath, not resolve(): the paths compared below are intentionally unresolved.
+            allowed_dirs = [Path(os.path.normpath(d)) for d in self.symlink_allowed_dirs(result)]
             new_files = find_new_files_in_dir(self.step_dir, ctx.deps["start_time"])
-            symlinks = [f for f in new_files if (self.step_dir / f).is_symlink()]
+            symlinks = [
+                f for f in new_files
+                if (self.step_dir / f).is_symlink()
+                and not any(allowed_dir in (self.step_dir / f).parents for allowed_dir in allowed_dirs)
+            ]
             if symlinks:
                 raise ModelRetry(
                     f"Your step created symlink(s), which are not allowed: {symlinks}. "
@@ -217,6 +237,7 @@ class AgenticStepMixin(ABC):
                 message=error.message,
                 exception_trace=error.exception_trace,
             ) from error
+        output = self.finalize_output(output)
         return output.model_copy(
             update={"files_created": find_new_files_in_dir(self.step_dir, since_timestamp=step_started_at)}
         )
