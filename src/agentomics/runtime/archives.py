@@ -29,6 +29,7 @@ def unpack_archive(archive_path: Path, destination: Path, byte_budget: ByteBudge
                 if not path.resolve().is_relative_to(destination.resolve()):
                     continue
                 path.parent.mkdir(parents=True, exist_ok=True)
+                # An archive inside the archive is not unpacked: it stays a file.
                 write_chunks(entry.get_blocks(), path, byte_budget)
     except libarchive.ArchiveError as error:
         raise ValueError(f"the archive could not be unpacked: {error}") from error
