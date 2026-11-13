@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from typing import Any, TypedDict
 
 from pydantic import Field
-from pydantic_ai import Agent
+from pydantic_ai.settings import ModelSettings
 
 from agentomics.agents.prompt_builder import get_dataset_knowledge
 from agentomics.agents.steps.base import AgentomicsAgenticStep, AgenticStepOutput
@@ -82,19 +83,24 @@ class IterationPlanStep(AgentomicsAgenticStep):
         split_changed: bool
         is_new_best: bool
 
-    def create_agent(self) -> Agent[dict, IterationPlanOutput]:
-        return Agent(
+    async def _execute(self) -> AgenticStepOutput:
+        # No tools, no system prompt and no message history.
+        return await self.run_agent_step(
+            user_prompt=self.step_prompt(),
             model=self.iteration_plan_model,
-            retries=self.config.max_validation_retries,
-            model_settings=self.provider.get_high_reasoning_model_settings(
-                kwargs={"temperature": self.config.temperature}
-            ),
-            output_type=IterationPlanOutput,
-            deps_type=dict,
+            model_settings=self.high_reasoning_model_settings(),
+            max_steps=self.config.max_steps,
+            max_validation_retries=self.config.max_validation_retries,
         )
 
-    def build_user_prompt(self) -> str:
-        return self.step_prompt()
+    def high_reasoning_model_settings(self) -> ModelSettings:
+        return self.provider.get_high_reasoning_model_settings(
+            kwargs={"temperature": self.config.temperature}
+        )
+
+    def build_validators(self) -> list[Callable]:
+        # The plan step writes no files, so the generic file validators do not apply.
+        return []
 
     def step_prompt(self) -> str:
         iteration_history_info = self._build_iteration_history_info()
@@ -156,9 +162,6 @@ class IterationPlanStep(AgentomicsAgenticStep):
         B) further develop an existing promising (S x R x A) combination. If the iteration history already contains a further developed version of a (S x R x A) combination that did not result in a validation {self.config.val_metric} improvement, you must not develop it further again.
         </your_instructions>
         """
-
-    def get_message_history(self):
-        return None
 
     def _build_iterations_lessons(self) -> str:
         iterations_lessons = read_iterations_lessons(self.config)

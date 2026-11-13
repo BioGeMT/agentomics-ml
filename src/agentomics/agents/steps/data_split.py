@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 import json
 import shutil
 import time
@@ -9,7 +10,7 @@ from typing import cast
 import pandas as pd
 from pydantic import Field
 from pydantic.json_schema import SkipJsonSchema
-from pydantic_ai import Agent, ModelRetry, RunContext
+from pydantic_ai import ModelRetry, RunContext
 
 from agentomics.agents.steps.base import AgentomicsAgenticStep, AgenticStepOutput
 from agentomics.runtime.filesystem import (
@@ -152,8 +153,7 @@ class DataSplitStep(AgentomicsAgenticStep):
         result.split_version = int(next_split_dir.name.removeprefix("split_"))
         return result
 
-    def attach_output_validator(self, agent: Agent[dict, AgenticStepOutput]) -> None:
-        @agent.output_validator
+    def step_validators(self) -> list[Callable]:
         async def validate_split_dataset(ctx: RunContext[dict], result: AgenticStepOutput) -> AgenticStepOutput:
             result = cast(DataSplitOutput, result)
             train_path = Path(result.train_path)
@@ -222,6 +222,7 @@ class DataSplitStep(AgentomicsAgenticStep):
                 result.splitting_strategy = self._get_latest_split_strategy()
                 result.split_version = int(train_path.parent.name.removeprefix("split_"))
             return result
+        return [validate_split_dataset]
 
     def step_prompt(self) -> str:
         iteration = load_current_iteration_index(self.config)

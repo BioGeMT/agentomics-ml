@@ -52,6 +52,3 @@ class PredictionExplorationStep(AgentomicsAgenticStep):
             Analyze these predictions; do not run inference again. To analyze a subset of the validation set, filter these predictions.
             If you need to write code for the analysis, create a separate script.
             """
-    
-    def build_deps(self, step_started_at) -> dict[str, object]:
-        return {"start_time": step_started_at}

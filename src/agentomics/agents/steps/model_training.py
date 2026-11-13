@@ -1,20 +1,19 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 import os
 import shutil
 import subprocess
 import traceback
-from datetime import datetime
 from pathlib import Path
 
 from pydantic import Field
-from pydantic_ai import Agent, ModelRetry, RunContext
+from pydantic_ai import ModelRetry, RunContext
 
 import agentomics.agents.injectables.training_reporter as _training_reporter_module
 from agentomics.agents.steps.base import AgentomicsAgenticStep, AgenticStepOutput
 from agentomics.agents.steps.data_split import DataSplitStep
 from agentomics.datasets.data_contract import SUPPLEMENTARY_DIR_NAME
-from agentomics.utils.task_types import TaskTypes
 from agentomics.runtime.read_write_utils import does_file_contain_iteration_pattern, does_file_contain_string
 from agentomics.runtime.step_outputs import require_step_output
 from agentomics.runtime.system_resources import check_gpu_availability
@@ -53,8 +52,7 @@ class ModelTrainingStep(AgentomicsAgenticStep):
             return []
         return [Path(_training_reporter_module.__file__)]
 
-    def attach_output_validator(self, agent: Agent[dict, AgenticStepOutput]) -> None:
-        @agent.output_validator
+    def step_validators(self) -> list[Callable]:
         async def validate_training(ctx: RunContext[dict], result: ModelTrainingOutput) -> ModelTrainingOutput:
             if not os.path.exists(result.path_to_train_file):
                 raise ModelRetry(f"Train file does not exist. {result.path_to_train_file}")
@@ -118,6 +116,7 @@ class ModelTrainingStep(AgentomicsAgenticStep):
                 )
 
             return result
+        return [validate_training]
 
     def step_prompt(self) -> str:
         reporting_requirement = "" if self.config.disable_training_reporting else f"""
@@ -157,12 +156,9 @@ class ModelTrainingStep(AgentomicsAgenticStep):
         Use the mini train split to quickly test your script while developing. The final submitted model must be an output of the training script when the --train-data uses the full training split.
         """
 
-    def build_deps(self, step_started_at: datetime) -> dict[str, object]:
+    def build_deps(self) -> dict[str, object]:
         data_split = require_step_output(self.config, DataSplitStep.step_id, self.config.current_iteration_dir)
-        return {
-            "start_time": step_started_at,
-            "mini_train_path": data_split.mini_train_path,
-        }
+        return {"mini_train_path": data_split.mini_train_path}
 
     def _validate_training_run(self, train_data_path: str, valid_data_path: str, train_script_path: str, model_file_name: str) -> list[str]:
         run_dir = self.config.current_iteration_dir

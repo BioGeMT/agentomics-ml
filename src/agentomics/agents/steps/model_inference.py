@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 import os
 import traceback
 from pathlib import Path
 
 import pandas as pd
 from pydantic import Field
-from pydantic_ai import Agent, ModelRetry, RunContext
+from pydantic_ai import ModelRetry, RunContext
 from agentomics.datasets.data_contract import (
     ID_COLUMN_NAME,
     LABELS_FILE_NAME,
@@ -48,12 +49,12 @@ class ModelInferenceStep(AgentomicsAgenticStep):
     display_name = "INFERENCE"
     output_type = ModelInferenceOutput
 
-    def attach_output_validator(self, agent: Agent[dict, AgenticStepOutput]) -> None:
-        @agent.output_validator
+    def step_validators(self) -> list[Callable]:
         async def validate_inference(ctx: RunContext[dict], result: ModelInferenceOutput) -> ModelInferenceOutput:
             self._validate_inference_file(result.path_to_inference_file)
             self._validate_dry_run()
             return result
+        return [validate_inference]
 
     def step_prompt(self) -> str:
         model_training = require_step_output(self.config, ModelTrainingStep.step_id, self.config.current_iteration_dir)
