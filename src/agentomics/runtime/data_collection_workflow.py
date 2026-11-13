@@ -5,7 +5,7 @@ import asyncio
 import sys
 from pathlib import Path
 
-from agentomics.agents.data_collection.collector import collect_data
+from agentomics.agents.data_collection.collector import DataCollectionStep
 from agentomics.agents.data_collection.spec import DataCollectionSpec
 from agentomics.cli.run import CONTAINER_CODEX_DIRECTORY
 from agentomics.runtime.collected_data_directory import (
@@ -40,7 +40,7 @@ def run_data_collection_workflow(
         reviewer_model = provider.create_model(config.reviewer_model_name, config.use_proxy, config.llm_response_timeout)
         initialize_collected_data_directory(config)
         validate_collected_data_directory(config)
-        asyncio.run(collect_data(config, spec, collector_model, reviewer_model))
+        asyncio.run(DataCollectionStep(config, spec, collector_model, reviewer_model).run())
     finally:
         restore_host_ownership(collected_data_dir)
 

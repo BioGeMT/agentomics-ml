@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import tempfile
 from pathlib import Path
 
@@ -29,8 +28,6 @@ def initialize_collected_data_directory(config: DataModuleConfig) -> None:
 
 
 def validate_collected_data_directory(config: DataModuleConfig) -> None:
-    if config.output_path.exists():
-        raise ValueError(f"{config.collected_data_dir} holds a finished data collection: {config.OUTPUT_FILENAME} exists.")
     entries = load_manifest(config)
     problems = []
     for entry in entries:
@@ -105,10 +102,6 @@ def discard_from_collected_data_directory(config: DataModuleConfig, path: str) -
 def append_data_collection_review(config: DataModuleConfig, review: BaseModel) -> None:
     with config.reviews_path.open("a", encoding="utf-8") as file:
         file.write(review.model_dump_json() + "\n")
-
-
-def save_data_collection_output(config: DataModuleConfig, output: BaseModel) -> None:
-    config.output_path.write_text(json.dumps(output.model_dump(), indent=2), encoding="utf-8")
 
 
 def _get_manifest_path(config: DataModuleConfig, path: Path) -> str:

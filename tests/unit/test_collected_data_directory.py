@@ -33,10 +33,3 @@ def test_file_that_the_manifest_does_not_record_makes_the_folder_invalid(data_mo
 
     with pytest.raises(ValueError, match="files/extra.csv is not in the manifest"):
         validate_collected_data_directory(data_module_config)
-
-
-def test_folder_of_a_finished_data_collection_is_invalid(data_module_config):
-    data_module_config.output_path.write_text("{}", encoding="utf-8")
-
-    with pytest.raises(ValueError, match="finished data collection"):
-        validate_collected_data_directory(data_module_config)

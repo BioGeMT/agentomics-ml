@@ -1,21 +1,19 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 
-from pydantic import BaseModel, Field
-from pydantic_ai import Agent, ModelRetry, RunContext
+from pydantic import Field
+from pydantic_ai import ModelRetry, RunContext
 from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 
-from agentomics.agents.agent_utils import run_agent
 from agentomics.agents.data_collection.capabilities import create_data_collection_capabilities
 from agentomics.agents.data_collection.reviewer import review_collected_data
 from agentomics.agents.data_collection.spec import DataCollectionSpec
-from agentomics.runtime.collected_data_directory import (
-    get_manifest_size_bytes,
-    load_manifest,
-    save_data_collection_output,
-)
+from agentomics.agents.steps.base import AgenticStepMixin, AgenticStepOutput, RuntimeStep
+from agentomics.runtime.collected_data_directory import get_manifest_size_bytes, load_manifest
 from agentomics.runtime.filesystem import ByteBudget
 from agentomics.tools.discard_file_tool import create_discard_file_tool
 from agentomics.tools.download_file_tool import DownloadDeps, create_download_file_tool
@@ -36,7 +34,7 @@ If a source cannot be reached or needs a login, skip it and say so. Do not claim
 When you are done, give your summary."""
 
 
-class DataCollectionOutput(BaseModel):
+class DataCollectionOutput(AgenticStepOutput):
     summary: str = Field(description="What was collected and from which sources, and what you looked for but did not find")
 
 
@@ -46,58 +44,68 @@ class DataCollectionDeps(DownloadDeps):
     reviewer_model: Model
 
 
-async def collect_data(
-    config: DataModuleConfig, spec: DataCollectionSpec, collector_model: Model, reviewer_model: Model,
-) -> None:
-    deps = DataCollectionDeps(
-        config=config,
-        byte_budget=ByteBudget(
-            max_bytes=config.max_download_bytes, used_bytes=get_manifest_size_bytes(load_manifest(config)),
-        ),
-        spec=spec,
-        reviewer_model=reviewer_model,
-    )
-    _, output = await run_agent(
-        agent=_create_collector_agent(config, collector_model),
-        user_prompt=_get_collector_prompt(config, spec),
-        max_steps=config.max_steps,
-        message_history=None,
-        deps=deps,
-    )
-    save_data_collection_output(config, output)
+class DataCollectionStep(RuntimeStep, AgenticStepMixin):
+    step_id = "data_collection"
+    display_name = "DATA COLLECTION"
+    output_type = DataCollectionOutput
 
+    def __init__(
+        self,
+        config: DataModuleConfig,
+        spec: DataCollectionSpec,
+        collector_model: Model,
+        reviewer_model: Model,
+    ) -> None:
+        super().__init__()
+        self.config = config
+        self.spec = spec
+        self.collector_model = collector_model
+        self.reviewer_model = reviewer_model
 
-def _get_collector_prompt(config: DataModuleConfig, spec: DataCollectionSpec) -> str:
-    manifest = load_manifest(config)
-    return (
-        f"Spec:\n{spec.model_dump_json(indent=2)}\n\n"
-        f"{DataModuleConfig.FILES_DIRNAME}/ holds {len(manifest)} files that take {get_manifest_size_bytes(manifest)} bytes."
-    )
+    @property
+    def step_dir(self) -> Path:
+        return self.config.collected_data_dir
 
+    def step_validators(self) -> list[Callable]:
+        async def _require_downloaded_files(ctx: RunContext[DataCollectionDeps], result: DataCollectionOutput) -> DataCollectionOutput:
+            if not load_manifest(ctx.deps.config):
+                raise ModelRetry("No files were downloaded.")
+            return result
 
-def _create_collector_agent(config: DataModuleConfig, model: Model) -> Agent[DataCollectionDeps, DataCollectionOutput]:
-    agent = Agent(
-        model=model,
-        system_prompt=COLLECTOR_SYSTEM_PROMPT,
-        tools=[create_download_file_tool(config), create_discard_file_tool(config)],
-        capabilities=create_data_collection_capabilities(config),
-        model_settings=ModelSettings(temperature=config.temperature),
-        output_type=DataCollectionOutput,
-        retries={"output": config.max_validation_retries, "tools": config.max_tool_retries},
-        deps_type=DataCollectionDeps,
-    )
+        async def _require_accepting_review(ctx: RunContext[DataCollectionDeps], result: DataCollectionOutput) -> DataCollectionOutput:
+            review = await review_collected_data(ctx.deps.config, ctx.deps.spec, ctx.deps.reviewer_model, result.summary)
+            if not review.accepted:
+                raise ModelRetry(f"A reviewer did not accept your files:\n{review.model_dump_json(indent=2)}")
+            return result
+        return [_require_downloaded_files, _require_accepting_review]
 
-    @agent.output_validator
-    async def _require_downloaded_files(ctx: RunContext[DataCollectionDeps], result: DataCollectionOutput) -> DataCollectionOutput:
-        if not load_manifest(ctx.deps.config):
-            raise ModelRetry("No files were downloaded.")
-        return result
+    def build_deps(self) -> DataCollectionDeps:
+        return DataCollectionDeps(
+            config=self.config,
+            byte_budget=ByteBudget(
+                max_bytes=self.config.max_download_bytes, used_bytes=get_manifest_size_bytes(load_manifest(self.config)),
+            ),
+            spec=self.spec,
+            reviewer_model=self.reviewer_model,
+        )
 
-    @agent.output_validator
-    async def _require_accepting_review(ctx: RunContext[DataCollectionDeps], result: DataCollectionOutput) -> DataCollectionOutput:
-        review = await review_collected_data(ctx.deps.config, ctx.deps.spec, ctx.deps.reviewer_model, result.summary)
-        if not review.accepted:
-            raise ModelRetry(f"A reviewer did not accept your files:\n{review.model_dump_json(indent=2)}")
-        return result
+    def build_user_prompt(self) -> str:
+        manifest = load_manifest(self.config)
+        return (
+            f"Spec:\n{self.spec.model_dump_json(indent=2)}\n\n"
+            f"{DataModuleConfig.FILES_DIRNAME}/ holds {len(manifest)} files that take {get_manifest_size_bytes(manifest)} bytes."
+        )
 
-    return agent
+    async def _execute(self) -> AgenticStepOutput:
+        return await self.run_agent_step(
+            user_prompt=self.build_user_prompt(),
+            model=self.collector_model,
+            model_settings=ModelSettings(temperature=self.config.temperature),
+            max_steps=self.config.max_steps,
+            max_validation_retries=self.config.max_validation_retries,
+            max_tool_retries=self.config.max_tool_retries,
+            tools=[create_download_file_tool(self.config), create_discard_file_tool(self.config)],
+            capabilities=create_data_collection_capabilities(self.config),
+            deps_type=DataCollectionDeps,
+            system_prompt=COLLECTOR_SYSTEM_PROMPT,
+        )

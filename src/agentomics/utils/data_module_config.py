@@ -10,7 +10,6 @@ class DataModuleConfig:
     FILES_DIRNAME: ClassVar[str] = "files"
     MANIFEST_FILENAME: ClassVar[str] = "manifest.json"
     REVIEWS_FILENAME: ClassVar[str] = "reviews.jsonl"
-    OUTPUT_FILENAME: ClassVar[str] = "output.json"
     BYTES_PER_GB: ClassVar[int] = 1_000_000_000
 
     DEFAULT_MAX_STEPS: ClassVar[int] = 100
@@ -48,10 +47,6 @@ class DataModuleConfig:
     @property
     def reviews_path(self) -> Path:
         return self.collected_data_dir / self.REVIEWS_FILENAME
-
-    @property
-    def output_path(self) -> Path:
-        return self.collected_data_dir / self.OUTPUT_FILENAME
 
     @property
     def max_download_bytes(self) -> int | None:

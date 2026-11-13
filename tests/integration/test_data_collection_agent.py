@@ -8,14 +8,14 @@ from pydantic_ai import ModelRetry
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from agentomics.agents.data_collection.collector import DataCollectionOutput, collect_data
+from agentomics.agents.data_collection.collector import DataCollectionOutput, DataCollectionStep
 from agentomics.agents.data_collection.reviewer import DataCollectionReview
 from agentomics.agents.data_collection.spec import DataCollectionSpec
 from agentomics.runtime.collected_data_directory import load_manifest
 from agentomics.tools import web_fetch_tool
 from agentomics.tools.web_fetch_tool import create_web_fetch_tool
-from agentomics.utils.exceptions import AgentRunFailed
-from tests.helpers import create_response_calling_output_tool, mock_downloads
+from agentomics.utils.exceptions import StepFailed
+from tests.helpers import create_failing_model, create_response_calling_output_tool, mock_downloads
 
 SUMMARY = "Measurements from one source, with the documentation that describes them."
 URL = "https://example.org"
@@ -67,11 +67,12 @@ def test_collection_keeps_the_downloads_and_ends_when_a_review_accepts(data_modu
     mock_downloads(monkeypatch, {f"{URL}/a.csv": b"a" * 100, f"{URL}/b.csv": b"b" * 100})
     collector_model = _create_collector_model([_create_download_response(download_file_tool, "a.csv", "b.csv")])
 
-    asyncio.run(collect_data(data_module_config, SPEC, collector_model, _create_reviewer_model([False, True])))
+    asyncio.run(DataCollectionStep(data_module_config, SPEC, collector_model, _create_reviewer_model([False, True])).run())
 
     assert [entry.path for entry in load_manifest(data_module_config)] == ["files/a.csv", "files/b.csv"]
     assert _load_review_verdicts(data_module_config) == [False, True]
-    assert json.loads(data_module_config.output_path.read_text(encoding="utf-8")) == {"summary": SUMMARY}
+    output = json.loads((data_module_config.collected_data_dir / "output.json").read_text(encoding="utf-8"))["payload"]
+    assert output["summary"] == SUMMARY
 
 
 def test_collection_fails_when_no_review_accepts_and_keeps_the_downloads(data_module_config, download_file_tool, monkeypatch):
@@ -79,17 +80,27 @@ def test_collection_fails_when_no_review_accepts_and_keeps_the_downloads(data_mo
     collector_model = _create_collector_model([_create_download_response(download_file_tool, "a.csv")])
     review_count = data_module_config.max_validation_retries + 1
 
-    with pytest.raises(AgentRunFailed):
-        asyncio.run(collect_data(data_module_config, SPEC, collector_model, _create_reviewer_model([False] * review_count)))
+    with pytest.raises(StepFailed):
+        asyncio.run(DataCollectionStep(data_module_config, SPEC, collector_model, _create_reviewer_model([False] * review_count)).run())
 
     assert _load_review_verdicts(data_module_config) == [False] * review_count
     assert [entry.path for entry in load_manifest(data_module_config)] == ["files/a.csv"]
-    assert not data_module_config.output_path.exists()
+    assert not (data_module_config.collected_data_dir / "output.json").exists()
+
+
+def test_finished_collection_is_not_collected_again(data_module_config, download_file_tool, monkeypatch):
+    mock_downloads(monkeypatch, {f"{URL}/a.csv": b"a" * 100})
+    collector_model = _create_collector_model([_create_download_response(download_file_tool, "a.csv")])
+    asyncio.run(DataCollectionStep(data_module_config, SPEC, collector_model, _create_reviewer_model([True])).run())
+
+    asyncio.run(DataCollectionStep(data_module_config, SPEC, create_failing_model(), create_failing_model()).run())
+
+    assert _load_review_verdicts(data_module_config) == [True]
 
 
 def test_summary_without_downloaded_files_is_not_reviewed(data_module_config):
-    with pytest.raises(AgentRunFailed):
-        asyncio.run(collect_data(data_module_config, SPEC, _create_collector_model([]), _create_reviewer_model([])))
+    with pytest.raises(StepFailed):
+        asyncio.run(DataCollectionStep(data_module_config, SPEC, _create_collector_model([]), _create_reviewer_model([])).run())
 
     assert not data_module_config.reviews_path.exists()
 
@@ -107,6 +118,6 @@ def test_collection_continues_after_page_reads_fail_in_a_row(data_module_config,
         _create_download_response(download_file_tool, "a.csv"),
     ])
 
-    asyncio.run(collect_data(data_module_config, SPEC, collector_model, _create_reviewer_model([True])))
+    asyncio.run(DataCollectionStep(data_module_config, SPEC, collector_model, _create_reviewer_model([True])).run())
 
     assert [entry.path for entry in load_manifest(data_module_config)] == ["files/a.csv"]
