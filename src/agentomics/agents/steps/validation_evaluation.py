@@ -17,7 +17,7 @@ from agentomics.runtime.read_write_utils import (
 )
 from agentomics.runtime.step_outputs import load_step_output, require_step_output
 from agentomics.utils.config import Config
-from agentomics.utils.exceptions import AgentScriptFailed, IterationRunFailed
+from agentomics.utils.exceptions import AgentScriptFailed, StepFailed
 from agentomics.utils.metrics import get_higher_is_better_map
 from agentomics.datasets.data_contract import LABELS_FILE_NAME
 
@@ -127,9 +127,8 @@ class ValidationEvaluationStep(AgentomicsStep):
                 exception_trace = traceback.format_exc()
                 print(f"{evaluation_stage.title()} inference failed:\n", exception_trace)
                 #TODO consider passing this to the iteration-planning step instead of failing whole iteration
-                raise IterationRunFailed(
+                raise StepFailed(
                     message=f"Inference on {evaluation_stage} data failed.",
-                    context_messages=[],
                     exception_trace=exception_trace,
                 ) from None
         return metrics

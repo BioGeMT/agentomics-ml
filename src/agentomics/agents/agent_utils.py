@@ -17,7 +17,7 @@ from pydantic_ai.messages import (
 )
 import weave
 
-from agentomics.utils.exceptions import IterationRunFailed
+from agentomics.utils.exceptions import AgentRunFailed
 from agentomics.utils.printing_utils import pretty_print_node
 
 
@@ -43,8 +43,8 @@ async def run_agent(agent: Agent, user_prompt: str, max_steps: int, message_hist
                 print('--------------- ERROR TRACEBACK ---------------')
                 print('Agent run failed', trace)
                 print('--------------- ERROR TRACEBACK ---------------')
-            raise IterationRunFailed(
-                message="Run didnt finish properly", 
+            raise AgentRunFailed(
+                message="Run didnt finish properly",
                 context_messages=messages,
                 exception_trace=trace,
             )

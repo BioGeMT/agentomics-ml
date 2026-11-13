@@ -31,7 +31,7 @@ from agentomics.runtime.read_write_utils import (
 )
 from agentomics.runtime.step_outputs import load_step_outputs, save_step_output
 from agentomics.utils.config import Config
-from agentomics.utils.exceptions import IterationRunFailed
+from agentomics.utils.exceptions import AgentRunFailed, StepFailed
 from agentomics.utils.providers.provider import Provider
 
 
@@ -57,7 +57,7 @@ class RuntimeStep(ABC):
         self.on_step_start()
         try:
             output = await self._execute()
-        except IterationRunFailed as error:
+        except StepFailed as error:
             await self.on_step_end(error=error)
             if self.failure_is_fatal:
                 raise
@@ -86,7 +86,7 @@ class RuntimeStep(ABC):
     def on_step_start(self) -> None:
         return None
 
-    async def on_step_end(self, error: IterationRunFailed | None = None) -> None:
+    async def on_step_end(self, error: StepFailed | None = None) -> None:
         return None
 
     def on_step_success(self, output: Any) -> None:
@@ -161,9 +161,12 @@ class AgenticStep(RuntimeStep):
                 message_history=message_history,
                 deps=self.build_deps(step_started_at),
             )
-        except IterationRunFailed as error:
+        except AgentRunFailed as error:
             self._step_messages = error.context_messages
-            raise
+            raise StepFailed(
+                message=error.message,
+                exception_trace=error.exception_trace,
+            ) from error
         return self._populate_files_created(output, step_started_at)
 
 class AgentomicsStep(RuntimeStep):
@@ -199,7 +202,7 @@ class AgentomicsStep(RuntimeStep):
             check=True,
         )
 
-    async def on_step_end(self, error: IterationRunFailed | None = None) -> None:
+    async def on_step_end(self, error: StepFailed | None = None) -> None:
         iteration = load_current_iteration_index(self.config)
         status = "FAILED" if error else "SUCCEEDED"
         _console.print(f"[bold purple]ITERATION {iteration} | {self.display_name} STEP {status}[/bold purple]")
@@ -250,7 +253,7 @@ class AgentomicsAgenticStep(AgentomicsStep, AgenticStep):
         super().on_step_start()
         self._setup_injected_scripts()
 
-    async def on_step_end(self, error: IterationRunFailed | None = None) -> None:
+    async def on_step_end(self, error: StepFailed | None = None) -> None:
         await super().on_step_end(error)
         await update_iterations_lessons(
             config=self.config,
