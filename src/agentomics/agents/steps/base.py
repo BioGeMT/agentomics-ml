@@ -103,9 +103,13 @@ class AgenticStepOutput(BaseModel):
 class AgenticStepMixin(ABC):
     # Provided by the step class that uses this mixin
     step_id: str
-    step_dir: Path
     output_type: type[AgenticStepOutput]
     output_filename: str
+
+    @property
+    @abstractmethod
+    def step_dir(self) -> Path:
+        raise NotImplementedError
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
