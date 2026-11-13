@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import datetime
 import json
 import re
 import shutil
@@ -127,33 +126,6 @@ def load_current_iteration_system_prompt(config: Config) -> str:
     if not system_prompt_path.exists():
         raise FileNotFoundError(f"System prompt file not found at {system_prompt_path}.")
     return system_prompt_path.read_text(encoding="utf-8")
-
-def get_new_rundir_files(config: Config, since_timestamp: datetime.datetime) -> list[str]:
-    run_dir = config.current_iteration_dir
-    new_files: list[str] = []
-    ignored_names = {
-        ".conda",
-        ".cache",
-        "__pycache__",
-        ".git",
-        ".gitignore",
-        Config.RUNTIME_INFO_DIRNAME,
-    }
-    for element in run_dir.iterdir():
-        if element.name in ignored_names:
-            continue
-        if element.name.startswith(Config.ITERATION_DIR_PREFIX) and element.is_dir():
-            continue
-        if element.is_file():
-            if datetime.datetime.fromtimestamp(element.stat().st_mtime) > since_timestamp:
-                new_files.append(element.name)
-            continue
-
-        for file_path in element.rglob("*"):
-            if file_path.is_file() and "__pycache__" not in file_path.parts:
-                if datetime.datetime.fromtimestamp(file_path.stat().st_mtime) > since_timestamp:
-                    new_files.append(str(file_path.relative_to(run_dir)))
-    return new_files
 
 def does_file_contain_string(file_path, search_string) -> bool:
     return _file_matches_quoted_pattern(file_path, rf"(['\"]){re.escape(search_string)}.*?\1")

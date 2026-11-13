@@ -18,7 +18,7 @@ from agentomics.agents.steps.data_representation import (
 )
 from agentomics.runtime.iterations_lessons import ITERATIONS_LESSONS_INSTRUCTIONS
 from agentomics.runtime.read_write_utils import load_current_iteration_base_prompt, load_current_iteration_index
-from agentomics.utils.exceptions import IterationRunFailed
+from agentomics.utils.exceptions import StepFailed
 from tests.helpers import create_failing_model, create_model_calling_output_tool, create_runtime_step
 
 MOCK_ITERATIONS_LESSONS_RESPONSE = "- Representation: use one-hot encoding. All sequences have the same length."
@@ -77,7 +77,7 @@ def test_iterations_lessons_from_failed_step_reach_next_step_prompt(initialized_
         trace_analysis_model=_iterations_lessons_model(received_requests),
     )
 
-    with pytest.raises(IterationRunFailed):
+    with pytest.raises(StepFailed):
         asyncio.run(step.run())
 
     assert len(received_requests) == 1

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from agentomics.agents.steps.base import RuntimeStep
+from agentomics.agents.steps.base import AgentomicsStep
 from agentomics.agents.steps.data_split import DataSplitStep
 from agentomics.agents.steps.model_inference import ModelInferenceStep
 from agentomics.agents.steps.model_training import ModelTrainingStep
@@ -17,7 +17,7 @@ from agentomics.runtime.read_write_utils import (
 )
 from agentomics.runtime.step_outputs import load_step_output, require_step_output
 from agentomics.utils.config import Config
-from agentomics.utils.exceptions import AgentScriptFailed, IterationRunFailed
+from agentomics.utils.exceptions import AgentScriptFailed, StepFailed
 from agentomics.utils.metrics import get_higher_is_better_map
 from agentomics.datasets.data_contract import LABELS_FILE_NAME
 
@@ -28,7 +28,7 @@ class ValidationEvaluationOutput(BaseModel):
     status: str
 
 
-class ValidationEvaluationStep(RuntimeStep):
+class ValidationEvaluationStep(AgentomicsStep):
     step_id = "validation_evaluation"
     display_name = "VALIDATION EVALUATION"
     output_type = ValidationEvaluationOutput
@@ -127,9 +127,8 @@ class ValidationEvaluationStep(RuntimeStep):
                 exception_trace = traceback.format_exc()
                 print(f"{evaluation_stage.title()} inference failed:\n", exception_trace)
                 #TODO consider passing this to the iteration-planning step instead of failing whole iteration
-                raise IterationRunFailed(
+                raise StepFailed(
                     message=f"Inference on {evaluation_stage} data failed.",
-                    context_messages=[],
                     exception_trace=exception_trace,
                 ) from None
         return metrics
