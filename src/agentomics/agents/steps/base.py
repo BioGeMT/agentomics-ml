@@ -41,6 +41,7 @@ class RuntimeStep(ABC):
     step_id: str
     display_name: str
     output_type: Any = None
+    output_filename: str = "output.json"
     failure_is_fatal: bool = True
 
     @property
@@ -68,7 +69,7 @@ class RuntimeStep(ABC):
         self.on_step_success(output)
 
     def should_run(self) -> bool:
-        return not (self.step_dir / Config.STEP_OUTPUT_FILENAME).exists()
+        return not (self.step_dir / self.output_filename).exists()
 
     def should_be_simulated(self) -> bool:
         return False
@@ -90,7 +91,7 @@ class RuntimeStep(ABC):
         return None
 
     def on_step_success(self, output: Any) -> None:
-        save_step_output(self.step_dir, self.step_id, output)
+        save_step_output(self.step_dir, self.step_id, output, filename=self.output_filename)
 
 class AgenticStepOutput(BaseModel):
     files_created: SkipJsonSchema[list[str]] = Field(
@@ -170,6 +171,8 @@ class AgenticStep(RuntimeStep):
         return self._populate_files_created(output, step_started_at)
 
 class AgentomicsStep(RuntimeStep):
+    output_filename = Config.STEP_OUTPUT_FILENAME
+
     def __init__(
         self,
         config: Config,
@@ -195,7 +198,7 @@ class AgentomicsStep(RuntimeStep):
         return self.config.archived_step_dir(self.step_id)
 
     def should_run(self) -> bool:
-        return not (self.archive_dir / Config.STEP_OUTPUT_FILENAME).exists()
+        return not (self.archive_dir / self.output_filename).exists()
 
     def on_step_start(self) -> None:
         super().on_step_start()
@@ -237,7 +240,7 @@ class AgentomicsStep(RuntimeStep):
         chown_tree_to_root(archive_dir)
 
     def _rewrite_paths_in_step_output(self, directory: Path, old: str, new: str) -> None:
-        output_file = directory / Config.STEP_OUTPUT_FILENAME
+        output_file = directory / self.output_filename
         if output_file.exists():
             content = output_file.read_text(encoding="utf-8")
             output_file.write_text(content.replace(old, new), encoding="utf-8")
@@ -296,8 +299,8 @@ class AgentomicsAgenticStep(AgentomicsStep, AgenticStep):
     def _attach_common_validators(self, agent: Agent[dict, AgenticStepOutput]) -> None:
         @agent.output_validator
         async def _no_reserved_runtime_files(ctx: RunContext[dict], result: AgenticStepOutput) -> AgenticStepOutput:
-            if (self.config.current_step_dir / Config.STEP_OUTPUT_FILENAME).exists():
-                raise ModelRetry(f"The current step directory contains a forbidden file '{Config.STEP_OUTPUT_FILENAME}' likely copied from another step. Rename or delete it and retry.")
+            if (self.step_dir / self.output_filename).exists():
+                raise ModelRetry(f"The current step directory contains a forbidden file '{self.output_filename}' likely copied from another step. Rename or delete it and retry.")
             return result
 
         @agent.output_validator
