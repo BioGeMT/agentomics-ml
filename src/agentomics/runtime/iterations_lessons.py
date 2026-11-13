@@ -9,7 +9,7 @@ from pydantic_ai.settings import ModelSettings
 
 from agentomics.agents.agent_utils import run_agent
 from agentomics.utils.config import Config
-from agentomics.utils.exceptions import IterationRunFailed
+from agentomics.utils.exceptions import StepFailed
 
 ITERATIONS_LESSONS_AGENT_MAX_REQUESTS = 5
 NO_NEW_ITERATIONS_LESSONS = "NO NEW LESSONS"
@@ -70,7 +70,7 @@ async def update_iterations_lessons(
     iteration: int,
     step_id: str,
     messages: list[ModelMessage],
-    error: IterationRunFailed | None = None,
+    error: StepFailed | None = None,
 ) -> None:
     try:
         _, iterations_lessons = await run_agent(
@@ -88,7 +88,7 @@ async def update_iterations_lessons(
         config.iterations_lessons_path.write_text(f"{iterations_lessons.strip()}\n", encoding="utf-8")
 
 
-def _build_user_prompt(config: Config, iteration: int, step_id: str, error: IterationRunFailed | None) -> str:
+def _build_user_prompt(config: Config, iteration: int, step_id: str, error: StepFailed | None) -> str:
     result = "It succeeded." if error is None else f"It failed with:\n{_format_error(error)}"
     return f"""
 Current {Config.ITERATIONS_LESSONS_FILENAME}:
@@ -115,7 +115,7 @@ def _quote_system_prompt(part):
     return UserPromptPart(content=f"<agent_system_prompt>\n{part.content}\n</agent_system_prompt>")
 
 
-def _format_error(error: IterationRunFailed) -> str:
+def _format_error(error: StepFailed) -> str:
     return error.exception_trace[-MAX_ERROR_CHARS:]
 
 

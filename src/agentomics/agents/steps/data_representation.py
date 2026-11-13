@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pydantic import Field
-from agentomics.agents.steps.base import AgenticStep, AgenticStepOutput
+from agentomics.agents.steps.base import AgentomicsAgenticStep, AgenticStepOutput
 
 
 class DataRepresentationOutput(AgenticStepOutput):
@@ -11,7 +11,7 @@ class DataRepresentationOutput(AgenticStepOutput):
         """
     )
 
-class DataRepresentationStep(AgenticStep):
+class DataRepresentationStep(AgentomicsAgenticStep):
     step_id = "data_representation"
     display_name = "REPRESENTATION"
     output_type = DataRepresentationOutput

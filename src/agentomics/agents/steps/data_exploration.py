@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pydantic import Field
-from agentomics.agents.steps.base import AgenticStep, AgenticStepOutput
+from agentomics.agents.steps.base import AgentomicsAgenticStep, AgenticStepOutput
 from agentomics.runtime.read_write_utils import load_current_iteration_index
 
 
@@ -43,7 +43,7 @@ class DataExplorationOutput(AgenticStepOutput):
         """
     )
 
-class DataExplorationStep(AgenticStep):
+class DataExplorationStep(AgentomicsAgenticStep):
     step_id = "data_exploration"
     display_name = "DATA EXPLORATION"
     output_type = DataExplorationOutput

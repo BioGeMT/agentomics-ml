@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from agentomics.agents.steps.base import RuntimeStep
+from agentomics.agents.steps.base import AgentomicsStep
 from agentomics.agents.steps.data_exploration import DataExplorationStep
 from agentomics.agents.steps.data_representation import DataRepresentationStep
 from agentomics.agents.steps.data_split import DataSplitStep
@@ -13,7 +13,7 @@ from agentomics.agents.steps.validation_evaluation import ValidationEvaluationSt
 from agentomics.utils.config import Config
 
 
-STEP_CLASS_REGISTRY: dict[str, type[RuntimeStep]] = {
+STEP_CLASS_REGISTRY: dict[str, type[AgentomicsStep]] = {
     step_cls.step_id: step_cls
     for step_cls in {
         IterationPlanStep,
@@ -28,8 +28,8 @@ STEP_CLASS_REGISTRY: dict[str, type[RuntimeStep]] = {
     }
 }
 
-def get_step_sequence(config: Config) -> list[type[RuntimeStep]]:
+def get_step_sequence(config: Config) -> list[type[AgentomicsStep]]:
     return [get_step_class(str(step_id)) for step_id in config.step_sequence]
 
-def get_step_class(step_id: str) -> type[RuntimeStep]:
+def get_step_class(step_id: str) -> type[AgentomicsStep]:
     return STEP_CLASS_REGISTRY[step_id]

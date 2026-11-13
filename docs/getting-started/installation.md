@@ -8,7 +8,7 @@ mounts the files each workflow needs, and collects the results.
 ## Requirements
 
 - [Docker](https://docs.docker.com/get-docker/) installed and running
-- Python 3.11+ to install the CLI
+- Python 3.12+ to install the CLI
 
 ## Setup
 

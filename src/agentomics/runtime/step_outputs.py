@@ -28,8 +28,8 @@ def _load_step_output_file(output_path: Path) -> Any:
         return None
     return _deserialize_step_output_record(json.loads(output_path.read_text(encoding="utf-8")))
 
-def save_step_output(config: Config, step_id: str, output: Any) -> None:
-    output_path = config.current_step_dir / Config.STEP_OUTPUT_FILENAME
+def save_step_output(step_dir: Path, step_id: str, output: Any, filename: str = Config.STEP_OUTPUT_FILENAME) -> None:
+    output_path = step_dir / filename
     output_path.parent.mkdir(parents=True, exist_ok=True)
     if output_path.exists():
         raise FileExistsError(

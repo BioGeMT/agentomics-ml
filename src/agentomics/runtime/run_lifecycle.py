@@ -23,7 +23,7 @@ from agentomics.runtime.read_write_utils import (
 from agentomics.agents.steps.step_registry import get_step_sequence
 from agentomics.tools.tool_registry import create_tools
 from agentomics.utils.config import Config
-from agentomics.utils.exceptions import IterationRunFailed
+from agentomics.utils.exceptions import StepFailed
 from agentomics.utils.providers.provider import Provider
 from pydantic_ai import Tool
 from pydantic_ai.models import Model
@@ -66,7 +66,7 @@ async def _run_iteration(config: Config, iteration: int, default_model: Model, i
         for step in steps:
             await step.run()
         update_current_iteration_state(config, ended_at=time.time(), status="success")
-    except IterationRunFailed:
+    except StepFailed:
         for step in steps:
             step.on_iteration_fail(iteration)
         update_current_iteration_state(config, ended_at=time.time(), status="failed")

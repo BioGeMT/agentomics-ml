@@ -14,7 +14,7 @@ from agentomics.agents.data_collection.spec import DataCollectionSpec
 from agentomics.runtime.collected_data_directory import load_manifest
 from agentomics.tools import web_fetch_tool
 from agentomics.tools.web_fetch_tool import create_web_fetch_tool
-from agentomics.utils.exceptions import IterationRunFailed
+from agentomics.utils.exceptions import AgentRunFailed
 from tests.helpers import create_response_calling_output_tool, mock_downloads
 
 SUMMARY = "Measurements from one source, with the documentation that describes them."
@@ -79,7 +79,7 @@ def test_collection_fails_when_no_review_accepts_and_keeps_the_downloads(data_mo
     collector_model = _create_collector_model([_create_download_response(download_file_tool, "a.csv")])
     review_count = data_module_config.max_validation_retries + 1
 
-    with pytest.raises(IterationRunFailed):
+    with pytest.raises(AgentRunFailed):
         asyncio.run(collect_data(data_module_config, SPEC, collector_model, _create_reviewer_model([False] * review_count)))
 
     assert _load_review_verdicts(data_module_config) == [False] * review_count
@@ -88,7 +88,7 @@ def test_collection_fails_when_no_review_accepts_and_keeps_the_downloads(data_mo
 
 
 def test_summary_without_downloaded_files_is_not_reviewed(data_module_config):
-    with pytest.raises(IterationRunFailed):
+    with pytest.raises(AgentRunFailed):
         asyncio.run(collect_data(data_module_config, SPEC, _create_collector_model([]), _create_reviewer_model([])))
 
     assert not data_module_config.reviews_path.exists()

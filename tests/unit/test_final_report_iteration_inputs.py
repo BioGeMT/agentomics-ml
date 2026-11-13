@@ -23,7 +23,7 @@ from tests.helpers import create_runtime_step, write_split_folder
 def _save_data_split_output(config: Config, split_version: int, strategy: str) -> None:
     split_dir = config.splits_dir / f"split_{split_version}"
     save_step_output(
-        config,
+        config.current_step_dir,
         DataSplitStep.step_id,
         DataSplitOutput(
             train_path=str(split_dir / "train"),
@@ -111,7 +111,7 @@ def test_iteration_inputs_include_test_artifacts_from_best_snapshot(
     prepare_iteration_workspace(config, iteration=0)
     _save_data_split_output(config, split_version=0, strategy="")
     save_step_output(
-        config,
+        config.current_step_dir,
         ValidationEvaluationStep.step_id,
         ValidationEvaluationOutput(
             metrics={"validation/ACC": 1.0},

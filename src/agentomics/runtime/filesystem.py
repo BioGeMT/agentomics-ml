@@ -8,6 +8,7 @@ from argparse import Namespace
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 
@@ -128,6 +129,16 @@ def find_symlinks_in_dir(root: Path, include_root: bool = False) -> list[Path]:
     if include_root and root.is_symlink():
         paths.append(root)
     return paths
+
+def find_new_files_in_dir(root: Path, since_timestamp: datetime) -> list[str]:
+    return [
+        str(path.relative_to(root))
+        for path in root.rglob("*")
+        if (path.is_file() or path.is_symlink())
+        and "__pycache__" not in path.parts
+        # lstat: a symlink counts as new when the link is new, not when its target is
+        and datetime.fromtimestamp(path.lstat().st_mtime) > since_timestamp
+    ]
 
 def rewrite_symlinks_to_absolute(root: Path) -> None:
     symlinks = find_symlinks_in_dir(root)
