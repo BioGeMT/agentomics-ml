@@ -89,7 +89,7 @@ class DataCollectionStep(RuntimeStep, AgenticStepMixin):
             reviewer_model=self.reviewer_model,
         )
 
-    def build_user_prompt(self) -> str:
+    def _build_user_prompt(self) -> str:
         manifest = load_manifest(self.config)
         return (
             f"Spec:\n{self.spec.model_dump_json(indent=2)}\n\n"
@@ -98,7 +98,7 @@ class DataCollectionStep(RuntimeStep, AgenticStepMixin):
 
     async def _execute(self) -> AgenticStepOutput:
         return await self.run_agent_step(
-            user_prompt=self.build_user_prompt(),
+            user_prompt=self._build_user_prompt(),
             model=self.collector_model,
             model_settings=ModelSettings(temperature=self.config.temperature),
             max_steps=self.config.max_steps,
