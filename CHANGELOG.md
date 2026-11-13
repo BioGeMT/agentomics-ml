@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.3.0](https://github.com/BioGeMT/agentomics-ml/compare/v1.2.0...v1.3.0) (2026-11-13)
+
+
+### Features
+
+* cross-iteration memory ([#169](https://github.com/BioGeMT/agentomics-ml/issues/169)) ([0610927](https://github.com/BioGeMT/agentomics-ml/commit/0610927a2d254a39887b055753d77347577ab541))
+* paper fetch ([#163](https://github.com/BioGeMT/agentomics-ml/issues/163)) ([585aed3](https://github.com/BioGeMT/agentomics-ml/commit/585aed34eb4fe91a5bc0431248a461e8da0e048a))
+
+
+### Bug Fixes
+
+* bump pydantic-ai to 2.66 ([#185](https://github.com/BioGeMT/agentomics-ml/issues/185)) ([4072f09](https://github.com/BioGeMT/agentomics-ml/commit/4072f09d3233a15e425f1b3115284fd645f8b36d))
+* keep the iteration when prediction exploration fails ([#177](https://github.com/BioGeMT/agentomics-ml/issues/177)) ([5501414](https://github.com/BioGeMT/agentomics-ml/commit/55014147e9a1a2733f33241bd43b218951e36c4b))
+* use the openai responses and openrouter model classes ([#186](https://github.com/BioGeMT/agentomics-ml/issues/186)) ([3fe9b08](https://github.com/BioGeMT/agentomics-ml/commit/3fe9b08060c784e15729cda26fc90397e592afd9))
+
 ## [1.2.0](https://github.com/BioGeMT/agentomics-ml/compare/v1.1.0...v1.2.0) (2026-10-14)
 
 
