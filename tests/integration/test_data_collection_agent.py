@@ -71,7 +71,7 @@ def test_collection_keeps_the_downloads_and_ends_when_a_review_accepts(data_modu
 
     assert [entry.path for entry in load_manifest(data_module_config)] == ["files/a.csv", "files/b.csv"]
     assert _load_review_verdicts(data_module_config) == [False, True]
-    output = json.loads((data_module_config.collected_data_dir / "output.json").read_text(encoding="utf-8"))["payload"]
+    output = json.loads((data_module_config.collected_data_dir / DataCollectionStep.output_filename).read_text(encoding="utf-8"))["payload"]
     assert output["summary"] == SUMMARY
 
 
@@ -85,7 +85,7 @@ def test_collection_fails_when_no_review_accepts_and_keeps_the_downloads(data_mo
 
     assert _load_review_verdicts(data_module_config) == [False] * review_count
     assert [entry.path for entry in load_manifest(data_module_config)] == ["files/a.csv"]
-    assert not (data_module_config.collected_data_dir / "output.json").exists()
+    assert not (data_module_config.collected_data_dir / DataCollectionStep.output_filename).exists()
 
 
 def test_finished_collection_is_not_collected_again(data_module_config, download_file_tool, monkeypatch):
