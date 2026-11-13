@@ -190,19 +190,25 @@ class AgentomicsStep(RuntimeStep):
     def step_dir(self) -> Path:
         return self.config.current_step_dir
 
+    @property
+    def archive_dir(self) -> Path:
+        return self.config.archived_step_dir(self.step_id)
+
     def should_run(self) -> bool:
-        return not (self.config.current_iteration_dir / self.step_id / Config.STEP_OUTPUT_FILENAME).exists()
+        return not (self.archive_dir / Config.STEP_OUTPUT_FILENAME).exists()
 
     def on_step_start(self) -> None:
+        super().on_step_start()
         iteration = load_current_iteration_index(self.config)
         _console.print(f"[bold purple]ITERATION {iteration} | {self.display_name} STEP[/bold purple]")
-        self.config.current_step_dir.mkdir(exist_ok=True)
+        self.step_dir.mkdir(exist_ok=True)
         subprocess.run(
-            ["chown", self.config.AGENT_USER, str(self.config.current_step_dir)],
+            ["chown", self.config.AGENT_USER, str(self.step_dir)],
             check=True,
         )
 
     async def on_step_end(self, error: StepFailed | None = None) -> None:
+        await super().on_step_end(error)
         iteration = load_current_iteration_index(self.config)
         status = "FAILED" if error else "SUCCEEDED"
         _console.print(f"[bold purple]ITERATION {iteration} | {self.display_name} STEP {status}[/bold purple]")
@@ -223,12 +229,12 @@ class AgentomicsStep(RuntimeStep):
         return None
     
     def archive_step_folder(self) -> None:
-        step_dir = self.config.current_step_dir
-        archived_dir = self.config.archived_step_dir(self.step_id)
+        step_dir = self.step_dir
+        archive_dir = self.archive_dir
         rewrite_symlinks_to_absolute(step_dir)
-        step_dir.rename(archived_dir)
-        self._rewrite_paths_in_step_output(archived_dir, str(step_dir), str(archived_dir))
-        chown_tree_to_root(archived_dir)
+        step_dir.rename(archive_dir)
+        self._rewrite_paths_in_step_output(archive_dir, str(step_dir), str(archive_dir))
+        chown_tree_to_root(archive_dir)
 
     def _rewrite_paths_in_step_output(self, directory: Path, old: str, new: str) -> None:
         output_file = directory / Config.STEP_OUTPUT_FILENAME
