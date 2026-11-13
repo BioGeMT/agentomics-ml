@@ -69,11 +69,7 @@ def main() -> int:
     arguments = build_parser().parse_args()
     resolve_training_paths(arguments)
     if arguments.dev:
-        try:
-            arguments.image = build_development_image()
-        except RuntimeError as error:
-            print(f"Error: {error}", file=sys.stderr)
-            return 1
+        arguments.image = build_development_image()
     _run_in_docker(arguments)
     return 0
 

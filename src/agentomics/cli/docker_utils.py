@@ -4,6 +4,7 @@ import argparse
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 from agentomics.utils.versioning import get_version
@@ -73,6 +74,13 @@ def create_parser(description: str) -> argparse.ArgumentParser:
     return parser
 
 def build_development_image() -> str:
+    try:
+        return _build_development_image()
+    except RuntimeError as error:
+        print(f"Error: {error}", file=sys.stderr)
+        sys.exit(1)
+
+def _build_development_image() -> str:
     if shutil.which("docker") is None:
         raise RuntimeError("Missing required command: docker")
 
