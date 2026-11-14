@@ -93,19 +93,23 @@ class Provider():
         
         return None
     
-    def create_model(self, model_name: str, config: Config) -> Model:
+    def create_model_from_config(self, model_name: str, config: Config) -> Model:
+          """Create a pydantic-ai model instance with the settings of a run."""
+          return self.create_model(model_name, config.use_proxy, config.llm_response_timeout)
+
+    def create_model(self, model_name: str, use_proxy: bool, llm_response_timeout: int) -> Model:
           """Create a pydantic-ai model instance. Subclasses may override this method."""
           return OpenAIChatModel(
               model_name=model_name,
-              provider=OpenAIProvider(openai_client=self._create_openai_client(config)),
+              provider=OpenAIProvider(openai_client=self._create_openai_client(use_proxy, llm_response_timeout)),
               profile={"supports_thinking": True},
           )
 
-    def _create_openai_client(self, config: Config) -> AsyncOpenAI:
+    def _create_openai_client(self, use_proxy: bool, llm_response_timeout: int) -> AsyncOpenAI:
         proxy_url = os.getenv("HTTP_PROXY")
         async_http_client = httpx2.AsyncClient(
-            proxy=proxy_url if config.use_proxy else None,
-            timeout=config.llm_response_timeout
+            proxy=proxy_url if use_proxy else None,
+            timeout=llm_response_timeout
         )
         return AsyncOpenAI(
             base_url=self.base_url,

@@ -151,15 +151,15 @@ class AgenticStepMixin(ABC):
         return output
 
     def build_validators(self) -> list[Callable]:
-        async def _no_reserved_runtime_files(ctx: RunContext[dict], result: AgenticStepOutput) -> AgenticStepOutput:
+        async def _no_reserved_runtime_files(ctx: RunContext[Any], result: AgenticStepOutput) -> AgenticStepOutput:
             if (self.step_dir / self.output_filename).exists():
                 raise ModelRetry(f"The current step directory contains a forbidden file '{self.output_filename}' likely copied from another step. Rename or delete it and retry.")
             return result
 
-        async def _no_symlinks(ctx: RunContext[dict], result: AgenticStepOutput) -> AgenticStepOutput:
+        async def _no_symlinks(ctx: RunContext[Any], result: AgenticStepOutput) -> AgenticStepOutput:
             # The agent may return a path with '..' in it. normpath, not resolve(): the paths compared below are intentionally unresolved.
             allowed_dirs = [Path(os.path.normpath(d)) for d in self.symlink_allowed_dirs(result)]
-            new_files = find_new_files_in_dir(self.step_dir, ctx.deps["start_time"])
+            new_files = find_new_files_in_dir(self.step_dir, self._step_started_at)
             symlinks = [
                 f for f in new_files
                 if (self.step_dir / f).is_symlink()
@@ -173,7 +173,7 @@ class AgenticStepMixin(ABC):
             return result
         return [*self.step_validators(), _no_reserved_runtime_files, _no_symlinks]
 
-    def build_deps(self) -> dict[str, Any]:
+    def build_deps(self) -> Any:
         return {}
 
     def create_agent(
@@ -181,19 +181,23 @@ class AgenticStepMixin(ABC):
         model: Model,
         model_settings: ModelSettings,
         max_validation_retries: int,
+        max_tool_retries: int | None,
         tools: list,
+        capabilities: list,
+        deps_type: type,
         system_prompt: str | None,
         instructions: str | None,
-    ) -> Agent[dict, AgenticStepOutput]:
+    ) -> Agent[Any, AgenticStepOutput]:
         agent = Agent(
             model=model,
             system_prompt=system_prompt or (),
             instructions=instructions,
             tools=tools,
+            capabilities=capabilities,
             model_settings=model_settings,
             output_type=self.output_type,
-            retries=max_validation_retries,
-            deps_type=dict,
+            retries=max_validation_retries if max_tool_retries is None else {"output": max_validation_retries, "tools": max_tool_retries},
+            deps_type=deps_type,
         )
         for validator in self.build_validators():
             agent.output_validator(validator)
@@ -206,20 +210,26 @@ class AgenticStepMixin(ABC):
         model_settings: ModelSettings,
         max_steps: int,
         max_validation_retries: int = 1,
+        max_tool_retries: int | None = None,
         tools: list | None = None,
+        capabilities: list | None = None,
+        deps_type: type = dict,
         message_history: list[ModelMessage] | None = None,
         system_prompt: str | None = None,
         instructions: str | None = None,
     ) -> AgenticStepOutput:
         if system_prompt and message_history:
             raise ValueError("system_prompt is ignored when message_history is non-empty. Set it to None and ensure your message_history contains it, or use instructions.")
-        step_started_at = datetime.now()
+        self._step_started_at = datetime.now()
         self._step_messages = []
         agent = self.create_agent(
             model=model,
             model_settings=model_settings,
             max_validation_retries=max_validation_retries,
+            max_tool_retries=max_tool_retries,
             tools=tools or [],
+            capabilities=capabilities or [],
+            deps_type=deps_type,
             system_prompt=system_prompt,
             instructions=instructions,
         )
@@ -229,7 +239,7 @@ class AgenticStepMixin(ABC):
                 user_prompt=user_prompt,
                 max_steps=max_steps,
                 message_history=message_history,
-                deps={**self.build_deps(), "start_time": step_started_at},
+                deps=self.build_deps(),
             )
         except AgentRunFailed as error:
             self._step_messages = error.context_messages
@@ -239,7 +249,7 @@ class AgenticStepMixin(ABC):
             ) from error
         output = self.finalize_output(output)
         return output.model_copy(
-            update={"files_created": find_new_files_in_dir(self.step_dir, since_timestamp=step_started_at)}
+            update={"files_created": find_new_files_in_dir(self.step_dir, since_timestamp=self._step_started_at)}
         )
 
 class AgentomicsStep(RuntimeStep):

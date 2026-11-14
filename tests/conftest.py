@@ -11,14 +11,18 @@ import pytest
 
 from agentomics.datasets.dataset_preparation import prepare_dataset
 from agentomics.run_agent import initialize_run
+from agentomics.runtime.collected_data_directory import initialize_collected_data_directory
 from agentomics.runtime.conda_utils import (
     create_environment_from_descriptor,
     initialize_shared_environment,
 )
 from agentomics.runtime.read_write_utils import get_next_iteration_index
 from agentomics.runtime.run_lifecycle import prepare_iteration_workspace
+from agentomics.tools.discard_file_tool import create_discard_file_tool
+from agentomics.tools.download_file_tool import create_download_file_tool
 from agentomics.tools.tool_registry import create_tool, create_tools
 from agentomics.utils.config import Config
+from agentomics.utils.data_module_config import DataModuleConfig
 from tests.dataset_helpers import create_classification_dataset
 
 
@@ -164,6 +168,30 @@ def restricted_agent_workspace(
 def replace_tool(default_agent_config: Config):
     """Create the Replace tool without process-environment initialization."""
     return create_tool(default_agent_config, "replace")
+
+
+@pytest.fixture
+def data_module_config(tmp_path: Path) -> DataModuleConfig:
+    """Create the config of a data collection with an initialized collected data folder."""
+    config = DataModuleConfig(
+        collected_data_dir=tmp_path / "collected_data",
+        collector_model_name="test-model",
+        reviewer_model_name="test-model",
+    )
+    initialize_collected_data_directory(config)
+    return config
+
+
+@pytest.fixture
+def download_file_tool(data_module_config: DataModuleConfig):
+    """Create the tool that downloads a file into the collected data folder."""
+    return create_download_file_tool(data_module_config)
+
+
+@pytest.fixture
+def discard_file_tool(data_module_config: DataModuleConfig):
+    """Create the tool that discards a file from the collected data folder."""
+    return create_discard_file_tool(data_module_config)
 
 
 @pytest.fixture

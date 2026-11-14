@@ -17,6 +17,7 @@ from agentomics.datasets.data_contract import (
     TEST_SPLIT_PREFIX,
     TRAIN_SPLIT,
 )
+from agentomics.runtime.filesystem import write_atomically
 
 REPO_PATH = Path.cwd()
 FREE_SPOKEN_DIGIT_DATASET_VERSION = "v1.0.10"
@@ -251,9 +252,8 @@ def generate_spoken_digits_files(_dataset_name: str = "spoken_digits") -> None:
     )
 
     if not archive_path.exists():
-        temp_archive_path = archive_path.with_suffix(".zip.tmp")
-        urllib.request.urlretrieve(source_url, temp_archive_path)
-        temp_archive_path.replace(archive_path)
+        with write_atomically(archive_path) as temp_archive_path:
+            urllib.request.urlretrieve(source_url, temp_archive_path)
 
     recordings_dirs = sorted(download_dir.glob("free-spoken-digit-dataset-*/recordings"))
     if not recordings_dirs:

@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import argparse
 import os
-import shutil
 import sys
 import time
 from pathlib import Path
 
 import wandb
 
+from agentomics.cli.run import CONTAINER_CODEX_DIRECTORY
 from agentomics.cli.run_arguments import add_run_arguments
 from agentomics.run_agent_interactive import run_agent_interactive
 from agentomics.run_logging.wandb_setup import resume_wandb_run
@@ -18,22 +18,7 @@ from agentomics.runtime.setup_fork import fork_run
 from agentomics.utils.agent_id import create_agent_id
 from agentomics.utils.api_keys import create_new_api_key, delete_api_key, get_api_key_usage
 from agentomics.utils.config import Config
-
-
-def _prepare_codex_credentials() -> None:
-    source_directory = Path("/mnt/codex-host")
-    if not source_directory.is_dir():
-        return
-    target_directory = Path("/tmp/codex")
-    target_directory.mkdir(parents=True, exist_ok=True)
-    for filename in ("auth.json", "models_cache.json"):
-        source_path = source_directory / filename
-        if source_path.is_file():
-            shutil.copy2(source_path, target_directory / filename)
-    os.environ["CODEX_AUTH_FILE"] = str(target_directory / "auth.json")
-    os.environ["CODEX_MODELS_CACHE_FILE"] = str(
-        target_directory / "models_cache.json"
-    )
+from agentomics.utils.providers.codex_auth import prepare_codex_credentials
 
 
 def _resolve_agent_id() -> str:
@@ -168,7 +153,7 @@ def run_workflow(arguments: argparse.Namespace) -> int:
     try:
         agent_id = _resolve_agent_id()
         _configure_runtime_environment(arguments, agent_id)
-        _prepare_codex_credentials()
+        prepare_codex_credentials(CONTAINER_CODEX_DIRECTORY)
         _prepare_fork(arguments, agent_id, workspace_directory)
         if arguments.use_provisioning_key:
             temporary_key_hash = _create_temporary_api_key(arguments.spend_limit)

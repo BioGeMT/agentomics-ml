@@ -4,6 +4,7 @@ import base64
 import copy
 import json
 import os
+import shutil
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,17 +12,36 @@ from typing import Any
 
 from pydantic_ai.providers.openai_codex import OpenAICodexCredentials, OpenAICodexCredentialSource
 
+from agentomics.runtime.filesystem import write_atomically
+
 
 DEFAULT_CODEX_AUTH_PATH = Path.home() / ".codex" / "auth.json"
 DEFAULT_CODEX_MODELS_CACHE_PATH = Path.home() / ".codex" / "models_cache.json"
+CODEX_AUTH_FILE_ENV_VAR_NAME = "CODEX_AUTH_FILE"
+CODEX_MODELS_CACHE_FILE_ENV_VAR_NAME = "CODEX_MODELS_CACHE_FILE"
 
 
 def get_codex_auth_path() -> Path:
-    return Path(os.getenv("CODEX_AUTH_FILE", DEFAULT_CODEX_AUTH_PATH)).expanduser()
+    return Path(os.getenv(CODEX_AUTH_FILE_ENV_VAR_NAME, DEFAULT_CODEX_AUTH_PATH)).expanduser()
 
 
 def get_codex_models_cache_path() -> Path:
-    return Path(os.getenv("CODEX_MODELS_CACHE_FILE", DEFAULT_CODEX_MODELS_CACHE_PATH)).expanduser()
+    return Path(os.getenv(CODEX_MODELS_CACHE_FILE_ENV_VAR_NAME, DEFAULT_CODEX_MODELS_CACHE_PATH)).expanduser()
+
+
+def prepare_codex_credentials(source_directory: Path) -> None:
+    if not source_directory.is_dir():
+        return
+    target_directory = Path("/tmp/codex")
+    target_directory.mkdir(parents=True, exist_ok=True)
+    for filename in (DEFAULT_CODEX_AUTH_PATH.name, DEFAULT_CODEX_MODELS_CACHE_PATH.name):
+        source_path = source_directory / filename
+        if source_path.is_file():
+            shutil.copy2(source_path, target_directory / filename)
+    os.environ[CODEX_AUTH_FILE_ENV_VAR_NAME] = str(target_directory / DEFAULT_CODEX_AUTH_PATH.name)
+    os.environ[CODEX_MODELS_CACHE_FILE_ENV_VAR_NAME] = str(
+        target_directory / DEFAULT_CODEX_MODELS_CACHE_PATH.name
+    )
 
 
 def _decode_jwt_payload(token: str) -> dict[str, Any]:
@@ -116,10 +136,9 @@ class CodexAuthStore(OpenAICodexCredentialSource):
 
     def _write_state(self, raw_data: dict[str, Any]) -> None:
         self.auth_path.parent.mkdir(parents=True, exist_ok=True)
-        tmp_path = self.auth_path.with_suffix(f"{self.auth_path.suffix}.tmp")
-        tmp_path.write_text(json.dumps(raw_data, indent=2) + "\n")
-        try:
-            os.chmod(tmp_path, 0o600)
-        except OSError:
-            pass
-        tmp_path.replace(self.auth_path)
+        with write_atomically(self.auth_path) as tmp_path:
+            tmp_path.write_text(json.dumps(raw_data, indent=2) + "\n")
+            try:
+                os.chmod(tmp_path, 0o600)
+            except OSError:
+                pass

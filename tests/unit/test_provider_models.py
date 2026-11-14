@@ -28,9 +28,9 @@ from agentomics.utils.providers.provider import Provider
 )
 def test_planning_agent_asks_for_high_reasoning(monkeypatch, create_provider, model_name):
     monkeypatch.setattr(CodexAuthStore, "get_account_id", lambda self: "test-account")
-    config = SimpleNamespace(use_proxy=False, llm_response_timeout=30, max_validation_retries=1, temperature=0.7, max_steps=1)
+    config = SimpleNamespace(max_validation_retries=1, temperature=0.7, max_steps=1)
     provider = create_provider()
-    model = provider.create_model(model_name, config)
+    model = provider.create_model(model_name, use_proxy=False, llm_response_timeout=30)
 
     model_settings = IterationPlanStep(config, model, model, model, provider, tools=[]).high_reasoning_model_settings()
     _, parameters = model.prepare_request(model_settings, ModelRequestParameters())
@@ -45,9 +45,9 @@ def test_planning_agent_asks_for_high_reasoning(monkeypatch, create_provider, mo
 )
 def test_ollama_planning_agent_asks_for_high_reasoning_only_if_the_model_can_think(monkeypatch, capabilities, expected_thinking):
     monkeypatch.setattr(requests, "post", lambda url, json, timeout: SimpleNamespace(raise_for_status=lambda: None, json=lambda: {"capabilities": capabilities}))
-    config = SimpleNamespace(use_proxy=False, llm_response_timeout=30, max_validation_retries=1, temperature=0.7, max_steps=1)
+    config = SimpleNamespace(max_validation_retries=1, temperature=0.7, max_steps=1)
     provider = OllamaProvider("http://ollama.test/v1", "http://ollama.test/api/tags")
-    model = provider.create_model("some-model", config)
+    model = provider.create_model("some-model", use_proxy=False, llm_response_timeout=30)
 
     model_settings = IterationPlanStep(config, model, model, model, provider, tools=[]).high_reasoning_model_settings()
     _, parameters = model.prepare_request(model_settings, ModelRequestParameters())
