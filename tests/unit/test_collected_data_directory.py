@@ -33,3 +33,16 @@ def test_file_that_the_manifest_does_not_record_makes_the_folder_invalid(data_mo
 
     with pytest.raises(ValueError, match="files/extra.csv is not in the manifest"):
         validate_collected_data_directory(data_module_config)
+
+
+def test_file_that_fails_to_be_hashed_is_not_moved_into_the_folder(data_module_config, monkeypatch):
+    def fail_to_hash(path):
+        raise OSError("interrupted")
+
+    monkeypatch.setattr("agentomics.runtime.collected_data_directory.get_file_hash", fail_to_hash)
+
+    with pytest.raises(OSError, match="interrupted"):
+        _add_file(data_module_config)
+
+    assert not (data_module_config.files_dir / "data.csv").exists()
+    validate_collected_data_directory(data_module_config)

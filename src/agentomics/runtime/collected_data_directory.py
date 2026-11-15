@@ -70,12 +70,11 @@ def add_to_collected_data_directory(
     config: DataModuleConfig, path: Path, name: str, source_url: str, source_archive: str | None,
 ) -> tuple[str, list[ManifestEntry]]:
     target = config.files_dir / name
-    target.parent.mkdir(exist_ok=True)
-    path.rename(target)
-    files = [target] if target.is_file() else sorted(file for file in target.rglob("*") if file.is_file())
+    files = [path] if path.is_file() else sorted(file for file in path.rglob("*") if file.is_file())
+    # The files are hashed before the move, so that an interrupted hashing leaves files/ as it was.
     new_manifests = [
         ManifestEntry(
-            path=_get_manifest_path(config, file),
+            path=_get_manifest_path(config, target / file.relative_to(path)),
             source_url=source_url,
             size_bytes=file.stat().st_size,
             sha256=get_file_hash(file),
@@ -83,6 +82,8 @@ def add_to_collected_data_directory(
         )
         for file in files
     ]
+    target.parent.mkdir(exist_ok=True)
+    path.rename(target)
     _save_manifest(config, load_manifest(config) + new_manifests)
     return _get_manifest_path(config, target), new_manifests
 
