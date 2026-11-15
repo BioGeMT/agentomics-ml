@@ -181,7 +181,7 @@ class AgenticStepMixin(ABC):
         model: Model,
         model_settings: ModelSettings,
         max_validation_retries: int,
-        max_tool_retries: int | None,
+        max_tool_retries: int,
         tools: list,
         capabilities: list,
         deps_type: type,
@@ -196,7 +196,7 @@ class AgenticStepMixin(ABC):
             capabilities=capabilities,
             model_settings=model_settings,
             output_type=self.output_type,
-            retries=max_validation_retries if max_tool_retries is None else {"output": max_validation_retries, "tools": max_tool_retries},
+            retries={"output": max_validation_retries, "tools": max_tool_retries},
             deps_type=deps_type,
         )
         for validator in self.build_validators():
@@ -209,8 +209,8 @@ class AgenticStepMixin(ABC):
         model: Model,
         model_settings: ModelSettings,
         max_steps: int,
+        max_tool_retries: int,
         max_validation_retries: int = 1,
-        max_tool_retries: int | None = None,
         tools: list | None = None,
         capabilities: list | None = None,
         message_history: list[ModelMessage] | None = None,
@@ -389,6 +389,7 @@ class AgentomicsAgenticStep(AgentomicsStep, AgenticStepMixin):
             model_settings=ModelSettings(temperature=self.config.temperature),
             max_steps=self.config.max_steps,
             max_validation_retries=self.config.max_validation_retries,
+            max_tool_retries=self.config.max_tool_retries,
             tools=self.tools,
             message_history=self.get_initial_message_history(),
         )

@@ -43,7 +43,6 @@ def create_run_python_tool(config: Config):
     run_python_tool = Tool(
         function=_run_python, 
         takes_ctx=False, 
-        max_retries=config.max_tool_retries,
         require_parameter_descriptions=True,
         name="run_python",
         sequential=True,

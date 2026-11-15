@@ -47,7 +47,6 @@ def create_download_file_tool(config: DataModuleConfig) -> Tool[DownloadDeps]:
     return Tool(
         function=_download_file,
         takes_ctx=True,
-        max_retries=config.max_tool_retries,
         require_parameter_descriptions=True,
         name="download_file",
         sequential=True,

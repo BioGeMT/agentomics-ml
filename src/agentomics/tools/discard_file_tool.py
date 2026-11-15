@@ -18,7 +18,6 @@ def create_discard_file_tool(config: DataModuleConfig) -> Tool[DownloadDeps]:
     return Tool(
         function=_discard_file,
         takes_ctx=True,
-        max_retries=config.max_tool_retries,
         require_parameter_descriptions=True,
         name="discard_file",
         sequential=True,

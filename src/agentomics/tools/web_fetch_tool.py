@@ -12,7 +12,6 @@ def create_web_fetch_tool(config: DataModuleConfig) -> Tool:
     return Tool(
         function=_fetch_web_page,
         takes_ctx=False,
-        max_retries=config.max_tool_retries,
         require_parameter_descriptions=True,
         name="web_fetch",
     )
