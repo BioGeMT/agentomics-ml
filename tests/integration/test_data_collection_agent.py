@@ -111,7 +111,7 @@ def test_collection_continues_after_page_reads_fail_in_a_row(data_module_config,
 
     monkeypatch.setattr(web_fetch_tool, "web_fetch_tool", lambda: SimpleNamespace(function=fail_to_fetch))
     mock_downloads(monkeypatch, {f"{URL}/a.csv": b"a" * 100})
-    web_fetch_tool_name = create_web_fetch_tool(data_module_config).name
+    web_fetch_tool_name = create_web_fetch_tool().name
     collector_model = _create_collector_model([
         ModelResponse(parts=[ToolCallPart(web_fetch_tool_name, {"url": f"{URL}/one"})]),
         ModelResponse(parts=[ToolCallPart(web_fetch_tool_name, {"url": f"{URL}/two"})]),

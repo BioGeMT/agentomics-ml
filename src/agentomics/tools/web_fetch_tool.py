@@ -3,12 +3,10 @@ from __future__ import annotations
 from pydantic_ai import BinaryContent, Tool
 from pydantic_ai.common_tools.web_fetch import WebFetchResult, web_fetch_tool
 
-from agentomics.utils.data_module_config import DataModuleConfig
-
 
 # TODO: drop this tool and use pydantic-ai's own web fetch once
 # https://github.com/pydantic/pydantic-ai/issues/11829 is fixed.
-def create_web_fetch_tool(config: DataModuleConfig) -> Tool:
+def create_web_fetch_tool() -> Tool:
     return Tool(
         function=_fetch_web_page,
         takes_ctx=False,
