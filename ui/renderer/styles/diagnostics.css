@@ -1,0 +1,61 @@
+/* Test result, model diagnostics and the run timeline, in the Figures pane. */
+
+/* Held-out test: the headline number, then the rest as label and value pairs. */
+.test-result .test-headline { display: flex; align-items: baseline; justify-content: space-between; margin: 4px 0 8px; font-variant-numeric: tabular-nums; }
+.test-headline span { font: 600 12px var(--sans); color: var(--ink-2); }
+.test-headline b { font: 700 26px var(--mono); letter-spacing: -0.02em; color: var(--ink); }
+.test-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 20px; margin: 0; }
+.test-metrics div { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.test-metrics dt { color: var(--ink-3); }
+.test-metrics dd { margin: 0; font-family: var(--mono); color: var(--ink); }
+
+/* Iteration picker for the confusion matrix and distribution. */
+.diag-picker { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 12px; font-size: 12px; color: var(--ink-3); }
+.figures .diag-picker { padding: 0; }
+
+/* Curves: other iterations quiet grey, the chosen one ballpoint, test dashed ink. */
+.axis-title { font: 500 10.5px var(--sans); fill: var(--ink-3); }
+.chance-line { stroke: var(--chart-chance); stroke-width: 1; stroke-dasharray: 3 3; }
+.curve { fill: none; stroke-width: 1.5; stroke-linejoin: round; }
+.curve.other { stroke: var(--chart-other); }
+.curve.selected { stroke: var(--series-validation); stroke-width: 2; }
+.curve.test { stroke: var(--ink); stroke-width: 1.6; stroke-dasharray: 5 3; }
+.curve-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 6px 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--ink-2); }
+.curve-legend li { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.curve-legend li span { color: var(--ink-3); }
+.curve-legend i { display: inline-block; width: 14px; height: 0; border-top: 2px solid var(--chart-other); }
+.curve-legend .selected i { border-top-color: var(--series-validation); }
+.curve-legend .test i { border-top: 2px dashed var(--ink); }
+.curve-legend .neg i { height: 9px; border: 0; width: 9px; border-radius: 2px; background: var(--chart-negative); }
+.curve-legend .pos i { height: 9px; border: 0; width: 9px; border-radius: 2px; background: var(--series-validation); }
+.curve-legend .thr i { border-top: 1.5px dashed var(--ink-3); }
+
+/* Confusion matrix: correct cells tinted by their share of the row. */
+.confusion { width: 100%; border-collapse: separate; border-spacing: 3px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.confusion th { font-weight: 500; color: var(--ink-3); text-align: left; padding: 2px 4px; }
+.confusion thead th { text-align: center; }
+.confusion td { height: 46px; border-radius: 6px; text-align: center; background: color-mix(in srgb, var(--chart-other) calc(var(--share) * 60%), var(--page)); }
+.confusion td.hit { background: color-mix(in srgb, var(--series-validation) calc(var(--share) * 32%), var(--page)); }
+.confusion td b { display: block; font: 600 15px var(--mono); color: var(--ink); }
+.confusion td span { font-size: 11px; color: var(--ink-3); }
+
+/* Score distribution. */
+.bar.negative { fill: var(--chart-negative); }
+.bar.positive { fill: var(--series-validation); }
+.threshold-line { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 4 3; }
+
+/* Timeline: one bar per iteration on a shared scale. */
+.timeline-rows { display: grid; gap: 6px; margin: 4px 0 12px; }
+.timeline-row { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.timeline-label { font: 600 11.5px var(--mono); color: var(--ink-3); text-align: right; }
+.timeline-track { min-width: 0; }
+.timeline-bar { display: flex; gap: 2px; height: 16px; min-width: 24px; }
+.timeline-seg { min-width: 3px; border: 0; padding: 0; border-radius: 3px; cursor: pointer; }
+.timeline-seg:hover { filter: brightness(0.92); }
+.timeline-seg:focus-visible { outline: 2px solid var(--ballpoint); outline-offset: 1px; }
+.timeline-seg.running { background: var(--live); }
+.timeline-seg.failed { background: var(--failed); }
+.timeline-total { font: 500 11.5px var(--mono); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.stage-table tbody th { display: flex; align-items: center; gap: 7px; font-weight: 500; }
+.stage-swatch { flex: none; width: 9px; height: 9px; border-radius: 2px; }
+.stage-share { color: var(--ink-3); }

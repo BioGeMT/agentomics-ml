@@ -1,0 +1,110 @@
+/* The macOS desktop app: Apple window chrome around the same notebook.
+   The desktop preload sets data-shell="mac"; the browser build never sees these rules.
+   The window is vibrant (NSVisualEffectView "sidebar"), so anything left transparent shows frosted glass. */
+
+:root[data-shell="mac"] {
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --toolbar: rgba(255, 255, 255, 0.92);
+  --hairline: rgba(0, 0, 0, 0.1);
+  --sidebar-hover: rgba(0, 0, 0, 0.045);
+  --sidebar-selected: rgba(0, 0, 0, 0.075);
+  --traffic-lights: 92px; /* room for the window buttons when nothing sits under them */
+  /* Sidebars: a light surface with only a hint of the window glass, so a dark wallpaper never turns them grey. */
+  --sidebar-surface: rgba(255, 255, 255, 0.38); /* a white veil over the glass: translucent, never grey */
+  --inspector: #f8f8f9;
+
+  /* The cover becomes a light unified toolbar. */
+  --cover: var(--toolbar);
+  --cover-deep: rgba(0, 0, 0, 0.05);
+  --cover-edge: var(--hairline);
+  --cover-ink: var(--ink);
+  --cover-muted: var(--ink-3);
+  --wordmark-accent: var(--ballpoint);
+  --done-on-cover: var(--done);
+}
+
+:root[data-shell="mac"],
+:root[data-shell="mac"] body,
+:root[data-shell="mac"] .nb { background: transparent; }
+
+/* ---------- toolbar ---------- */
+:root[data-shell="mac"] .cover {
+  background: var(--toolbar);
+  border-bottom: 1px solid var(--hairline);
+  -webkit-app-region: drag;
+  user-select: none;
+}
+:root[data-shell="mac"] .cover :is(a, button, input, form, select) { -webkit-app-region: no-drag; }
+:root[data-shell="mac"] .cover-back:hover { background: var(--cover-deep); }
+:root[data-shell="mac"] .run-status { background: var(--cover-deep); }
+:root[data-shell="mac"] .run-status.running { color: var(--live-text); background: var(--live-tint); }
+:root[data-shell="mac"] .run-status.failed { color: var(--failed); }
+:root[data-shell="mac"] .run-elapsed { color: inherit; }
+
+/* ---------- run window: a full-height frosted sidebar holds the window buttons ---------- */
+:root[data-shell="mac"] .nb > .cover { grid-column: 2 / -1; }
+:root[data-shell="mac"] .nb > .contents { grid-row: 1 / -1; padding-top: 58px; background: var(--sidebar-surface); border-right: 1px solid var(--hairline); }
+/* Sidebar folded (or open as a drawer): the toolbar runs the full width and makes room for the buttons. */
+:root[data-shell="mac"] .nb[data-contents="folded"] > .cover,
+:root[data-shell="mac"] .nb[data-drawer] > .cover { grid-column: 1 / -1; padding-left: calc(var(--traffic-lights) + 40px); }
+/* The contents toggle sits beside the window buttons, as in Notes, whether the sidebar is open or not. */
+:root[data-shell="mac"] .toolbar-toggle.toggle-contents { position: fixed; top: 14px; left: 84px; z-index: 40; transition: left 0.32s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.15s; }
+/* With the sidebar open, its toggle sits at the sidebar's right edge, as in Finder and Mail. */
+:root[data-shell="mac"] .nb[data-contents="open"]:not([data-drawer]) .toolbar-toggle.toggle-contents { left: calc(var(--contents-open) - 44px); }
+:root[data-shell="mac"] .nb[data-drawer="contents"] .toolbar-toggle.toggle-contents { left: calc(min(340px, 42vw) - 44px); }
+:root[data-shell="mac"] .toolbar-toggle:hover { background: var(--sidebar-hover); color: var(--ink); }
+:root[data-shell="mac"] .toolbar-toggle[aria-pressed="true"] { color: var(--ink-2); }
+
+:root[data-shell="mac"] .contents .side-head h2,
+:root[data-shell="mac"] .contents .chapter h3 { font-size: 11px; font-weight: 600; color: var(--ink-3); }
+:root[data-shell="mac"] .toc-entry { font-size: 13px; border-radius: 6px; }
+:root[data-shell="mac"] .toc-entry:hover:not(:disabled) { background: var(--sidebar-hover); }
+:root[data-shell="mac"] .toc-entry.reading { background: var(--sidebar-selected); box-shadow: none; }
+
+/* Figures is the inspector, as in Xcode or Keynote: opaque, a pinned header, sections split by hairlines. */
+:root[data-shell="mac"] .nb > .figures { padding: 0 0 32px; background: var(--inspector); border-left: 1px solid var(--hairline); }
+:root[data-shell="mac"] .figures > .side-head {
+  position: sticky; top: 0; z-index: 2; height: 40px; margin: 0; padding: 0 10px 0 16px;
+  background: var(--inspector); border-bottom: 1px solid var(--hairline);
+}
+:root[data-shell="mac"] .figures > .side-head h2 { font-size: 13px; font-weight: 700; color: var(--ink); }
+:root[data-shell="mac"] .figures .figure { margin: 0; padding: 14px 16px 16px; border-bottom: 1px solid var(--hairline); }
+:root[data-shell="mac"] .figures .figure figcaption { font-size: 12px; }
+:root[data-shell="mac"] .figures .figures-empty { margin: 16px; }
+
+/* Medium windows: the contents drawer floats over the page, so it needs its own opaque surface. */
+@media (min-width: 761px) and (max-width: 1180px) {
+  :root[data-shell="mac"] .nb > .contents:not([hidden]) { background: var(--rail); }
+}
+
+/* ---------- lobby: frosted sidebar under the window buttons, draggable toolbar ---------- */
+:root[data-shell="mac"] .lobby { background: transparent; }
+:root[data-shell="mac"] .lobby-sidebar { position: relative; }
+/* The + sits in the sidebar's toolbar, level with the window buttons, as in Notes. */
+:root[data-shell="mac"] .sidebar-top { position: absolute; top: 13px; right: 10px; height: auto; }
+:root[data-shell="mac"] .sidebar-new { -webkit-app-region: no-drag; }
+:root[data-shell="mac"] .lobby-sidebar { background: var(--sidebar-surface); padding-top: 50px; border-right-color: var(--hairline); }
+:root[data-shell="mac"] .lobby-toolbar { background: var(--toolbar); -webkit-app-region: drag; user-select: none; }
+
+/* Scrollbar gutters would otherwise show the glass behind the opaque panes. */
+:root[data-shell="mac"] .page::-webkit-scrollbar-track,
+:root[data-shell="mac"] .figures::-webkit-scrollbar-track { background: var(--page); }
+
+/* ---------- toolbar content: a window title, not a web header ---------- */
+:root[data-shell="mac"] .nb .cover { gap: 12px; height: 56px; }
+:root[data-shell="mac"] .nb .cover .logo,
+:root[data-shell="mac"] .cover-stats { display: none; }
+:root[data-shell="mac"] .cover-back {
+  width: 30px; height: 28px; border-radius: 7px; color: var(--ink-2);
+}
+:root[data-shell="mac"] .cover-run {
+  flex-direction: column; align-items: flex-start; gap: 1px; padding-left: 0; border-left: 0; line-height: 1.2;
+}
+:root[data-shell="mac"] .cover-title { font-size: 13px; font-weight: 700; }
+:root[data-shell="mac"] .cover-sub { font: 500 11px var(--sans); }
+:root[data-shell="mac"] .run-status { height: 22px; padding: 0 9px; gap: 6px; font-size: 11.5px; margin-left: auto; }
+:root[data-shell="mac"] .run-elapsed { font-size: 11px; }
+:root[data-shell="mac"] .run-status .dot { width: 7px; height: 7px; }
+
+/* Sidebar and inspector toggles are plain icons, as in Finder and Xcode. */
