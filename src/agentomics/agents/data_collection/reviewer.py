@@ -53,8 +53,8 @@ def _get_reviewer_system_prompt(config: DataModuleConfig) -> str:
     return f"""You review the files another agent downloaded for a machine-learning task. You receive the spec of the \
 task, the manifest of the downloaded files with their sources and their paths, the bytes they take with the size \
 limit, and the agent's summary of the collection.
-Look inside the downloaded files and check that each file fits the spec and that the files were chosen as the spec's \
-strategy says.
+Look inside the downloaded files and check that each file fits the spec. If the size limit left relevant data \
+out, check that the downloaded files are the ones the spec's strategy puts first.
 Data were missed only in one of these cases:
 - A source in the spec's known_sources was neither downloaded nor reported in the summary as unreachable.
 - A downloaded file is a part or a processed version of data whose original or fuller version is published.
