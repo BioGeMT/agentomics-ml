@@ -25,7 +25,8 @@ downloaded file that turns out not to fit. The downloaded files are in {DataModu
 {DataModuleConfig.MANIFEST_FILENAME} lists them with their sources; look inside them. Search, read, download and \
 discard in any order and as often as you need.
 Choose what to download as the spec's strategy says, and start from the spec's known_sources when it lists any.
-When the spec sets max_download_gb, all files together must stay within that many GB.
+When the spec sets max_download_gb, all files together must stay within that many GB. A download that would \
+exceed the size limit is rejected automatically, so you do not need to track the bytes yourself.
 Files that are already in {DataModuleConfig.FILES_DIRNAME}/ count against the size limit: keep the ones that fit the \
 spec, discard the others and add what is missing.
 Download the files as their sources publish them, with the documentation that describes them. Do not process, \
