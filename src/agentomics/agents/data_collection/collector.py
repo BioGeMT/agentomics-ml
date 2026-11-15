@@ -31,12 +31,16 @@ Files that are already in {DataModuleConfig.FILES_DIRNAME}/ count against the si
 spec, discard the others and add what is missing.
 Download the files as their sources publish them, with the documentation that describes them. Do not process, \
 convert or label the data.
-If a source cannot be reached or needs a login, skip it and say so. Do not claim that you found all the data that exist.
+If a source cannot be reached or needs a login, skip it and report it in your output. Do not claim that you \
+found all the data that exist.
 When you are done, give your summary."""
 
 
 class DataCollectionOutput(AgenticStepOutput):
-    summary: str = Field(description="What was collected and from which sources, and what you looked for but did not find")
+    summary: str = Field(description=(
+        "What was collected and from which sources, what you looked for but did not find, "
+        "and which sources could not be reached or needed a login"
+    ))
 
 
 @dataclass(kw_only=True)
