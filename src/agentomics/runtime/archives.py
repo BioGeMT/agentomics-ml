@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import errno
 from pathlib import Path
 
 import libarchive
@@ -28,9 +29,18 @@ def unpack_archive(archive_path: Path, destination: Path, byte_budget: ByteBudge
                 path = destination if is_single_file else destination / entry.pathname
                 if not path.resolve().is_relative_to(destination.resolve()):
                     continue
-                path.parent.mkdir(parents=True, exist_ok=True)
-                # An archive inside the archive is not unpacked: it stays a file.
-                write_chunks(entry.get_blocks(), path, byte_budget)
+                try:
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    # An archive inside the archive is not unpacked: it stays a file.
+                    write_chunks(entry.get_blocks(), path, byte_budget)
+                except OSError as error:
+                    # Some file names are valid in an archive but cannot be written to disk: a name that is too long,
+                    # or a name that one entry uses for a file and another entry uses for a folder.
+                    is_caused_by_file_name = error.errno in (errno.ENAMETOOLONG, errno.EEXIST, errno.ENOTDIR, errno.EISDIR)
+                    if not is_caused_by_file_name:
+                        # For example a full disk. The archive is not at fault, so the run ends.
+                        raise
+                    raise ValueError(f"the archive could not be unpacked: {error.strerror}: {entry.pathname}") from error
     except libarchive.ArchiveError as error:
         raise ValueError(f"the archive could not be unpacked: {error}") from error
     if not destination.exists():

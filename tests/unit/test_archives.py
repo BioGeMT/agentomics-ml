@@ -1,3 +1,4 @@
+import errno
 import io
 import tarfile
 
@@ -34,4 +35,34 @@ def test_archive_with_a_file_name_that_is_not_utf_8_cannot_be_unpacked(tmp_path)
         bundle.addfile(member, io.BytesIO(b"a"))
 
     with pytest.raises(ValueError, match="not UTF-8"):
+        unpack_archive(archive_path, tmp_path / "unpacked", ByteBudget(max_bytes=None, used_bytes=0))
+
+
+@pytest.mark.parametrize(
+    "file_names",
+    [["a", "a/b.csv"], ["a/b.csv", "a"], ["x" * 300]],
+    ids=["file-then-folder-of-the-same-name", "folder-then-file-of-the-same-name", "file-name-too-long"],
+)
+def test_archive_with_a_file_name_that_cannot_be_written_cannot_be_unpacked(tmp_path, file_names):
+    archive_path = tmp_path / "data.tar"
+    with tarfile.open(archive_path, mode="w") as bundle:
+        for file_name in file_names:
+            member = tarfile.TarInfo(file_name)
+            member.size = 1
+            bundle.addfile(member, io.BytesIO(b"a"))
+
+    with pytest.raises(ValueError, match="could not be unpacked"):
+        unpack_archive(archive_path, tmp_path / "unpacked", ByteBudget(max_bytes=None, used_bytes=0))
+
+
+def test_error_that_the_archive_does_not_cause_is_not_reported_as_an_archive_that_cannot_be_unpacked(tmp_path, monkeypatch):
+    archive_path = tmp_path / "data.zip"
+    archive_path.write_bytes(create_zip_archive([("a.csv", b"a")]))
+
+    def fail_to_write(chunks, path, byte_budget):
+        raise OSError(errno.ENOSPC, "No space left on device")
+
+    monkeypatch.setattr("agentomics.runtime.archives.write_chunks", fail_to_write)
+
+    with pytest.raises(OSError, match="No space left on device"):
         unpack_archive(archive_path, tmp_path / "unpacked", ByteBudget(max_bytes=None, used_bytes=0))
