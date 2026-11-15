@@ -58,3 +58,39 @@ agentomics = [
     "supplementary_catalog/README.md",
     "supplementary_catalog/foundation_models/*.md",
 ]
+
+[tool.ruff]
+required-version = "==0.17.5"
+target-version = "py312"
+
+[tool.ruff.lint]
+extend-select = ["I"]
+ignore = [
+    "BLE001",
+    "E722",
+    "EXE001",
+    "F401",
+    "F541",
+    "F811",
+    "F821",
+    "F841",
+    "I001",
+    "ISC004",
+    "PLW1510",
+    "RUF010",
+    "RUF012",
+    "RUF013",
+    "RUF015",
+    "S110",
+    "SIM103",
+    "SIM114",
+    "SIM117",
+    "SIM118",
+    "TRY004",
+    "UP006",
+    "UP017",
+    "UP035",
+    "UP037",
+    "UP039",
+    "UP045",
+]

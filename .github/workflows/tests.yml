@@ -53,3 +53,22 @@ jobs:
       # Free GitHub-hosted runners have no GPU.
       - name: Run CPU-compatible test suite
         run: python scripts/run_tests.py --image agentomics:ci --cpu-only
+
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout tested commit
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install ruff
+        run: pip install ruff==0.17.5
+
+      - name: Run ruff
+        run: ruff check src tests scripts

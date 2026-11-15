@@ -64,3 +64,13 @@ python scripts/run_tests.py --cpu-only
 ```
 
 This will use the current repository code (including unstaged and uncommitted changes) to run the tests. Omit `--cpu-only` to require GPU access and include GPU tests.
+
+### How to lint
+
+CI runs ruff on every PR. Run the same check locally with:
+
+```bash
+uvx ruff@0.17.5 check src tests scripts
+```
+
+Add `--fix` to apply safe autofixes (for example, import sorting).
