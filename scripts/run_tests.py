@@ -22,6 +22,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--image", help="Reuse an already-built Docker image")
     parser.add_argument("--cpu-only", action="store_true", help="Disable GPU access and GPU tests")
+    parser.add_argument(
+        "--coverage",
+        action="store_true",
+        help="Measure coverage of the unit and integration tests run in Docker",
+    )
     arguments = parser.parse_args(argv)
 
     image = arguments.image or build_development_image()
@@ -39,12 +44,15 @@ def main(argv: list[str] | None = None) -> int:
         docker_arguments.extend(["-e", f"{name}={value}"])
     if arguments.cpu_only:
         docker_arguments.extend(["-e", "CUDA_VISIBLE_DEVICES="])
+    pytest_arguments = ["-m", "pytest", "tests/unit", "tests/integration"]
+    if arguments.coverage:
+        pytest_arguments.extend(["--cov", "--cov-report=term-missing:skip-covered"])
     try:
         container_exit = run_python_in_docker(
             image=image,
             cpu_only=arguments.cpu_only,
             mounts=[],
-            python_arguments=["-m", "pytest", "tests/unit", "tests/integration"],
+            python_arguments=pytest_arguments,
             docker_arguments=docker_arguments,
             check=False,
         )

@@ -70,6 +70,26 @@ def test_both_phases_run_and_either_test_failure_fails_the_suite(
     assert exit_code == expected_exit
 
 
+@pytest.mark.parametrize("coverage", [False, True])
+def test_coverage_is_measured_only_in_the_container_when_requested(coverage, monkeypatch):
+    pytest_commands = {}
+
+    def run(command, **kwargs):
+        if "pytest" in command:
+            phase = "container" if command[0] == "docker" else "host"
+            pytest_commands[phase] = command
+        return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+
+    monkeypatch.setattr("shutil.which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr(subprocess, "run", run)
+
+    mode = ["--coverage"] if coverage else []
+    assert main(["--image", "already-built", "--cpu-only", *mode]) == 0
+
+    assert ("--cov" in pytest_commands["container"]) is coverage
+    assert "--cov" not in pytest_commands["host"]
+
+
 def test_interrupted_tests_do_not_leave_a_container_running(monkeypatch):
     running_containers = set()
 

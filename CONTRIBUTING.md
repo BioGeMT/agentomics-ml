@@ -63,4 +63,4 @@ pip install -e .
 python scripts/run_tests.py --cpu-only
 ```
 
-This will use the current repository code (including unstaged and uncommitted changes) to run the tests. Omit `--cpu-only` to require GPU access and include GPU tests.
+This will use the current repository code (including unstaged and uncommitted changes) to run the tests. Omit `--cpu-only` to require GPU access and include GPU tests. Add `--coverage` to report line and branch coverage of the unit and integration tests.

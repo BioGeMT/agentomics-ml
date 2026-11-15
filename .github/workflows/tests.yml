@@ -52,4 +52,9 @@ jobs:
 
       # Free GitHub-hosted runners have no GPU.
       - name: Run CPU-compatible test suite
-        run: python scripts/run_tests.py --image agentomics:ci --cpu-only
+        run: |
+          set -o pipefail
+          python scripts/run_tests.py --image agentomics:ci --cpu-only --coverage | tee "$RUNNER_TEMP/tests.log"
+
+      - name: Report coverage total
+        run: grep -E '^TOTAL ' "$RUNNER_TEMP/tests.log" >> "$GITHUB_STEP_SUMMARY"

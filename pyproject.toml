@@ -43,6 +43,15 @@ agentomics-add-supplementary = "agentomics.cli.add_supplementary:main"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
+[tool.coverage.run]
+source = ["agentomics"]
+branch = true
+include_namespace_packages = true
+
+[tool.coverage.report]
+skip_covered = true
+show_missing = true
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 packages = [
