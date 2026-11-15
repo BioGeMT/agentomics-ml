@@ -18,7 +18,7 @@ class ManifestEntry(BaseModel):
     source_archive: str | None = None
 
 
-_MANIFEST = TypeAdapter(list[ManifestEntry])
+_MANIFEST_ADAPTER = TypeAdapter(list[ManifestEntry])
 
 
 def initialize_collected_data_directory(config: DataModuleConfig) -> None:
@@ -47,7 +47,7 @@ def read_manifest(config: DataModuleConfig) -> str:
 
 
 def load_manifest(config: DataModuleConfig) -> list[ManifestEntry]:
-    return _MANIFEST.validate_json(read_manifest(config))
+    return _MANIFEST_ADAPTER.validate_json(read_manifest(config))
 
 
 def get_manifest_size_bytes(entries: list[ManifestEntry]) -> int:
@@ -110,4 +110,4 @@ def _get_manifest_path(config: DataModuleConfig, path: Path) -> str:
 
 def _save_manifest(config: DataModuleConfig, entries: list[ManifestEntry]) -> None:
     with write_atomically(config.manifest_path) as temporary_path:
-        temporary_path.write_bytes(_MANIFEST.dump_json(entries, indent=2, exclude_none=True))
+        temporary_path.write_bytes(_MANIFEST_ADAPTER.dump_json(entries, indent=2, exclude_none=True))
