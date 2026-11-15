@@ -7,7 +7,7 @@ import os
 import shutil
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Any
 
 from pydantic_ai.providers.openai_codex import OpenAICodexCredentials, OpenAICodexCredentialSource
@@ -29,7 +29,8 @@ def get_codex_models_cache_path() -> Path:
     return Path(os.getenv(CODEX_MODELS_CACHE_FILE_ENV_VAR_NAME, DEFAULT_CODEX_MODELS_CACHE_PATH)).expanduser()
 
 
-def prepare_codex_credentials(source_directory: Path) -> None:
+def prepare_codex_credentials(source_directory: PurePath) -> None:
+    source_directory = Path(source_directory)  # the CLI's container paths are PurePosixPath
     if not source_directory.is_dir():
         return
     target_directory = Path("/tmp/codex")

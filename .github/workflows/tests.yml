@@ -53,3 +53,25 @@ jobs:
       # Free GitHub-hosted runners have no GPU.
       - name: Run CPU-compatible test suite
         run: python scripts/run_tests.py --image agentomics:ci --cpu-only
+
+  host-cli-windows:
+    # The desktop app runs agentomics-run on Windows, where it builds Docker commands with Windows paths.
+    # GitHub's Windows runners can't run the Linux runtime image, so only the host-side CLI is tested here.
+    name: Host CLI tests (Windows)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout tested commit
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install host CLI
+        run: pip install -e .
+
+      # --noconftest: the shared fixtures need the runtime image's packages, which the host CLI doesn't install.
+      - name: Run the host CLI's tests
+        run: python -m pytest --noconftest tests/unit/test_container_paths.py tests/unit/test_run_container_label.py

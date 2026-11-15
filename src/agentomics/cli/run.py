@@ -4,7 +4,7 @@ import argparse
 import json
 import sys
 import tempfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from agentomics.cli.docker_utils import (
     build_development_image,
@@ -30,10 +30,11 @@ from agentomics.utils.config import Config
 
 DEFAULT_DATASETS_DIRECTORY = Path("datasets")
 DEFAULT_OUTPUTS_DIRECTORY = Path("outputs")
-CONTAINER_CODEX_DIRECTORY = Path("/mnt/codex-host")
-CONTAINER_DATASETS_DIRECTORY = Path("/datasets")
-CONTAINER_FORK_SOURCE_DIRECTORY = Path("/fork-source")
-CONTAINER_WORKSPACE_DIRECTORY = Path("/workspace")
+# Paths inside the (Linux) container: always forward slashes, whatever the host OS.
+CONTAINER_CODEX_DIRECTORY = PurePosixPath("/mnt/codex-host")
+CONTAINER_DATASETS_DIRECTORY = PurePosixPath("/datasets")
+CONTAINER_FORK_SOURCE_DIRECTORY = PurePosixPath("/fork-source")
+CONTAINER_WORKSPACE_DIRECTORY = PurePosixPath("/workspace")
 PUBLIC_DATASET_ENTRY_NAMES = (
     "train",
     "train.csv",
@@ -188,6 +189,12 @@ def build_dataset_mounts(
     return mounts
 
 
+def _workspace_label_arguments(workspace_directory: Path) -> list[str]:
+    # A run's containers carry its workspace folder's name, so a UI can find and stop them where
+    # signals can't reach them (Windows).
+    return ["--label", f"agentomics.workspace={workspace_directory.name}"]
+
+
 def _run_agent_in_docker(
     arguments: argparse.Namespace,
     workspace_directory: Path,
@@ -227,6 +234,7 @@ def _run_agent_in_docker(
         )
 
     docker_arguments = _docker_environment_arguments(agent_id)
+    docker_arguments.extend(_workspace_label_arguments(workspace_directory))
     if arguments.provider == "ollama":
         docker_arguments.extend(["--network", "host"])
     # A non-zero exit is an expected outcome (for example, no best-iteration
@@ -353,6 +361,7 @@ def _run_reporting_in_docker(
             "--agent-id",
             agent_id,
         ],
+        docker_arguments=_workspace_label_arguments(workspace_directory),
     )
 
 

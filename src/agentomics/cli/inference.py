@@ -69,7 +69,7 @@ def _run_inference_with_resolved_paths(arguments: argparse.Namespace) -> int:
         "--output",
         f"/inference-output/{arguments.output.name}",
         "--iteration-dir",
-        str(arguments.iteration_dir),
+        arguments.iteration_dir.as_posix(),  # a path inside the container
     ]
     mounts = [
         f"type=bind,src={arguments.agent_dir},dst=/agent,readonly",
