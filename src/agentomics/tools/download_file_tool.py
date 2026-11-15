@@ -81,7 +81,7 @@ def _download_file(ctx: RunContext[DownloadDeps], url: str, filename: str) -> Do
         except (DownloadError, ValueError) as error:
             return f"Error: {error}"
         stored_path, new_manifests = add_to_collected_data_directory(
-            config, path, name, download_item.url, archive=filename if archive_suffix else None,
+            config, path, name, download_item.url, source_archive=filename if archive_suffix else None,
         )
     byte_budget.consume(get_manifest_size_bytes(new_manifests))
     return DownloadFileResult(

@@ -15,7 +15,7 @@ class ManifestEntry(BaseModel):
     source_url: str
     size_bytes: int
     sha256: str
-    archive: str | None = None
+    source_archive: str | None = None
 
 
 _MANIFEST = TypeAdapter(list[ManifestEntry])
@@ -67,7 +67,7 @@ def create_temporary_download_directory(config: DataModuleConfig) -> tempfile.Te
 
 
 def add_to_collected_data_directory(
-    config: DataModuleConfig, path: Path, name: str, source_url: str, archive: str | None,
+    config: DataModuleConfig, path: Path, name: str, source_url: str, source_archive: str | None,
 ) -> tuple[str, list[ManifestEntry]]:
     target = config.files_dir / name
     target.parent.mkdir(exist_ok=True)
@@ -79,7 +79,7 @@ def add_to_collected_data_directory(
             source_url=source_url,
             size_bytes=file.stat().st_size,
             sha256=get_file_hash(file),
-            archive=archive,
+            source_archive=source_archive,
         )
         for file in files
     ]

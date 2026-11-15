@@ -88,7 +88,7 @@ def test_archive_is_unpacked_into_recorded_files_and_removed(data_module_config,
     entries = load_manifest(data_module_config)
     assert (result.path, result.file_count) == ("files/data", 2)
     assert [entry.path for entry in entries] == ["files/data/a.csv", "files/data/sub/b.csv"]
-    assert all(entry.archive == "data.zip" and entry.source_url == f"{URL}/data.zip" for entry in entries)
+    assert all(entry.source_archive == "data.zip" and entry.source_url == f"{URL}/data.zip" for entry in entries)
     assert list_files(data_module_config.collected_data_dir) == ["files/data/a.csv", "files/data/sub/b.csv", "manifest.json"]
 
 
