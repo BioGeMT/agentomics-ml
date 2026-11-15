@@ -16,8 +16,8 @@ from pydantic_ai.usage import RunUsage
 
 from agentomics.runtime.collected_data_directory import get_manifest_size_bytes, load_manifest
 from agentomics.runtime.filesystem import ByteBudget
-from agentomics.tools import download_file_tool
-from agentomics.tools.download_file_tool import DownloadDeps
+from agentomics.tools.data_collection import download_file_tool
+from agentomics.tools.data_collection.download_file_tool import DownloadDeps
 from agentomics.utils.config import Config
 from agentomics.utils.data_module_config import DataModuleConfig
 

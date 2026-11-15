@@ -18,8 +18,8 @@ from agentomics.runtime.conda_utils import (
 )
 from agentomics.runtime.read_write_utils import get_next_iteration_index
 from agentomics.runtime.run_lifecycle import prepare_iteration_workspace
-from agentomics.tools.discard_file_tool import create_discard_file_tool
-from agentomics.tools.download_file_tool import create_download_file_tool
+from agentomics.tools.data_collection.discard_file_tool import create_discard_file_tool
+from agentomics.tools.data_collection.download_file_tool import create_download_file_tool
 from agentomics.tools.tool_registry import create_tool, create_tools
 from agentomics.utils.config import Config
 from agentomics.utils.data_module_config import DataModuleConfig
