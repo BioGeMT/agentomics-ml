@@ -14,8 +14,14 @@ from agentomics.agents.data_collection.spec import DataCollectionSpec
 from agentomics.runtime.collected_data_directory import load_manifest
 from agentomics.tools import web_fetch_tool
 from agentomics.tools.web_fetch_tool import create_web_fetch_tool
+from agentomics.utils.data_module_config import DataModuleConfig
 from agentomics.utils.exceptions import StepFailed
-from tests.helpers import create_failing_model, create_response_calling_output_tool, mock_downloads
+from tests.helpers import (
+    create_download_context,
+    create_failing_model,
+    create_response_calling_output_tool,
+    mock_downloads,
+)
 
 SUMMARY = "Measurements from one source, with the documentation that describes them."
 URL = "https://example.org"
@@ -96,6 +102,19 @@ def test_finished_collection_is_not_collected_again(initialized_data_module_conf
     asyncio.run(DataCollectionStep(initialized_data_module_config, SPEC, create_failing_model(), create_failing_model()).run())
 
     assert _load_review_verdicts(initialized_data_module_config) == [True]
+
+
+def test_collection_counts_pre_existing_files_against_the_size_limit(initialized_data_module_config, download_file_tool, monkeypatch):
+    config = initialized_data_module_config
+    mock_downloads(monkeypatch, {f"{URL}/a.csv": b"a" * 100, f"{URL}/b.csv": b"b" * 100})
+    download_file_tool.function(create_download_context(config), f"{URL}/a.csv", "a.csv")
+    # The size limit has room for one of the two files, not for both.
+    config.max_download_gb = 150 / DataModuleConfig.BYTES_PER_GB
+    collector_model = _create_collector_model([_create_download_response(download_file_tool, "b.csv")])
+
+    asyncio.run(DataCollectionStep(config, SPEC, collector_model, _create_reviewer_model([True])).run())
+
+    assert [entry.path for entry in load_manifest(config)] == ["files/a.csv"]
 
 
 def test_summary_without_downloaded_files_is_not_reviewed(initialized_data_module_config):
