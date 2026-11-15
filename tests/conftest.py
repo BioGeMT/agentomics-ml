@@ -171,7 +171,7 @@ def replace_tool(default_agent_config: Config):
 
 
 @pytest.fixture
-def data_module_config(tmp_path: Path) -> DataModuleConfig:
+def initialized_data_module_config(tmp_path: Path) -> DataModuleConfig:
     """Create the config of a data collection with an initialized collected data folder."""
     config = DataModuleConfig(
         collected_data_dir=tmp_path / "collected_data",
@@ -183,15 +183,15 @@ def data_module_config(tmp_path: Path) -> DataModuleConfig:
 
 
 @pytest.fixture
-def download_file_tool(data_module_config: DataModuleConfig):
+def download_file_tool(initialized_data_module_config: DataModuleConfig):
     """Create the tool that downloads a file into the collected data folder."""
-    return create_download_file_tool(data_module_config)
+    return create_download_file_tool(initialized_data_module_config)
 
 
 @pytest.fixture
-def discard_file_tool(data_module_config: DataModuleConfig):
+def discard_file_tool(initialized_data_module_config: DataModuleConfig):
     """Create the tool that discards a file from the collected data folder."""
-    return create_discard_file_tool(data_module_config)
+    return create_discard_file_tool(initialized_data_module_config)
 
 
 @pytest.fixture
