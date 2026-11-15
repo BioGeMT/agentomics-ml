@@ -1,7 +1,7 @@
 import pytest
 
 from agentomics.runtime.collected_data_directory import (
-    add_to_collected_data_directory,
+    move_into_collected_data_directory,
     validate_collected_data_directory,
 )
 
@@ -10,7 +10,7 @@ def _add_file(config) -> None:
     """Add one file to the collected data folder, recorded in its manifest."""
     path = config.collected_data_dir / "downloaded.csv"
     path.write_bytes(b"x" * 100)
-    add_to_collected_data_directory(config, path, "data.csv", "https://example.org/data.csv", source_archive=None)
+    move_into_collected_data_directory(config, path, "data.csv", "https://example.org/data.csv", source_archive=None)
 
 
 def test_folder_that_matches_its_manifest_is_valid(data_module_config):

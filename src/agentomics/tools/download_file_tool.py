@@ -9,9 +9,9 @@ from pydantic_ai import RunContext, Tool
 
 from agentomics.runtime.archives import get_archive_suffix, unpack_archive
 from agentomics.runtime.collected_data_directory import (
-    add_to_collected_data_directory,
     create_temporary_download_directory,
     get_manifest_size_bytes,
+    move_into_collected_data_directory,
     validate_new_file_name,
 )
 from agentomics.runtime.filesystem import ByteBudget, write_chunks
@@ -80,7 +80,7 @@ def _download_file(ctx: RunContext[DownloadDeps], url: str, filename: str) -> Do
                 unpack_archive(download_item.path, path, replace(byte_budget))
         except (DownloadError, ValueError) as error:
             return f"Error: {error}"
-        stored_path, new_manifests = add_to_collected_data_directory(
+        stored_path, new_manifests = move_into_collected_data_directory(
             config, path, name, download_item.url, source_archive=filename if archive_suffix else None,
         )
     byte_budget.consume(get_manifest_size_bytes(new_manifests))

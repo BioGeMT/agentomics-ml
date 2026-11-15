@@ -66,15 +66,22 @@ def create_temporary_download_directory(config: DataModuleConfig) -> tempfile.Te
     return tempfile.TemporaryDirectory(dir=config.collected_data_dir)
 
 
-def add_to_collected_data_directory(
-    config: DataModuleConfig, path: Path, name: str, source_url: str, source_archive: str | None,
+def move_into_collected_data_directory(
+    config: DataModuleConfig, temporary_path: Path, target_name: str, source_url: str, source_archive: str | None,
 ) -> tuple[str, list[ManifestEntry]]:
-    target = config.files_dir / name
-    files = [path] if path.is_file() else sorted(file for file in path.rglob("*") if file.is_file())
+    """Move temporary_path to files/target_name and record its files in the manifest.
+
+    temporary_path must be inside a create_temporary_download_directory() folder, so that the move is a rename.
+    """
+    target = config.files_dir / target_name
+    files = (
+        [temporary_path] if temporary_path.is_file()
+        else sorted(file for file in temporary_path.rglob("*") if file.is_file())
+    )
     # The files are hashed before the move, so that an interrupted hashing leaves files/ as it was.
     new_manifests = [
         ManifestEntry(
-            path=_get_manifest_path(config, target / file.relative_to(path)),
+            path=_get_manifest_path(config, target / file.relative_to(temporary_path)),
             source_url=source_url,
             size_bytes=file.stat().st_size,
             sha256=get_file_hash(file),
@@ -83,7 +90,7 @@ def add_to_collected_data_directory(
         for file in files
     ]
     target.parent.mkdir(exist_ok=True)
-    path.rename(target)
+    temporary_path.rename(target)
     _save_manifest(config, load_manifest(config) + new_manifests)
     return _get_manifest_path(config, target), new_manifests
 
