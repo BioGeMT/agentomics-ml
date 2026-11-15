@@ -12,9 +12,9 @@ from agentomics.agents.data_collection.capabilities import create_data_collectio
 from agentomics.agents.data_collection.spec import DataCollectionSpec
 from agentomics.runtime.collected_data_directory import (
     append_data_collection_review,
+    dump_manifest,
     get_manifest_size_bytes,
     load_manifest,
-    read_manifest,
 )
 from agentomics.utils.data_module_config import DataModuleConfig
 
@@ -69,10 +69,11 @@ they open now."""
 
 
 def _get_reviewer_prompt(config: DataModuleConfig, spec: DataCollectionSpec, summary: str) -> str:
-    byte_counts = {"used_bytes": get_manifest_size_bytes(load_manifest(config)), "max_bytes": config.max_download_bytes}
+    entries = load_manifest(config)
+    byte_counts = {"used_bytes": get_manifest_size_bytes(entries), "max_bytes": config.max_download_bytes}
     return "\n\n".join([
         f"Spec:\n{spec.model_dump_json(indent=2)}",
-        f"Manifest:\n{read_manifest(config)}",
+        f"Manifest:\n{dump_manifest(entries)}",
         f"Bytes used and size limit:\n{json.dumps(byte_counts)}",
         f"Summary:\n{summary}",
     ])

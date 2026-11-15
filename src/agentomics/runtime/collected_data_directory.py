@@ -42,12 +42,12 @@ def validate_collected_data_directory(config: DataModuleConfig) -> None:
         raise ValueError(f"{config.collected_data_dir} does not match its manifest:\n" + "\n".join(problems))
 
 
-def read_manifest(config: DataModuleConfig) -> str:
-    return config.manifest_path.read_text(encoding="utf-8")
+def dump_manifest(entries: list[ManifestEntry]) -> str:
+    return _MANIFEST_ADAPTER.dump_json(entries, indent=2, exclude_none=True).decode("utf-8")
 
 
 def load_manifest(config: DataModuleConfig) -> list[ManifestEntry]:
-    return _MANIFEST_ADAPTER.validate_json(read_manifest(config))
+    return _MANIFEST_ADAPTER.validate_json(config.manifest_path.read_text(encoding="utf-8"))
 
 
 def get_manifest_size_bytes(entries: list[ManifestEntry]) -> int:
@@ -110,4 +110,4 @@ def _get_manifest_path(config: DataModuleConfig, path: Path) -> str:
 
 def _save_manifest(config: DataModuleConfig, entries: list[ManifestEntry]) -> None:
     with write_atomically(config.manifest_path) as temporary_path:
-        temporary_path.write_bytes(_MANIFEST_ADAPTER.dump_json(entries, indent=2, exclude_none=True))
+        temporary_path.write_text(dump_manifest(entries), encoding="utf-8")
