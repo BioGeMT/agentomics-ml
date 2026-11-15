@@ -213,7 +213,6 @@ class AgenticStepMixin(ABC):
         max_tool_retries: int | None = None,
         tools: list | None = None,
         capabilities: list | None = None,
-        deps_type: type = dict,
         message_history: list[ModelMessage] | None = None,
         system_prompt: str | None = None,
         instructions: str | None = None,
@@ -222,6 +221,7 @@ class AgenticStepMixin(ABC):
             raise ValueError("system_prompt is ignored when message_history is non-empty. Set it to None and ensure your message_history contains it, or use instructions.")
         self._step_started_at = datetime.now()
         self._step_messages = []
+        deps = self.build_deps()
         agent = self.create_agent(
             model=model,
             model_settings=model_settings,
@@ -229,7 +229,7 @@ class AgenticStepMixin(ABC):
             max_tool_retries=max_tool_retries,
             tools=tools or [],
             capabilities=capabilities or [],
-            deps_type=deps_type,
+            deps_type=type(deps),
             system_prompt=system_prompt,
             instructions=instructions,
         )
@@ -239,7 +239,7 @@ class AgenticStepMixin(ABC):
                 user_prompt=user_prompt,
                 max_steps=max_steps,
                 message_history=message_history,
-                deps=self.build_deps(),
+                deps=deps,
             )
         except AgentRunFailed as error:
             self._step_messages = error.context_messages

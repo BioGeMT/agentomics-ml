@@ -106,6 +106,5 @@ class DataCollectionStep(RuntimeStep, AgenticStepMixin):
             max_tool_retries=self.config.max_tool_retries,
             tools=[create_download_file_tool(self.config), create_discard_file_tool(self.config)],
             capabilities=create_data_collection_capabilities(self.config),
-            deps_type=DataCollectionDeps,
             system_prompt=COLLECTOR_SYSTEM_PROMPT,
         )
