@@ -72,7 +72,7 @@ class DataCollectionStep(RuntimeStep, AgenticStepMixin):
         return self.config.collected_data_dir
 
     def step_validators(self) -> list[Callable]:
-        async def _require_downloaded_files(ctx: RunContext[DataCollectionDeps], result: DataCollectionOutput) -> DataCollectionOutput:
+        async def _require_non_empty_manifest(ctx: RunContext[DataCollectionDeps], result: DataCollectionOutput) -> DataCollectionOutput:
             if not load_manifest(ctx.deps.config):
                 raise ModelRetry("No files were downloaded.")
             return result
@@ -82,7 +82,7 @@ class DataCollectionStep(RuntimeStep, AgenticStepMixin):
             if not review.accepted:
                 raise ModelRetry(f"A reviewer did not accept your files:\n{review.model_dump_json(indent=2)}")
             return result
-        return [_require_downloaded_files, _require_accepting_review]
+        return [_require_non_empty_manifest, _require_accepting_review]
 
     def build_deps(self) -> DataCollectionDeps:
         return DataCollectionDeps(
