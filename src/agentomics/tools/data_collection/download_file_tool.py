@@ -97,6 +97,7 @@ def _download_url(url: str, path: Path, timeout: int, byte_budget: ByteBudget) -
     if not url.startswith(SUPPORTED_URL_PREFIXES):
         raise DownloadError("only http and https URLs can be downloaded. Try the same address over https if the host offers it")
     try:
+        # The timeout limits each wait for the server (to connect, to send the next bytes), not the whole download.
         with httpx2.Client(follow_redirects=True, timeout=timeout) as client, client.stream("GET", url) as response:
             response.raise_for_status()
             if "content-length" in response.headers:
