@@ -4,7 +4,7 @@ from pathlib import Path
 import wandb
 from wandb.errors import AuthenticationError, UsageError
 
-from agentomics.utils.metrics import get_task_to_metrics_names
+from agentomics.utils.metrics import get_higher_is_better_map, get_task_to_metrics_names
 from agentomics.utils.config import Config
 
 
@@ -54,10 +54,31 @@ def log_iteration_metrics(metrics, iteration, task_type):
             iteration=iteration,
         )
 
-def log_iteration_duration(iteration, duration):
+def log_run_metrics(iteration, iteration_state, token_usage):
+    values = {
+        'duration': float(iteration_state['ended_at']) - float(iteration_state['started_at']),
+        'tokens/input': sum(usage['input_tokens'] for usage in token_usage.values()),
+        'tokens/output': sum(usage['output_tokens'] for usage in token_usage.values()),
+        'iteration/failed': int(iteration_state['status'] != 'success'),
+    }
     if not is_wandb_active():
-        return
-    wandb.log({'duration':duration}, step=iteration)
+        return values
+    summary = wandb.run.summary
+    values['duration_total'] = summary.get('duration_total', 0) + values['duration']
+    values['tokens/input_total'] = summary.get('tokens/input_total', 0) + values['tokens/input']
+    values['tokens/output_total'] = summary.get('tokens/output_total', 0) + values['tokens/output']
+    values['iterations/failed'] = summary.get('iterations/failed', 0) + values['iteration/failed']
+    wandb.log(values, step=iteration)
+    return values
+
+def log_main_metric(iteration, metric_name, metrics):
+    value = metrics.get(f'validation/{metric_name}', math.nan)
+    if not is_wandb_active():
+        return value
+    summary = 'max' if get_higher_is_better_map()[metric_name] else 'min'
+    wandb.define_metric('main/val_metric', summary=summary)
+    wandb.log({'main/val_metric': value}, step=iteration)
+    return value
 
 def log_split_is_allowed(iteration, is_allowed):
     if not is_wandb_active():
