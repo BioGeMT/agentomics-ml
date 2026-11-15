@@ -77,6 +77,7 @@ def build_development_image() -> str:
     try:
         return _build_development_image()
     except RuntimeError as error:
+        # These errors are user mistakes, so print only the message, without a traceback.
         print(f"Error: {error}", file=sys.stderr)
         sys.exit(1)
 
