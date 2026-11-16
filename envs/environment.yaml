@@ -9,6 +9,7 @@ dependencies:
   - pydantic-ai==2.66.0
   - markdownify==1.2.3
   - ddgs==9.14.4
+  - python-libarchive-c==5.3
   - pip
   - pip:
     - weave==0.52.14 # Often breaks with new versions, update as necessary
@@ -22,5 +23,6 @@ dependencies:
     - uv==0.9.26
     - openai==3.31.0
     - anthropic==1.15.0
+    - pydantic-ai-harness==0.66.0
     - pytest==9.1.1
     - pydantic-ai-slim[mcp]==2.66.0

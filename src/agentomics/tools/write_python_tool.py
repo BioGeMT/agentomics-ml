@@ -50,7 +50,6 @@ def create_write_python_tool(config: Config):
     write_python_tool = Tool(
         function=_write_python, 
         takes_ctx=False, 
-        max_retries=config.max_tool_retries,
         # description=None, # Infered from the function docstring
         require_parameter_descriptions=True,
         name="write_python",

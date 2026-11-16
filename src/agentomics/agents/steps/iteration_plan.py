@@ -91,6 +91,7 @@ class IterationPlanStep(AgentomicsAgenticStep):
             model_settings=self.high_reasoning_model_settings(),
             max_steps=self.config.max_steps,
             max_validation_retries=self.config.max_validation_retries,
+            max_tool_retries=self.config.max_tool_retries,
         )
 
     def high_reasoning_model_settings(self) -> ModelSettings:

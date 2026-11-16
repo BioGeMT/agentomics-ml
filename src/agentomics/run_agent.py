@@ -89,9 +89,9 @@ async def run_experiment(
 
     config.print_summary()
 
-    default_model = provider.create_model(config.model_name, config)
-    iteration_plan_model = provider.create_model(config.iteration_plan_model_name, config)
-    trace_analysis_model = provider.create_model(config.trace_analysis_model_name, config)
+    default_model = provider.create_model_from_config(config.model_name, config)
+    iteration_plan_model = provider.create_model_from_config(config.iteration_plan_model_name, config)
+    trace_analysis_model = provider.create_model_from_config(config.trace_analysis_model_name, config)
 
     run_fn = run_agentomics
     if timeout is not None:

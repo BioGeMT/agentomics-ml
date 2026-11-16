@@ -24,7 +24,7 @@ class ScriptedProvider(Provider):
         models.ALLOW_MODEL_REQUESTS = False
         super().__init__("scripted", base_url="")
 
-    def create_model(self, model_name: str, config: Config) -> FunctionModel:
+    def create_model_from_config(self, model_name: str, config: Config) -> FunctionModel:
         build_step_response = build_default_step_response
         if model_name == "scripted-dataset-isolation":
             from tests.support.scripted_dataset_isolation import (

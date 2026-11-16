@@ -14,3 +14,6 @@ class StepFailed(Exception):
 class AgentScriptFailed(Exception):
     def __init__(self, message):
         super().__init__(message)
+
+class DownloadError(Exception):
+    pass

@@ -6,7 +6,6 @@ from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.providers.anthropic import AnthropicProvider as PydanticAnthropicProvider # would clash with our class name
 from rich.panel import Panel
 
-from agentomics.utils.config import Config
 from .provider import Provider
 
 
@@ -35,13 +34,13 @@ class AnthropicProvider(Provider):
                      title_align="left", border_style="cyan", width=panel_width)
         self.console.print(panel)
 
-    def create_model(self, model_name: str, config: Config) -> AnthropicModel:
+    def create_model(self, model_name: str, use_proxy: bool, llm_response_timeout: int) -> AnthropicModel:
         """Ovveriding method in Provider class. Create Anthropic model instance."""
         proxy_url = os.getenv("HTTP_PROXY")
 
         async_http_client = httpx2.AsyncClient(
-            proxy=proxy_url if config.use_proxy else None,
-            timeout=config.llm_response_timeout
+            proxy=proxy_url if use_proxy else None,
+            timeout=llm_response_timeout
         )
 
         return AnthropicModel(

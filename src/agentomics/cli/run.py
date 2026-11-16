@@ -386,11 +386,7 @@ def main() -> int:
     agent_id = create_agent_id()
 
     if arguments.dev:
-        try:
-            arguments.image = build_development_image()
-        except RuntimeError as error:
-            print(f"Error: {error}", file=sys.stderr)
-            return 1
+        arguments.image = build_development_image()
 
     if not arguments.cpu_only:
         try:
