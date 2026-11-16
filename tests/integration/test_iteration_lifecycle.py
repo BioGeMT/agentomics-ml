@@ -1,3 +1,7 @@
+import math
+from collections import Counter
+
+from agentomics.run_logging.logging_helpers import log_main_metric, log_run_metrics
 from agentomics.runtime.read_write_utils import (
     archive_current_iteration,
     get_last_successful_iteration,
@@ -73,3 +77,38 @@ def test_current_iteration_workspace_initialization_is_idempotent(
     initialize_current_iteration_workspace(initialized_run_config)
 
     assert initialized_run_config.current_iteration_dir.is_dir()
+
+
+def test_run_metrics_sum_tokens_over_all_steps_of_the_iteration():
+    token_usage = {
+        "data_exploration": Counter(input_tokens=300, output_tokens=40),
+        "model_training": Counter(input_tokens=200, output_tokens=10),
+    }
+
+    values = log_run_metrics(
+        iteration=0,
+        iteration_state={"started_at": 100.0, "ended_at": 160.5, "status": "success"},
+        token_usage=token_usage,
+    )
+
+    assert values == {"duration": 60.5, "tokens/input": 500, "tokens/output": 50, "iteration/failed": 0}
+
+
+def test_run_metrics_flag_a_failed_iteration():
+    values = log_run_metrics(
+        iteration=0,
+        iteration_state={"started_at": 100.0, "ended_at": 101.0, "status": "failed"},
+        token_usage={},
+    )
+
+    assert values["iteration/failed"] == 1
+
+
+def test_main_metric_is_the_configured_validation_metric():
+    metrics = {"validation/AUROC": 0.91, "validation/ACC": 0.8, "train/AUROC": 0.99}
+
+    assert log_main_metric(iteration=0, metric_name="AUROC", metrics=metrics) == 0.91
+
+
+def test_main_metric_is_missing_when_validation_did_not_report_it():
+    assert math.isnan(log_main_metric(iteration=0, metric_name="AUROC", metrics={}))
