@@ -19,11 +19,7 @@ from agentomics.runtime.filesystem import (
     rewrite_symlinks_to_absolute,
     validate_symlinks_targets_in,
 )
-from agentomics.utils.ml_tasks import (
-    ClassificationTask,
-    RegressionTask,
-    get_task_names,
-)
+from agentomics.utils.ml_tasks import get_task
 from agentomics.runtime.read_write_utils import (
     get_last_successful_iteration,
     load_current_iteration_index,
@@ -38,7 +34,6 @@ from agentomics.datasets.data_contract import (
     LABELS_FILE_NAME,
     METADATA_FILE_NAME,
     MINI_TRAIN_SPLIT,
-    NUMERIC_LABEL_COLUMN_NAME,
     TRAIN_SPLIT,
     VALIDATION_SPLIT,
     validate_splits,
@@ -62,8 +57,6 @@ class DataSplitStep(AgentomicsAgenticStep):
     step_id = "data_split"
     display_name = "SPLITTING"
     output_type = DataSplitOutput
-    CLASSIFICATION_MINI_TRAIN_SAMPLES_PER_CLASS = 100
-    REGRESSION_MINI_TRAIN_SAMPLE_COUNT = 100
 
     @staticmethod
     def validate_generated_split(split_path: Path, dataset_dir: Path) -> None:
@@ -113,33 +106,6 @@ class DataSplitStep(AgentomicsAgenticStep):
         if "input_structure" not in metadata:
             raise ValueError(f"{metadata_path} is missing input_structure")
         return metadata["input_structure"]
-
-    def _validate_mini_train_classification(self, train_df: pd.DataFrame, mini_train_df: pd.DataFrame) -> None:
-        train_class_counts = train_df[NUMERIC_LABEL_COLUMN_NAME].value_counts()
-        mini_train_class_counts = mini_train_df[NUMERIC_LABEL_COLUMN_NAME].value_counts()
-        missing_classes = set(train_class_counts.index) - set(mini_train_class_counts.index)
-        if missing_classes:
-            raise ModelRetry(
-                f"mini_train must contain samples from all classes. "
-                f"Missing classes: {sorted(missing_classes)}"
-            )
-        for cls, mini_count in mini_train_class_counts.items():
-            expected_count = min(self.CLASSIFICATION_MINI_TRAIN_SAMPLES_PER_CLASS, train_class_counts[cls])
-            if mini_count != expected_count:
-                raise ModelRetry(
-                    f"mini_train must have exactly {expected_count} samples for class {cls} "
-                    f"(min({self.CLASSIFICATION_MINI_TRAIN_SAMPLES_PER_CLASS}, {train_class_counts[cls]}) available in train), "
-                    f"got {mini_count}."
-                )
-
-    def _validate_mini_train_regression(self, mini_train_df: pd.DataFrame, train_df: pd.DataFrame) -> None:
-        expected_count = min(self.REGRESSION_MINI_TRAIN_SAMPLE_COUNT, len(train_df))
-        if len(mini_train_df) != expected_count:
-            raise ModelRetry(
-                f"mini_train must have exactly {expected_count} samples "
-                f"(min({self.REGRESSION_MINI_TRAIN_SAMPLE_COUNT}, {len(train_df)}) available in train), "
-                f"got {len(mini_train_df)}."
-            )
 
     def _move_split_to_versioned_dir(self, result: DataSplitOutput, flag_as_changed: bool) -> DataSplitOutput:
         train_path = Path(result.train_path)
@@ -210,10 +176,10 @@ class DataSplitStep(AgentomicsAgenticStep):
                     f"mini_train IDs must be a subset of training IDs. "
                     f"Found {len(extra_ids)} IDs not in train: {list(extra_ids)[:10]}"
                 )
-            if self.config.task_type == ClassificationTask.name:
-                self._validate_mini_train_classification(train_df, mini_train_df)
-            else:
-                self._validate_mini_train_regression(mini_train_df, train_df)
+            try:
+                get_task(self.config.task_type).validate_mini_train(train_df, mini_train_df)
+            except ValueError as exc:
+                raise ModelRetry(str(exc)) from exc
 
             if self._is_mini_train_only():
                 # finalize_output() creates these two as symlinks to the provided dataset splits.
@@ -255,20 +221,7 @@ class DataSplitStep(AgentomicsAgenticStep):
         latest_split_dir = self._get_latest_split_dir()
         current_step_dir = self.config.current_step_dir
 
-        if self.config.task_type == ClassificationTask.name:
-            validation_instructions = "Ensure that the validation split contains representative samples from ALL classes."
-            mini_train_size_instructions = (
-                f"exactly {self.CLASSIFICATION_MINI_TRAIN_SAMPLES_PER_CLASS} samples per class "
-                f"(or all available if the training split has fewer than {self.CLASSIFICATION_MINI_TRAIN_SAMPLES_PER_CLASS} for a class)"
-            )
-        elif self.config.task_type == RegressionTask.name:
-            validation_instructions = ""
-            mini_train_size_instructions = (
-                f"exactly {self.REGRESSION_MINI_TRAIN_SAMPLE_COUNT} samples "
-                f"(or all available if the training split has fewer than {self.REGRESSION_MINI_TRAIN_SAMPLE_COUNT})"
-            )
-        else:
-            raise ValueError(f"Unknown task type: {self.config.task_type}. Supported types are {get_task_names()}.")
+        validation_instructions, mini_train_size_instructions = get_task(self.config.task_type).split_instructions()
 
         if self._is_mini_train_only():
             train_split_path = self.config.dataset_dir / TRAIN_SPLIT

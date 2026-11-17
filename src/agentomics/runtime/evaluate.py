@@ -11,12 +11,11 @@ from agentomics.datasets.data_contract import (
     NUMERIC_LABEL_COLUMN_NAME,
     validate_and_read_labels,
 )
-from agentomics.datasets.label_processing import convert_classification_labels, convert_regression_labels
 from agentomics.run_logging.wandb_setup import resume_wandb_run
 from agentomics.runtime.evaluate_result import get_metrics
 from agentomics.runtime.read_write_utils import load_config_from_run_dir_and_reroot
 from agentomics.utils.config import Config
-from agentomics.utils.ml_tasks import ClassificationTask
+from agentomics.utils.ml_tasks import get_task
 
 
 def _read_numeric_labels(labels_path: Path, config: Config) -> pd.DataFrame:
@@ -26,9 +25,10 @@ def _read_numeric_labels(labels_path: Path, config: Config) -> pd.DataFrame:
             labels_path, NUMERIC_LABEL_COLUMN_NAME, require_numeric_values=True
         )
     labels = validate_and_read_labels(labels_path, LABEL_COLUMN_NAME)
-    if config.task_type == ClassificationTask.name:
-        return convert_classification_labels(labels, config.label_to_scalar, "eval")
-    return convert_regression_labels(labels, "eval")
+    converted, _ = get_task(config.task_type).prepare_labels(
+        {"eval": labels}, {"label_to_scalar": config.label_to_scalar},
+    )
+    return converted["eval"]
 
 
 def evaluate_predictions(
