@@ -19,6 +19,14 @@ class MLTask(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def score(
+        self, merged: pd.DataFrame, prediction_columns: list[str],
+        *, numeric_label_col: str, pred_col: str, prob_col_prefix: str,
+    ) -> dict[str, float]:
+        """Compute task specific metrics from aligned predictions and reference labels."""
+        raise NotImplementedError
+
+    @abstractmethod
     def prepare_labels(
         self, split_labels: dict[str, pd.DataFrame], metadata: dict,
         *, fit: bool = False, options: dict | None = None,

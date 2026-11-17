@@ -20,6 +20,30 @@ class ClassificationTask(MLTask):
     def default_validation_metric(self) -> str:
         return "AUROC"
 
+    def score(
+        self, merged: pd.DataFrame, prediction_columns: list[str],
+        *, numeric_label_col: str, pred_col: str, prob_col_prefix: str,
+    ) -> dict[str, float]:
+        merged[pred_col] = merged[pred_col].astype(int)
+        merged[numeric_label_col] = merged[numeric_label_col].astype(int)
+
+        prob_cols = [col for col in prediction_columns if col.startswith(prob_col_prefix)]
+        if not prob_cols:
+            raise ValueError(f"No probability columns found with prefix '{prob_col_prefix}'.")
+        prob_cols_sorted = sorted(prob_cols, key=lambda column_name: int(column_name.split('_')[1]))
+
+        metrics = {}
+        metric_to_fn = self.metrics()
+        for metric_name, metric_fn in metric_to_fn.items():
+            if metric_fn.needs_probabilities:
+                metrics[metric_name] = metric_fn(
+                    merged[numeric_label_col],
+                    merged[prob_cols_sorted].astype(float).values,
+                )
+            else:
+                metrics[metric_name] = metric_fn(merged[numeric_label_col], merged[pred_col])
+        return metrics
+
     def prepare_labels(
         self, split_labels: dict[str, pd.DataFrame], metadata: dict,
         *, fit: bool = False, options: dict | None = None,

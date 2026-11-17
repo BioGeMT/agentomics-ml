@@ -5,12 +5,7 @@ import sys
 import pandas as pd
 
 from agentomics.datasets.data_contract import ID_COLUMN_NAME, NUMERIC_LABEL_COLUMN_NAME, PREDICTION_COLUMN_NAME
-from agentomics.utils.metrics import get_classification_metrics_functions, get_regression_metrics_functions
-from agentomics.utils.ml_tasks import (
-    ClassificationTask,
-    RegressionTask,
-    get_task_names,
-)
+from agentomics.utils.ml_tasks import get_task, get_task_names
 
 
 def get_metrics(
@@ -31,54 +26,13 @@ def get_metrics(
     if len(merged) != len(test):
         print('WARNING: PREDICTIONS LENGTH DOESNT MATCH TEST DATASET')
 
-    if task_type == ClassificationTask.name:
-        return _get_classification_metrics(
-            results=results,
-            merged=merged,
-            numeric_label_col=numeric_label_col,
-            pred_col=pred_col,
-            prob_col_prefix=prob_col_prefix,
-        )
-    if task_type == RegressionTask.name:
-        return _get_regression_metrics(
-            merged=merged,
-            numeric_label_col=numeric_label_col,
-            pred_col=pred_col,
-        )
-    raise ValueError(f"Unknown task_type: {task_type}. Expected one of {get_task_names()}.")
-
-
-def _get_classification_metrics(results, merged, numeric_label_col: str, pred_col: str, prob_col_prefix: str):
-    merged[pred_col] = merged[pred_col].astype(int)
-    merged[numeric_label_col] = merged[numeric_label_col].astype(int)
-
-    prob_cols = [col for col in results.columns if col.startswith(prob_col_prefix)]
-    if not prob_cols:
-        raise ValueError(f"No probability columns found with prefix '{prob_col_prefix}'.")
-    prob_cols_sorted = sorted(prob_cols, key=lambda column_name: int(column_name.split('_')[1]))
-
-    metrics = {}
-    metric_to_fn = get_classification_metrics_functions()
-    for metric_name, metric_fn in metric_to_fn.items():
-        if metric_fn.needs_probabilities:
-            metrics[metric_name] = metric_fn(
-                merged[numeric_label_col],
-                merged[prob_cols_sorted].astype(float).values,
-            )
-        else:
-            metrics[metric_name] = metric_fn(merged[numeric_label_col], merged[pred_col])
-    return metrics
-
-
-def _get_regression_metrics(merged, numeric_label_col: str, pred_col: str):
-    merged[numeric_label_col] = merged[numeric_label_col].astype(float)
-    merged[pred_col] = merged[pred_col].astype(float)
-
-    metrics = {}
-    metric_to_fn = get_regression_metrics_functions()
-    for metric_name, metric_fn in metric_to_fn.items():
-        metrics[metric_name] = metric_fn(merged[numeric_label_col], merged[pred_col])
-    return metrics
+    return get_task(task_type).score(
+        merged,
+        prediction_columns=results.columns.tolist(),
+        numeric_label_col=numeric_label_col,
+        pred_col=pred_col,
+        prob_col_prefix=prob_col_prefix,
+    )
 
 
 def main():
