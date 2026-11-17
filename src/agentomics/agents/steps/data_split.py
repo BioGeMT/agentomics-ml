@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 import json
 import shutil
 import time
@@ -9,9 +10,9 @@ from typing import cast
 import pandas as pd
 from pydantic import Field
 from pydantic.json_schema import SkipJsonSchema
-from pydantic_ai import Agent, ModelRetry, RunContext
+from pydantic_ai import ModelRetry, RunContext
 
-from agentomics.agents.steps.base import AgenticStep, AgenticStepOutput
+from agentomics.agents.steps.base import AgentomicsAgenticStep, AgenticStepOutput
 from agentomics.runtime.filesystem import (
     chown_tree_to_root,
     create_absolute_symlink,
@@ -53,7 +54,7 @@ class DataSplitOutput(AgenticStepOutput):
         description="Version number of the split used in this step. Populated programmatically.",
     )
 
-class DataSplitStep(AgenticStep):
+class DataSplitStep(AgentomicsAgenticStep):
     step_id = "data_split"
     display_name = "SPLITTING"
     output_type = DataSplitOutput
@@ -152,8 +153,19 @@ class DataSplitStep(AgenticStep):
         result.split_version = int(next_split_dir.name.removeprefix("split_"))
         return result
 
-    def attach_output_validator(self, agent: Agent[dict, AgenticStepOutput]) -> None:
-        @agent.output_validator
+    def _is_mini_train_only(self) -> bool:
+        return load_iteration_state(self.config.current_iteration_dir)["only_mini_split_allowed_at_start"]
+
+    def _get_generated_split_paths(self, result: DataSplitOutput) -> list[Path]:
+        """Split folders the agent created in this step. Empty when the agent reused an existing split."""
+        split_paths = [Path(result.train_path), Path(result.val_path), Path(result.mini_train_path)]
+        if all(split_path.is_relative_to(self.config.splits_dir) for split_path in split_paths):
+            return []
+        if self._is_mini_train_only():
+            return [Path(result.mini_train_path)]
+        return split_paths
+
+    def step_validators(self) -> list[Callable]:
         async def validate_split_dataset(ctx: RunContext[dict], result: AgenticStepOutput) -> AgenticStepOutput:
             result = cast(DataSplitOutput, result)
             train_path = Path(result.train_path)
@@ -199,29 +211,40 @@ class DataSplitStep(AgenticStep):
             else:
                 self._validate_mini_train_regression(mini_train_df, train_df)
 
-            is_mini_train_only = load_iteration_state(self.config.current_iteration_dir)["only_mini_split_allowed_at_start"]
-            if is_mini_train_only:
-                step_dir = self.config.current_step_dir
-                for split_name in [TRAIN_SPLIT, VALIDATION_SPLIT]:
-                    split_link = step_dir / split_name
-                    create_absolute_symlink(self.config.dataset_dir / split_name, split_link)
-                result.train_path = str(step_dir / TRAIN_SPLIT)
-                result.val_path = str(step_dir / VALIDATION_SPLIT)
-                train_path = Path(result.train_path)
-                val_path = Path(result.val_path)
+            if self._is_mini_train_only():
+                # finalize_output() creates these two as symlinks to the provided dataset splits.
+                train_path = self.config.current_step_dir / TRAIN_SPLIT
+                val_path = self.config.current_step_dir / VALIDATION_SPLIT
+                result.train_path = str(train_path)
+                result.val_path = str(val_path)
 
             if train_path.parent != val_path.parent or train_path.parent != mini_train_path.parent:
                 raise ModelRetry("Train, validation, and mini_train split folders must be in the same directory.")
-            if not train_path.is_relative_to(self.config.splits_dir) or not val_path.is_relative_to(self.config.splits_dir) or not mini_train_path.is_relative_to(self.config.splits_dir):
-                split_paths_to_validate = [mini_train_path] if is_mini_train_only else [train_path, val_path, mini_train_path]
-                for split_path in split_paths_to_validate:
-                    self.validate_generated_split(split_path, self.config.dataset_dir)
-                    rewrite_symlinks_to_absolute(split_path)
-                result = self._move_split_to_versioned_dir(result, flag_as_changed=not is_mini_train_only)
-            else:
+            generated_split_paths = self._get_generated_split_paths(result)
+            for split_path in generated_split_paths:
+                self.validate_generated_split(split_path, self.config.dataset_dir)
+            if not generated_split_paths:
                 result.splitting_strategy = self._get_latest_split_strategy()
                 result.split_version = int(train_path.parent.name.removeprefix("split_"))
             return result
+        return [validate_split_dataset]
+
+    def symlink_allowed_dirs(self, output: AgenticStepOutput) -> list[Path]:
+        # Generated split folders link to dataset files. validate_split_dataset checks those symlinks.
+        return self._get_generated_split_paths(cast(DataSplitOutput, output))
+
+    def finalize_output(self, output: AgenticStepOutput) -> AgenticStepOutput:
+        output = cast(DataSplitOutput, output)
+        generated_split_paths = self._get_generated_split_paths(output)
+        if not generated_split_paths:
+            return output
+        is_mini_train_only = self._is_mini_train_only()
+        if is_mini_train_only:
+            for split_name in [TRAIN_SPLIT, VALIDATION_SPLIT]:
+                create_absolute_symlink(self.config.dataset_dir / split_name, self.config.current_step_dir / split_name)
+        for split_path in generated_split_paths:
+            rewrite_symlinks_to_absolute(split_path)
+        return self._move_split_to_versioned_dir(output, flag_as_changed=not is_mini_train_only)
 
     def step_prompt(self) -> str:
         iteration = load_current_iteration_index(self.config)
@@ -243,7 +266,7 @@ class DataSplitStep(AgenticStep):
         else:
             raise ValueError(f"Unknown task type: {self.config.task_type}. Supported types are {TaskTypes}.")
 
-        if load_iteration_state(self.config.current_iteration_dir)["only_mini_split_allowed_at_start"]:
+        if self._is_mini_train_only():
             train_split_path = self.config.dataset_dir / TRAIN_SPLIT
             validation_split_path = self.config.dataset_dir / VALIDATION_SPLIT
             return f"""

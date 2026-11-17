@@ -1,5 +1,6 @@
-import hashlib
 from pathlib import Path
+
+from agentomics.runtime.filesystem import get_file_hash
 
 
 def snapshot_workspace(root: Path) -> dict[Path, tuple[int, str]]:
@@ -10,8 +11,7 @@ def snapshot_workspace(root: Path) -> dict[Path, tuple[int, str]]:
         if path.is_symlink():
             content = str(path.readlink())
         elif path.is_file():
-            with path.open("rb") as stream:
-                content = hashlib.file_digest(stream, "sha256").hexdigest()
+            content = get_file_hash(path)
         else:
             content = ""
         snapshot[path.relative_to(root)] = (mode, content)

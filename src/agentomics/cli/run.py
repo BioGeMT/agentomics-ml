@@ -71,6 +71,7 @@ def _build_container_arguments(arguments: argparse.Namespace) -> list[str]:
     for option, value in (
         ("--model", arguments.model),
         ("--iteration-plan-model", arguments.iteration_plan_model),
+        ("--trace-analysis-model", arguments.trace_analysis_model),
         ("--provider", arguments.provider),
         ("--dataset", arguments.dataset),
         ("--task-type", arguments.task_type),
@@ -108,6 +109,7 @@ def _build_container_arguments(arguments: argparse.Namespace) -> list[str]:
 def _docker_environment_arguments(agent_id: str) -> list[str]:
     docker_arguments = docker_environment_arguments(
         "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY",
+        "ASTA_API_KEY", "S2_API_KEY", "UNPAYWALL_EMAIL",
         "PROVISIONING_OPENROUTER_API_KEY", "OLLAMA_BASE_URL",
         "WANDB_API_KEY", "WANDB_PROJECT_NAME", "WANDB_ENTITY",
         "WANDB_RUN_GROUP", "WANDB_JOB_TYPE", "WANDB_NAME",
@@ -384,11 +386,7 @@ def main() -> int:
     agent_id = create_agent_id()
 
     if arguments.dev:
-        try:
-            arguments.image = build_development_image()
-        except RuntimeError as error:
-            print(f"Error: {error}", file=sys.stderr)
-            return 1
+        arguments.image = build_development_image()
 
     if not arguments.cpu_only:
         try:

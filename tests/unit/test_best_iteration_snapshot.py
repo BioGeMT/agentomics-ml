@@ -39,7 +39,7 @@ def _create_archived_iteration(
     for split_name in ("train", "validation", "mini_train"):
         write_split_folder(split_dir / split_name)
     save_step_output(
-        config,
+        config.current_step_dir,
         DataSplitStep.step_id,
         DataSplitOutput(
             train_path=str(split_dir / "train"),
@@ -52,7 +52,7 @@ def _create_archived_iteration(
     )
     create_runtime_step(DataSplitStep, config, model=Mock()).archive_step_folder()
     save_step_output(
-        config,
+        config.current_step_dir,
         ValidationEvaluationStep.step_id,
         ValidationEvaluationOutput(
             metrics={"validation/ACC": 0.9},

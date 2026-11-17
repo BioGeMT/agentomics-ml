@@ -111,7 +111,6 @@ def create_bash_tool(config: Config):
         bash_tool = Tool(
             function=_bash,
             takes_ctx=False,
-            max_retries=config.max_tool_retries,
             # description=None, # Inferred from the function docstring
             require_parameter_descriptions=True,
             name="bash",

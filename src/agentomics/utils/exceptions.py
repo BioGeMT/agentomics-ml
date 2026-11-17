@@ -1,10 +1,19 @@
-class IterationRunFailed(Exception):
+class AgentRunFailed(Exception):
     def __init__(self, message, context_messages, exception_trace):
         super().__init__(message)
         self.message = message
         self.context_messages = context_messages
         self.exception_trace = exception_trace
 
+class StepFailed(Exception):
+    def __init__(self, message, exception_trace):
+        super().__init__(message)
+        self.message = message
+        self.exception_trace = exception_trace
+
 class AgentScriptFailed(Exception):
     def __init__(self, message):
         super().__init__(message)
+
+class DownloadError(Exception):
+    pass

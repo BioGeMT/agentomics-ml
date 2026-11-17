@@ -1,4 +1,6 @@
 import os
+import time
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -6,9 +8,21 @@ from pydantic_ai import ModelRetry
 
 from agentomics.agents.steps.data_split import DataSplitStep
 from agentomics.runtime.filesystem import (
+    find_new_files_in_dir,
     rewrite_symlinks_to_absolute,
     validate_symlinks_targets_in,
 )
+
+
+def test_new_symlink_to_existing_file_is_reported_as_new(tmp_path: Path):
+    existing_file = tmp_path / "existing.txt"
+    existing_file.write_text("old", encoding="utf-8")
+    an_hour_ago = time.time() - 3600
+    os.utime(existing_file, (an_hour_ago, an_hour_ago))
+    since = datetime.now() - timedelta(minutes=1)
+    (tmp_path / "link.txt").symlink_to(existing_file)
+
+    assert find_new_files_in_dir(tmp_path, since) == ["link.txt"]
 
 
 def test_relative_symlink_is_rewritten_to_absolute_target(tmp_path: Path):

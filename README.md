@@ -1,6 +1,6 @@
 # Agentomics
 NEWS:
-- *Agentomics to be presented at ISMB 2026*
+- *Agentomics has been presented at ISMB 2026 in Washington DC*
 - *Agentomics has been published in Bioinformatics journal* [link to published paper](https://academic.oup.com/bioinformatics/article/42/Supplement_1/btag250/8726289)
 - *Agentomics now supports any data type and supplementary material*
 

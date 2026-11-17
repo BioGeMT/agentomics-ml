@@ -5,7 +5,7 @@ from pathlib import Path
 from pydantic import Field
 from pydantic_ai import Agent
 
-from agentomics.agents.steps.base import AgenticStep, AgenticStepOutput
+from agentomics.agents.steps.base import AgentomicsAgenticStep, AgenticStepOutput
 from agentomics.agents.steps.data_split import DataSplitStep
 from agentomics.agents.steps.validation_evaluation import ValidationEvaluationStep
 from agentomics.datasets.data_contract import LABELS_FILE_NAME
@@ -25,10 +25,17 @@ class PredictionExplorationOutput(AgenticStepOutput):
         """
     )
 
-class PredictionExplorationStep(AgenticStep):
+class PredictionExplorationStep(AgentomicsAgenticStep):
     step_id = "prediction_exploration"
     display_name = "PREDICTION EXPLORATION"
     output_type = PredictionExplorationOutput
+    failure_is_fatal = False
+
+    def build_failure_output(self) -> PredictionExplorationOutput:
+        return PredictionExplorationOutput(
+            statistics="Not available: prediction exploration failed in this iteration.",
+            insights="Not available: prediction exploration failed in this iteration.",
+        )
 
     def step_prompt(self) -> str:
         #TODO all requires should be deps?
@@ -45,6 +52,3 @@ class PredictionExplorationStep(AgenticStep):
             Analyze these predictions; do not run inference again. To analyze a subset of the validation set, filter these predictions.
             If you need to write code for the analysis, create a separate script.
             """
-    
-    def build_deps(self, step_started_at) -> dict[str, object]:
-        return {"start_time": step_started_at}

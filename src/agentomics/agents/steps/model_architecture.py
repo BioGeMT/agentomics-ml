@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pydantic import Field
-from agentomics.agents.steps.base import AgenticStep, AgenticStepOutput
+from agentomics.agents.steps.base import AgentomicsAgenticStep, AgenticStepOutput
 
 
 class ModelArchitectureOutput(AgenticStepOutput):
@@ -16,7 +16,7 @@ class ModelArchitectureOutput(AgenticStepOutput):
         """
     )
 
-class ModelArchitectureStep(AgenticStep):
+class ModelArchitectureStep(AgentomicsAgenticStep):
     step_id = "model_architecture"
     display_name = "ARCHITECTURE"
     output_type = ModelArchitectureOutput

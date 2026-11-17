@@ -4,7 +4,7 @@ import pprint
 import textwrap
 
 from pydantic_ai import CallToolsNode, ModelRequestNode, UserPromptNode
-from pydantic_ai.messages import SystemPromptPart, UserPromptPart, TextPart, ToolCallPart, ToolReturnPart, RetryPromptPart, ThinkingPart
+from pydantic_ai.messages import SystemPromptPart, UserPromptPart, TextPart, ToolCallPart, ToolReturnPart, RetryFeedbackPart, ThinkingPart
 from pydantic_graph import End
 from pygments import highlight
 from pygments.formatters import TerminalFormatter as TF
@@ -150,14 +150,14 @@ def pretty_print_node(node):
                     print(_tool_call_summary(part))
         elif isinstance(node, ModelRequestNode):
             for part in node.request.parts:
-                if isinstance(part, ToolReturnPart):
+                if isinstance(part, RetryFeedbackPart) or (isinstance(part, ToolReturnPart) and part.outcome == "retried"):
+                    pretty_print("agent output validation failed; retrying", color=bcolors.WARNING)
+                elif isinstance(part, ToolReturnPart):
                     if part.tool_name == "final_result":
                         continue
                     msg, is_error = _tool_return_summary(part)
                     if is_error:
                         pretty_print(msg, color=bcolors.FAIL)
-                elif isinstance(part, RetryPromptPart):
-                    pretty_print("agent output validation failed; retrying", color=bcolors.WARNING)
         elif isinstance(node, UserPromptNode):
             pass
         elif isinstance(node, End):
@@ -203,11 +203,11 @@ def pretty_print_node(node):
                 pretty_print(part.content)
             elif(isinstance(part, UserPromptPart)):
                 pretty_print(part.content)
+            elif(isinstance(part, RetryFeedbackPart) or (isinstance(part, ToolReturnPart) and part.outcome == "retried")):
+                pretty_print("Output Validation Failed, Retry info:")
+                pretty_print(part.content)
             elif(isinstance(part, ToolReturnPart)):
                 pretty_print(f"{part.tool_name} output")
-                pretty_print(part.content)
-            elif(isinstance(part, RetryPromptPart)):
-                pretty_print("Output Validation Failed, Retry info:")
                 pretty_print(part.content)
             else:
                 pretty_print(f"DEVINFO: Unexpected part type (in ModelRequestNode): {type(part)}")

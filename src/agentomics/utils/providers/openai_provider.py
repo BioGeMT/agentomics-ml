@@ -1,5 +1,7 @@
 from typing import List, Optional
 
+from pydantic_ai.models.openai import OpenAIResponsesModel
+from pydantic_ai.providers.openai import OpenAIProvider
 from rich.panel import Panel
 
 from .provider import Provider
@@ -72,3 +74,9 @@ class OpenAiProvider(Provider):
             return models[choice - 1].get("id")
         
         return None
+
+    def create_model(self, model_name: str, use_proxy: bool, llm_response_timeout: int) -> OpenAIResponsesModel:
+        return OpenAIResponsesModel(
+            model_name=model_name,
+            provider=OpenAIProvider(openai_client=self._create_openai_client(use_proxy, llm_response_timeout)),
+        )

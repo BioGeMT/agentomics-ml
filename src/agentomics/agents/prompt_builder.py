@@ -82,5 +82,5 @@ def build_iteration_base_prompt(config: Config, iteration: int) -> str:
     - Don't create or modify any folders or files starting with 'iteration_'.
 
     You are at iteration {iteration}.
-    {f"Archived iteration folders are available under {config.run_dir}/iteration_0, iteration_1, etc. Structured outputs are available under {config.run_dir}/iteration_<iteration_number>/<step_id>/output.json" if iteration > 0 else ""}
+    {f"Archived iteration folders are available under {config.run_dir}/iteration_0, iteration_1, etc. Structured outputs are available under {config.run_dir}/iteration_<iteration_number>/<step_id>/{Config.STEP_OUTPUT_FILENAME}" if iteration > 0 else ""}
     """

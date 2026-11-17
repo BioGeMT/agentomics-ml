@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import hashlib
 import os
 import shutil
 import subprocess
 from argparse import Namespace
+from collections.abc import Iterable, Iterator
+from contextlib import contextmanager
+from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 
@@ -59,6 +64,43 @@ def remove_path(path: Path) -> None:
     if path.is_dir():
         shutil.rmtree(path)
 
+def remove_empty_directories(directory: Path, stop: Path) -> None:
+    while directory != stop and not any(directory.iterdir()):
+        directory.rmdir()
+        directory = directory.parent
+
+@contextmanager
+def write_atomically(path: Path) -> Iterator[Path]:
+    """Yield a temporary path that replaces path on exit, so that an interrupted write leaves the earlier file."""
+    temporary_path = path.with_name(f"{path.name}.tmp")
+    yield temporary_path
+    temporary_path.replace(path)
+
+@dataclass
+class ByteBudget:
+    max_bytes: int | None
+    used_bytes: int
+
+    def consume(self, size_bytes: int) -> None:
+        if self.max_bytes is not None and self.used_bytes + size_bytes > self.max_bytes:
+            raise ValueError(
+                f"the size limit of {self.max_bytes} bytes would be exceeded ({self.used_bytes} bytes are used)"
+            )
+        self.used_bytes += size_bytes
+
+    def release(self, size_bytes: int) -> None:
+        self.used_bytes -= size_bytes
+
+def write_chunks(chunks: Iterable[bytes], path: Path, byte_budget: ByteBudget) -> None:
+    with path.open("wb") as file:
+        for chunk in chunks:
+            byte_budget.consume(len(chunk))
+            file.write(chunk)
+
+def get_file_hash(path: Path) -> str:
+    with path.open("rb") as file:
+        return hashlib.file_digest(file, "sha256").hexdigest()
+
 def create_absolute_symlink(target: Path, link: Path) -> None:
     """Create a symlink at link pointing at the resolved absolute path of target."""
     absolute_target = Path(target).resolve()
@@ -87,6 +129,16 @@ def find_symlinks_in_dir(root: Path, include_root: bool = False) -> list[Path]:
     if include_root and root.is_symlink():
         paths.append(root)
     return paths
+
+def find_new_files_in_dir(root: Path, since_timestamp: datetime) -> list[str]:
+    return [
+        str(path.relative_to(root))
+        for path in root.rglob("*")
+        if (path.is_file() or path.is_symlink())
+        and "__pycache__" not in path.parts
+        # lstat: a symlink counts as new when the link is new, not when its target is
+        and datetime.fromtimestamp(path.lstat().st_mtime) > since_timestamp
+    ]
 
 def rewrite_symlinks_to_absolute(root: Path) -> None:
     symlinks = find_symlinks_in_dir(root)

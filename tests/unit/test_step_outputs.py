@@ -9,7 +9,7 @@ from agentomics.utils.config import Config
 def test_save_step_output_creates_missing_step_directory(config_factory):
     config = config_factory()
 
-    save_step_output(config, "data_exploration", {"summary": "complete"})
+    save_step_output(config.current_step_dir, "data_exploration", {"summary": "complete"})
 
     assert config.current_step_dir.is_dir()
     assert (config.current_step_dir / Config.STEP_OUTPUT_FILENAME).is_file()
@@ -17,10 +17,10 @@ def test_save_step_output_creates_missing_step_directory(config_factory):
 
 def test_save_step_output_rejects_overwriting_current_output(config_factory):
     config = config_factory()
-    save_step_output(config, "data_exploration", {"summary": "first"})
+    save_step_output(config.current_step_dir, "data_exploration", {"summary": "first"})
 
     with pytest.raises(FileExistsError):
-        save_step_output(config, "data_exploration", {"summary": "second"})
+        save_step_output(config.current_step_dir, "data_exploration", {"summary": "second"})
 
 
 def test_load_unknown_step_output_returns_plain_payload(config_factory):

@@ -48,6 +48,7 @@ For Docker and Ollama setup, see [Installation](../getting-started/installation.
 |--------|-------------|
 | `--user-prompt <text>` | Custom prompt for the agent |
 | `--iteration-plan-model <name>` | LLM model used for generating the iteration plan (defaults to `--model`) |
+| `--trace-analysis-model <name>` | LLM model used for extracting iterations lessons from step traces (defaults to `--iteration-plan-model`) |
 | `--use-provisioning-key` | Use OpenRouter temporary API key |
 | `--spend-limit <n>` | Spend limit for provisioning key (requires `--use-provisioning-key`) |
 | `--verbosity <summary\|full>` | How much agent interaction detail is printed during the run (default: `full`) |

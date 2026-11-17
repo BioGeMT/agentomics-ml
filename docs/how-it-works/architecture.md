@@ -125,6 +125,8 @@ running inference again:
 - Identifies potential issues
 - Surfaces patterns worth addressing in later iterations
 
+If this step fails, the iteration still counts, because Validation Evaluation already scored the model.
+
 **Output:** Structured prediction analysis and iteration reports
 
 ## Agent Tools

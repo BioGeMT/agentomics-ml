@@ -115,11 +115,7 @@ def main() -> int:
     arguments = build_parser().parse_args()
     resolve_inference_paths(arguments)
     if arguments.dev:
-        try:
-            arguments.image = build_development_image()
-        except RuntimeError as error:
-            print(f"Error: {error}", file=sys.stderr)
-            return 1
+        arguments.image = build_development_image()
     return _run_inference_with_resolved_paths(arguments)
 
 if __name__ == "__main__":

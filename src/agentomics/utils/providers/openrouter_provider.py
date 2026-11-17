@@ -1,5 +1,7 @@
 from typing import Dict, List, Optional
 
+from pydantic_ai.models.openrouter import OpenRouterModel
+from pydantic_ai.providers.openrouter import OpenRouterProvider as PydanticOpenRouterProvider
 from rich.table import Table
 from rich import box
 from rich.panel import Panel
@@ -261,3 +263,9 @@ class OpenRouterProvider(Provider):
             return display_order_models[choice - 1].get("id")
 
         return None
+
+    def create_model(self, model_name: str, use_proxy: bool, llm_response_timeout: int) -> OpenRouterModel:
+        return OpenRouterModel(
+            model_name=model_name,
+            provider=PydanticOpenRouterProvider(openai_client=self._create_openai_client(use_proxy, llm_response_timeout)),
+        )

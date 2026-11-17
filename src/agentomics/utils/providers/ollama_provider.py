@@ -1,5 +1,6 @@
 import requests
 from typing import List, Optional, Dict
+from urllib.parse import urljoin
 
 from rich.panel import Panel
 from rich.columns import Columns
@@ -7,7 +8,6 @@ from rich.console import Group
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.models.openai import OpenAIChatModel
 
-from agentomics.utils.config import Config
 from agentomics.utils.user_input import get_user_input_for_int
 from .provider import Provider
 
@@ -101,9 +101,15 @@ class OllamaProvider(Provider):
         self.console.print(Columns(col_renderables, padding=(0, 1), expand=False))
         return display_order_models
 
-    def create_model(self, model_name: str, config: Config) -> OpenAIChatModel:
+    def create_model(self, model_name: str, use_proxy: bool, llm_response_timeout: int) -> OpenAIChatModel:
           """Ovveriding method in Provider class. Create OpenAI model instance (Ollama compatible)."""
           return OpenAIChatModel(
               model_name=model_name,
-              provider=OpenAIProvider(base_url=self.base_url)
+              provider=OpenAIProvider(base_url=self.base_url),
+              profile={"supports_thinking": self._can_think(model_name)},
           )
+
+    def _can_think(self, model_name: str) -> bool:
+        response = requests.post(urljoin(self.base_url, "/api/show"), json={"model": model_name}, timeout=10)
+        response.raise_for_status()
+        return "thinking" in response.json()["capabilities"]

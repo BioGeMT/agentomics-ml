@@ -15,13 +15,15 @@ from .paper_files_tool import (
     create_read_file_tool,
     create_render_paper_page_tool,
 )
+from .paper_fetch_tool import create_paper_fetch_tool
 from .replace_tool import create_replace_tool
 from .run_python_tool import create_run_python_tool
 from .write_python_tool import create_write_python_tool
 
 from agentomics.utils.config import Config
 
-TOOL_FACTORY_REGISTRY: dict[str, Callable] = {
+TOOL_FACTORY_REGISTRY: dict[str, Callable[[Config], Tool[Any]]] = {
+    "paper_fetch": create_paper_fetch_tool,
     "bash": create_bash_tool,
     "glob": create_glob_tool,
     "grep": create_grep_tool,

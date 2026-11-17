@@ -70,7 +70,6 @@ def create_replace_tool(config: Config):
     replace_tool = Tool(
         function=_replace, 
         takes_ctx=False, 
-        max_retries=config.max_tool_retries,
         require_parameter_descriptions=True,
         name="replace",
         sequential=True,

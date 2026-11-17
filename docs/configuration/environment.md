@@ -50,6 +50,30 @@ If you use `--use-provisioning-key`, set:
 OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxx
 ```
 
+## Paper Fetching
+
+To enable paper fetching, set all three variables below. Export them in your
+shell or add them to `.env`; `agentomics-run` forwards them into Docker.
+If any value is missing or blank, the tool is not offered to the agent.
+
+| Variable | Purpose |
+|----------|---------|
+| `ASTA_API_KEY` | Authenticate Asta MCP search requests. This is separate from the Semantic Scholar key. |
+| `S2_API_KEY` | Authenticate Semantic Scholar batch requests for paper identifiers and PDF metadata. |
+| `UNPAYWALL_EMAIL` | Contact email sent with Unpaywall DOI lookups. |
+
+Crossref and the repository resolvers do not require additional credentials.
+
+```bash
+# Set all three to enable paper fetching
+# ASTA_API_KEY=your_asta_key
+# S2_API_KEY=your_semantic_scholar_key
+# UNPAYWALL_EMAIL=you@your-institution.org
+```
+
+See [Fetching Scientific Papers](../user-guide/running-agent.md#fetching-scientific-papers)
+for the retrieval flow and its limitations.
+
 ## Weights & Biases (W&B)
 
 Enable experiment tracking and logging:
@@ -126,6 +150,11 @@ export CUDA_VISIBLE_DEVICES=0,1
 OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxx
 # OPENAI_API_KEY=sk-xxxxxxxxxxxx
 # ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxx
+
+# Paper fetching (optional)
+# ASTA_API_KEY=your_asta_key
+# S2_API_KEY=your_semantic_scholar_key
+# UNPAYWALL_EMAIL=you@your-institution.org
 
 # Weights & Biases (optional)
 WANDB_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxx

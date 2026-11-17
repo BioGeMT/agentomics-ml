@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from typing import Any, TypedDict
 
 from pydantic import Field
-from pydantic_ai import Agent
+from pydantic_ai.settings import ModelSettings
 
 from agentomics.agents.prompt_builder import get_dataset_knowledge
-from agentomics.agents.steps.base import AgenticStep, AgenticStepOutput
+from agentomics.agents.steps.base import AgentomicsAgenticStep, AgenticStepOutput
 from agentomics.agents.steps.data_split import DataSplitStep
 from agentomics.agents.steps.validation_evaluation import ValidationEvaluationStep
+from agentomics.runtime.iterations_lessons import read_iterations_lessons
 from agentomics.runtime.read_write_utils import (
     get_archived_iterations,
     get_last_successful_iteration,
@@ -67,7 +69,7 @@ class IterationPlanOutput(AgenticStepOutput):
         """
     )
 
-class IterationPlanStep(AgenticStep):
+class IterationPlanStep(AgentomicsAgenticStep):
     step_id = "iteration_plan"
     display_name = "ITERATION PLAN"
     output_type = IterationPlanOutput
@@ -81,19 +83,25 @@ class IterationPlanStep(AgenticStep):
         split_changed: bool
         is_new_best: bool
 
-    def create_agent(self) -> Agent[dict, IterationPlanOutput]:
-        return Agent(
+    async def _execute(self) -> AgenticStepOutput:
+        # No tools, no system prompt and no message history.
+        return await self.run_agent_step(
+            user_prompt=self.step_prompt(),
             model=self.iteration_plan_model,
-            retries=self.config.max_validation_retries,
-            model_settings=self.provider.get_high_reasoning_model_settings(
-                kwargs={"temperature": self.config.temperature}
-            ),
-            output_type=IterationPlanOutput,
-            deps_type=dict,
+            model_settings=self.high_reasoning_model_settings(),
+            max_steps=self.config.max_steps,
+            max_validation_retries=self.config.max_validation_retries,
+            max_tool_retries=self.config.max_tool_retries,
         )
 
-    def build_user_prompt(self) -> str:
-        return self.step_prompt()
+    def high_reasoning_model_settings(self) -> ModelSettings:
+        return self.provider.get_high_reasoning_model_settings(
+            kwargs={"temperature": self.config.temperature}
+        )
+
+    def build_validators(self) -> list[Callable]:
+        # The plan step writes no files, so the generic file validators do not apply.
+        return []
 
     def step_prompt(self) -> str:
         iteration_history_info = self._build_iteration_history_info()
@@ -103,6 +111,7 @@ class IterationPlanStep(AgenticStep):
         tools_info = ", ".join(get_tool_names(self.config, self.config.tool_ids))
         best_iteration_model_info = self._build_best_iteration_model_info()
         supplementary_info = self._build_supplementary_info()
+        iterations_lessons = self._build_iterations_lessons()
 
         return f"""
         <prompt_of_the_iteration_agents>
@@ -114,6 +123,7 @@ class IterationPlanStep(AgenticStep):
         </dataset_knowledge_from_dataset_description_md>
 
         {iteration_history_info}
+        {iterations_lessons}
         <your_instructions>
         {f"<exploration_guidance>{exploration_info}</exploration_guidance>" if exploration_info else ""}
         The main goal of the run is to maximize the hidden test set generalization performance (main metric:{self.config.val_metric}) that will use the 'best iteration model'. {best_iteration_model_info}
@@ -154,8 +164,16 @@ class IterationPlanStep(AgenticStep):
         </your_instructions>
         """
 
-    def get_message_history(self):
-        return None
+    def _build_iterations_lessons(self) -> str:
+        iterations_lessons = read_iterations_lessons(self.config)
+        if not iterations_lessons:
+            return ""
+        return f"""
+        Lessons established so far in this run, including failed steps and iterations. They are automatically appended to the prompt of every step of this iteration, so don't repeat them in your instructions, but take them into account when planning.
+        <iterations_lessons>
+        {iterations_lessons}
+        </iterations_lessons>
+        """
 
     def _build_iteration_history_info(self) -> str:
         sorted_iteration_to_records = {

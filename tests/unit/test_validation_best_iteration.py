@@ -1,9 +1,12 @@
+import asyncio
 import time
 from unittest.mock import Mock
 
 import pytest
+from pydantic_ai.models.function import FunctionModel
 
 from agentomics.agents.steps.data_split import DataSplitOutput, DataSplitStep
+from agentomics.agents.steps.prediction_exploration import PredictionExplorationOutput, PredictionExplorationStep
 from agentomics.agents.steps.validation_evaluation import (
     ValidationEvaluationOutput,
     ValidationEvaluationStep,
@@ -27,7 +30,7 @@ def _write_split_version(
     for split_name in ("train", "validation", "mini_train"):
         write_split_folder(split_dir / split_name)
     save_step_output(
-        config,
+        config.current_step_dir,
         DataSplitStep.step_id,
         DataSplitOutput(
             train_path=str(split_dir / "train"),
@@ -51,7 +54,7 @@ def _write_existing_best(
     prepare_iteration_workspace(config, iteration=best_iteration)
     _write_split_version(config, split_version)
     save_step_output(
-        config,
+        config.current_step_dir,
         ValidationEvaluationStep.step_id,
         ValidationEvaluationOutput(
             metrics=metrics,
@@ -145,13 +148,14 @@ def test_train_score_without_validation_score_is_not_new_best(config_factory):
     assert not is_new_best
 
 
-def test_failed_iteration_keeps_no_validation_result(
-    initialized_run_with_lightweight_environment: Config,
+def test_failed_prediction_exploration_keeps_the_iteration(
+    initialized_run_config: Config,
 ):
-    config = initialized_run_with_lightweight_environment
+    config = initialized_run_config
     prepare_iteration_workspace(config, iteration=0)
+    _write_split_version(config, split_version=0)
     save_step_output(
-        config,
+        config.current_step_dir,
         ValidationEvaluationStep.step_id,
         ValidationEvaluationOutput(
             metrics={"validation/ACC": 0.9},
@@ -159,9 +163,16 @@ def test_failed_iteration_keeps_no_validation_result(
             status="success",
         ),
     )
-    step = create_runtime_step(ValidationEvaluationStep, config, model=Mock())
-    step.archive_step_folder()
+    create_runtime_step(ValidationEvaluationStep, config, model=Mock()).archive_step_folder()
 
-    step.on_iteration_fail(iteration=0)
+    def fail(_messages, _info):
+        raise RuntimeError("model failed")
 
-    assert load_step_output(config, ValidationEvaluationStep.step_id, config.current_iteration_dir) is None
+    step = create_runtime_step(PredictionExplorationStep, config, model=FunctionModel(fail))
+    asyncio.run(step.run())
+
+    assert load_step_output(config, ValidationEvaluationStep.step_id, config.current_iteration_dir) is not None
+    assert isinstance(
+        load_step_output(config, PredictionExplorationStep.step_id, config.current_iteration_dir),
+        PredictionExplorationOutput,
+    )
