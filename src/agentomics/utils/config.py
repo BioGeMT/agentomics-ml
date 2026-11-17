@@ -49,7 +49,6 @@ class Config:
         "glob",
         "grep",
         "read_file",
-        "render_paper_page",
         "inspect_image",
         "bash",
         "write_python",

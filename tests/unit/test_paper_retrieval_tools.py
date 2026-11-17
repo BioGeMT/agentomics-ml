@@ -1,11 +1,14 @@
+import asyncio
 from pathlib import Path
 
 import pytest
 from pydantic_ai import ModelRetry
-from pydantic_ai.messages import BinaryContent, ToolReturn
+from pydantic_ai.messages import BinaryContent
+from pydantic_ai.models.test import TestModel
 from pypdf import PdfWriter
 from reportlab.pdfgen import canvas
 
+from agentomics.runtime.run_lifecycle import run_agentomics
 from agentomics.tools.tool_registry import create_tool
 
 
@@ -47,31 +50,44 @@ def test_searches_reads_and_inspects_papers(default_agent_config):
     )
     assert "convolutional network" in text
 
-    image_path = create_tool(default_agent_config, "render_paper_page").function(
-        pdf_path=str(paper_path),
-        page_number=2,
-    )
+    document_path = default_agent_config.processed_papers_dir / matches[0]["path"]
+    image_path = document_path.parent / "pages" / "page_0002.png"
     assert Path(image_path).is_file()
+    assert str(image_path.resolve()) in document_path.read_text()
 
     inspect_tool = create_tool(default_agent_config, "inspect_image")
     inspected = inspect_tool.function(
-        image_path=image_path,
-        query="What model does this page describe?",
+        image_path=str(image_path),
     )
 
-    assert isinstance(inspected, ToolReturn)
-    assert isinstance(inspected.content[1], BinaryContent)
-    assert inspected.content[1].media_type == "image/png"
+    assert isinstance(inspected, BinaryContent)
+    assert inspected.media_type == "image/png"
+    assert inspected.data == image_path.read_bytes()
 
 
 def test_paper_tools_reject_files_outside_their_directories(default_agent_config, tmp_path):
     image_path = tmp_path / "outside.png"
     image_path.write_bytes(b"not an accessible image")
+    default_agent_config.processed_papers_dir.mkdir(parents=True)
+    (default_agent_config.processed_papers_dir / "escape.md").symlink_to(image_path)
+    assert create_tool(default_agent_config, "grep").function(pattern="accessible") == []
 
     with pytest.raises(ModelRetry, match="processed papers"):
         create_tool(default_agent_config, "read_file").function(path=str(image_path))
-    with pytest.raises(ModelRetry, match="must be inside"):
+    with pytest.raises(ModelRetry, match="must be inside") as error:
         create_tool(default_agent_config, "inspect_image").function(
             image_path=str(image_path),
-            query="What is shown?",
         )
+    assert str(default_agent_config.processed_papers_dir.resolve()) in str(error.value)
+
+    oversized_image = default_agent_config.processed_papers_dir / "oversized.png"
+    with oversized_image.open("wb") as image:
+        image.truncate(4 * 1024 * 1024)
+    with pytest.raises(ModelRetry, match="exceeds"):
+        create_tool(default_agent_config, "inspect_image").function(image_path=str(oversized_image))
+
+
+def test_run_rejects_text_only_models_with_image_inspection(default_agent_config):
+    model = TestModel(profile={"supports_image_input": False})
+    with pytest.raises(ValueError, match="must support image input"):
+        asyncio.run(run_agentomics(default_agent_config, model, model, model, None))

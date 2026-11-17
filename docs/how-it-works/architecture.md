@@ -136,11 +136,13 @@ The agent has access to these tools:
 | Tool | Purpose |
 |------|---------|
 | **ls / glob / grep / read_file** | Navigate and search fetched scientific papers |
-| **Render Paper Page / Inspect Image** | Inspect paper figures and page layouts |
+| **Inspect Image** | Inspect pre-rendered paper pages and images from the current step |
 | **Bash** | Execute shell commands |
 | **Write Python** | Create Python files |
 | **Run Python** | Execute Python scripts |
 | **Replace** | Modify code sections |
+
+Each processed paper links to its rendered page images. Image inspection requires an image-capable model and accepts images up to 3 MiB.
 
 ## How Decisions Are Made
 

@@ -7,7 +7,7 @@ from typing import Annotated, Any
 from pydantic import Field
 from pydantic_ai import ModelRetry, Tool
 
-from agentomics.runtime.paper_retrieval import prepare_papers, render_pdf_page
+from agentomics.runtime.paper_retrieval import prepare_papers
 from agentomics.utils.config import Config
 
 
@@ -94,6 +94,8 @@ def create_grep_tool(config: Config) -> Tool[Any]:
         files = [target] if target.is_file() else sorted(target.rglob("*.md"))
         matches = []
         for file_path in files:
+            if not file_path.resolve().is_relative_to(root):
+                continue
             for line_number, line in enumerate(
                 file_path.read_text(encoding="utf-8", errors="replace").splitlines(),
                 start=1,
@@ -136,25 +138,6 @@ def create_read_file_tool(config: Config) -> Tool[Any]:
         )
 
     return _tool(config, read_file, "read_file")
-
-
-def create_render_paper_page_tool(config: Config) -> Tool[Any]:
-    def render_paper_page(
-        pdf_path: str,
-        page_number: Annotated[int, Field(ge=1)],
-    ) -> str:
-        """Render one paper page as an image for inspection.
-
-        Args:
-            pdf_path: Source PDF path shown at the top of its processed Markdown file.
-            page_number: One-based page number to render.
-        """
-        try:
-            return str(render_pdf_page(config, pdf_path, page_number))
-        except ValueError as error:
-            raise ModelRetry(str(error)) from error
-
-    return _tool(config, render_paper_page, "render_paper_page")
 
 
 def _tool(config: Config, function: Any, name: str) -> Tool[Any]:
