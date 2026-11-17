@@ -24,7 +24,7 @@ from agentomics.runtime.read_write_utils import (
     load_dataset_metadata,
 )
 from agentomics.utils.config import Config
-from agentomics.utils.metrics import resolve_val_metric
+from agentomics.utils.ml_tasks.registry import resolve_val_metric
 from agentomics.utils.metrics_interactive import display_metrics_table
 from agentomics.utils.printing_utils import print_phase
 from agentomics.utils.providers.provider import Provider, get_provider_and_api_key

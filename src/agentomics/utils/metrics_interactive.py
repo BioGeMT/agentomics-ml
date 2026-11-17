@@ -2,62 +2,32 @@ from rich.panel import Panel
 from rich.columns import Columns
 from rich.console import Console
 
-from agentomics.utils.metrics import get_classification_metrics_names, get_regression_metrics_names
-from agentomics.utils.task_types import TaskTypes
-from agentomics.utils.user_input import get_user_input_for_int
+from agentomics.utils.ml_tasks import get_task, get_tasks
 
 
 def display_metrics_table(task_type=None):
-    """Display available validation metrics in a rich table format."""
+    """Display validation metrics supplied by task implementations."""
     console = Console()
+    tasks = (get_task(task_type),) if task_type else get_tasks()
+    metrics_by_task = [(task, list(task.metrics())) for task in tasks]
+    total_metrics = sum(len(names) for _, names in metrics_by_task)
+    max_num_width = len(str(total_metrics))
+    console.print("[bold blue]Available Validation Metrics[/bold blue]\n")
 
-    if not task_type:
-        clf_metrics = get_classification_metrics_names()
-        reg_metrics = get_regression_metrics_names()
-
-        console.print(f"[bold blue]Available Validation Metrics[/bold blue]\n")
-
-        metric_lines_clf = []
-        max_num_width = len(str(len(clf_metrics) + len(reg_metrics)))
-
-        for i, metric in enumerate(clf_metrics, 1):
-            num_str = str(i).rjust(max_num_width)
-            metric_lines_clf.append(f"[white]{num_str}[/white] [green]{metric}[/green]")
-
-        metric_lines_reg = []
-        for i, metric in enumerate(reg_metrics, len(clf_metrics) + 1):
-            num_str = str(i).rjust(max_num_width)
-            metric_lines_reg.append(f"[white]{num_str}[/white] [green]{metric}[/green]")
-
-        boxes = [
-            Panel("\n".join(metric_lines_clf), title="[bold]Metric for Classification[/bold]", border_style="cyan"),
-            Panel("\n".join(metric_lines_reg), title="[bold]Metric for Regression[/bold]", border_style="yellow")
+    boxes = []
+    metrics = []
+    task_colors = {task.name: color for task, color in zip(get_tasks(), ("cyan", "yellow"))}
+    for task, names in metrics_by_task:
+        lines = [
+            f"[white]{str(i).rjust(max_num_width)}[/white] [green]{name}[/green]"
+            for i, name in enumerate(names, len(metrics) + 1)
         ]
-
-        console.print(Columns(boxes, padding=(0, 1), expand=False))
-        return clf_metrics + reg_metrics
-
-    if task_type == TaskTypes.CLASSIFICATION:
-        metrics_to_show = get_classification_metrics_names()
-        title = "[bold]Metric for Classification[/bold]"
-        border_style = "cyan"
-    elif task_type == TaskTypes.REGRESSION:
-        metrics_to_show = get_regression_metrics_names()
-        title = "[bold]Metric for Regression[/bold]"
-        border_style = "yellow"
-
-    console.print(f"[bold blue]Available Validation Metrics[/bold blue]\n")
-
-    metric_lines = []
-    max_num_width = len(str(len(metrics_to_show)))
-
-    for i, metric in enumerate(metrics_to_show, 1):
-        num_str = str(i).rjust(max_num_width)
-        metric_lines.append(f"[white]{num_str}[/white] [green]{metric}[/green]")
-
-    boxes = [
-        Panel("\n".join(metric_lines), title=title, border_style=border_style)
-    ]
+        boxes.append(Panel(
+            "\n".join(lines),
+            title=f"[bold]Metric for {task.name.title()}[/bold]",
+            border_style=task_colors.get(task.name, "cyan"),
+        ))
+        metrics.extend(names)
 
     console.print(Columns(boxes, padding=(0, 1), expand=False))
-    return metrics_to_show
+    return metrics

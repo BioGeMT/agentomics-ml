@@ -1,24 +1,21 @@
 from sklearn.metrics import average_precision_score, roc_auc_score, accuracy_score, mean_squared_error, mean_absolute_error, r2_score, f1_score, log_loss, matthews_corrcoef, mean_absolute_percentage_error
 from scipy.stats import pearsonr, spearmanr
 import numpy as np
-from typing import Optional
-
-from agentomics.utils.task_types import TaskTypes
 
 
 class Metric:
     """
     A metric class that encapsulates:
     - The computation function
-    - Whether it needs probabilities (True) or class predictions (False)  
+    - Whether it needs probabilities (True) or class predictions (False)
     - Whether higher values are better (True) or worse (False)
     """
-    
+
     def __init__(self, function, needs_probabilities: bool, higher_is_better: bool):
         self.function = function
         self.needs_probabilities = needs_probabilities
         self.higher_is_better = higher_is_better
-    
+
     def __call__(self, y_true, y_pred_or_prob):
         return self.function(y_true, y_pred_or_prob)
 
@@ -129,39 +126,3 @@ def get_classification_metrics_names():
 
 def get_regression_metrics_names():
     return list(get_regression_metrics_functions().keys())
-
-def get_task_to_metrics_names():
-    return {
-        TaskTypes.CLASSIFICATION: get_classification_metrics_names(),
-        TaskTypes.REGRESSION: get_regression_metrics_names(),
-    }
-
-def get_higher_is_better_map():
-    """Return a dictionary mapping metric names to whether higher values are better."""
-    all_metrics = {
-        **get_classification_metrics_functions(),
-        **get_regression_metrics_functions(),
-    }
-    return {name: metric.higher_is_better for name, metric in all_metrics.items()}
-
-def get_default_val_metric(task_type: str) -> str:
-    if task_type == TaskTypes.CLASSIFICATION:
-        return "AUROC"
-    if task_type == TaskTypes.REGRESSION:
-        return "MAE"
-    raise ValueError(f"Unknown task_type: {task_type}. Expected one of {TaskTypes}.")
-
-def resolve_val_metric(task_type: str, val_metric: Optional[str] = None) -> str:
-    """Resolve a validation metric for a task, applying defaults when omitted."""
-    if not val_metric:
-        return get_default_val_metric(task_type)
-
-    allowed = get_task_to_metrics_names().get(task_type)
-    if not allowed:
-        raise ValueError(f"Unknown task_type: {task_type}. Expected one of {TaskTypes}.")
-    if val_metric not in allowed:
-        raise ValueError(
-            f"Validation metric '{val_metric}' is invalid for task type '{task_type}'. "
-            f"Allowed metrics: {', '.join(allowed)}"
-        )
-    return val_metric

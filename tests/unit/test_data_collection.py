@@ -3,6 +3,7 @@ from pydantic import ValidationError
 
 from agentomics.agents.data_collection.reviewer import DataCollectionReview
 from agentomics.agents.data_collection.spec import DataCollectionSpec
+from agentomics.utils.ml_tasks import get_task
 
 
 @pytest.mark.parametrize(
@@ -11,7 +12,7 @@ from agentomics.agents.data_collection.spec import DataCollectionSpec
 )
 def test_spec_rejects_classes_that_do_not_fit_the_task_type(task_type, classes):
     with pytest.raises(ValidationError):
-        DataCollectionSpec(task_type=task_type, description="d", inputs=["i"], label="l", classes=classes)
+        DataCollectionSpec(task_type=get_task(task_type), description="d", inputs=["i"], label="l", classes=classes)
 
 
 def test_review_that_does_not_accept_must_list_an_issue():

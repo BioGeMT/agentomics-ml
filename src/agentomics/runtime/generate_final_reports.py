@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 from agentomics.agents.steps.validation_evaluation import ValidationEvaluationStep
 from agentomics.runtime.step_outputs import load_step_output
 from agentomics.utils.config import Config
-from agentomics.utils.task_types import TaskTypes
+from agentomics.utils.ml_tasks import ClassificationTask, RegressionTask
 from agentomics.runtime.iteration_reports import write_iteration_report
 from agentomics.runtime.read_write_utils import get_archived_iterations, load_best_iteration_snapshot_iteration, load_config_from_run_dir_and_reroot
 
@@ -239,7 +239,7 @@ def load_run_meta(config: Config) -> RunMeta:
     )
 
 def load_dataset_meta_from_config(config: Config) -> DatasetMeta:
-    if config.task_type == TaskTypes.CLASSIFICATION and not config.label_to_scalar:
+    if config.task_type == ClassificationTask.name and not config.label_to_scalar:
         raise SystemExit("Classification run config must include non-empty 'label_to_scalar'")
     return DatasetMeta(
         task_type=config.task_type,
@@ -306,7 +306,7 @@ def merge_labels_and_preds(labeled: pd.DataFrame, preds: pd.DataFrame, meta: Dat
     if y_col not in labeled.columns:
         raise ValueError(f"Label column '{y_col}' not found in labeled CSV. Available: {list(labeled.columns)}")
 
-    if meta.task_type == TaskTypes.REGRESSION:
+    if meta.task_type == RegressionTask.name:
         pred_col = "prediction"
         if pred_col not in preds.columns:
             raise ValueError(f"Expected regression prediction column '{pred_col}'. Available: {list(preds.columns)}")
@@ -477,7 +477,7 @@ def build_plots_for_split(
     prefix = plots_dir / f"iter_{iteration}_{split.split_name}"
     title_prefix = split.split_name.title()
 
-    if meta.task_type == TaskTypes.CLASSIFICATION:
+    if meta.task_type == ClassificationTask.name:
         return plot_classification(y_true, y_pred, prefix, title_prefix)
     return plot_regression(y_true, y_pred, prefix, title_prefix)
 
@@ -595,7 +595,7 @@ def plots_compare_splits_page_flowables(
         return flows
 
     task_type = (task_type or "").strip().lower()
-    if task_type == TaskTypes.CLASSIFICATION:
+    if task_type == ClassificationTask.name:
         row_suffixes = ["_roc", "_pr"]
     else:
         row_suffixes = ["_pred_vs_actual", "_residuals_vs_pred", "_residuals_hist"]

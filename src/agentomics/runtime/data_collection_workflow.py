@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import sys
 from pathlib import Path
 
@@ -14,6 +15,7 @@ from agentomics.runtime.collected_data_directory import (
 )
 from agentomics.runtime.filesystem import restore_host_ownership
 from agentomics.utils.data_module_config import DataModuleConfig
+from agentomics.utils.ml_tasks import get_task
 from agentomics.utils.providers.codex_auth import prepare_codex_credentials
 from agentomics.utils.providers.provider import Provider, get_provider_and_api_key
 
@@ -26,7 +28,9 @@ def run_data_collection_workflow(
     reviewer_model_name: str,
 ) -> None:
     try:
-        spec = DataCollectionSpec.model_validate_json(spec_path.read_text(encoding="utf-8"))
+        spec_data = json.loads(spec_path.read_text(encoding="utf-8"))
+        spec_data["task_type"] = get_task(spec_data["task_type"])
+        spec = DataCollectionSpec.model_validate(spec_data)
         config = DataModuleConfig(
             collected_data_dir=collected_data_dir,
             collector_model_name=collector_model_name,

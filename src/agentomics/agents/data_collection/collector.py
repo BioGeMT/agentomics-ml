@@ -97,7 +97,7 @@ class DataCollectionStep(RuntimeStep, AgenticStepMixin):
     def _build_user_prompt(self) -> str:
         manifest = load_manifest(self.config)
         return (
-            f"Spec:\n{self.spec.model_dump_json(indent=2)}\n\n"
+            f"Task: {self.spec.task_type.name}\nSpec:\n{self.spec.model_dump(exclude={'task_type'})}\n\n"
             f"{DataModuleConfig.FILES_DIRNAME}/ holds {len(manifest)} files that take {get_manifest_size_bytes(manifest)} bytes."
         )
 

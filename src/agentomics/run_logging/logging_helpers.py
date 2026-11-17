@@ -4,7 +4,7 @@ from pathlib import Path
 import wandb
 from wandb.errors import AuthenticationError, UsageError
 
-from agentomics.utils.metrics import get_task_to_metrics_names
+from agentomics.utils.ml_tasks.registry import get_task_to_metrics_names
 from agentomics.utils.config import Config
 
 

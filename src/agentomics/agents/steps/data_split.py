@@ -19,7 +19,11 @@ from agentomics.runtime.filesystem import (
     rewrite_symlinks_to_absolute,
     validate_symlinks_targets_in,
 )
-from agentomics.utils.task_types import TaskTypes
+from agentomics.utils.ml_tasks import (
+    ClassificationTask,
+    RegressionTask,
+    get_task_names,
+)
 from agentomics.runtime.read_write_utils import (
     get_last_successful_iteration,
     load_current_iteration_index,
@@ -206,7 +210,7 @@ class DataSplitStep(AgentomicsAgenticStep):
                     f"mini_train IDs must be a subset of training IDs. "
                     f"Found {len(extra_ids)} IDs not in train: {list(extra_ids)[:10]}"
                 )
-            if self.config.task_type == TaskTypes.CLASSIFICATION:
+            if self.config.task_type == ClassificationTask.name:
                 self._validate_mini_train_classification(train_df, mini_train_df)
             else:
                 self._validate_mini_train_regression(mini_train_df, train_df)
@@ -251,20 +255,20 @@ class DataSplitStep(AgentomicsAgenticStep):
         latest_split_dir = self._get_latest_split_dir()
         current_step_dir = self.config.current_step_dir
 
-        if self.config.task_type == TaskTypes.CLASSIFICATION:
+        if self.config.task_type == ClassificationTask.name:
             validation_instructions = "Ensure that the validation split contains representative samples from ALL classes."
             mini_train_size_instructions = (
                 f"exactly {self.CLASSIFICATION_MINI_TRAIN_SAMPLES_PER_CLASS} samples per class "
                 f"(or all available if the training split has fewer than {self.CLASSIFICATION_MINI_TRAIN_SAMPLES_PER_CLASS} for a class)"
             )
-        elif self.config.task_type == TaskTypes.REGRESSION:
+        elif self.config.task_type == RegressionTask.name:
             validation_instructions = ""
             mini_train_size_instructions = (
                 f"exactly {self.REGRESSION_MINI_TRAIN_SAMPLE_COUNT} samples "
                 f"(or all available if the training split has fewer than {self.REGRESSION_MINI_TRAIN_SAMPLE_COUNT})"
             )
         else:
-            raise ValueError(f"Unknown task type: {self.config.task_type}. Supported types are {TaskTypes}.")
+            raise ValueError(f"Unknown task type: {self.config.task_type}. Supported types are {get_task_names()}.")
 
         if self._is_mini_train_only():
             train_split_path = self.config.dataset_dir / TRAIN_SPLIT

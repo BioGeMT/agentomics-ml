@@ -42,7 +42,12 @@ from agentomics.datasets.label_processing import (
     validate_single_label_classification,
 )
 from agentomics.runtime.filesystem import create_absolute_symlink, find_symlinks_in_dir
-from agentomics.utils.task_types import TaskTypes
+from agentomics.utils.ml_tasks import (
+    ClassificationTask,
+    RegressionTask,
+    get_task,
+    get_task_names,
+)
 
 console = Console()
 
@@ -73,8 +78,7 @@ def _resolve_task_type(source_metadata: dict, cli_task_type: str | None, train_l
     resolved = cli_task_type or source_metadata.get("task_type")
     if resolved is None:
         resolved = select_task_type(train_labels, interactive=interactive)
-    if resolved not in TaskTypes:
-        raise ValueError(f"Invalid task_type '{resolved}'. Must be one of: {TaskTypes}")
+    get_task(resolved)
     return resolved
 
 def _build_binary_label_mapping(
@@ -181,7 +185,7 @@ def prepare_dataset(
         source_metadata, resolved_task_type, split_labels, input_structure,
     )
 
-    if resolved_task_type == TaskTypes.CLASSIFICATION:
+    if resolved_task_type == ClassificationTask.name:
         validate_single_label_classification(split_labels)
         has_cli_class_override = positive_class is not None or negative_class is not None
         if label_to_scalar is not None:
@@ -210,13 +214,13 @@ def prepare_dataset(
             split_name: convert_classification_labels(labels, label_to_scalar, split_name)
             for split_name, labels in split_labels.items()
         }
-    elif resolved_task_type == TaskTypes.REGRESSION:
+    elif resolved_task_type == RegressionTask.name:
         numeric_split_labels = {
             split_name: convert_regression_labels(labels, split_name)
             for split_name, labels in split_labels.items()
         }
     else:
-        raise ValueError(f"Unknown task_type: {resolved_task_type}. Expected one of {TaskTypes}.")
+        raise ValueError(f"Unknown task_type: {resolved_task_type}. Expected one of {get_task_names()}.")
 
     destination_dir.mkdir(parents=True, exist_ok=True)
     destination_splits = {}
@@ -332,7 +336,7 @@ def prepare_test_dataset(
 
     test_labels = load_split_label_dfs({TEST_SPLIT_PREFIX: test_source})
 
-    if task_type == TaskTypes.CLASSIFICATION:
+    if task_type == ClassificationTask.name:
         if not label_to_scalar:
             raise ValueError("label_to_scalar is required for classification test data preparation")
         validate_single_label_classification(test_labels)
@@ -345,10 +349,10 @@ def prepare_test_dataset(
                 f"Known labels: {sorted(label_to_scalar)}"
             )
         numeric_labels = convert_classification_labels(test_labels[TEST_SPLIT_PREFIX], label_to_scalar, TEST_SPLIT_PREFIX)
-    elif task_type == TaskTypes.REGRESSION:
+    elif task_type == RegressionTask.name:
         numeric_labels = convert_regression_labels(test_labels[TEST_SPLIT_PREFIX], TEST_SPLIT_PREFIX)
     else:
-        raise ValueError(f"Unknown task_type: {task_type}. Expected one of {TaskTypes}.")
+        raise ValueError(f"Unknown task_type: {task_type}. Expected one of {get_task_names()}.")
 
     dest_test = destination_dir / TEST_SPLIT_PREFIX
     dest_test.mkdir(parents=True, exist_ok=True)
@@ -370,7 +374,7 @@ def prepare_test_dataset(
         "input_structure": input_structure,
         "prepared": True,
     }
-    if task_type == TaskTypes.CLASSIFICATION:
+    if task_type == ClassificationTask.name:
         test_metadata["label_to_scalar"] = label_to_scalar
     (destination_dir / METADATA_FILE_NAME).write_text(json.dumps(test_metadata, indent=4), encoding="utf-8")
 

@@ -29,7 +29,11 @@ from agentomics.runtime.read_write_utils import (
     load_dataset_metadata,
 )
 from agentomics.runtime.step_outputs import require_step_output
-from agentomics.utils.task_types import TaskTypes
+from agentomics.utils.ml_tasks import (
+    ClassificationTask,
+    RegressionTask,
+    get_task_names,
+)
 from agentomics.utils.text_processing_utils import collapse_repeated_lines, concise_output
 
 
@@ -58,16 +62,16 @@ class ModelInferenceStep(AgentomicsAgenticStep):
 
     def step_prompt(self) -> str:
         model_training = require_step_output(self.config, ModelTrainingStep.step_id, self.config.current_iteration_dir)
-        if self.config.task_type == TaskTypes.CLASSIFICATION:
+        if self.config.task_type == ClassificationTask.name:
             probability_columns = "\n".join(
                 f"- 'probability_{class_id}': probability for class {class_id} (float)"
                 for class_id in sorted(load_dataset_metadata(self.config)["label_to_scalar"].values())
             )
             output_file_description = f"A csv with columns:\n- 'id': the input sample id\n- 'prediction': the predicted class (int)\n{probability_columns}"
-        elif self.config.task_type == TaskTypes.REGRESSION:
+        elif self.config.task_type == RegressionTask.name:
             output_file_description = "A csv with columns 'id' and 'prediction', where 'prediction' contains the predicted continuous value."
         else:
-            raise ValueError(f"Unknown task type: {self.config.task_type}. Supported types are {TaskTypes}.")
+            raise ValueError(f"Unknown task type: {self.config.task_type}. Supported types are {get_task_names()}.")
 
         return f"""
         Your next task: create inference.py file.

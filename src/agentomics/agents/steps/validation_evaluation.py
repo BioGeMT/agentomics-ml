@@ -18,7 +18,7 @@ from agentomics.runtime.read_write_utils import (
 from agentomics.runtime.step_outputs import load_step_output, require_step_output
 from agentomics.utils.config import Config
 from agentomics.utils.exceptions import AgentScriptFailed, StepFailed
-from agentomics.utils.metrics import get_higher_is_better_map
+from agentomics.utils.ml_tasks.registry import get_higher_is_better_map
 from agentomics.datasets.data_contract import LABELS_FILE_NAME
 
 
