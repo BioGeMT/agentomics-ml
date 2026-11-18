@@ -1,6 +1,7 @@
 import pandas as pd
 
 from agentomics.datasets.data_contract import ID_COLUMN_NAME, LABEL_COLUMN_NAME, NUMERIC_LABEL_COLUMN_NAME
+from agentomics.datasets.label_processing import merge_labels_and_preds
 from agentomics.utils.metrics import Metric, get_regression_metrics_functions
 from agentomics.utils.ml_tasks.base import MLTask
 
@@ -53,6 +54,11 @@ class RegressionTask(MLTask):
     def inference_output_description(self, metadata: dict) -> str:
         return "A csv with columns 'id' and 'prediction', where 'prediction' contains the predicted continuous value."
 
+    def get_plot_data(
+        self, labeled: pd.DataFrame, predictions: pd.DataFrame, metadata: dict,
+    ) -> dict[str, tuple[pd.Series, pd.Series]]:
+        values = merge_labels_and_preds(labeled, predictions, metadata["numeric_label_col"], "prediction")
+        return {"pred_vs_actual": values, "residuals_vs_pred": values, "residuals_hist": values}
 
 def _convert_labels(labels: pd.DataFrame, split_name: str) -> pd.DataFrame:
     numeric_labels = pd.to_numeric(labels[LABEL_COLUMN_NAME], errors="coerce")

@@ -58,3 +58,11 @@ class MLTask(ABC):
     def inference_output_description(self, metadata: dict) -> str:
         """Describe the task's prediction format for the inference agent."""
         raise NotImplementedError
+
+    def get_plot_data(
+        self, labeled: pd.DataFrame, predictions: pd.DataFrame, metadata: dict,
+    ) -> dict[str, tuple[pd.Series, pd.Series]]:
+        """Prepare optional task-specific plot data.
+        Subclasses may omit this method; only the plot section is skipped.
+        """
+        return {}

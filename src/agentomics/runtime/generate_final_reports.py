@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import os
 import re
 import shutil
@@ -13,13 +12,11 @@ from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 from agentomics.agents.steps.validation_evaluation import ValidationEvaluationStep
 from agentomics.runtime.step_outputs import load_step_output
+from agentomics.runtime.plots_helpers import render_plots
 from agentomics.utils.config import Config
-from agentomics.utils.ml_tasks import ClassificationTask, RegressionTask
+from agentomics.utils.ml_tasks import ClassificationTask, get_task
 from agentomics.runtime.iteration_reports import write_iteration_report
 from agentomics.runtime.read_write_utils import get_archived_iterations, load_best_iteration_snapshot_iteration, load_config_from_run_dir_and_reroot
 
@@ -160,32 +157,6 @@ def build_styles():
     )
     return styles
 
-def apply_pub_style() -> None:
-    plt.rcParams.update(
-        {
-            "figure.dpi": 200,
-            "savefig.dpi": 300,
-            "figure.figsize": (6.2, 4.0),
-            "font.size": 10,
-            "axes.titlesize": 12,
-            "axes.labelsize": 10,
-            "xtick.labelsize": 9,
-            "ytick.labelsize": 9,
-            "legend.fontsize": 9,
-            "axes.grid": True,
-            "grid.alpha": 0.25,
-            "grid.linestyle": "-",
-            "grid.linewidth": 0.6,
-            "axes.spines.top": False,
-            "axes.spines.right": False,
-            "axes.linewidth": 0.8,
-            "lines.linewidth": 1.6,
-            "lines.markersize": 4,
-            "savefig.bbox": "tight",
-            "savefig.pad_inches": 0.08,
-        }
-    )
-
 # IO helpers
 def ensure_dir(p: Path) -> None:
     p.mkdir(parents=True, exist_ok=True)
@@ -297,189 +268,28 @@ def gather_iteration_inputs(
 
     return IterationInputs(iteration=iteration, report_md=report_md, splits=splits)
 
-# Deterministic merge labels + predictions (metadata-driven)
-def merge_labels_and_preds(labeled: pd.DataFrame, preds: pd.DataFrame, meta: DatasetMeta) -> Tuple[pd.Series, pd.Series]:
-    if "id" not in labeled.columns or "id" not in preds.columns:
-        raise ValueError("Both labeled and predictions CSV must include an 'id' column.")
-
-    y_col = meta.numeric_label_col
-    if y_col not in labeled.columns:
-        raise ValueError(f"Label column '{y_col}' not found in labeled CSV. Available: {list(labeled.columns)}")
-
-    if meta.task_type == RegressionTask.name:
-        pred_col = "prediction"
-        if pred_col not in preds.columns:
-            raise ValueError(f"Expected regression prediction column '{pred_col}'. Available: {list(preds.columns)}")
-    else:
-        pos_scalar = max(meta.label_to_scalar.values())  # authoritative positive class
-        pred_col = f"probability_{pos_scalar}"
-        if pred_col not in preds.columns:
-            raise ValueError(
-                f"Expected classification probability column '{pred_col}'. Available: {list(preds.columns)}"
-            )
-
-    merged = labeled[["id", y_col]].merge(preds[["id", pred_col]], on="id", how="inner")
-    if merged.empty:
-        raise ValueError("After merging on 'id', no rows matched between labeled and predictions CSV.")
-
-    return merged[y_col], merged[pred_col]
-
-# Plotting
-def _as_num(s: pd.Series) -> pd.Series:
-    return pd.to_numeric(s, errors="coerce")
-
-def _robust_limits(x: pd.Series, y: pd.Series, pad_frac: float = 0.05) -> Tuple[float, float]:
-    df = pd.DataFrame({"x": _as_num(x), "y": _as_num(y)}).dropna()
-    if df.empty:
-        return 0.0, 1.0
-    lo = float(min(df["x"].quantile(0.01), df["y"].quantile(0.01)))
-    hi = float(max(df["x"].quantile(0.99), df["y"].quantile(0.99)))
-    if not math.isfinite(lo) or not math.isfinite(hi) or lo == hi:
-        lo = float(min(df["x"].min(), df["y"].min()))
-        hi = float(max(df["x"].max(), df["y"].max()))
-        if lo == hi:
-            lo, hi = lo - 1.0, hi + 1.0
-    pad = (hi - lo) * pad_frac
-    return lo - pad, hi + pad
-
-def plot_regression(y_true: pd.Series, y_pred: pd.Series, out_prefix: Path, title_prefix: str) -> List[Path]:
-    apply_pub_style()
-
-    y_true = _as_num(y_true)
-    y_pred = _as_num(y_pred)
-    df = pd.DataFrame({"y": y_true, "p": y_pred}).dropna()
-    if df.empty:
-        return []
-
-    out = []
-    lo, hi = _robust_limits(df["y"], df["p"])
-
-    pva_path = out_prefix.with_name(out_prefix.name + "_pred_vs_actual.png")
-    plt.figure()
-    plt.scatter(df["y"], df["p"], s=18, alpha=0.85, edgecolors="none")
-    plt.plot([lo, hi], [lo, hi], linestyle="--", linewidth=1.2, alpha=0.9)
-    plt.xlim(lo, hi)
-    plt.ylim(lo, hi)
-    plt.xlabel("Actual")
-    plt.ylabel("Predicted")
-    plt.title(f"{title_prefix} - Predicted vs Actual")
-    plt.tight_layout()
-    plt.savefig(pva_path)
-    plt.close()
-    out.append(pva_path)
-
-    resid = df["p"] - df["y"]
-    rvp_path = out_prefix.with_name(out_prefix.name + "_residuals_vs_pred.png")
-    plt.figure()
-    plt.scatter(df["p"], resid, s=18, alpha=0.85, edgecolors="none")
-    plt.axhline(0, linestyle="--", linewidth=1.2, alpha=0.9)
-    plt.xlabel("Predicted")
-    plt.ylabel("Residual (pred − actual)")
-    plt.title(f"{title_prefix} - Residuals vs Predicted")
-    plt.tight_layout()
-    plt.savefig(rvp_path)
-    plt.close()
-    out.append(rvp_path)
-
-    rh_path = out_prefix.with_name(out_prefix.name + "_residuals_hist.png")
-    plt.figure()
-    plt.hist(resid.dropna(), bins=min(30, max(8, int(len(resid) / 2))), alpha=0.9)
-    plt.axvline(0, linestyle="--", linewidth=1.2, alpha=0.9)
-    plt.xlabel("Residual (pred − actual)")
-    plt.ylabel("Count")
-    plt.title(f"{title_prefix} - Residual distribution")
-    plt.tight_layout()
-    plt.savefig(rh_path)
-    plt.close()
-    out.append(rh_path)
-
-    return out
-
-def plot_classification(y_true: pd.Series, y_score: pd.Series, out_prefix: Path, title_prefix: str) -> List[Path]:
-    apply_pub_style()
-
-    y_true = _as_num(y_true)
-    y_score = _as_num(y_score)
-    df = pd.DataFrame({"y": y_true, "s": y_score}).dropna()
-    if df.empty:
-        return []
-
-    uniq = set(df["y"].unique().tolist())
-    if not uniq.issubset({0, 1}):
-        return []
-
-    df = df.sort_values("s", ascending=False).reset_index(drop=True)
-    P = int((df["y"] == 1).sum())
-    N = int((df["y"] == 0).sum())
-    if P == 0 or N == 0:
-        return []
-
-    tp = 0
-    fp = 0
-    tps, fps = [], []
-    for _, row in df.iterrows():
-        if row["y"] == 1:
-            tp += 1
-        else:
-            fp += 1
-        tps.append(tp)
-        fps.append(fp)
-
-    tpr = [x / P for x in tps]
-    fpr = [x / N for x in fps]
-
-    roc_path = out_prefix.with_name(out_prefix.name + "_roc.png")
-    plt.figure()
-    plt.plot(fpr, tpr)
-    plt.plot([0, 1], [0, 1], linestyle="--", linewidth=1.1, alpha=0.8)
-    plt.xlabel("False positive rate")
-    plt.ylabel("True positive rate")
-    plt.title(f"{title_prefix} - ROC curve")
-    plt.xlim(0, 1)
-    plt.ylim(0, 1)
-    plt.tight_layout()
-    plt.savefig(roc_path)
-    plt.close()
-
-    precision = [tps[i] / max(1, (tps[i] + fps[i])) for i in range(len(tps))]
-    recall = [tps[i] / P for i in range(len(tps))]
-    pr_path = out_prefix.with_name(out_prefix.name + "_pr.png")
-    plt.figure()
-    plt.plot(recall, precision)
-    plt.xlabel("Recall")
-    plt.ylabel("Precision")
-    plt.title(f"{title_prefix} - Precision–Recall curve")
-    plt.xlim(0, 1)
-    plt.ylim(0, 1)
-    plt.tight_layout()
-    plt.savefig(pr_path)
-    plt.close()
-
-    return [roc_path, pr_path]
-
 def build_plots_for_split(
     meta: DatasetMeta,
     split: SplitArtifacts,
     plots_dir: Path,
     iteration: int,
-) -> List[Path]:
+) -> Dict[str, Path]:
     labeled = safe_read_csv(split.labeled_csv)
     preds = safe_read_csv(split.preds_csv)
     if labeled is None or preds is None:
-        return []
+        return {}
 
     try:
-        y_true, y_pred = merge_labels_and_preds(labeled, preds, meta)
+        plot_data = get_task(meta.task_type).get_plot_data(
+            labeled, preds,
+            {"numeric_label_col": meta.numeric_label_col, "label_to_scalar": meta.label_to_scalar},
+        )
     except Exception as e:
         print(f"[PLOTS SKIP] iter={iteration} split={split.split_name} :: {e}")
-        return []
+        return {}
 
     prefix = plots_dir / f"iter_{iteration}_{split.split_name}"
-    title_prefix = split.split_name.title()
-
-    if meta.task_type == ClassificationTask.name:
-        return plot_classification(y_true, y_pred, prefix, title_prefix)
-    return plot_regression(y_true, y_pred, prefix, title_prefix)
+    return render_plots(plot_data, prefix, split.split_name.title())
 
 # Markdown cleanup + step extraction
 def _remove_section_by_h2(md: str, title: str) -> str:
@@ -570,8 +380,7 @@ def _esc(s: str) -> str:
 
 def plots_compare_splits_page_flowables(
     iteration: int,
-    task_type: str,
-    plot_groups: Dict[str, List[Path]],
+    plot_groups: Dict[str, Dict[str, Path]],
     split_order: List[str],
     styles,
 ) -> List:
@@ -586,7 +395,6 @@ def plots_compare_splits_page_flowables(
             flows.extend(
                 plots_compare_splits_page_flowables(
                     iteration,
-                    task_type,
                     plot_groups,
                     present_splits[start : start + 3],
                     styles,
@@ -594,24 +402,9 @@ def plots_compare_splits_page_flowables(
             )
         return flows
 
-    task_type = (task_type or "").strip().lower()
-    if task_type == ClassificationTask.name:
-        row_suffixes = ["_roc", "_pr"]
-    else:
-        row_suffixes = ["_pred_vs_actual", "_residuals_vs_pred", "_residuals_hist"]
-
-    # Build lookup: split -> suffix -> Path
-    split_to_suffix: Dict[str, Dict[str, Path]] = {}
-    for split in present_splits:
-        m: Dict[str, Path] = {}
-        for p in plot_groups.get(split, []):
-            if not p or not p.exists():
-                continue
-            lname = p.name.lower()
-            for suf in row_suffixes:
-                if suf in lname:
-                    m[suf] = p
-        split_to_suffix[split] = m
+    plot_names = list(dict.fromkeys(
+        name for split in present_splits for name in plot_groups[split]
+    ))
 
     content_w = A4[0] - 4 * cm
     ncols = len(present_splits)
@@ -634,10 +427,10 @@ def plots_compare_splits_page_flowables(
     )
     flows.append(Spacer(1, 8))
     table_data = [[s.title() for s in present_splits]]
-    for suf in row_suffixes:
+    for plot_name in plot_names:
         row = []
         for split in present_splits:
-            p = split_to_suffix.get(split, {}).get(suf)
+            p = plot_groups[split].get(plot_name)
             if p and p.exists():
                 row.append(RLImage(str(p), width=col_w, height=img_h))
             else:
@@ -803,7 +596,7 @@ def write_iteration_pdf(
     run_meta: RunMeta,
     report_text_raw: Optional[str],
     metrics_by_split: Dict[str, Dict[str, float]],
-    plot_groups: Dict[str, List[Path]],
+    plot_groups: Dict[str, Dict[str, Path]],
     split_order: List[str],
 ) -> None:
     styles = build_styles()
@@ -828,7 +621,6 @@ def write_iteration_pdf(
 
     plot_section = plots_compare_splits_page_flowables(
         iteration=iteration,
-        task_type=run_meta.task_type,
         plot_groups=plot_groups,
         split_order=split_order,
         styles=styles,
@@ -908,7 +700,7 @@ def main() -> None:
             s.split_name: s.metrics for s in inp.splits if s.metrics
         }
 
-        plot_groups: Dict[str, List[Path]] = {}
+        plot_groups: Dict[str, Dict[str, Path]] = {}
         for s in inp.splits:
             plots = build_plots_for_split(
                 meta=dataset_meta,

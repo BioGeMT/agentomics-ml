@@ -6,6 +6,7 @@ from rich.console import Console
 from agentomics.datasets.data_contract import (
     ID_COLUMN_NAME, LABEL_COLUMN_NAME, NUMERIC_LABEL_COLUMN_NAME, TEST_SPLIT_PREFIX,
 )
+from agentomics.datasets.label_processing import merge_labels_and_preds
 from agentomics.utils.metrics import Metric, get_classification_metrics_functions
 from agentomics.utils.ml_tasks.base import MLTask
 
@@ -122,6 +123,15 @@ class ClassificationTask(MLTask):
         return ("A csv with columns:\n- 'id': the input sample id\n"
                 f"- 'prediction': the predicted class (int)\n{probability_columns}")
 
+    def get_plot_data(
+        self, labeled: pd.DataFrame, predictions: pd.DataFrame, metadata: dict,
+    ) -> dict[str, tuple[pd.Series, pd.Series]]:
+        mapping = metadata.get("label_to_scalar")
+        if not mapping:
+            raise ValueError("Classification run config must include non-empty 'label_to_scalar'")
+        pred_col = f"probability_{max(mapping.values())}"
+        values = merge_labels_and_preds(labeled, predictions, metadata["numeric_label_col"], pred_col)
+        return {"roc": values, "pr": values}
 
 def _sort_class_labels(labels) -> list[str]:
     string_labels = [str(label) for label in labels]
