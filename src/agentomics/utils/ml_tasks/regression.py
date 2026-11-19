@@ -87,12 +87,9 @@ class RegressionTask(MLTask):
     ) -> tuple[dict[str, pd.DataFrame], dict]:
         return {name: _convert_labels(frame, name) for name, frame in split_labels.items()}, {}
 
-    def get_task_knowledge(self, metadata: dict) -> str:
-        return ""
-
     def split_instructions(self) -> tuple[str, str]:
         count = self.MINI_TRAIN_SAMPLE_COUNT
-        return "", f"exactly {count} samples (or all available if the training split has fewer than {count})"
+        return "", f"Mini-train split must contain exactly {count} samples (or all available if the training split has fewer than {count})"
 
     def validate_mini_train(self, train: pd.DataFrame, mini_train: pd.DataFrame) -> None:
         expected = min(self.MINI_TRAIN_SAMPLE_COUNT, len(train))

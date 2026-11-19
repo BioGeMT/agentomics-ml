@@ -149,7 +149,7 @@ class ClassificationTask(MLTask):
         count = self.MINI_TRAIN_SAMPLES_PER_CLASS
         return (
             "Ensure that the validation split contains representative samples from ALL classes.",
-            f"exactly {count} samples per class "
+            f"Mini-train split must contain exactly {count} samples per class "
             f"(or all available if the training split has fewer than {count} for a class)",
         )
 

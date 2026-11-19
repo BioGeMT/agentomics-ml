@@ -48,16 +48,6 @@ class MLTask(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_task_knowledge(self, metadata: dict) -> str:
-        """Task-specific context appended to the dataset description."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def split_instructions(self) -> tuple[str, str]:
-        """Task-specific instructions for the split agent."""
-        raise NotImplementedError
-
-    @abstractmethod
     def validate_mini_train(self, train: pd.DataFrame, mini_train: pd.DataFrame) -> None:
         """Task-specific mini-train validation. Raise ValueError if mini_train is invalid."""
         raise NotImplementedError
@@ -66,6 +56,16 @@ class MLTask(ABC):
     def inference_output_description(self, metadata: dict) -> str:
         """Describe the task's prediction format for the inference agent."""
         raise NotImplementedError
+
+    def get_task_knowledge(self, metadata: dict) -> str:
+        """Optional task-specific context appended to the dataset description."""
+        return ""
+
+    def split_instructions(self) -> tuple[str, str]:
+        """Optional task-specific instructions for the split agent.
+        Returns a tuple of (validation instructions, mini-train instructions).
+        """
+        return ("", "")
 
     def get_plot_data(
         self, labeled: pd.DataFrame, predictions: pd.DataFrame, metadata: dict,

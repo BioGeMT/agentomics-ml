@@ -222,6 +222,10 @@ class DataSplitStep(AgentomicsAgenticStep):
         current_step_dir = self.config.current_step_dir
 
         validation_instructions, mini_train_size_instructions = get_task(self.config.task_type).split_instructions()
+        mini_train_instructions = (
+            f"Additional mini-train instructions: {mini_train_size_instructions}"
+            if mini_train_size_instructions else ""
+        )
 
         if self._is_mini_train_only():
             train_split_path = self.config.dataset_dir / TRAIN_SPLIT
@@ -234,7 +238,8 @@ class DataSplitStep(AgentomicsAgenticStep):
             - {VALIDATION_SPLIT}: {validation_split_path}
             Do NOT modify or recreate them. Only create the '{MINI_TRAIN_SPLIT}' folder in {current_step_dir}.
 
-            '{MINI_TRAIN_SPLIT}': a subset of the training split ({train_split_path}) with {mini_train_size_instructions}, used solely for automatic system validation.
+            '{MINI_TRAIN_SPLIT}': a subset of the training split ({train_split_path}) used solely for automatic system validation.
+            {mini_train_instructions}
             The '{MINI_TRAIN_SPLIT}' folder must contain an input/ folder with the data files and a labels.csv file. The input/ must contain only the data that corresponds to the ids in the newly created labels.csv file.
             When populating input/, use symbolic links to the original files in {train_split_path}/input/ instead of copying them. Only create new files when the data must be modified (e.g. splitting a single file that contains multiple samples into per-split subsets). Always create labels.csv as a new file.
             Preserve the original ID scheme: each id in labels.csv must refer to the same data in input/ as it did in the original data.
@@ -265,7 +270,8 @@ class DataSplitStep(AgentomicsAgenticStep):
             '{VALIDATION_SPLIT}': representative of new unseen data, used for optimizing architecture, hyperparameters, and training strategies.
             {validation_instructions}
 
-            '{MINI_TRAIN_SPLIT}': a subset of the training split with {mini_train_size_instructions}, used solely for automatic system validation.
+            '{MINI_TRAIN_SPLIT}': a subset of the training split used solely for automatic system validation.
+            {mini_train_instructions}
 
             Return the absolute paths to all three split folders.
 
