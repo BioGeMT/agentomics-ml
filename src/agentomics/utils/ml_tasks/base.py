@@ -71,6 +71,13 @@ class MLTask(ABC):
         """Describe the task's prediction format for the inference agent."""
         raise NotImplementedError
 
+    def validate_collection_classes(self, classes: list[str] | None) -> None:
+        """Apply optional class-list rules for data collection.
+
+        Raise `ValueError` if the supplied classes violate the task's rules.
+        """
+        return None
+
     def get_task_knowledge(self, metadata: dict) -> str:
         """Optional task-specific context appended to the dataset description."""
         return ""

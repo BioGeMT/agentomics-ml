@@ -135,6 +135,10 @@ class ClassificationTask(MLTask):
             {"label_to_scalar": mapping},
         )
 
+    def validate_collection_classes(self, classes: list[str] | None) -> None:
+        if len(set(classes or [])) < 2:
+            raise ValueError("classification needs at least two distinct classes")
+
     def get_task_knowledge(self, metadata: dict) -> str:
         return f"Label mapping: {metadata.get('label_to_scalar', {})}"
 
