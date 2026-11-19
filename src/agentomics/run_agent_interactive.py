@@ -188,7 +188,7 @@ def run_agent_interactive(arguments: argparse.Namespace) -> int:
             inherited_dataset_metadata.get("task_type")
             or arguments.task_type
         ),
-        label_to_scalar=inherited_dataset_metadata.get("label_to_scalar"),
+        task_metadata=inherited_dataset_metadata.get("task_metadata"),
         label_column=inherited_dataset_metadata.get("label_column"),
         interactive=_is_tty_available() and existing_config is None,
     )
@@ -206,7 +206,6 @@ def run_agent_interactive(arguments: argparse.Namespace) -> int:
             dataset_name=dataset,
             task_type=task_type,
             dataset_metadata=dataset_metadata,
-            label_to_scalar=dataset_metadata.get("label_to_scalar"),
             input_structure=dataset_metadata["input_structure"],
             val_metric=val_metric,
             datasets_dir=prepared_datasets_dir,

@@ -6,7 +6,7 @@ import os
 import re
 import shutil
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -16,7 +16,7 @@ from agentomics.agents.steps.validation_evaluation import ValidationEvaluationSt
 from agentomics.runtime.step_outputs import load_step_output
 from agentomics.runtime.plots_helpers import render_plots
 from agentomics.utils.config import Config
-from agentomics.utils.ml_tasks import ClassificationTask, get_task
+from agentomics.utils.ml_tasks import get_task
 from agentomics.runtime.iteration_reports import write_iteration_report
 from agentomics.runtime.read_write_utils import get_archived_iterations, load_best_iteration_snapshot_iteration, load_config_from_run_dir_and_reroot
 
@@ -34,14 +34,13 @@ from reportlab.platypus import (
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
-from agentomics.datasets.data_contract import LABELS_FILE_NAME, NUMERIC_LABEL_COLUMN_NAME, TRAIN_SPLIT, VALIDATION_SPLIT
+from agentomics.datasets.data_contract import LABELS_FILE_NAME, TRAIN_SPLIT, VALIDATION_SPLIT
 
 # Data models
 @dataclass(frozen=True)
 class DatasetMeta:
     task_type: str
-    numeric_label_col: str
-    label_to_scalar: Optional[Dict[str, int]] = None
+    task_metadata: dict = field(default_factory=dict)
 
 @dataclass(frozen=True)
 class RunMeta:
@@ -210,12 +209,9 @@ def load_run_meta(config: Config) -> RunMeta:
     )
 
 def load_dataset_meta_from_config(config: Config) -> DatasetMeta:
-    if config.task_type == ClassificationTask.name and not config.label_to_scalar:
-        raise SystemExit("Classification run config must include non-empty 'label_to_scalar'")
     return DatasetMeta(
         task_type=config.task_type,
-        numeric_label_col=NUMERIC_LABEL_COLUMN_NAME,
-        label_to_scalar=config.label_to_scalar,
+        task_metadata=config.task_metadata,
     )
 
 # Iteration discovery / inputs
@@ -281,8 +277,7 @@ def build_plots_for_split(
 
     try:
         plot_data = get_task(meta.task_type).get_plot_data(
-            labeled, preds,
-            {"numeric_label_col": meta.numeric_label_col, "label_to_scalar": meta.label_to_scalar},
+            labeled, preds, meta.task_metadata,
         )
     except Exception as e:
         print(f"[PLOTS SKIP] iter={iteration} split={split.split_name} :: {e}")

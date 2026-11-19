@@ -105,7 +105,7 @@ class Config:
     paper_fetch_timeout: int = DEFAULT_PAPER_FETCH_TIMEOUT
     paper_fetch_max_results: int = DEFAULT_PAPER_FETCH_MAX_RESULTS
     max_tool_retries: int = DEFAULT_MAX_TOOL_RETRIES
-    label_to_scalar: dict[str, int] | None = None
+    task_metadata: dict = field(default_factory=dict)
     wandb_run_id: str | None = None
     environments_dir: str = DEFAULT_ENVIRONMENTS_DIR
 

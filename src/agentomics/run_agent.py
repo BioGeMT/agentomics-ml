@@ -49,7 +49,6 @@ async def run_experiment(
     exploration_iterations: int,
     input_structure: list[str],
     dataset_metadata: dict,
-    label_to_scalar: dict[str, int] | None = None,
     disable_training_reporting: bool = False,
     conda_export_mode: str = "full"
 ):
@@ -74,7 +73,7 @@ async def run_experiment(
         iterations=iterations,
         user_prompt=user_prompt,
         task_type=task_type,
-        label_to_scalar=label_to_scalar,
+        task_metadata=dataset_metadata.get("task_metadata", {}),
         input_structure=input_structure,
         split_allowed_iterations=split_allowed_iterations,
         exploration_iterations=exploration_iterations,

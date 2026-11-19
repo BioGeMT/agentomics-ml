@@ -56,8 +56,8 @@ class MLTask(ABC):
         through `metadata` or `options`. With `fit=False`, reuse the encoding
         from `metadata` if needed.
 
-        Also return a JSON-serializable dictionary to merge into the prepared
-        dataset metadata. For example, classification returns `label_to_scalar`
+        Also return a JSON-serializable dictionary saved under `task_metadata`
+        in the prepared dataset metadata. Classification returns `label_to_scalar`
         so test preparation and evaluation can reuse the training class IDs.
         Return `{}` when there is no label metadata to save.
         """

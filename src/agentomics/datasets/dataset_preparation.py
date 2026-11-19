@@ -81,7 +81,7 @@ def prepare_dataset(
     positive_class=None,
     negative_class=None,
     interactive=False,
-    label_to_scalar=None,
+    task_metadata: dict | None = None,
     label_column=None,
 ) -> dict:
     """Prepare a dataset from source_dir into destination_dir.
@@ -131,16 +131,18 @@ def prepare_dataset(
         source_metadata, task.name, split_labels, input_structure,
     )
 
+    if task_metadata is None:
+        task_metadata = source_metadata.get("task_metadata", {})
     numeric_split_labels, label_metadata = task.validate_and_numericalize_labels(
-        split_labels, source_metadata, fit=True,
+        split_labels, task_metadata, fit=True,
         options={
-            "label_to_scalar": label_to_scalar,
+            "source_metadata": source_metadata,
             "positive_class": positive_class,
             "negative_class": negative_class,
             "positive_class_selector": select_positive_class if interactive and sys.stdin.isatty() else None,
         },
     )
-    output_metadata.update(label_metadata)
+    output_metadata["task_metadata"] = label_metadata
 
     destination_dir.mkdir(parents=True, exist_ok=True)
     destination_splits = {}
@@ -201,7 +203,7 @@ def check_dataset(source_dir: Path, interactive: bool = False) -> dict:
                 destination_dir=temporary_root / "prepared_test",
                 task_type=metadata["task_type"],
                 input_structure=metadata["input_structure"],
-                label_to_scalar=metadata.get("label_to_scalar"),
+                task_metadata=metadata["task_metadata"],
                 label_column=metadata.get("label_column"),
                 id_column=metadata.get("id_column"),
             )
@@ -225,7 +227,7 @@ def prepare_test_dataset(
     destination_dir: Path,
     task_type: str,
     input_structure: list[str],
-    label_to_scalar: dict[str, int] | None = None,
+    task_metadata: dict | None = None,
     label_column: str | None = None,
     id_column: str | None = None,
 ) -> dict:
@@ -258,7 +260,7 @@ def prepare_test_dataset(
     test_labels = load_split_label_dfs({TEST_SPLIT_PREFIX: test_source})
 
     numeric_test_labels, label_metadata = task.validate_and_numericalize_labels(
-        test_labels, {"label_to_scalar": label_to_scalar},
+        test_labels, task_metadata if task_metadata is not None else {},
     )
     numeric_labels = numeric_test_labels[TEST_SPLIT_PREFIX]
 
@@ -282,7 +284,7 @@ def prepare_test_dataset(
         "input_structure": input_structure,
         "prepared": True,
     }
-    test_metadata.update(label_metadata)
+    test_metadata["task_metadata"] = label_metadata
     (destination_dir / METADATA_FILE_NAME).write_text(json.dumps(test_metadata, indent=4), encoding="utf-8")
 
     return test_metadata

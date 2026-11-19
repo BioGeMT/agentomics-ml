@@ -105,7 +105,7 @@ def initialized_run_config(default_agent_config: Config) -> Config:
         {
             "task_type": "classification",
             "input_structure": ["data.csv"],
-            "label_to_scalar": {"negative": 0, "positive": 1},
+            "task_metadata": {"label_to_scalar": {"negative": 0, "positive": 1}},
         },
     )
     return default_agent_config

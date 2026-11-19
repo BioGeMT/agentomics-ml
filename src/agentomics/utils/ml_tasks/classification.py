@@ -122,7 +122,8 @@ class ClassificationTask(MLTask):
                 ).dropna().unique()
                 if len(unique_labels) == 2 or has_override:
                     mapping = _build_binary_label_mapping(
-                        metadata, options.get("positive_class"), options.get("negative_class"),
+                        {**options.get("source_metadata", {}), **metadata},
+                        options.get("positive_class"), options.get("negative_class"),
                         unique_labels, options.get("positive_class_selector"),
                     )
                 else:
@@ -185,7 +186,7 @@ class ClassificationTask(MLTask):
         if not mapping:
             raise ValueError("Classification run config must include non-empty 'label_to_scalar'")
         pred_col = f"probability_{max(mapping.values())}"
-        values = merge_labels_and_preds(labeled, predictions, metadata["numeric_label_col"], pred_col)
+        values = merge_labels_and_preds(labeled, predictions, NUMERIC_LABEL_COLUMN_NAME, pred_col)
         return {"roc": values, "pr": values}
 
 def _sort_class_labels(labels) -> list[str]:

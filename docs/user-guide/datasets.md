@@ -153,7 +153,7 @@ Agentomics does not infer task type from generic input files. If you do not
 provide `metadata.json`, pass `--task-type classification` or
 `--task-type regression` to `agentomics-run`, or select the task type when
 prompted in an interactive run. For classification datasets, Agentomics derives
-class IDs from `labels.csv` if `label_to_scalar` is absent.
+class IDs from `labels.csv` if `task_metadata.label_to_scalar` is absent.
 
 Example:
 
@@ -247,10 +247,10 @@ outputs/<agent_id>/run/shared/splits/split_0/
     └── labels.csv          # id,numeric_label
 ```
 
-The original label values are preserved through `label_to_scalar` in the run
-config. The held-out `test/` split is not part of this prepared data — it is
-excluded from the agent's mounts and prepared separately in a temporary
-directory only for the post-run evaluation.
+For classification tasks, `task_metadata.label_to_scalar` in the run config records
+the mapping from original labels to class IDs. The held-out `test/` split
+is excluded from the agent's mounts and prepared separately in a temporary
+directory for the post-run evaluation.
 
 ## Example Datasets
 

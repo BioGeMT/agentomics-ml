@@ -59,7 +59,7 @@ class ModelInferenceStep(AgentomicsAgenticStep):
     def step_prompt(self) -> str:
         model_training = require_step_output(self.config, ModelTrainingStep.step_id, self.config.current_iteration_dir)
         output_file_description = get_task(self.config.task_type).inference_output_description(
-            load_dataset_metadata(self.config),
+            load_dataset_metadata(self.config).get("task_metadata", {}),
         )
 
         return f"""
