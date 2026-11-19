@@ -154,7 +154,6 @@ def run_agent_interactive(arguments: argparse.Namespace) -> int:
         print_datasets_table(get_all_datasets_info(arguments.datasets_dir))
         return 0
     if arguments.list_metrics:
-        console.print("Available Validation Metrics", style="cyan")
         display_metrics_table()
         return 0
 

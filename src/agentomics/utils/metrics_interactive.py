@@ -16,7 +16,6 @@ def display_metrics_table(task_type=None):
 
     boxes = []
     metrics = []
-    task_colors = {task.name: color for task, color in zip(get_tasks(), ("cyan", "yellow"))}
     for task, names in metrics_by_task:
         lines = [
             f"[white]{str(i).rjust(max_num_width)}[/white] [green]{name}[/green]"
@@ -25,7 +24,7 @@ def display_metrics_table(task_type=None):
         boxes.append(Panel(
             "\n".join(lines),
             title=f"[bold]Metric for {task.name.title()}[/bold]",
-            border_style=task_colors.get(task.name, "cyan"),
+            border_style="cyan",
         ))
         metrics.extend(names)
 
