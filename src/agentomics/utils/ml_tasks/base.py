@@ -20,10 +20,18 @@ class MLTask(ABC):
 
     @abstractmethod
     def score(
-        self, merged: pd.DataFrame, prediction_columns: list[str],
+        self, predictions_with_labels: pd.DataFrame, prediction_columns: list[str],
         *, numeric_label_col: str, pred_col: str, prob_col_prefix: str,
     ) -> dict[str, float]:
-        """Compute task specific metrics from aligned predictions and reference labels."""
+        """Compute task specific metrics by comparing predictions and reference labels.
+
+        The caller joins predictions and reference labels on the sample ID.
+        Each row in 'predictions_with_labels' contains a prediction and a reference label for the same sample.
+
+        'prediction_columns' lists the columns from the prediction DataFrame before the join. 'numeric_label_col'
+        identifies the reference label column, and 'pred_col' identifies the predicted value or class.
+        For tasks that use class probabilities, 'prob_col_prefix' identifies the probability columns among 'prediction_columns'.
+        """
         raise NotImplementedError
 
     @abstractmethod

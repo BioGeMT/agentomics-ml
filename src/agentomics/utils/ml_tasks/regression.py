@@ -69,16 +69,16 @@ class RegressionTask(MLTask):
         return "MAE"
 
     def score(
-        self, merged: pd.DataFrame, prediction_columns: list[str],
+        self, predictions_with_labels: pd.DataFrame, prediction_columns: list[str],
         *, numeric_label_col: str, pred_col: str, prob_col_prefix: str,
     ) -> dict[str, float]:
-        merged[numeric_label_col] = merged[numeric_label_col].astype(float)
-        merged[pred_col] = merged[pred_col].astype(float)
+        predictions_with_labels[numeric_label_col] = predictions_with_labels[numeric_label_col].astype(float)
+        predictions_with_labels[pred_col] = predictions_with_labels[pred_col].astype(float)
 
         metrics = {}
         metric_to_fn = self.metrics()
         for metric_name, metric_fn in metric_to_fn.items():
-            metrics[metric_name] = metric_fn(merged[numeric_label_col], merged[pred_col])
+            metrics[metric_name] = metric_fn(predictions_with_labels[numeric_label_col], predictions_with_labels[pred_col])
         return metrics
 
     def prepare_labels(
