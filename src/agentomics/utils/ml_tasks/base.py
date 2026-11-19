@@ -6,6 +6,13 @@ from agentomics.utils.metrics import Metric
 
 
 class MLTask(ABC):
+    """Define label preparation, scoring, and workflow hooks for an ML task.
+
+    Label DataFrames contain one row per sample, keyed by `id`. Raw label
+    tables use `label`, and prepared label tables use `numeric_label`.
+    Prediction tables also use `id`, with prediction columns defined by the task.
+    """
+
     name: str
 
     @abstractmethod
@@ -58,7 +65,11 @@ class MLTask(ABC):
 
     @abstractmethod
     def validate_mini_train(self, train: pd.DataFrame, mini_train: pd.DataFrame) -> None:
-        """Task-specific mini-train validation. Raise ValueError if mini_train is invalid."""
+        """Check task-specific mini-train rules using the prepared label tables.
+
+        Both `train` and `mini_train` contain `id` and `numeric_label` columns.
+        Raise `ValueError` if mini-train violates the task's rules.
+        """
         raise NotImplementedError
 
     @abstractmethod
