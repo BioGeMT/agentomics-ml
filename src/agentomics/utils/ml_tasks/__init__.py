@@ -3,7 +3,6 @@ from agentomics.utils.ml_tasks.base import MLTask
 from agentomics.utils.ml_tasks.classification import ClassificationTask
 from agentomics.utils.ml_tasks.regression import RegressionTask
 from agentomics.utils.ml_tasks.registry import (
-    get_default_val_metric,
     get_higher_is_better_map,
     get_task,
     get_task_names,
@@ -16,7 +15,6 @@ __all__ = [
     "MLTask",
     "ClassificationTask",
     "RegressionTask",
-    "get_default_val_metric",
     "get_higher_is_better_map",
     "get_task",
     "get_task_names",

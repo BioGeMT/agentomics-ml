@@ -32,12 +32,9 @@ def get_higher_is_better_map():
         for name, metric in task.metrics().items()
     }
 
-def get_default_val_metric(task_type: str) -> str:
-    return get_task(task_type).default_validation_metric()
-
 def resolve_val_metric(task_type: str, val_metric: str | None = None) -> str:
     if not val_metric:
-        return get_default_val_metric(task_type)
+        return get_task(task_type).default_validation_metric()
 
     allowed = list(get_task(task_type).metrics())
     if val_metric not in allowed:
