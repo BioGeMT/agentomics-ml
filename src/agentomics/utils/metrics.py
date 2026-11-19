@@ -2,7 +2,8 @@ class Metric:
     """
     A metric class that encapsulates:
     - The computation function
-    - Whether it needs probabilities (True) or class predictions (False)
+    - needs_probabilities: True if the metric expects predicted probabilities,
+      False if it expects the task's predicted values directly
     - Whether higher values are better (True) or worse (False)
     """
 
