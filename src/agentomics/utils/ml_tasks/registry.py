@@ -3,23 +3,22 @@ from agentomics.utils.ml_tasks.classification import ClassificationTask
 from agentomics.utils.ml_tasks.regression import RegressionTask
 
 
-_TASKS: dict[str, MLTask] = {
+_TASK_REGISTRY: dict[str, MLTask] = {
     task.name: task for task in (ClassificationTask(), RegressionTask())
 }
 
 
 def get_tasks() -> tuple[MLTask, ...]:
-    return tuple(_TASKS.values())
+    return tuple(_TASK_REGISTRY.values())
 
 def get_task_names() -> tuple[str, ...]:
-    return tuple(_TASKS)
-
+    return tuple(_TASK_REGISTRY)
 def get_task(task_type: str) -> MLTask:
     try:
-        return _TASKS[task_type]
+        return _TASK_REGISTRY[task_type]
     except KeyError:
         raise ValueError(
-            f"Unknown task_type: {task_type}. Expected one of {tuple(_TASKS)}."
+            f"Unknown task_type: {task_type}. Expected one of {tuple(_TASK_REGISTRY)}."
         ) from None
 
 def get_task_to_metrics_names():
