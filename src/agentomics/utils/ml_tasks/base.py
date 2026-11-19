@@ -90,7 +90,14 @@ class MLTask(ABC):
     def get_plot_data(
         self, labeled: pd.DataFrame, predictions: pd.DataFrame, metadata: dict,
     ) -> dict[str, tuple[pd.Series, pd.Series]]:
-        """Prepare optional task-specific plot data.
-        Subclasses may omit this method; only the plot section is skipped.
+        """Prepare plot data for one split in the final report.
+
+        Return a dictionary keyed by registered plot name, such as `roc` or
+        `pred_vs_actual`. Each value is a pair of pandas Series containing
+        reference labels first and predictions or scores second.
+
+        The final report passes each pair to its plot renderer and includes
+        the resulting image. Return an empty dictionary to skip plots for
+        this split. Metrics and other report content are still included.
         """
         return {}
