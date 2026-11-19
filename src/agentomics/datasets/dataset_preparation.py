@@ -83,12 +83,17 @@ def prepare_dataset(
     interactive=False,
     task_metadata: dict | None = None,
     label_column=None,
+    *,
+    fit: bool = True,
 ) -> dict:
     """Prepare a dataset from source_dir into destination_dir.
 
     Reads from source_dir (never modified), writes the prepared result to
     destination_dir (input dirs are symlinked, labels are converted, metadata
     is written). Returns the output metadata dict.
+
+    Use fit=False to reuse the saved task metadata without fitting a new
+    label encoding.
     """
     source_dir = Path(source_dir)
     destination_dir = Path(destination_dir)
@@ -134,7 +139,7 @@ def prepare_dataset(
     if task_metadata is None:
         task_metadata = source_metadata.get("task_metadata", {})
     numeric_split_labels, label_metadata = task.validate_and_numericalize_labels(
-        split_labels, task_metadata, fit=True,
+        split_labels, task_metadata, fit=fit,
         options={
             "source_metadata": source_metadata,
             "positive_class": positive_class,

@@ -38,6 +38,7 @@ def test_continued_run_can_reprepare_csv_from_saved_metadata(tmp_path: Path):
         task_metadata=first_metadata["task_metadata"],
         label_column=first_metadata["label_column"],
         interactive=False,
+        fit=False,
     )
 
     assert second_metadata["label_column"] == "outcome"

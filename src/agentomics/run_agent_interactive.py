@@ -191,6 +191,7 @@ def run_agent_interactive(arguments: argparse.Namespace) -> int:
         task_metadata=inherited_dataset_metadata.get("task_metadata"),
         label_column=inherited_dataset_metadata.get("label_column"),
         interactive=_is_tty_available() and existing_config is None,
+        fit=existing_config is None,
     )
     task_type = dataset_metadata["task_type"]
     val_metric = resolve_val_metric(task_type, arguments.val_metric)
