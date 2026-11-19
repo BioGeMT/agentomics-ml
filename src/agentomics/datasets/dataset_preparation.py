@@ -37,9 +37,7 @@ from agentomics.datasets.label_processing import (
     load_split_label_dfs,
 )
 from agentomics.runtime.filesystem import create_absolute_symlink, find_symlinks_in_dir
-from agentomics.utils.ml_tasks import (
-    get_task,
-)
+from agentomics.utils.ml_tasks import MLTask, get_task
 
 console = Console()
 
@@ -51,12 +49,13 @@ def _reject_symlinks_in_dir(directory: Path) -> None:
             f"{len(symlinks)} symlink(s) found (e.g. {symlinks[0]})."
         )
 
-def _resolve_task_type(source_metadata: dict, cli_task_type: str | None, train_labels: pd.DataFrame, interactive: bool) -> str:
+def _resolve_task(
+    source_metadata: dict, cli_task_type: str | None, train_labels: pd.DataFrame, interactive: bool,
+) -> MLTask:
     resolved = cli_task_type or source_metadata.get("task_type")
     if resolved is None:
         resolved = select_task_type(train_labels, interactive=interactive)
-    get_task(resolved)
-    return resolved
+    return get_task(resolved)
 
 def _build_output_metadata(
     source_metadata: dict,
@@ -127,12 +126,11 @@ def prepare_dataset(
     input_structure = record_input_dir_structure(source_splits[TRAIN_SPLIT] / INPUT_DIR_NAME)
     split_labels = load_split_label_dfs(source_splits)
 
-    resolved_task_type = _resolve_task_type(source_metadata, task_type, split_labels[TRAIN_SPLIT], interactive)
+    task = _resolve_task(source_metadata, task_type, split_labels[TRAIN_SPLIT], interactive)
     output_metadata = _build_output_metadata(
-        source_metadata, resolved_task_type, split_labels, input_structure,
+        source_metadata, task.name, split_labels, input_structure,
     )
 
-    task = get_task(resolved_task_type)
     numeric_split_labels, label_metadata = task.validate_and_numericalize_labels(
         split_labels, source_metadata, fit=True,
         options={
