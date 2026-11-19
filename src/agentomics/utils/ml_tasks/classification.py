@@ -100,7 +100,7 @@ class ClassificationTask(MLTask):
                 metrics[metric_name] = metric_fn(predictions_with_labels[numeric_label_col], predictions_with_labels[pred_col])
         return metrics
 
-    def prepare_labels(
+    def validate_and_numericalize_labels(
         self, split_labels: dict[str, pd.DataFrame], metadata: dict,
         *, fit: bool = False, options: dict | None = None,
     ) -> tuple[dict[str, pd.DataFrame], dict]:

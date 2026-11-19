@@ -35,15 +35,24 @@ class MLTask(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def prepare_labels(
+    def validate_and_numericalize_labels(
         self, split_labels: dict[str, pd.DataFrame], metadata: dict,
         *, fit: bool = False, options: dict | None = None,
     ) -> tuple[dict[str, pd.DataFrame], dict]:
-        """Validate and transform labels according to the task's requirements.
+        """Validate and convert labels to numeric values for each split.
 
-        fit=True may derive task metadata from training/validation labels.
-        The default reuses existing metadata, including for held-out test labels.
-        options contains preparation overrides and optional interactive callbacks.
+        `split_labels` maps split names to DataFrames with `id` and `label`
+        columns. Return DataFrames keyed by the same split names, preserving
+        `id` and replacing `label` with `numeric_label`.
+
+        With `fit=True`, the task may derive an encoding or use one supplied
+        through `metadata` or `options`. With `fit=False`, reuse the encoding
+        from `metadata` if needed.
+
+        Also return a JSON-serializable dictionary to merge into the prepared
+        dataset metadata. For example, classification returns `label_to_scalar`
+        so test preparation and evaluation can reuse the training class IDs.
+        Return `{}` when there is no label metadata to save.
         """
         raise NotImplementedError
 

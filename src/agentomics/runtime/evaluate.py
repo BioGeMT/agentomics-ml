@@ -25,7 +25,7 @@ def _read_numeric_labels(labels_path: Path, config: Config) -> pd.DataFrame:
             labels_path, NUMERIC_LABEL_COLUMN_NAME, require_numeric_values=True
         )
     labels = validate_and_read_labels(labels_path, LABEL_COLUMN_NAME)
-    converted, _ = get_task(config.task_type).prepare_labels(
+    converted, _ = get_task(config.task_type).validate_and_numericalize_labels(
         {"eval": labels}, {"label_to_scalar": config.label_to_scalar},
     )
     return converted["eval"]

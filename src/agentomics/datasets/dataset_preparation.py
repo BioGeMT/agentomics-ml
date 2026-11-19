@@ -133,7 +133,7 @@ def prepare_dataset(
     )
 
     task = get_task(resolved_task_type)
-    numeric_split_labels, label_metadata = task.prepare_labels(
+    numeric_split_labels, label_metadata = task.validate_and_numericalize_labels(
         split_labels, source_metadata, fit=True,
         options={
             "label_to_scalar": label_to_scalar,
@@ -259,7 +259,7 @@ def prepare_test_dataset(
 
     test_labels = load_split_label_dfs({TEST_SPLIT_PREFIX: test_source})
 
-    numeric_test_labels, label_metadata = task.prepare_labels(
+    numeric_test_labels, label_metadata = task.validate_and_numericalize_labels(
         test_labels, {"label_to_scalar": label_to_scalar},
     )
     numeric_labels = numeric_test_labels[TEST_SPLIT_PREFIX]
