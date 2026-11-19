@@ -18,7 +18,7 @@ from agentomics.runtime.read_write_utils import (
 from agentomics.runtime.step_outputs import load_step_output, require_step_output
 from agentomics.utils.config import Config
 from agentomics.utils.exceptions import AgentScriptFailed, StepFailed
-from agentomics.utils.ml_tasks import get_higher_is_better_map
+from agentomics.utils.ml_tasks import get_task
 from agentomics.datasets.data_contract import LABELS_FILE_NAME
 
 
@@ -60,7 +60,8 @@ class ValidationEvaluationStep(AgentomicsStep):
             iteration_dir=best_iteration_dir,
         )
         best_metrics = {} if validation_output is None else dict(validation_output.metrics)
-        higher_is_better = get_higher_is_better_map()[metric_name]
+        task = get_task(config.task_type)
+        higher_is_better = task.metrics()[metric_name].higher_is_better
         new_value = new_metrics[validation_metric_key]
         best_value = best_metrics[validation_metric_key]
         return new_value > best_value if higher_is_better else new_value < best_value

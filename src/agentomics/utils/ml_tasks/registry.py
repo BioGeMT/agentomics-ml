@@ -24,14 +24,6 @@ def get_task(task_type: str) -> MLTask:
 def get_task_to_metrics_names():
     return {task.name: list(task.metrics()) for task in get_tasks()}
 
-def get_higher_is_better_map():
-    """Return a dictionary mapping metric names to their optimization direction."""
-    return {
-        name: metric.higher_is_better
-        for task in get_tasks()
-        for name, metric in task.metrics().items()
-    }
-
 def resolve_val_metric(task_type: str, val_metric: str | None = None) -> str:
     if not val_metric:
         return get_task(task_type).default_validation_metric()
