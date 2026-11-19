@@ -14,7 +14,6 @@ from agentomics.agents.data_collection.spec import DataCollectionSpec
 from agentomics.runtime.collected_data_directory import load_manifest
 from agentomics.tools import web_fetch_tool
 from agentomics.tools.web_fetch_tool import create_web_fetch_tool
-from agentomics.utils.ml_tasks import ClassificationTask
 from agentomics.utils.data_module_config import DataModuleConfig
 from agentomics.utils.exceptions import StepFailed
 from tests.helpers import (
@@ -27,7 +26,7 @@ from tests.helpers import (
 SUMMARY = "Measurements from one source, with the documentation that describes them."
 URL = "https://example.org"
 SPEC = DataCollectionSpec(
-    task_type=ClassificationTask(),
+    task_type="classification",
     description="Predict a binary label.",
     inputs=["measurements"],
     label="diagnosis",

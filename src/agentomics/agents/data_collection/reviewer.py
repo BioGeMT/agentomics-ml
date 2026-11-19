@@ -72,7 +72,7 @@ def _get_reviewer_prompt(config: DataModuleConfig, spec: DataCollectionSpec, sum
     entries = load_manifest(config)
     byte_counts = {"used_bytes": get_manifest_size_bytes(entries), "max_bytes": config.max_download_bytes}
     return "\n\n".join([
-        f"Task: {spec.task_type.name}\nSpec:\n{spec.model_dump(exclude={'task_type'})}",
+        f"Spec:\n{spec.model_dump_json(indent=2)}",
         f"Manifest:\n{dump_manifest(entries)}",
         f"Bytes used and size limit:\n{json.dumps(byte_counts)}",
         f"Summary:\n{summary}",
