@@ -1,5 +1,9 @@
 import math
 
+from sklearn.metrics import (
+    average_precision_score, f1_score, log_loss, matthews_corrcoef, roc_auc_score, accuracy_score
+)
+import numpy as np
 import pandas as pd
 from rich.console import Console
 
@@ -7,7 +11,7 @@ from agentomics.datasets.data_contract import (
     ID_COLUMN_NAME, LABEL_COLUMN_NAME, NUMERIC_LABEL_COLUMN_NAME, TEST_SPLIT_PREFIX,
 )
 from agentomics.datasets.label_processing import merge_labels_and_preds
-from agentomics.utils.metrics import Metric, get_classification_metrics_functions
+from agentomics.utils.metrics import Metric
 from agentomics.utils.ml_tasks.base import MLTask
 
 
@@ -15,8 +19,59 @@ class ClassificationTask(MLTask):
     name = "classification"
     MINI_TRAIN_SAMPLES_PER_CLASS = 100
 
-    def metrics(self) -> dict[str, Metric]:
-        return get_classification_metrics_functions()
+    def metrics(self):
+        return {
+            "ACC": Metric(
+                function=lambda y_true, y_pred: accuracy_score(y_true, y_pred),
+                needs_probabilities=False,
+                higher_is_better=True
+            ),
+            "AUPRC": Metric(
+                function=self._auprc_metric,
+                needs_probabilities=True,
+                higher_is_better=True
+            ),
+            "AUROC": Metric(
+                function=self._auroc_metric,
+                needs_probabilities=True,
+                higher_is_better=True
+            ),
+            "F1": Metric(
+                function=lambda y_true, y_pred: f1_score(y_true, y_pred, average='macro'),
+                needs_probabilities=False,
+                higher_is_better=True
+            ),
+            "LOG_LOSS": Metric(
+                function=lambda y_true, y_prob: log_loss(y_true, np.clip(y_prob, 1e-15, 1-1e-15)),
+                needs_probabilities=True,
+                higher_is_better=False
+            ),
+            "MCC": Metric(
+                function=lambda y_true, y_pred: matthews_corrcoef(y_true, y_pred),
+                needs_probabilities=False,
+                higher_is_better=True
+            ),
+        }
+
+    @staticmethod
+    def _auroc_metric(y_true, y_prob):
+        """Handle AUROC for both binary and multiclass cases."""
+        if y_prob.shape[1] == 2:
+            # Binary classification
+            return roc_auc_score(y_true, y_prob[:, 1])
+        else:
+            # Multiclass classification - use 'ovr' (one-vs-rest) strategy
+            return roc_auc_score(y_true, y_prob, multi_class='ovr')
+
+    @staticmethod
+    def _auprc_metric(y_true, y_prob):
+        """Handle AUPRC for both binary and multiclass cases."""
+        if y_prob.shape[1] == 2:
+            # Binary classification
+            return average_precision_score(y_true, y_prob[:, 1])
+        else:
+            # Multiclass classification - use macro average
+            return average_precision_score(y_true, y_prob, average='macro')
 
     def default_validation_metric(self) -> str:
         return "AUROC"

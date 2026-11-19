@@ -1,8 +1,13 @@
 import pandas as pd
+from sklearn.metrics import (
+    mean_absolute_error, mean_absolute_percentage_error, mean_squared_error, r2_score
+)
+from scipy.stats import pearsonr, spearmanr
+import numpy as np
 
 from agentomics.datasets.data_contract import ID_COLUMN_NAME, LABEL_COLUMN_NAME, NUMERIC_LABEL_COLUMN_NAME
 from agentomics.datasets.label_processing import merge_labels_and_preds
-from agentomics.utils.metrics import Metric, get_regression_metrics_functions
+from agentomics.utils.metrics import Metric
 from agentomics.utils.ml_tasks.base import MLTask
 
 
@@ -10,8 +15,55 @@ class RegressionTask(MLTask):
     name = "regression"
     MINI_TRAIN_SAMPLE_COUNT = 100
 
-    def metrics(self) -> dict[str, Metric]:
-        return get_regression_metrics_functions()
+    def metrics(self):
+        return {
+            "MSE": Metric(
+                function=lambda y_true, y_pred: mean_squared_error(y_true, y_pred),
+                needs_probabilities=False,  # Regression always uses predictions
+                higher_is_better=False
+            ),
+            "RMSE": Metric(
+                function=lambda y_true, y_pred: np.sqrt(mean_squared_error(y_true, y_pred)),
+                needs_probabilities=False,
+                higher_is_better=False
+            ),
+            "MAE": Metric(
+                function=lambda y_true, y_pred: mean_absolute_error(y_true, y_pred),
+                needs_probabilities=False,
+                higher_is_better=False
+            ),
+            "MAPE": Metric(
+                function=lambda y_true, y_pred: mean_absolute_percentage_error(y_true, y_pred),
+                needs_probabilities=False,
+                higher_is_better=False
+            ),
+            "PEARSON": Metric(
+                function=self._pcc,
+                needs_probabilities=False,
+                higher_is_better=True
+            ),
+            "SPEARMAN": Metric(
+                function=self._scc,
+                needs_probabilities=False,
+                higher_is_better=True
+            ),
+            "R2": Metric(
+                function=lambda y_true, y_pred: r2_score(y_true, y_pred),
+                needs_probabilities=False,
+                higher_is_better=True
+            ),
+        }
+
+    @staticmethod
+    def _pcc(y_true, y_pred):
+        r = pearsonr(np.asarray(y_true, float).ravel(), np.asarray(y_pred, float).ravel())[0]
+        return float(r) if np.isfinite(r) else 0.0
+
+    @staticmethod
+    def _scc(y_true, y_pred):
+        """Spearman correlation coefficient."""
+        r = spearmanr(np.asarray(y_true, float).ravel(), np.asarray(y_pred, float).ravel())[0]
+        return float(r) if np.isfinite(r) else 0.0
 
     def default_validation_metric(self) -> str:
         return "MAE"
