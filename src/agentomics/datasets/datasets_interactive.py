@@ -13,11 +13,7 @@ from agentomics.datasets.data_contract import (
     TRAIN_SPLIT,
     VALIDATION_SPLIT,
 )
-from agentomics.utils.ml_tasks import (
-    ClassificationTask,
-    RegressionTask,
-    get_task_names,
-)
+from agentomics.utils.ml_tasks import get_task_names
 from agentomics.utils.user_input import get_user_input_for_int
 
 console = Console()
@@ -117,11 +113,12 @@ def interactive_dataset_selection(datasets: list[dict]) -> str | None:
     return selected_dataset
 
 def select_task_type(train_labels: pd.DataFrame, interactive=False):
+    task_names = get_task_names()
     if not interactive or not sys.stdin.isatty():
         raise ValueError(
             "Task type is required for non-interactive terminals. "
-            "Pass --task-type classification or --task-type regression, "
-            "or add 'task_type' to your metadata.json."
+            "Pass --task-type or add 'task_type' to your metadata.json. "
+            f"Available task types: {', '.join(task_names)}."
         )
 
     print_label_summary(train_labels)
@@ -129,14 +126,10 @@ def select_task_type(train_labels: pd.DataFrame, interactive=False):
     print('Tip: Add "task_type" to your metadata.json to skip this prompt in the future.')
 
     while True:
-        choice = input(f"Select task type ({'/'.join(get_task_names())}): ").strip().lower()
-        choice = {
-            "c": ClassificationTask.name, "class": ClassificationTask.name,
-            "r": RegressionTask.name, "reg": RegressionTask.name,
-        }.get(choice, choice)
-        if choice in get_task_names():
+        choice = input(f"Select task type ({'/'.join(task_names)}): ").strip().lower()
+        if choice in task_names:
             return choice
-        print(f"Please enter one of: {', '.join(get_task_names())}.")
+        print(f"Please enter one of: {', '.join(task_names)}.")
 
 def select_positive_class(unique_labels) -> str:
     label_options = [str(label) for label in unique_labels]
