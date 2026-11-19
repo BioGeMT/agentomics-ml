@@ -67,8 +67,8 @@ def evaluate_predictions(
 def main() -> None:
     ap = argparse.ArgumentParser(description="Compute evaluation metrics for a trained model's predictions.")
     ap.add_argument("--agent-dir", type=Path, required=True, help="Path to the run output dir (e.g. outputs/<agent_id>)")
-    ap.add_argument("--predictions", type=Path, required=True, help="Inference output CSV (id + prediction + probability_* columns)")
-    ap.add_argument("--labels", type=Path, required=True, help="Contract labels.csv (id,label or id,numeric_label), aligned to predictions by id")
+    ap.add_argument("--predictions", type=Path, required=True, help="Path to the inference output CSV to evaluate")
+    ap.add_argument("--labels", type=Path, required=True, help="Path to the labels CSV (id,label or id,numeric_label), aligned to predictions by id")
     ap.add_argument("--output", type=Path, default=None, help="Where to write the metrics JSON (default: <predictions dir>/metrics.json)")
     args = ap.parse_args()
 

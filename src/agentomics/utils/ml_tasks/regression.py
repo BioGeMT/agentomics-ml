@@ -5,7 +5,9 @@ from sklearn.metrics import (
 from scipy.stats import pearsonr, spearmanr
 import numpy as np
 
-from agentomics.datasets.data_contract import ID_COLUMN_NAME, LABEL_COLUMN_NAME, NUMERIC_LABEL_COLUMN_NAME
+from agentomics.datasets.data_contract import (
+    ID_COLUMN_NAME, LABEL_COLUMN_NAME, NUMERIC_LABEL_COLUMN_NAME, PREDICTION_COLUMN_NAME,
+)
 from agentomics.datasets.label_processing import merge_labels_and_preds
 from agentomics.utils.metrics import Metric
 from agentomics.utils.ml_tasks.base import MLTask
@@ -68,18 +70,10 @@ class RegressionTask(MLTask):
     def default_validation_metric(self) -> str:
         return "MAE"
 
-    def score(
-        self, predictions_with_labels: pd.DataFrame, prediction_columns: list[str],
-        *, numeric_label_col: str, pred_col: str, prob_col_prefix: str,
-    ) -> dict[str, float]:
-        predictions_with_labels[numeric_label_col] = predictions_with_labels[numeric_label_col].astype(float)
-        predictions_with_labels[pred_col] = predictions_with_labels[pred_col].astype(float)
-
-        metrics = {}
-        metric_to_fn = self.metrics()
-        for metric_name, metric_fn in metric_to_fn.items():
-            metrics[metric_name] = metric_fn(predictions_with_labels[numeric_label_col], predictions_with_labels[pred_col])
-        return metrics
+    def score(self, labels: pd.DataFrame, predictions: pd.DataFrame) -> dict[str, float]:
+        y_true = labels[NUMERIC_LABEL_COLUMN_NAME].astype(float)
+        y_pred = predictions[PREDICTION_COLUMN_NAME].astype(float)
+        return {name: metric(y_true, y_pred) for name, metric in self.metrics().items()}
 
     def validate_and_numericalize_labels(
         self, split_labels: dict[str, pd.DataFrame], metadata: dict,

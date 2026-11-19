@@ -26,18 +26,12 @@ class MLTask(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def score(
-        self, predictions_with_labels: pd.DataFrame, prediction_columns: list[str],
-        *, numeric_label_col: str, pred_col: str, prob_col_prefix: str,
-    ) -> dict[str, float]:
-        """Compute task specific metrics by comparing predictions and reference labels.
+    def score(self, labels: pd.DataFrame, predictions: pd.DataFrame) -> dict[str, float]:
+        """Compute task metrics from prepared labels and predictions.
 
-        The caller joins predictions and reference labels on the sample ID.
-        Each row in 'predictions_with_labels' contains a prediction and a reference label for the same sample.
-
-        'prediction_columns' lists the columns from the prediction DataFrame before the join. 'numeric_label_col'
-        identifies the reference label column, and 'pred_col' identifies the predicted value or class.
-        For tasks that use class probabilities, 'prob_col_prefix' identifies the probability columns among 'prediction_columns'.
+        The caller matches the two tables on `id` so rows at the same
+        position refer to the same sample. Read the prediction columns
+        required by the task from `predictions`.
         """
         raise NotImplementedError
 

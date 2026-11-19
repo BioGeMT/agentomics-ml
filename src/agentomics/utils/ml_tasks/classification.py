@@ -8,7 +8,7 @@ import pandas as pd
 from rich.console import Console
 
 from agentomics.datasets.data_contract import (
-    ID_COLUMN_NAME, LABEL_COLUMN_NAME, NUMERIC_LABEL_COLUMN_NAME, TEST_SPLIT_PREFIX,
+    ID_COLUMN_NAME, LABEL_COLUMN_NAME, NUMERIC_LABEL_COLUMN_NAME, PREDICTION_COLUMN_NAME, TEST_SPLIT_PREFIX,
 )
 from agentomics.datasets.label_processing import merge_labels_and_preds
 from agentomics.utils.metrics import Metric
@@ -18,6 +18,7 @@ from agentomics.utils.ml_tasks.base import MLTask
 class ClassificationTask(MLTask):
     name = "classification"
     MINI_TRAIN_SAMPLES_PER_CLASS = 100
+    PROBABILITY_COLUMN_PREFIX = "probability_"
 
     def metrics(self):
         return {
@@ -76,29 +77,20 @@ class ClassificationTask(MLTask):
     def default_validation_metric(self) -> str:
         return "AUROC"
 
-    def score(
-        self, predictions_with_labels: pd.DataFrame, prediction_columns: list[str],
-        *, numeric_label_col: str, pred_col: str, prob_col_prefix: str,
-    ) -> dict[str, float]:
-        predictions_with_labels[pred_col] = predictions_with_labels[pred_col].astype(int)
-        predictions_with_labels[numeric_label_col] = predictions_with_labels[numeric_label_col].astype(int)
+    def score(self, labels: pd.DataFrame, predictions: pd.DataFrame) -> dict[str, float]:
+        y_true = labels[NUMERIC_LABEL_COLUMN_NAME].astype(int)
+        y_pred = predictions[PREDICTION_COLUMN_NAME].astype(int)
 
-        prob_cols = [col for col in prediction_columns if col.startswith(prob_col_prefix)]
+        prefix = self.PROBABILITY_COLUMN_PREFIX
+        prob_cols = [col for col in predictions.columns if col.startswith(prefix)]
         if not prob_cols:
-            raise ValueError(f"No probability columns found with prefix '{prob_col_prefix}'.")
-        prob_cols_sorted = sorted(prob_cols, key=lambda column_name: int(column_name.split('_')[1]))
-
-        metrics = {}
-        metric_to_fn = self.metrics()
-        for metric_name, metric_fn in metric_to_fn.items():
-            if metric_fn.needs_probabilities:
-                metrics[metric_name] = metric_fn(
-                    predictions_with_labels[numeric_label_col],
-                    predictions_with_labels[prob_cols_sorted].astype(float).values,
-                )
-            else:
-                metrics[metric_name] = metric_fn(predictions_with_labels[numeric_label_col], predictions_with_labels[pred_col])
-        return metrics
+            raise ValueError(f"No probability columns found with prefix '{prefix}'.")
+        prob_cols.sort(key=lambda col: int(col.removeprefix(prefix)))
+        y_prob = predictions[prob_cols].to_numpy(dtype=float)
+        return {
+            name: metric(y_true, y_prob if metric.needs_probabilities else y_pred)
+            for name, metric in self.metrics().items()
+        }
 
     def validate_and_numericalize_labels(
         self, split_labels: dict[str, pd.DataFrame], metadata: dict,
@@ -173,7 +165,7 @@ class ClassificationTask(MLTask):
 
     def inference_output_description(self, metadata: dict) -> str:
         probability_columns = "\n".join(
-            f"- 'probability_{class_id}': probability for class {class_id} (float)"
+            f"- '{self.PROBABILITY_COLUMN_PREFIX}{class_id}': probability for class {class_id} (float)"
             for class_id in sorted(metadata["label_to_scalar"].values())
         )
         return ("A csv with columns:\n- 'id': the input sample id\n"
@@ -185,7 +177,7 @@ class ClassificationTask(MLTask):
         mapping = metadata.get("label_to_scalar")
         if not mapping:
             raise ValueError("Classification run config must include non-empty 'label_to_scalar'")
-        pred_col = f"probability_{max(mapping.values())}"
+        pred_col = f"{self.PROBABILITY_COLUMN_PREFIX}{max(mapping.values())}"
         values = merge_labels_and_preds(labeled, predictions, NUMERIC_LABEL_COLUMN_NAME, pred_col)
         return {"roc": values, "pr": values}
 

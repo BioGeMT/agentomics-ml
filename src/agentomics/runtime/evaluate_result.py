@@ -14,34 +14,35 @@ def get_metrics(
     task_type,
     numeric_label_col=NUMERIC_LABEL_COLUMN_NAME,
     pred_col=PREDICTION_COLUMN_NAME,
-    prob_col_prefix='probability_',
 ):
-    results = pd.read_csv(results_file, dtype={ID_COLUMN_NAME: str}, keep_default_na=False)
-    test = pd.read_csv(test_file, dtype={ID_COLUMN_NAME: str}, keep_default_na=False)
-    if pred_col == numeric_label_col:
-        test = test.rename(columns={numeric_label_col: f"{numeric_label_col}_to_predict"})
-        numeric_label_col = f"{numeric_label_col}_to_predict"
+    predictions = pd.read_csv(results_file, dtype={ID_COLUMN_NAME: str}, keep_default_na=False)
+    labels = pd.read_csv(test_file, dtype={ID_COLUMN_NAME: str}, keep_default_na=False)
+    if pred_col != PREDICTION_COLUMN_NAME:
+        predictions[PREDICTION_COLUMN_NAME] = predictions[pred_col]
+    if numeric_label_col != NUMERIC_LABEL_COLUMN_NAME:
+        labels[NUMERIC_LABEL_COLUMN_NAME] = labels[numeric_label_col]
 
-    merged = pd.merge(results, test, on='id', how='inner')
-    if len(merged) != len(test):
+    # Join row indices so labels and predictions keep their own column names.
+    matched = predictions[[ID_COLUMN_NAME]].reset_index(names="prediction_row").merge(
+        labels[[ID_COLUMN_NAME]].reset_index(names="label_row"),
+        on=ID_COLUMN_NAME,
+        how="inner",
+    )
+    if len(matched) != len(labels):
         print('WARNING: PREDICTIONS LENGTH DOESNT MATCH TEST DATASET')
 
-    return get_task(task_type).score(
-        merged,
-        prediction_columns=results.columns.tolist(),
-        numeric_label_col=numeric_label_col,
-        pred_col=pred_col,
-        prob_col_prefix=prob_col_prefix,
-    )
+    labels = labels.iloc[matched["label_row"]].reset_index(drop=True)
+    predictions = predictions.iloc[matched["prediction_row"]].reset_index(drop=True)
+    return get_task(task_type).score(labels, predictions)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Evaluate classification metrics for model predictions.")
+    parser = argparse.ArgumentParser(description="Evaluate metrics for model predictions.")
     parser.add_argument("-r", "--results", required=True, help="Path to the results CSV file.")
     parser.add_argument("-t", "--test", required=True, help="Path to the CSV file with labels.")
     parser.add_argument("--pred-col", default="prediction", help="Name of the prediction column in the results file.")
     parser.add_argument("--numeric-label-col", default="numeric_label", help="Name of the numeric label column in the file.")
-    parser.add_argument("--task-type", choices=sorted(get_task_names()), required=True, help="Type of task: classification or regression.")
+    parser.add_argument("--task-type", choices=sorted(get_task_names()), required=True, help="Type of task.")
 
     args = parser.parse_args()
 
