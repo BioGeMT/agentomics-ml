@@ -3,9 +3,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field, model_validator
 
 from agentomics.utils.data_module_config import DataModuleConfig
-from agentomics.utils.ml_tasks.base import MLTask
-from agentomics.utils.ml_tasks.classification import ClassificationTask
-from agentomics.utils.ml_tasks.regression import RegressionTask
+from agentomics.utils.ml_tasks import ClassificationTask, MLTask, RegressionTask
 
 
 class DataCollectionSpec(BaseModel, extra="forbid", arbitrary_types_allowed=True):
