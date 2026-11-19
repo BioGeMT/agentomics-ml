@@ -120,9 +120,3 @@ def get_regression_metrics_functions():
             higher_is_better=True
         ),
     }
-
-def get_classification_metrics_names():
-    return list(get_classification_metrics_functions().keys())
-
-def get_regression_metrics_names():
-    return list(get_regression_metrics_functions().keys())
