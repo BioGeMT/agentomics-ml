@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.0.0](https://github.com/BioGeMT/agentomics-ml/compare/v1.3.0...v2.0.0) (2026-11-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* extract MLTask interface ([#190](https://github.com/BioGeMT/agentomics-ml/issues/190))
+
+### Features
+
+* extract MLTask interface ([#190](https://github.com/BioGeMT/agentomics-ml/issues/190)) ([ca43f69](https://github.com/BioGeMT/agentomics-ml/commit/ca43f695b0fd5713f2e13a52bb7cf56bd176842f))
+
+
+### Bug Fixes
+
+* install ddgs with pip for ARM64 releases ([#192](https://github.com/BioGeMT/agentomics-ml/issues/192)) ([f900a5e](https://github.com/BioGeMT/agentomics-ml/commit/f900a5ea6d463e19f0946de05eebca6639e0fb03))
+
 ## [1.3.0](https://github.com/BioGeMT/agentomics-ml/compare/v1.2.0...v1.3.0) (2026-11-16)
 
 
