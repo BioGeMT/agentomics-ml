@@ -7,6 +7,13 @@ import weave
 from pydantic_ai import Tool
 
 from .bash_tool import create_bash_tool
+from .inspect_image_tool import create_inspect_image_tool
+from .paper_files_tool import (
+    create_glob_tool,
+    create_grep_tool,
+    create_ls_tool,
+    create_read_file_tool,
+)
 from .paper_fetch_tool import create_paper_fetch_tool
 from .replace_tool import create_replace_tool
 from .run_python_tool import create_run_python_tool
@@ -17,6 +24,11 @@ from agentomics.utils.config import Config
 TOOL_FACTORY_REGISTRY: dict[str, Callable[[Config], Tool[Any]]] = {
     "paper_fetch": create_paper_fetch_tool,
     "bash": create_bash_tool,
+    "glob": create_glob_tool,
+    "grep": create_grep_tool,
+    "inspect_image": create_inspect_image_tool,
+    "ls": create_ls_tool,
+    "read_file": create_read_file_tool,
     "write_python": create_write_python_tool,
     "run_python": create_run_python_tool,
     "replace": create_replace_tool,

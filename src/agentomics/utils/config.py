@@ -27,6 +27,7 @@ class Config:
     STEP_OUTPUT_FILENAME: ClassVar[str] = "output.json"
     ITERATIONS_LESSONS_FILENAME: ClassVar[str] = "iterations_lessons.md"
     FETCHED_PAPERS_DIRNAME: ClassVar[str] = "fetched_papers"
+    PROCESSED_PAPERS_DIRNAME: ClassVar[str] = "processed_papers"
 
     DEFAULT_ITERATIONS: ClassVar[int] = 5
     DEFAULT_SPLIT_ALLOWED_ITERATIONS: ClassVar[int] = 1
@@ -44,6 +45,11 @@ class Config:
     ]
     DEFAULT_TOOL_IDS: ClassVar[list[str]] = [
         "paper_fetch",
+        "ls",
+        "glob",
+        "grep",
+        "read_file",
+        "inspect_image",
         "bash",
         "write_python",
         "run_python",
@@ -160,6 +166,10 @@ class Config:
     @property
     def fetched_papers_dir(self) -> Path:
         return self.shared_dir / self.FETCHED_PAPERS_DIRNAME
+
+    @property
+    def processed_papers_dir(self) -> Path:
+        return self.shared_dir / self.PROCESSED_PAPERS_DIRNAME
 
     @property
     def current_iteration_runtime_info_dir(self) -> Path:
