@@ -25,7 +25,7 @@ def test_continued_run_can_reprepare_csv_from_saved_metadata(tmp_path: Path):
         source_dir=source_dir,
         destination_dir=tmp_path / "first_prepared",
         task_type="classification",
-        label_to_scalar={"no": 0, "yes": 1},
+        task_metadata={"label_to_scalar": {"no": 0, "yes": 1}},
         label_column="outcome",
         interactive=False,
     )
@@ -35,14 +35,15 @@ def test_continued_run_can_reprepare_csv_from_saved_metadata(tmp_path: Path):
         source_dir=source_dir,
         destination_dir=second_prepared_dir,
         task_type=first_metadata["task_type"],
-        label_to_scalar=first_metadata["label_to_scalar"],
+        task_metadata=first_metadata["task_metadata"],
         label_column=first_metadata["label_column"],
         interactive=False,
+        fit=False,
     )
 
     assert second_metadata["label_column"] == "outcome"
     assert second_metadata["id_column"] == "sample_id"
-    assert second_metadata["label_to_scalar"] == {"no": 0, "yes": 1}
+    assert second_metadata["task_metadata"]["label_to_scalar"] == {"no": 0, "yes": 1}
     replayed_labels = pd.read_csv(
         second_prepared_dir / "train" / "labels.csv",
         dtype={"id": str},

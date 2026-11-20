@@ -315,7 +315,7 @@ def _run_test_evaluation_in_docker(
             destination_dir=prepared_directory,
             task_type=metadata["task_type"],
             input_structure=metadata["input_structure"],
-            label_to_scalar=metadata.get("label_to_scalar"),
+            task_metadata=metadata["task_metadata"],
             label_column=metadata.get("label_column"),
             id_column=metadata.get("id_column"),
         )

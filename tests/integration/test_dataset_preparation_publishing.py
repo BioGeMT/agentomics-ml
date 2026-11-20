@@ -62,7 +62,7 @@ def test_test_split_uses_public_label_mapping_without_modifying_source(
         destination_dir=prepared_test_dir,
         task_type=train_metadata["task_type"],
         input_structure=train_metadata["input_structure"],
-        label_to_scalar=train_metadata.get("label_to_scalar"),
+        task_metadata=train_metadata["task_metadata"],
     )
 
     test_labels_text = (prepared_test_dir / "test" / "labels.csv").read_text(
@@ -73,7 +73,7 @@ def test_test_split_uses_public_label_mapping_without_modifying_source(
     )
     assert "id,numeric_label" in test_labels_text
     assert test_metadata["prepared"]
-    assert test_metadata["label_to_scalar"] == {"negative": 0, "positive": 1}
+    assert test_metadata["task_metadata"]["label_to_scalar"] == {"negative": 0, "positive": 1}
     assert _snapshot_tree(dataset_dir) == source_snapshot
 
 
@@ -110,7 +110,7 @@ def test_different_nested_files_with_matching_structure_are_prepared(tmp_path: P
         destination_dir=prepared_test_dir,
         task_type=train_metadata["task_type"],
         input_structure=train_metadata["input_structure"],
-        label_to_scalar=train_metadata.get("label_to_scalar"),
+        task_metadata=train_metadata["task_metadata"],
     )
 
     assert train_metadata["input_structure"] == ["images/"]
@@ -137,7 +137,7 @@ def test_unknown_test_label_is_rejected(
             destination_dir=tmp_path / "prepared_test" / dataset_dir.name,
             task_type=train_metadata["task_type"],
             input_structure=train_metadata["input_structure"],
-            label_to_scalar=train_metadata.get("label_to_scalar"),
+            task_metadata=train_metadata["task_metadata"],
         )
 
 

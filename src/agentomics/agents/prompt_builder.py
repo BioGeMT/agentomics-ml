@@ -3,7 +3,7 @@ from agentomics.datasets.data_contract import SUPPLEMENTARY_DIR_NAME, TRAIN_SPLI
 from agentomics.runtime.read_write_utils import load_dataset_metadata
 from agentomics.runtime.system_resources import check_gpu_availability, get_resources_summary
 from agentomics.utils.config import Config
-from agentomics.utils.task_types import TaskTypes
+from agentomics.utils.ml_tasks import get_task
 
 
 def get_system_prompt(config: Config):
@@ -63,9 +63,9 @@ def get_dataset_knowledge(config: Config):
     dataset_knowledge_path = config.dataset_dir / "dataset_description.md"
     with open(dataset_knowledge_path) as f:
         dataset_knowledge = f.read()
-    if config.task_type == TaskTypes.CLASSIFICATION:
-        metadata = load_dataset_metadata(config)
-        dataset_knowledge += f"\n\nLabel mapping: {metadata.get('label_to_scalar', {})}"
+    task_metadata = load_dataset_metadata(config)["task_metadata"]
+    task_knowledge = get_task(config.task_type).get_task_knowledge(task_metadata)
+    dataset_knowledge += f"\n\n{task_knowledge}"
     return dataset_knowledge
 
 def build_iteration_base_prompt(config: Config, iteration: int) -> str:

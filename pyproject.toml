@@ -51,6 +51,7 @@ packages = [
     "agentomics.datasets",
     "agentomics.runtime",
     "agentomics.utils",
+    "agentomics.utils.ml_tasks",
 ]
 
 [tool.setuptools.package-data]

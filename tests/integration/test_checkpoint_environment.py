@@ -65,7 +65,7 @@ def test_fork_recreates_selected_checkpoint_environment_without_changing_source(
         {
             "task_type": "classification",
             "input_structure": ["data.csv"],
-            "label_to_scalar": {"negative": 0, "positive": 1},
+            "task_metadata": {"label_to_scalar": {"negative": 0, "positive": 1}},
         },
     )
     descriptor = source_config.shared_dir / Config.ENVIRONMENT_DESCRIPTOR_FILENAME

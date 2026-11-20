@@ -25,7 +25,7 @@ def test_fork_creates_isolated_workspace_from_checkpoint(
     dataset_metadata = {
         "task_type": "classification",
         "input_structure": ["input"],
-        "label_to_scalar": {"negative": 0, "positive": 1},
+        "task_metadata": {"label_to_scalar": {"negative": 0, "positive": 1}},
     }
     initialize_run(source_config, dataset_metadata)
 

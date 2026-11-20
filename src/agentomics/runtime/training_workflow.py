@@ -79,8 +79,9 @@ def run_training_workflow(arguments: Namespace) -> None:
             source_dir=arguments.dataset_dir,
             destination_dir=prepared_directory,
             task_type=config.task_type,
-            label_to_scalar=config.label_to_scalar,
+            task_metadata=config.task_metadata,
             label_column=arguments.label_col,
+            fit=False,
         )
         train_data = prepared_directory / TRAIN_SPLIT
         validation_data = prepared_directory / VALIDATION_SPLIT

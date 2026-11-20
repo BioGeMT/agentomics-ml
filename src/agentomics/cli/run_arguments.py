@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from agentomics.utils.ml_tasks import get_task_names
+
 
 def add_run_arguments(parser: argparse.ArgumentParser) -> None:
     run_arguments = parser.add_argument_group("run configuration")
@@ -31,7 +33,7 @@ def add_run_arguments(parser: argparse.ArgumentParser) -> None:
     )
     run_arguments.add_argument(
         "--task-type",
-        choices=("classification", "regression"),
+        choices=get_task_names(),
         help=(
             "Task type used to prepare the selected dataset; when omitted, use "
             "dataset metadata or prompt interactively"

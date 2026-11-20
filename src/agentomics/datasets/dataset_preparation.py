@@ -1,5 +1,4 @@
 import json
-import math
 import shutil
 import sys
 import tempfile
@@ -11,7 +10,6 @@ from rich.console import Console
 from agentomics.datasets.data_contract import (
     DATASET_DESCRIPTION_FILE_NAME,
     INPUT_DIR_NAME,
-    LABEL_COLUMN_NAME,
     LABELS_FILE_NAME,
     METADATA_FILE_NAME,
     NON_TEST_SPLIT_NAMES,
@@ -36,13 +34,10 @@ from agentomics.datasets.datasets_interactive import (
     select_task_type,
 )
 from agentomics.datasets.label_processing import (
-    convert_classification_labels,
-    convert_regression_labels,
     load_split_label_dfs,
-    validate_single_label_classification,
 )
 from agentomics.runtime.filesystem import create_absolute_symlink, find_symlinks_in_dir
-from agentomics.utils.task_types import TaskTypes
+from agentomics.utils.ml_tasks import MLTask, get_task
 
 console = Console()
 
@@ -54,58 +49,13 @@ def _reject_symlinks_in_dir(directory: Path) -> None:
             f"{len(symlinks)} symlink(s) found (e.g. {symlinks[0]})."
         )
 
-def _sort_class_labels(labels) -> list[str]:
-    string_labels = [str(label) for label in labels]
-
-    # If every label is numeric-looking, sort by value: "1", "2", "10".
-    # If any label is non-numeric, keep the whole set lexicographic.
-    try:
-        numeric_values = [float(label.strip()) for label in string_labels]
-        all_labels_are_numeric = all(math.isfinite(value) for value in numeric_values)
-    except ValueError:
-        all_labels_are_numeric = False
-
-    if all_labels_are_numeric:
-        return sorted(string_labels, key=lambda label: float(label.strip()))
-    return sorted(string_labels)
-
-def _resolve_task_type(source_metadata: dict, cli_task_type: str | None, train_labels: pd.DataFrame, interactive: bool) -> str:
+def _resolve_task(
+    source_metadata: dict, cli_task_type: str | None, train_labels: pd.DataFrame, interactive: bool,
+) -> MLTask:
     resolved = cli_task_type or source_metadata.get("task_type")
     if resolved is None:
         resolved = select_task_type(train_labels, interactive=interactive)
-    if resolved not in TaskTypes:
-        raise ValueError(f"Invalid task_type '{resolved}'. Must be one of: {TaskTypes}")
-    return resolved
-
-def _build_binary_label_mapping(
-    source_metadata: dict,
-    cli_positive_class: str | None,
-    cli_negative_class: str | None,
-    unique_labels,
-    interactive: bool,
-) -> dict[str, int]:
-    resolved_positive = cli_positive_class if cli_positive_class is not None else source_metadata.get("positive_class")
-    resolved_negative = cli_negative_class if cli_negative_class is not None else source_metadata.get("negative_class")
-    has_positive = resolved_positive is not None
-    has_negative = resolved_negative is not None
-    if has_positive != has_negative:
-        raise ValueError("Provide both positive_class and negative_class, or neither.")
-    if not has_positive:
-        if interactive and sys.stdin.isatty():
-            resolved_positive = select_positive_class(unique_labels)
-            resolved_negative = next(str(label) for label in unique_labels if str(label) != str(resolved_positive))
-        else:
-            sorted_labels = _sort_class_labels(unique_labels)
-            resolved_negative = sorted_labels[0]
-            resolved_positive = sorted_labels[1]
-    label_set = {str(label) for label in unique_labels}
-    resolved_set = {str(resolved_positive), str(resolved_negative)}
-    if resolved_set != label_set:
-        raise ValueError(
-            f"positive_class and negative_class must match the observed labels. "
-            f"Observed: {sorted(label_set)}; requested: {sorted(resolved_set)}"
-        )
-    return {str(resolved_negative): 0, str(resolved_positive): 1}
+    return get_task(resolved)
 
 def _build_output_metadata(
     source_metadata: dict,
@@ -131,14 +81,19 @@ def prepare_dataset(
     positive_class=None,
     negative_class=None,
     interactive=False,
-    label_to_scalar=None,
+    task_metadata: dict | None = None,
     label_column=None,
+    *,
+    fit: bool = True,
 ) -> dict:
     """Prepare a dataset from source_dir into destination_dir.
 
     Reads from source_dir (never modified), writes the prepared result to
     destination_dir (input dirs are symlinked, labels are converted, metadata
     is written). Returns the output metadata dict.
+
+    Use fit=False to reuse the saved task metadata without fitting a new
+    label encoding.
     """
     source_dir = Path(source_dir)
     destination_dir = Path(destination_dir)
@@ -176,47 +131,23 @@ def prepare_dataset(
     input_structure = record_input_dir_structure(source_splits[TRAIN_SPLIT] / INPUT_DIR_NAME)
     split_labels = load_split_label_dfs(source_splits)
 
-    resolved_task_type = _resolve_task_type(source_metadata, task_type, split_labels[TRAIN_SPLIT], interactive)
+    task = _resolve_task(source_metadata, task_type, split_labels[TRAIN_SPLIT], interactive)
     output_metadata = _build_output_metadata(
-        source_metadata, resolved_task_type, split_labels, input_structure,
+        source_metadata, task.name, split_labels, input_structure,
     )
 
-    if resolved_task_type == TaskTypes.CLASSIFICATION:
-        validate_single_label_classification(split_labels)
-        has_cli_class_override = positive_class is not None or negative_class is not None
-        if label_to_scalar is not None:
-            label_to_scalar = {str(k): int(v) for k, v in label_to_scalar.items()}
-        elif "label_to_scalar" in source_metadata and not has_cli_class_override:
-            label_to_scalar = {str(k): int(v) for k, v in source_metadata["label_to_scalar"].items()}
-        else:
-            unique_labels = pd.concat(
-                [frame[LABEL_COLUMN_NAME] for frame in split_labels.values()],
-                ignore_index=True,
-            ).dropna().unique()
-            if len(unique_labels) == 2 or has_cli_class_override:
-                label_to_scalar = _build_binary_label_mapping(
-                    source_metadata,
-                    positive_class,
-                    negative_class,
-                    unique_labels,
-                    interactive,
-                )
-            else:
-                sorted_labels = _sort_class_labels(unique_labels)
-                label_to_scalar = {str(label): index for index, label in enumerate(sorted_labels)}
-            console.print(f"INFO: Label to number mapping: {label_to_scalar}. If this is wrong, please provide --positive-class and --negative-class parameters to the script.")
-        output_metadata["label_to_scalar"] = label_to_scalar
-        numeric_split_labels = {
-            split_name: convert_classification_labels(labels, label_to_scalar, split_name)
-            for split_name, labels in split_labels.items()
-        }
-    elif resolved_task_type == TaskTypes.REGRESSION:
-        numeric_split_labels = {
-            split_name: convert_regression_labels(labels, split_name)
-            for split_name, labels in split_labels.items()
-        }
-    else:
-        raise ValueError(f"Unknown task_type: {resolved_task_type}. Expected one of {TaskTypes}.")
+    if task_metadata is None:
+        task_metadata = source_metadata.get("task_metadata", {})
+    numeric_split_labels, label_metadata = task.validate_and_numericalize_labels(
+        split_labels, task_metadata, fit=fit,
+        options={
+            "source_metadata": source_metadata,
+            "positive_class": positive_class,
+            "negative_class": negative_class,
+            "positive_class_selector": select_positive_class if interactive and sys.stdin.isatty() else None,
+        },
+    )
+    output_metadata["task_metadata"] = label_metadata
 
     destination_dir.mkdir(parents=True, exist_ok=True)
     destination_splits = {}
@@ -277,7 +208,7 @@ def check_dataset(source_dir: Path, interactive: bool = False) -> dict:
                 destination_dir=temporary_root / "prepared_test",
                 task_type=metadata["task_type"],
                 input_structure=metadata["input_structure"],
-                label_to_scalar=metadata.get("label_to_scalar"),
+                task_metadata=metadata["task_metadata"],
                 label_column=metadata.get("label_column"),
                 id_column=metadata.get("id_column"),
             )
@@ -301,7 +232,7 @@ def prepare_test_dataset(
     destination_dir: Path,
     task_type: str,
     input_structure: list[str],
-    label_to_scalar: dict[str, int] | None = None,
+    task_metadata: dict | None = None,
     label_column: str | None = None,
     id_column: str | None = None,
 ) -> dict:
@@ -311,6 +242,7 @@ def prepare_test_dataset(
     destination_dir (input dir is symlinked, labels are converted, metadata
     is written). Returns the output metadata dict.
     """
+    task = get_task(task_type)
     source_dir = Path(source_dir)
     destination_dir = Path(destination_dir)
 
@@ -332,23 +264,10 @@ def prepare_test_dataset(
 
     test_labels = load_split_label_dfs({TEST_SPLIT_PREFIX: test_source})
 
-    if task_type == TaskTypes.CLASSIFICATION:
-        if not label_to_scalar:
-            raise ValueError("label_to_scalar is required for classification test data preparation")
-        validate_single_label_classification(test_labels)
-        label_to_scalar = {str(k): int(v) for k, v in label_to_scalar.items()}
-        actual_labels = set(test_labels[TEST_SPLIT_PREFIX][LABEL_COLUMN_NAME].astype(str).unique())
-        unknown_labels = sorted(actual_labels - set(label_to_scalar))
-        if unknown_labels:
-            raise ValueError(
-                f"Test split contains labels not present in train: {unknown_labels}. "
-                f"Known labels: {sorted(label_to_scalar)}"
-            )
-        numeric_labels = convert_classification_labels(test_labels[TEST_SPLIT_PREFIX], label_to_scalar, TEST_SPLIT_PREFIX)
-    elif task_type == TaskTypes.REGRESSION:
-        numeric_labels = convert_regression_labels(test_labels[TEST_SPLIT_PREFIX], TEST_SPLIT_PREFIX)
-    else:
-        raise ValueError(f"Unknown task_type: {task_type}. Expected one of {TaskTypes}.")
+    numeric_test_labels, label_metadata = task.validate_and_numericalize_labels(
+        test_labels, task_metadata if task_metadata is not None else {},
+    )
+    numeric_labels = numeric_test_labels[TEST_SPLIT_PREFIX]
 
     dest_test = destination_dir / TEST_SPLIT_PREFIX
     dest_test.mkdir(parents=True, exist_ok=True)
@@ -370,8 +289,7 @@ def prepare_test_dataset(
         "input_structure": input_structure,
         "prepared": True,
     }
-    if task_type == TaskTypes.CLASSIFICATION:
-        test_metadata["label_to_scalar"] = label_to_scalar
+    test_metadata["task_metadata"] = label_metadata
     (destination_dir / METADATA_FILE_NAME).write_text(json.dumps(test_metadata, indent=4), encoding="utf-8")
 
     return test_metadata
