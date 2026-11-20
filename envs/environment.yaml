@@ -8,10 +8,10 @@ dependencies:
   - matplotlib==3.8.4
   - pydantic-ai==2.66.0
   - markdownify==1.2.3
-  - ddgs==9.14.4
   - python-libarchive-c==5.3
   - pip
   - pip:
+    - ddgs==9.14.4
     - weave==0.52.14 # Often breaks with new versions, update as necessary
     - scikit-learn==1.7.1
     - reportlab==4.2.0
