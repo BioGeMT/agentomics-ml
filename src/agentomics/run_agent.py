@@ -73,7 +73,7 @@ async def run_experiment(
         iterations=iterations,
         user_prompt=user_prompt,
         task_type=task_type,
-        task_metadata=dataset_metadata.get("task_metadata", {}),
+        task_metadata=dataset_metadata["task_metadata"],
         input_structure=input_structure,
         split_allowed_iterations=split_allowed_iterations,
         exploration_iterations=exploration_iterations,

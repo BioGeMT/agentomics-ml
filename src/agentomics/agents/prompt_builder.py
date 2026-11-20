@@ -63,7 +63,7 @@ def get_dataset_knowledge(config: Config):
     dataset_knowledge_path = config.dataset_dir / "dataset_description.md"
     with open(dataset_knowledge_path) as f:
         dataset_knowledge = f.read()
-    task_metadata = load_dataset_metadata(config).get("task_metadata", {})
+    task_metadata = load_dataset_metadata(config)["task_metadata"]
     task_knowledge = get_task(config.task_type).get_task_knowledge(task_metadata)
     dataset_knowledge += f"\n\n{task_knowledge}"
     return dataset_knowledge
