@@ -104,7 +104,7 @@ class RegressionTask(MLTask):
     def get_plot_data(
         self, labeled: pd.DataFrame, predictions: pd.DataFrame, metadata: dict,
     ) -> dict[str, tuple[pd.Series, pd.Series]]:
-        values = merge_labels_and_preds(labeled, predictions, NUMERIC_LABEL_COLUMN_NAME, "prediction")
+        values = merge_labels_and_preds(labeled, predictions, NUMERIC_LABEL_COLUMN_NAME, PREDICTION_COLUMN_NAME)
         return {"pred_vs_actual": values, "residuals_vs_pred": values, "residuals_hist": values}
 
 def _convert_labels(labels: pd.DataFrame, split_name: str) -> pd.DataFrame:
