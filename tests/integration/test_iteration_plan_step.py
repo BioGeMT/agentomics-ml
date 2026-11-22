@@ -7,7 +7,10 @@ from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models.function import FunctionModel
 
 from agentomics.agents.steps.data_split import DataSplitStep
-from agentomics.agents.steps.iteration_plan import IterationPlanStep
+from agentomics.agents.steps.iteration_plan import (
+    SUPPLEMENTARY_MAX_TOOL_CALLS,
+    IterationPlanStep,
+)
 from agentomics.runtime.read_write_utils import load_current_iteration_index
 from tests.helpers import create_runtime_step
 
@@ -128,3 +131,27 @@ def test_planner_reads_a_pdf_as_a_file(initialized_run_config, prepared_iteratio
     _run_planner(initialized_run_config, planner)
 
     assert "%PDF-1.4" in planner.tool_results[0]
+
+
+def test_planner_reading_to_its_call_limit_loses_its_tools_and_gives_a_plan_despite_a_low_step_limit(
+    initialized_run_config, prepared_iteration, supplementary_readme
+):
+    initialized_run_config.max_steps = 3  # The planner's step limit must not depend on the iteration agents' max_steps.
+    reads = [("read_file", {"path": "README.md"})] * SUPPLEMENTARY_MAX_TOOL_CALLS
+    planner = ScriptedPlanner(*reads, _plan_args())
+    _run_planner(initialized_run_config, planner)
+
+    assert planner.replies == []
+    assert planner.last_request_tool_names == []  # The request giving the plan was offered no file tools.
+
+
+def test_planner_loses_its_tools_once_a_request_reaches_the_token_limit(
+    initialized_run_config, prepared_iteration, supplementary_readme, monkeypatch
+):
+    # Any model request uses at least one input token.
+    monkeypatch.setattr("agentomics.agents.steps.iteration_plan.SUPPLEMENTARY_MAX_CONTEXT_TOKENS", 1)
+    planner = ScriptedPlanner(("read_file", {"path": "README.md"}), _plan_args())
+    _run_planner(initialized_run_config, planner)
+
+    assert planner.replies == []
+    assert planner.last_request_tool_names == []  # The request giving the plan was offered no file tools.

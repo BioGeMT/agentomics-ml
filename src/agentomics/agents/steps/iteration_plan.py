@@ -5,7 +5,8 @@ from collections.abc import Callable
 from typing import Any, TypedDict
 
 from pydantic import Field
-from pydantic_ai.capabilities import AbstractCapability, LocalWorkspace
+from pydantic_ai.capabilities import AbstractCapability, LocalWorkspace, PrepareTools
+from pydantic_ai.messages import ModelResponse
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai_harness import FileSystem
 
@@ -30,6 +31,10 @@ from agentomics.utils.printing_utils import truncate_float
 SUPPLEMENTARY_MAX_READ_CHARS = 5000
 SUPPLEMENTARY_MAX_SEARCH_RESULTS = 100
 SUPPLEMENTARY_MAX_LIST_RESULTS = 200
+SUPPLEMENTARY_MAX_TOOL_CALLS = 50
+SUPPLEMENTARY_MAX_CONTEXT_TOKENS = 100_000
+# Above SUPPLEMENTARY_MAX_TOOL_CALLS, so the file tools are removed before the planner reaches its step limit.
+PLANNER_MAX_STEPS = 2 * SUPPLEMENTARY_MAX_TOOL_CALLS
 
 
 class IterationPlanOutput(AgenticStepOutput):
@@ -95,14 +100,23 @@ class IterationPlanStep(AgentomicsAgenticStep):
             user_prompt=self.step_prompt(),
             model=self.iteration_plan_model,
             model_settings=self.high_reasoning_model_settings(),
-            max_steps=self.config.max_steps,
+            max_steps=PLANNER_MAX_STEPS,
             max_validation_retries=self.config.max_validation_retries,
             max_tool_retries=self.config.max_tool_retries,
             capabilities=self._create_supplementary_capabilities() if has_supplementary else None,
         )
 
     def _create_supplementary_capabilities(self) -> list[AbstractCapability]:
-        """Read-only list, search and read tools confined to the supplementary folder."""
+        """Read-only list, search and read tools confined to the supplementary folder, within the reading limits."""
+        async def hide_tools_after_reading_limits(ctx, tool_defs):
+            # Once a limit is reached no tools are offered, so the next request must give the plan:
+            # the planner then reaches neither its step limit nor the model's context window.
+            last_response = next((message for message in reversed(ctx.messages) if isinstance(message, ModelResponse)), None)
+            last_request_input_tokens = last_response.usage.input_tokens if last_response is not None else 0
+            if ctx.usage.tool_calls >= SUPPLEMENTARY_MAX_TOOL_CALLS or last_request_input_tokens >= SUPPLEMENTARY_MAX_CONTEXT_TOKENS:
+                return []
+            return tool_defs
+
         return [
             LocalWorkspace(self.config.supplementary_dir, read_only=True),
             FileSystem(
@@ -113,6 +127,7 @@ class IterationPlanStep(AgentomicsAgenticStep):
                 max_list_results=SUPPLEMENTARY_MAX_LIST_RESULTS,
                 content_hashes=False,
             ),
+            PrepareTools(hide_tools_after_reading_limits),
         ]
 
     def _has_supplementary(self) -> bool:
@@ -340,8 +355,9 @@ class IterationPlanStep(AgentomicsAgenticStep):
     def _build_supplementary_info(self) -> str:
         if not self._has_supplementary():
             return ""
-        return """
+        return f"""
         The dataset has a supplementary/ folder that you can browse with your file tools. The iteration agents can also access it. It can contain anything related to the dataset, such as extra data, papers, methods, code or notes.
+        In this planning step you can make at most {SUPPLEMENTARY_MAX_TOOL_CALLS} file tool calls, and reading stops early once this conversation reaches about {SUPPLEMENTARY_MAX_CONTEXT_TOKENS} tokens, so read selectively.
         When a supplementary file is relevant to a step, cite it in that step's instructions by its path relative to the supplementary folder.
         Use what is relevant from it, alongside your own reasoning, the iteration history and the metrics so far. It is not a plan to follow.
         """
