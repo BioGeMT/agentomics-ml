@@ -24,7 +24,6 @@ from agentomics.runtime.step_outputs import load_step_output, load_step_outputs
 from agentomics.runtime.system_resources import get_resources_summary
 from agentomics.tools.tool_registry import get_tool_names
 from agentomics.utils.printing_utils import truncate_float
-from agentomics.datasets.data_contract import SUPPLEMENTARY_DIR_NAME
 
 
 class IterationPlanOutput(AgenticStepOutput):
@@ -314,8 +313,7 @@ class IterationPlanStep(AgentomicsAgenticStep):
         return f"{iterations_left} iterations (including the current one)"
     
     def _build_supplementary_info(self) -> str:
-        dataset_supplementary_path = self.config.dataset_dir / SUPPLEMENTARY_DIR_NAME
-        if dataset_supplementary_path.is_dir():
+        if self.config.supplementary_dir.is_dir():
             return f"The agent has access to the supplementary/ folder with supplementary dataset materials."
         return ""
 

@@ -82,7 +82,7 @@ class ModelTrainingStep(AgentomicsAgenticStep):
                 raise ModelRetry(
                     f"training_artifacts/ must contain training outputs, not symlinks: {artifact_symlinks[:10]}"
                 )
-            dataset_supplementary_path = self.config.dataset_dir / SUPPLEMENTARY_DIR_NAME
+            dataset_supplementary_path = self.config.supplementary_dir
             if dataset_supplementary_path.is_dir() and does_file_contain_string(
                 result.path_to_train_file, SUPPLEMENTARY_DIR_NAME + "/"
             ):
