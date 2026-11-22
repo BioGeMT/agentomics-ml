@@ -117,7 +117,6 @@ def build_default_step_response(
             "feature_analysis": "The first nucleotide distinguishes the two training classes.",
             "domain_insights": "This synthetic dataset demonstrates a minimal classification workflow.",
             "id_to_sample_info": "The id column of input/data.csv joins to the id column of labels.csv.",
-            "supplementary_insights": None,
         }
     if "mini_train_path" in output_fields:
         mini = step / "mini_train"

@@ -179,7 +179,6 @@ class IterationPlanStep(AgentomicsAgenticStep):
         For example if you want to instruct to re-use the same data representation from iteration 5, instruct "Re-use the data representation from iteration 5".
         The data exploration and splitting steps can be instructed to be skipped completely if they're not needed.
         If any exploration step discovered important id-to-sample information (e.g., how label IDs relate to data in input/, file formats, column semantics) that are not already included in the dataset_knowledge_from_dataset_description_md, include those details in your instructions for relevant downstream steps so the iteration agent doesn't have to re-explore the structure.
-        Similarly, if the exploration step found useful insights from supplementary materials, carry those forward in your instructions.
         {splitting_info}
 
         You're providing instructions to an LLM agent, never offer that you will take any actions to fix or implement fixes yourself.
