@@ -27,6 +27,7 @@ class Config:
     ENVIRONMENT_DESCRIPTOR_FILENAME: ClassVar[str] = "environment.yml"
     STEP_OUTPUT_FILENAME: ClassVar[str] = "output.json"
     ITERATIONS_LESSONS_FILENAME: ClassVar[str] = "iterations_lessons.md"
+    PLANNER_NOTES_FILENAME: ClassVar[str] = "planner_notes.md"
     FETCHED_PAPERS_DIRNAME: ClassVar[str] = "fetched_papers"
 
     DEFAULT_ITERATIONS: ClassVar[int] = 5
