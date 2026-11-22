@@ -50,14 +50,22 @@ def run_git_cli_command(
     )
 
 
-def create_runtime_step(step_type, config: Config, *, model, trace_analysis_model=None):
+def create_runtime_step(
+    step_type,
+    config: Config,
+    *,
+    model,
+    iteration_plan_model=None,
+    trace_analysis_model=None,
+    provider=None,
+):
     """Construct a runtime step with unused external dependencies replaced."""
     return step_type(
         config,
         model,
-        Mock(),
+        iteration_plan_model or Mock(),
         trace_analysis_model or Mock(),
-        Mock(),
+        provider or Mock(),
         [],
     )
 

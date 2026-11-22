@@ -5,7 +5,9 @@ from collections.abc import Callable
 from typing import Any, TypedDict
 
 from pydantic import Field
+from pydantic_ai.capabilities import AbstractCapability, LocalWorkspace
 from pydantic_ai.settings import ModelSettings
+from pydantic_ai_harness import FileSystem
 
 from agentomics.agents.prompt_builder import get_dataset_knowledge
 from agentomics.agents.steps.base import AgentomicsAgenticStep, AgenticStepOutput
@@ -24,6 +26,10 @@ from agentomics.runtime.step_outputs import load_step_output, load_step_outputs
 from agentomics.runtime.system_resources import get_resources_summary
 from agentomics.tools.tool_registry import get_tool_names
 from agentomics.utils.printing_utils import truncate_float
+
+SUPPLEMENTARY_MAX_READ_CHARS = 5000
+SUPPLEMENTARY_MAX_SEARCH_RESULTS = 100
+SUPPLEMENTARY_MAX_LIST_RESULTS = 200
 
 
 class IterationPlanOutput(AgenticStepOutput):
@@ -83,7 +89,8 @@ class IterationPlanStep(AgentomicsAgenticStep):
         is_new_best: bool
 
     async def _execute(self) -> AgenticStepOutput:
-        # No tools, no system prompt and no message history.
+        # No system prompt and no message history. File tools only if the dataset has a supplementary folder.
+        has_supplementary = self._has_supplementary()
         return await self.run_agent_step(
             user_prompt=self.step_prompt(),
             model=self.iteration_plan_model,
@@ -91,7 +98,25 @@ class IterationPlanStep(AgentomicsAgenticStep):
             max_steps=self.config.max_steps,
             max_validation_retries=self.config.max_validation_retries,
             max_tool_retries=self.config.max_tool_retries,
+            capabilities=self._create_supplementary_capabilities() if has_supplementary else None,
         )
+
+    def _create_supplementary_capabilities(self) -> list[AbstractCapability]:
+        """Read-only list, search and read tools confined to the supplementary folder."""
+        return [
+            LocalWorkspace(self.config.supplementary_dir, read_only=True),
+            FileSystem(
+                read_only=True,
+                tools=["list_directory", "search_files", "read_file"],
+                max_read_chars=SUPPLEMENTARY_MAX_READ_CHARS,
+                max_search_results=SUPPLEMENTARY_MAX_SEARCH_RESULTS,
+                max_list_results=SUPPLEMENTARY_MAX_LIST_RESULTS,
+                content_hashes=False,
+            ),
+        ]
+
+    def _has_supplementary(self) -> bool:
+        return self.config.supplementary_dir.is_dir()
 
     def high_reasoning_model_settings(self) -> ModelSettings:
         return self.provider.get_high_reasoning_model_settings(
@@ -313,9 +338,13 @@ class IterationPlanStep(AgentomicsAgenticStep):
         return f"{iterations_left} iterations (including the current one)"
     
     def _build_supplementary_info(self) -> str:
-        if self.config.supplementary_dir.is_dir():
-            return f"The agent has access to the supplementary/ folder with supplementary dataset materials."
-        return ""
+        if not self._has_supplementary():
+            return ""
+        return """
+        The dataset has a supplementary/ folder that you can browse with your file tools. The iteration agents can also access it. It can contain anything related to the dataset, such as extra data, papers, methods, code or notes.
+        When a supplementary file is relevant to a step, cite it in that step's instructions by its path relative to the supplementary folder.
+        Use what is relevant from it, alongside your own reasoning, the iteration history and the metrics so far. It is not a plan to follow.
+        """
 
     def _build_exploration_info(self) -> str:
         iteration = load_current_iteration_index(self.config)
