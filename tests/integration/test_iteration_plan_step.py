@@ -97,9 +97,6 @@ def supplementary_readme(initialized_run_config):
     (initialized_run_config.supplementary_dir / "README.md").write_text("index", encoding="utf-8")
 
 
-# --- reading the supplementary folder ---------------------------------------------------------
-
-
 def test_planner_lists_and_reads_supplementary_folder(
     initialized_run_config, prepared_iteration, supplementary_readme
 ):
@@ -173,10 +170,6 @@ def test_planner_loses_its_tools_once_a_request_reaches_the_token_limit(
 
     assert planner.replies == []
     assert planner.last_request_tool_names == []  # The request giving the plan was offered no file tools.
-
-
-# --- planner notes ----------------------------------------------------------------------------
-
 
 def _finish_iteration(config, iteration: int) -> None:
     # Mirrors the end of run_lifecycle._run_iteration, which is private; run_agentomics would also build a conda environment.
