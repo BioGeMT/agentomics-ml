@@ -9,7 +9,7 @@ from agentomics.agents.steps.base import AgentomicsStep
 from agentomics.agents.steps.data_split import DataSplitStep
 from agentomics.agents.steps.model_inference import ModelInferenceStep
 from agentomics.agents.steps.model_training import ModelTrainingStep
-from agentomics.run_logging.logging_helpers import log_iteration_metrics, log_new_best
+from agentomics.run_logging.logging_helpers import log_iteration_metrics, log_main_metric, log_new_best
 from agentomics.runtime.inference_runner import compute_metrics, run_inference_on_split
 from agentomics.runtime.read_write_utils import (
     load_best_iteration_snapshot_iteration,
@@ -75,6 +75,7 @@ class ValidationEvaluationStep(AgentomicsStep):
                 task_type=self.config.task_type,
             )
             log_new_best(iteration=iteration, is_new_best=output.is_new_best)
+            log_main_metric(iteration=iteration, metric_name=self.config.val_metric, metrics=output.metrics)
 
     async def _execute(self) -> ValidationEvaluationOutput:
         new_metrics = self._run_inference_on_all_splits()

@@ -5,7 +5,8 @@ import time
 import weave
 
 from agentomics.agents.prompt_builder import build_iteration_base_prompt, get_system_prompt
-from agentomics.run_logging.logging_helpers import log_files, log_iteration_duration
+from agentomics.run_logging.logging_helpers import log_files, log_run_metrics
+from agentomics.run_logging.token_tracing import enable_token_tracing, token_usage
 from agentomics.runtime.best_iteration_snapshot import update_best_iteration_snapshot
 from agentomics.runtime.conda_utils import initialize_shared_environment
 from agentomics.runtime.git_checkpoints import commit_iteration_end
@@ -34,6 +35,7 @@ async def run_agentomics(
     config: Config, default_model: Model, iteration_plan_model: Model, trace_analysis_model: Model, provider: Provider
 ) -> None:
     total_iterations = config.iterations
+    enable_token_tracing()
     initialize_shared_environment(config)
     tools = create_tools(config, config.tool_ids)
     print(f"Starting training loop with {total_iterations} iterations") #TODO for run continuing this is wrong?
@@ -64,19 +66,20 @@ async def _run_iteration(config: Config, iteration: int, default_model: Model, i
         step.on_iteration_start(iteration)
     try:
         for step in steps:
+            token_usage.current_step = step.step_id
             await step.run()
         update_current_iteration_state(config, ended_at=time.time(), status="success")
     except StepFailed:
         for step in steps:
             step.on_iteration_fail(iteration)
         update_current_iteration_state(config, ended_at=time.time(), status="failed")
+    token_usage.current_step = None
 
     for step in steps:
         step.on_iteration_end(iteration)
 
     iteration_state = load_iteration_state(config.current_iteration_dir)
-    iteration_duration = float(iteration_state["ended_at"]) - float(iteration_state["started_at"])
-    log_iteration_duration(iteration=iteration, duration=iteration_duration)
+    log_run_metrics(iteration=iteration, iteration_state=iteration_state, token_usage=token_usage.take())
     log_files(config, iteration=iteration)
 
     archive_current_iteration(config, iteration)

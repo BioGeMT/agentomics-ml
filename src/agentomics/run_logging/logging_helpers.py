@@ -7,6 +7,8 @@ from wandb.errors import AuthenticationError, UsageError
 from agentomics.utils.ml_tasks import get_task_to_metrics_names
 from agentomics.utils.config import Config
 
+RUN_METRICS_PREFIX = 'run_metrics'
+
 
 def login_to_wandb(api_key):
     try:
@@ -54,10 +56,32 @@ def log_iteration_metrics(metrics, iteration, task_type):
             iteration=iteration,
         )
 
-def log_iteration_duration(iteration, duration):
+def log_run_metrics(iteration, iteration_state, token_usage):
+    values = {
+        'input_tokens': sum(usage['input_tokens'] for usage in token_usage.values()),
+        'output_tokens': sum(usage['output_tokens'] for usage in token_usage.values()),
+        'tool_calls': sum(usage['tool_calls'] for usage in token_usage.values()),
+        'duration': float(iteration_state['ended_at']) - float(iteration_state['started_at']),
+        'failed': int(iteration_state['status'] != 'success'),
+    }
     if not is_wandb_active():
-        return
-    wandb.log({'duration':duration}, step=iteration)
+        return values
+    payload = {}
+    for name, value in values.items():
+        key = f'{RUN_METRICS_PREFIX}/{name}'
+        # per iteration
+        payload[key] = value
+        # totals
+        payload[f'{key}_total'] = wandb.run.summary.get(f'{key}_total', 0) + value
+    wandb.log(payload, step=iteration)
+    return values
+
+def log_main_metric(iteration, metric_name, metrics):
+    value = metrics.get(f'validation/{metric_name}', math.nan)
+    if not is_wandb_active():
+        return value
+    wandb.log({f'{RUN_METRICS_PREFIX}/val_metric': value}, step=iteration)
+    return value
 
 def log_split_is_allowed(iteration, is_allowed):
     if not is_wandb_active():
