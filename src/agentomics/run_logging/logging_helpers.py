@@ -61,6 +61,10 @@ def log_run_metrics(iteration, iteration_state, token_usage):
         'input_tokens': sum(usage['input_tokens'] for usage in token_usage.values()),
         'output_tokens': sum(usage['output_tokens'] for usage in token_usage.values()),
         'tool_calls': sum(usage['tool_calls'] for usage in token_usage.values()),
+        'cost': (
+            math.nan if any(usage['unpriced_requests'] for usage in token_usage.values())
+            else sum(usage['cost'] for usage in token_usage.values())
+        ),
         'duration': float(iteration_state['ended_at']) - float(iteration_state['started_at']),
         'failed': int(iteration_state['status'] != 'success'),
     }

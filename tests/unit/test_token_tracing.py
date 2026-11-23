@@ -1,4 +1,5 @@
 from collections import Counter
+from decimal import Decimal
 
 import pytest
 from pydantic_ai import Agent
@@ -38,8 +39,27 @@ def test_model_calls_are_counted_under_the_step_they_ran_in(token_tracing):
     agent.run_sync("Not part of a step.")
 
     usage = token_tracing.take()
-    assert usage["data_exploration"] == Counter(input_tokens=200, output_tokens=14)
-    assert usage["outside_steps"] == Counter(input_tokens=100, output_tokens=7)
+    assert usage["data_exploration"] == Counter(input_tokens=200, output_tokens=14, unpriced_requests=2)
+    assert usage["outside_steps"] == Counter(input_tokens=100, output_tokens=7, unpriced_requests=1)
+
+
+def test_cost_of_priced_model_calls_is_counted_under_the_step_they_ran_in(token_tracing):
+    agent = Agent(
+        FunctionModel(
+            lambda _messages, _info: ModelResponse(
+                parts=[TextPart(content="done")],
+                usage=RequestUsage(input_tokens=100, output_tokens=7, cost=Decimal("0.25")),
+            )
+        )
+    )
+
+    token_tracing.current_step = "model_training"
+    agent.run_sync("Train the model.")
+    agent.run_sync("Train it again.")
+
+    usage = token_tracing.take()["model_training"]
+    assert usage["cost"] == pytest.approx(0.5)
+    assert usage["unpriced_requests"] == 0
 
 
 def test_tokens_spent_before_a_failure_are_counted(token_tracing):
@@ -60,7 +80,9 @@ def test_tokens_spent_before_a_failure_are_counted(token_tracing):
     with pytest.raises(RuntimeError):
         agent.run_sync("Train the model.")
 
-    assert token_tracing.take()["model_training"] == Counter(input_tokens=300, output_tokens=20, tool_calls=1)
+    assert token_tracing.take()["model_training"] == Counter(
+        input_tokens=300, output_tokens=20, tool_calls=1, unpriced_requests=1
+    )
 
 
 def test_tool_calls_are_counted_under_the_step_they_ran_in(token_tracing):
@@ -79,3 +101,16 @@ def test_tool_calls_are_counted_under_the_step_they_ran_in(token_tracing):
     agent.run_sync("Look at the files.")
 
     assert token_tracing.take()["data_exploration"]["tool_calls"] == 2
+
+
+def test_model_calls_that_failed_without_a_response_do_not_make_the_cost_unknown(token_tracing):
+    def failing_model(_messages, _info):
+        raise RuntimeError("Provider returned an empty response")
+
+    agent = Agent(FunctionModel(failing_model))
+
+    token_tracing.current_step = "data_split"
+    with pytest.raises(RuntimeError):
+        agent.run_sync("Split the data.")
+
+    assert token_tracing.take()["data_split"]["unpriced_requests"] == 0
