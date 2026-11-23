@@ -102,6 +102,9 @@ Current run working directory:
 │   ├── current_step/            # Active step workspace
 │   └── runtime_info/
 ├── iteration_0/                 # Archived iteration
+│   ├── <step_id>/               # One folder per step, with output.json
+│   └── iteration_plan/
+│       └── planner_notes.md     # Planner notes, kept across iterations
 ├── iteration_1/
 └── ...
 ```

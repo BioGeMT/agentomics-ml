@@ -1,4 +1,4 @@
-from agentomics.datasets.data_contract import SUPPLEMENTARY_DIR_NAME, TRAIN_SPLIT, VALIDATION_SPLIT
+from agentomics.datasets.data_contract import TRAIN_SPLIT, VALIDATION_SPLIT
 
 from agentomics.runtime.read_write_utils import load_dataset_metadata
 from agentomics.runtime.system_resources import check_gpu_availability, get_resources_summary
@@ -13,7 +13,7 @@ def get_system_prompt(config: Config):
     dataset_paths = f"Training split path:\n    {train_split_path}"
     if validation_split_path.exists():
         dataset_paths += f"\n    Validation split path:\n    {validation_split_path}"
-    supplementary_path = config.dataset_dir / SUPPLEMENTARY_DIR_NAME
+    supplementary_path = config.supplementary_dir
     if supplementary_path.is_dir():
         dataset_paths += (
             f"\n    Supplementary materials that can be used at any point e.g. during training, during decision making, etc.. (read-only):\n    {supplementary_path}"

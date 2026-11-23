@@ -55,5 +55,4 @@ def build_dataset_isolation_step_response(
         "id_to_sample_info": (
             "The id column of input/data.csv joins to the id column of labels.csv."
         ),
-        "supplementary_insights": None,
     }

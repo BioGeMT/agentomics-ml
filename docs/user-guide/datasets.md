@@ -81,6 +81,7 @@ Supporting/supplementary materials (PDFs, papers, helper scripts, foundation mod
 
 You can describe what the supplementary folder contains and how it relates to
 the task in `supplementary/README.md` to help the agent use it effectively.
+Documents meant to be read (papers, notes, method descriptions) work best as text files or as PDFs under 5 MB. Data files can be any size.
 
 #### Using existing / foundation models
 
