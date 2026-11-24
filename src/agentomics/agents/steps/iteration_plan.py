@@ -5,11 +5,10 @@ from collections.abc import Callable
 from typing import Any, TypedDict
 
 from pydantic import Field
-from pydantic_ai.capabilities import AbstractCapability, LocalWorkspace, PrepareTools
-from pydantic_ai.messages import ModelResponse
+from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.settings import ModelSettings
-from pydantic_ai_harness import FileSystem
 
+from agentomics.agents.agent_utils import create_read_only_file_capabilities
 from agentomics.agents.prompt_builder import get_dataset_knowledge
 from agentomics.agents.steps.base import AgentomicsAgenticStep, AgenticStepOutput
 from agentomics.agents.steps.data_split import DataSplitStep
@@ -29,9 +28,6 @@ from agentomics.tools.tool_registry import get_tool_names
 from agentomics.utils.config import Config
 from agentomics.utils.printing_utils import truncate_float
 
-SUPPLEMENTARY_MAX_READ_CHARS = 5000
-SUPPLEMENTARY_MAX_SEARCH_RESULTS = 100
-SUPPLEMENTARY_MAX_LIST_RESULTS = 200
 SUPPLEMENTARY_MAX_TOOL_CALLS = 50
 SUPPLEMENTARY_MAX_CONTEXT_TOKENS = 100_000
 # Above SUPPLEMENTARY_MAX_TOOL_CALLS, so the file tools are removed before the planner reaches its step limit.
@@ -121,28 +117,9 @@ class IterationPlanStep(AgentomicsAgenticStep):
         )
 
     def _create_supplementary_capabilities(self) -> list[AbstractCapability]:
-        """Read-only list, search and read tools confined to the supplementary folder, within the reading limits."""
-        async def hide_tools_after_reading_limits(ctx, tool_defs):
-            # Once a limit is reached no tools are offered, so the next request must give the plan:
-            # the planner then reaches neither its step limit nor the model's context window.
-            last_response = next((message for message in reversed(ctx.messages) if isinstance(message, ModelResponse)), None)
-            last_request_input_tokens = last_response.usage.input_tokens if last_response is not None else 0
-            if ctx.usage.tool_calls >= SUPPLEMENTARY_MAX_TOOL_CALLS or last_request_input_tokens >= SUPPLEMENTARY_MAX_CONTEXT_TOKENS:
-                return []
-            return tool_defs
-
-        return [
-            LocalWorkspace(self.config.supplementary_dir, read_only=True),
-            FileSystem(
-                read_only=True,
-                tools=["list_directory", "search_files", "read_file"],
-                max_read_chars=SUPPLEMENTARY_MAX_READ_CHARS,
-                max_search_results=SUPPLEMENTARY_MAX_SEARCH_RESULTS,
-                max_list_results=SUPPLEMENTARY_MAX_LIST_RESULTS,
-                content_hashes=False,
-            ),
-            PrepareTools(hide_tools_after_reading_limits),
-        ]
+        return create_read_only_file_capabilities(
+            self.config.supplementary_dir, SUPPLEMENTARY_MAX_TOOL_CALLS, SUPPLEMENTARY_MAX_CONTEXT_TOKENS,
+        )
 
     def _has_supplementary(self) -> bool:
         return self.config.supplementary_dir.is_dir()

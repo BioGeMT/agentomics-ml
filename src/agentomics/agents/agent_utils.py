@@ -2,8 +2,11 @@ import traceback
 import datetime
 import string
 import random
+from pathlib import Path
 
 from pydantic_ai import Agent, capture_run_messages
+from pydantic_ai.capabilities import AbstractCapability, LocalWorkspace, PrepareTools
+from pydantic_ai_harness import FileSystem
 from pydantic_ai.usage import UsageLimits
 from pydantic_ai.messages import (
     ModelMessage,
@@ -19,6 +22,32 @@ import weave
 
 from agentomics.utils.exceptions import AgentRunFailed
 from agentomics.utils.printing_utils import pretty_print_node
+
+READ_ONLY_FILE_MAX_READ_CHARS = 5000
+READ_ONLY_FILE_MAX_SEARCH_RESULTS = 100
+READ_ONLY_FILE_MAX_LIST_RESULTS = 200
+
+
+def create_read_only_file_capabilities(root_dir: Path, max_tool_calls: int, max_context_tokens: int) -> list[AbstractCapability]:
+    async def hide_tools_after_reading_limits(ctx, tool_defs):
+        last_response = next((message for message in reversed(ctx.messages) if isinstance(message, ModelResponse)), None)
+        last_request_input_tokens = last_response.usage.input_tokens if last_response is not None else 0
+        if ctx.usage.tool_calls >= max_tool_calls or last_request_input_tokens >= max_context_tokens:
+            return []
+        return tool_defs
+
+    return [
+        LocalWorkspace(root_dir, read_only=True),
+        FileSystem(
+            read_only=True,
+            tools=["list_directory", "search_files", "read_file"],
+            max_read_chars=READ_ONLY_FILE_MAX_READ_CHARS,
+            max_search_results=READ_ONLY_FILE_MAX_SEARCH_RESULTS,
+            max_list_results=READ_ONLY_FILE_MAX_LIST_RESULTS,
+            content_hashes=False,
+        ),
+        PrepareTools(hide_tools_after_reading_limits),
+    ]
 
 
 @weave.op(call_display_name=lambda call: f"Agent Step - {call.inputs['output_type'].__name__ if call.inputs.get('output_type', None) else call.inputs['agent']._output_type.__name__}")
