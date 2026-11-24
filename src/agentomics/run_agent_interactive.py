@@ -24,7 +24,7 @@ from agentomics.runtime.read_write_utils import (
     load_dataset_metadata,
 )
 from agentomics.utils.config import Config
-from agentomics.utils.metrics import resolve_val_metric
+from agentomics.utils.ml_tasks import resolve_val_metric
 from agentomics.utils.metrics_interactive import display_metrics_table
 from agentomics.utils.printing_utils import print_phase
 from agentomics.utils.providers.provider import Provider, get_provider_and_api_key
@@ -154,7 +154,6 @@ def run_agent_interactive(arguments: argparse.Namespace) -> int:
         print_datasets_table(get_all_datasets_info(arguments.datasets_dir))
         return 0
     if arguments.list_metrics:
-        console.print("Available Validation Metrics", style="cyan")
         display_metrics_table()
         return 0
 
@@ -189,9 +188,10 @@ def run_agent_interactive(arguments: argparse.Namespace) -> int:
             inherited_dataset_metadata.get("task_type")
             or arguments.task_type
         ),
-        label_to_scalar=inherited_dataset_metadata.get("label_to_scalar"),
+        task_metadata=inherited_dataset_metadata.get("task_metadata"),
         label_column=inherited_dataset_metadata.get("label_column"),
         interactive=_is_tty_available() and existing_config is None,
+        fit=existing_config is None,
     )
     task_type = dataset_metadata["task_type"]
     val_metric = resolve_val_metric(task_type, arguments.val_metric)
@@ -207,7 +207,6 @@ def run_agent_interactive(arguments: argparse.Namespace) -> int:
             dataset_name=dataset,
             task_type=task_type,
             dataset_metadata=dataset_metadata,
-            label_to_scalar=dataset_metadata.get("label_to_scalar"),
             input_structure=dataset_metadata["input_structure"],
             val_metric=val_metric,
             datasets_dir=prepared_datasets_dir,

@@ -37,7 +37,7 @@ def _suggested_metadata(summary: dict) -> dict:
         "task_type",
         "label_column",
         "id_column",
-        "label_to_scalar",
+        "task_metadata",
     )
     return {
         key: summary[key]
@@ -62,8 +62,8 @@ def _print_summary(summary: dict, interactive: bool) -> None:
     if test_rows is not None:
         console.print(f"Test rows: {test_rows}")
 
-    if "label_to_scalar" in summary:
-        console.print(f"Label mapping: {summary['label_to_scalar']}")
+    if summary.get("task_metadata"):
+        console.print(f"Task metadata: {summary['task_metadata']}")
     console.print(f"Input structure: {summary.get('input_structure')}")
 
     if interactive:

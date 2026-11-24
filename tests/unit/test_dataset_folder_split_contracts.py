@@ -84,7 +84,7 @@ def test_preparation_derives_class_mapping_from_folder_labels(
     metadata = json.loads(
         (prepared_dir / "metadata.json").read_text(encoding="utf-8")
     )
-    assert metadata["label_to_scalar"] == {"negative": 0, "positive": 1}
+    assert metadata["task_metadata"]["label_to_scalar"] == {"negative": 0, "positive": 1}
 
 
 def test_preparation_preserves_numeric_looking_ids(

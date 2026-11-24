@@ -1,5 +1,37 @@
 # Changelog
 
+## [2.0.0](https://github.com/BioGeMT/agentomics-ml/compare/v1.3.0...v2.0.0) (2026-11-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* extract MLTask interface ([#190](https://github.com/BioGeMT/agentomics-ml/issues/190))
+
+### Features
+
+* extract MLTask interface ([#190](https://github.com/BioGeMT/agentomics-ml/issues/190)) ([ca43f69](https://github.com/BioGeMT/agentomics-ml/commit/ca43f695b0fd5713f2e13a52bb7cf56bd176842f))
+
+
+### Bug Fixes
+
+* install ddgs with pip for ARM64 releases ([#192](https://github.com/BioGeMT/agentomics-ml/issues/192)) ([f900a5e](https://github.com/BioGeMT/agentomics-ml/commit/f900a5ea6d463e19f0946de05eebca6639e0fb03))
+
+## [1.3.0](https://github.com/BioGeMT/agentomics-ml/compare/v1.2.0...v1.3.0) (2026-11-16)
+
+
+### Features
+
+* add a data collection agent that downloads public data for a task ([#187](https://github.com/BioGeMT/agentomics-ml/issues/187)) ([3a745ed](https://github.com/BioGeMT/agentomics-ml/commit/3a745ed01cac6be36b5e01fe4db513ad3b94b9c8))
+* cross-iteration memory ([#169](https://github.com/BioGeMT/agentomics-ml/issues/169)) ([0610927](https://github.com/BioGeMT/agentomics-ml/commit/0610927a2d254a39887b055753d77347577ab541))
+* paper fetch ([#163](https://github.com/BioGeMT/agentomics-ml/issues/163)) ([585aed3](https://github.com/BioGeMT/agentomics-ml/commit/585aed34eb4fe91a5bc0431248a461e8da0e048a))
+
+
+### Bug Fixes
+
+* bump pydantic-ai to 2.66 ([#185](https://github.com/BioGeMT/agentomics-ml/issues/185)) ([4072f09](https://github.com/BioGeMT/agentomics-ml/commit/4072f09d3233a15e425f1b3115284fd645f8b36d))
+* keep the iteration when prediction exploration fails ([#177](https://github.com/BioGeMT/agentomics-ml/issues/177)) ([5501414](https://github.com/BioGeMT/agentomics-ml/commit/55014147e9a1a2733f33241bd43b218951e36c4b))
+* use the openai responses and openrouter model classes ([#186](https://github.com/BioGeMT/agentomics-ml/issues/186)) ([3fe9b08](https://github.com/BioGeMT/agentomics-ml/commit/3fe9b08060c784e15729cda26fc90397e592afd9))
+
 ## [1.2.0](https://github.com/BioGeMT/agentomics-ml/compare/v1.1.0...v1.2.0) (2026-10-14)
 
 

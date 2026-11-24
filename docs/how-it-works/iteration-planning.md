@@ -24,7 +24,8 @@ IterationPlanOutput
 ├── model_training_instructions
 ├── model_inference_instructions
 ├── prediction_exploration_instructions
-└── other_instructions
+├── other_instructions
+└── notes                  # Kept for the planner, not saved in output.json
 ```
 
 ## What Iteration Planning Considers
@@ -52,6 +53,14 @@ IterationPlanOutput
 
 - Remaining time (if timeout set)
 - Training duration of previous models
+
+## Supplementary Material
+
+If the dataset has a `supplementary/` folder, the planner can list, search and read its files, including PDFs and images. Its reading is limited, and when the limit is reached its file tools are removed, so it gives its plan.
+
+## Planner Notes
+
+The planner keeps notes for itself across iterations. They are saved as `iteration_plan/planner_notes.md` and are not shown to the iteration agents.
 
 ## Iteration-Plan Examples
 

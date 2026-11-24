@@ -11,12 +11,11 @@ from agentomics.datasets.data_contract import (
     NUMERIC_LABEL_COLUMN_NAME,
     validate_and_read_labels,
 )
-from agentomics.datasets.label_processing import convert_classification_labels, convert_regression_labels
 from agentomics.run_logging.wandb_setup import resume_wandb_run
 from agentomics.runtime.evaluate_result import get_metrics
 from agentomics.runtime.read_write_utils import load_config_from_run_dir_and_reroot
 from agentomics.utils.config import Config
-from agentomics.utils.task_types import TaskTypes
+from agentomics.utils.ml_tasks import get_task
 
 
 def _read_numeric_labels(labels_path: Path, config: Config) -> pd.DataFrame:
@@ -26,9 +25,10 @@ def _read_numeric_labels(labels_path: Path, config: Config) -> pd.DataFrame:
             labels_path, NUMERIC_LABEL_COLUMN_NAME, require_numeric_values=True
         )
     labels = validate_and_read_labels(labels_path, LABEL_COLUMN_NAME)
-    if config.task_type == TaskTypes.CLASSIFICATION:
-        return convert_classification_labels(labels, config.label_to_scalar, "eval")
-    return convert_regression_labels(labels, "eval")
+    converted, _ = get_task(config.task_type).validate_and_numericalize_labels(
+        {"eval": labels}, config.task_metadata,
+    )
+    return converted["eval"]
 
 
 def evaluate_predictions(
@@ -67,8 +67,8 @@ def evaluate_predictions(
 def main() -> None:
     ap = argparse.ArgumentParser(description="Compute evaluation metrics for a trained model's predictions.")
     ap.add_argument("--agent-dir", type=Path, required=True, help="Path to the run output dir (e.g. outputs/<agent_id>)")
-    ap.add_argument("--predictions", type=Path, required=True, help="Inference output CSV (id + prediction + probability_* columns)")
-    ap.add_argument("--labels", type=Path, required=True, help="Contract labels.csv (id,label or id,numeric_label), aligned to predictions by id")
+    ap.add_argument("--predictions", type=Path, required=True, help="Path to the inference output CSV to evaluate")
+    ap.add_argument("--labels", type=Path, required=True, help="Path to the labels CSV (id,label or id,numeric_label), aligned to predictions by id")
     ap.add_argument("--output", type=Path, default=None, help="Where to write the metrics JSON (default: <predictions dir>/metrics.json)")
     args = ap.parse_args()
 

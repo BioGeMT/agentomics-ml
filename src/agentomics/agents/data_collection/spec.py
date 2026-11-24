@@ -3,11 +3,11 @@ from __future__ import annotations
 from pydantic import BaseModel, Field, model_validator
 
 from agentomics.utils.data_module_config import DataModuleConfig
-from agentomics.utils.task_types import TaskTypes
+from agentomics.utils.ml_tasks import get_task
 
 
 class DataCollectionSpec(BaseModel, extra="forbid"):
-    task_type: TaskTypes
+    task_type: str
     description: str = Field(min_length=1)
     inputs: list[str] = Field(min_length=1)
     label: str = Field(min_length=1)
@@ -18,8 +18,5 @@ class DataCollectionSpec(BaseModel, extra="forbid"):
 
     @model_validator(mode="after")
     def _check_classes(self) -> DataCollectionSpec:
-        if self.task_type == TaskTypes.CLASSIFICATION and len(set(self.classes or [])) < 2:
-            raise ValueError("classification needs at least two distinct classes")
-        if self.task_type == TaskTypes.REGRESSION and self.classes:
-            raise ValueError("regression takes no classes")
+        get_task(self.task_type).validate_collection_classes(self.classes)
         return self

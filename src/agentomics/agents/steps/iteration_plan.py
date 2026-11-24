@@ -5,7 +5,10 @@ from collections.abc import Callable
 from typing import Any, TypedDict
 
 from pydantic import Field
+from pydantic_ai.capabilities import AbstractCapability, LocalWorkspace, PrepareTools
+from pydantic_ai.messages import ModelResponse
 from pydantic_ai.settings import ModelSettings
+from pydantic_ai_harness import FileSystem
 
 from agentomics.agents.prompt_builder import get_dataset_knowledge
 from agentomics.agents.steps.base import AgentomicsAgenticStep, AgenticStepOutput
@@ -23,8 +26,17 @@ from agentomics.runtime.read_write_utils import (
 from agentomics.runtime.step_outputs import load_step_output, load_step_outputs
 from agentomics.runtime.system_resources import get_resources_summary
 from agentomics.tools.tool_registry import get_tool_names
+from agentomics.utils.config import Config
 from agentomics.utils.printing_utils import truncate_float
-from agentomics.datasets.data_contract import SUPPLEMENTARY_DIR_NAME
+
+SUPPLEMENTARY_MAX_READ_CHARS = 5000
+SUPPLEMENTARY_MAX_SEARCH_RESULTS = 100
+SUPPLEMENTARY_MAX_LIST_RESULTS = 200
+SUPPLEMENTARY_MAX_TOOL_CALLS = 50
+SUPPLEMENTARY_MAX_CONTEXT_TOKENS = 100_000
+# Above SUPPLEMENTARY_MAX_TOOL_CALLS, so the file tools are removed before the planner reaches its step limit.
+PLANNER_MAX_STEPS = 2 * SUPPLEMENTARY_MAX_TOOL_CALLS
+PLANNER_NOTES_MAX_CHARS = 6000
 
 
 class IterationPlanOutput(AgenticStepOutput):
@@ -68,6 +80,18 @@ class IterationPlanOutput(AgenticStepOutput):
         Any other instructions that don't fit only one step (optional).
         """
     )
+    # Excluded from output.json because every step's output.json goes into the iteration agents' message history,
+    # and the notes are private to the planner. on_step_success saves them to their own file instead.
+    notes: str | None = Field(
+        default=None,
+        exclude=True,
+        max_length=PLANNER_NOTES_MAX_CHARS,
+        description=f"""
+        Your private notes, carried forward to your future planning iterations. At most {PLANNER_NOTES_MAX_CHARS} characters.
+        Leave as null to keep the current notes unchanged. If set (even to an empty string) it replaces them in full, so include everything worth keeping.
+        """,
+    )
+
 
 class IterationPlanStep(AgentomicsAgenticStep):
     step_id = "iteration_plan"
@@ -84,15 +108,58 @@ class IterationPlanStep(AgentomicsAgenticStep):
         is_new_best: bool
 
     async def _execute(self) -> AgenticStepOutput:
-        # No tools, no system prompt and no message history.
+        # No system prompt and no message history. File tools only if the dataset has a supplementary folder.
+        has_supplementary = self._has_supplementary()
         return await self.run_agent_step(
             user_prompt=self.step_prompt(),
             model=self.iteration_plan_model,
             model_settings=self.high_reasoning_model_settings(),
-            max_steps=self.config.max_steps,
+            max_steps=PLANNER_MAX_STEPS,
             max_validation_retries=self.config.max_validation_retries,
             max_tool_retries=self.config.max_tool_retries,
+            capabilities=self._create_supplementary_capabilities() if has_supplementary else None,
         )
+
+    def _create_supplementary_capabilities(self) -> list[AbstractCapability]:
+        """Read-only list, search and read tools confined to the supplementary folder, within the reading limits."""
+        async def hide_tools_after_reading_limits(ctx, tool_defs):
+            # Once a limit is reached no tools are offered, so the next request must give the plan:
+            # the planner then reaches neither its step limit nor the model's context window.
+            last_response = next((message for message in reversed(ctx.messages) if isinstance(message, ModelResponse)), None)
+            last_request_input_tokens = last_response.usage.input_tokens if last_response is not None else 0
+            if ctx.usage.tool_calls >= SUPPLEMENTARY_MAX_TOOL_CALLS or last_request_input_tokens >= SUPPLEMENTARY_MAX_CONTEXT_TOKENS:
+                return []
+            return tool_defs
+
+        return [
+            LocalWorkspace(self.config.supplementary_dir, read_only=True),
+            FileSystem(
+                read_only=True,
+                tools=["list_directory", "search_files", "read_file"],
+                max_read_chars=SUPPLEMENTARY_MAX_READ_CHARS,
+                max_search_results=SUPPLEMENTARY_MAX_SEARCH_RESULTS,
+                max_list_results=SUPPLEMENTARY_MAX_LIST_RESULTS,
+                content_hashes=False,
+            ),
+            PrepareTools(hide_tools_after_reading_limits),
+        ]
+
+    def _has_supplementary(self) -> bool:
+        return self.config.supplementary_dir.is_dir()
+
+    def on_step_success(self, output: IterationPlanOutput) -> None:
+        # Written before the base class archives the step folder and commits the checkpoint.
+        notes = output.notes if output.notes is not None else self._load_notes()
+        (self.step_dir / Config.PLANNER_NOTES_FILENAME).write_text(notes, encoding="utf-8")
+        super().on_step_success(output)
+
+    def _load_notes(self) -> str:
+        """Notes saved by the latest archived iteration that has a notes file; empty if none."""
+        for iteration in reversed(get_archived_iterations(self.config)):
+            notes_path = self.config.iteration_dir(iteration) / self.step_id / Config.PLANNER_NOTES_FILENAME
+            if notes_path.is_file():
+                return notes_path.read_text(encoding="utf-8")
+        return ""
 
     def high_reasoning_model_settings(self) -> ModelSettings:
         return self.provider.get_high_reasoning_model_settings(
@@ -112,6 +179,7 @@ class IterationPlanStep(AgentomicsAgenticStep):
         best_iteration_model_info = self._build_best_iteration_model_info()
         supplementary_info = self._build_supplementary_info()
         iterations_lessons = self._build_iterations_lessons()
+        notes_info = self._build_notes_info()
 
         return f"""
         <prompt_of_the_iteration_agents>
@@ -124,6 +192,7 @@ class IterationPlanStep(AgentomicsAgenticStep):
 
         {iteration_history_info}
         {iterations_lessons}
+        {notes_info}
         <your_instructions>
         {f"<exploration_guidance>{exploration_info}</exploration_guidance>" if exploration_info else ""}
         The main goal of the run is to maximize the hidden test set generalization performance (main metric:{self.config.val_metric}) that will use the 'best iteration model'. {best_iteration_model_info}
@@ -140,7 +209,6 @@ class IterationPlanStep(AgentomicsAgenticStep):
         For example if you want to instruct to re-use the same data representation from iteration 5, instruct "Re-use the data representation from iteration 5".
         The data exploration and splitting steps can be instructed to be skipped completely if they're not needed.
         If any exploration step discovered important id-to-sample information (e.g., how label IDs relate to data in input/, file formats, column semantics) that are not already included in the dataset_knowledge_from_dataset_description_md, include those details in your instructions for relevant downstream steps so the iteration agent doesn't have to re-explore the structure.
-        Similarly, if the exploration step found useful insights from supplementary materials, carry those forward in your instructions.
         {splitting_info}
 
         You're providing instructions to an LLM agent, never offer that you will take any actions to fix or implement fixes yourself.
@@ -314,10 +382,21 @@ class IterationPlanStep(AgentomicsAgenticStep):
         return f"{iterations_left} iterations (including the current one)"
     
     def _build_supplementary_info(self) -> str:
-        dataset_supplementary_path = self.config.dataset_dir / SUPPLEMENTARY_DIR_NAME
-        if dataset_supplementary_path.is_dir():
-            return f"The agent has access to the supplementary/ folder with supplementary dataset materials."
-        return ""
+        if not self._has_supplementary():
+            return ""
+        return f"""
+        The dataset has a supplementary/ folder that you can browse with your file tools. The iteration agents can also access it. It can contain anything related to the dataset, such as extra data, papers, methods, code or notes.
+        In this planning step you can make at most {SUPPLEMENTARY_MAX_TOOL_CALLS} file tool calls, and reading stops early once this conversation reaches about {SUPPLEMENTARY_MAX_CONTEXT_TOKENS} tokens, so read selectively. Record what you learn in your notes so you don't have to read it again.
+        When a supplementary file is relevant to a step, cite it in that step's instructions by its path relative to the supplementary folder.
+        Use what is relevant from it, alongside your own reasoning, the iteration history and the metrics so far. It is not a plan to follow.
+        """
+
+    def _build_notes_info(self) -> str:
+        return f"""
+        <your_notes>
+        {self._load_notes()}
+        </your_notes>
+        """
 
     def _build_exploration_info(self) -> str:
         iteration = load_current_iteration_index(self.config)
