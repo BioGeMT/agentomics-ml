@@ -5,7 +5,7 @@ import time
 import weave
 
 from agentomics.agents.prompt_builder import build_iteration_base_prompt, get_system_prompt
-from agentomics.run_logging.logging_helpers import log_files, log_iteration_duration, log_iteration_failure
+from agentomics.run_logging.logging_helpers import log_architecture_table, log_files, log_iteration_duration, log_iteration_failure
 from agentomics.runtime.best_iteration_snapshot import update_best_iteration_snapshot
 from agentomics.runtime.conda_utils import initialize_shared_environment
 from agentomics.runtime.git_checkpoints import commit_iteration_end
@@ -87,6 +87,7 @@ async def _run_iteration(config: Config, iteration: int, default_model: Model, i
     log_files(config, iteration=iteration)
 
     archive_current_iteration(config, iteration)
+    log_architecture_table(config, iteration)
     if iteration_state["status"] == "success":
         update_best_iteration_snapshot(config=config, iteration=iteration)
     commit_iteration_end(config, iteration=iteration)

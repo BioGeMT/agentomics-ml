@@ -13,6 +13,7 @@ from pydantic_ai import ModelRetry, RunContext
 import agentomics.agents.injectables.training_reporter as _training_reporter_module
 from agentomics.agents.steps.base import AgentomicsAgenticStep, AgenticStepOutput
 from agentomics.agents.steps.data_split import DataSplitStep
+from agentomics.agents.steps.model_architecture import ArchitectureCategories
 from agentomics.datasets.data_contract import SUPPLEMENTARY_DIR_NAME
 from agentomics.runtime.read_write_utils import does_file_contain_iteration_pattern, does_file_contain_string
 from agentomics.runtime.step_outputs import require_step_output
@@ -22,6 +23,7 @@ from agentomics.utils.text_processing_utils import collapse_repeated_lines, conc
 
 
 class ModelTrainingOutput(AgenticStepOutput):
+    trained_categories: ArchitectureCategories = Field(description="Categories of the predictor actually trained, which may differ from the plan.")
     path_to_train_file: str = Field(description="Absolute path to the generated 'train.py'")
     path_to_model_file: str = Field(description="Absolute path to the trained model file")
     path_to_artifacts_dir: str = Field(
