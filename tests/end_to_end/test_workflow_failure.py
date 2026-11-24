@@ -1,3 +1,4 @@
+import json
 import tempfile
 from pathlib import Path
 
@@ -25,5 +26,7 @@ def test_workflow_without_a_valid_best_result_fails_the_host_cli(cli):
         assert "Intentional scripted validation failure" in output
         assert "Agent did not produce a valid best iteration snapshot" in output
         assert "Run finished. Files can be found" not in output
+        state = json.loads((workspace / "run" / "iteration_0" / "runtime_info" / "iteration_state.json").read_text())
+        assert state["failed_step"] == "validation_evaluation"
 
     assert not root.exists()

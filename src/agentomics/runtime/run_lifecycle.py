@@ -5,7 +5,7 @@ import time
 import weave
 
 from agentomics.agents.prompt_builder import build_iteration_base_prompt, get_system_prompt
-from agentomics.run_logging.logging_helpers import log_files, log_iteration_duration
+from agentomics.run_logging.logging_helpers import log_files, log_iteration_duration, log_iteration_failure
 from agentomics.runtime.best_iteration_snapshot import update_best_iteration_snapshot
 from agentomics.runtime.conda_utils import initialize_shared_environment
 from agentomics.runtime.git_checkpoints import commit_iteration_end
@@ -66,10 +66,12 @@ async def _run_iteration(config: Config, iteration: int, default_model: Model, i
         for step in steps:
             await step.run()
         update_current_iteration_state(config, ended_at=time.time(), status="success")
-    except StepFailed:
+    except StepFailed as error:
+        failed_step_id = step.step_id
         for step in steps:
             step.on_iteration_fail(iteration)
-        update_current_iteration_state(config, ended_at=time.time(), status="failed")
+        update_current_iteration_state(config, ended_at=time.time(), status="failed", failed_step=failed_step_id)
+        log_iteration_failure(iteration, failed_step_id, error.exception_trace)
 
     for step in steps:
         step.on_iteration_end(iteration)

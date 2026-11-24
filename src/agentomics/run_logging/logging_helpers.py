@@ -59,6 +59,11 @@ def log_iteration_duration(iteration, duration):
         return
     wandb.log({'duration':duration}, step=iteration)
 
+def log_iteration_failure(iteration, step_id, exception_trace):
+    if not is_wandb_active():
+        return
+    wandb.log({'failure/step': step_id, 'failure/exception_trace': exception_trace}, step=iteration)
+
 def log_split_is_allowed(iteration, is_allowed):
     if not is_wandb_active():
         return
