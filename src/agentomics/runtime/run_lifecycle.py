@@ -34,8 +34,11 @@ async def run_agentomics(
     config: Config, default_model: Model, iteration_plan_model: Model, trace_analysis_model: Model, provider: Provider
 ) -> None:
     total_iterations = config.iterations
-    if "inspect_image" in config.tool_ids and not default_model.profile["supports_image_input"]:
-        raise ValueError(f"Model {default_model.model_name} must support image input when inspect_image is enabled")
+    if "paper_qa" in config.tool_ids and not default_model.profile["supports_image_input"]:
+        raise ValueError(
+            f"Model {default_model.model_name} must support image input when paper_qa is enabled; "
+            "use an image-capable model or run without the paper API keys."
+        )
     initialize_shared_environment(config)
     tools = create_tools(config, config.tool_ids)
     print(f"Starting training loop with {total_iterations} iterations") #TODO for run continuing this is wrong?
