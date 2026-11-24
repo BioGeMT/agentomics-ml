@@ -234,7 +234,7 @@ def test_split_deadline_overrides_iteration_budget(
     assert split_step.should_be_simulated() is not expected_full_split
 
 
-def test_simulated_output_reuses_latest_split_and_latest_successful_strategy(
+def test_simulated_output_reuses_latest_split_and_its_strategy(
     initialized_run_config: Config,
 ):
     split_step = create_runtime_step(
@@ -260,7 +260,7 @@ def test_simulated_output_reuses_latest_split_and_latest_successful_strategy(
     create_archived_iteration_with_split_output(
         split_step,
         iteration=2,
-        split_version=1,
+        split_version=0,
         status="failed",
         strategy="failed iteration strategy",
     )
@@ -395,7 +395,7 @@ def test_split_rejected_for_symlink_outside_split_folders_moves_to_versioned_spl
     assert output.train_path == str(config.splits_dir / "split_0" / "train")
 
 
-def test_mini_train_only_split_links_provided_train_and_validation(
+def test_mini_train_only_split_is_reused_after_first_iteration_fails(
     prepared_dataset_with_validation_run_config: Config,
 ):
     config = prepared_dataset_with_validation_run_config
@@ -423,6 +423,16 @@ def test_mini_train_only_split_links_provided_train_and_validation(
         assert Path(output_path).is_symlink()
         assert Path(output_path).resolve() == (config.dataset_dir / split_name).resolve()
     assert not output.split_changed
+
+    split_step = create_runtime_step(DataSplitStep, config, model=Mock())
+    split_step.on_iteration_fail(0)
+    update_current_iteration_state(config, status="failed", ended_at=time.time())
+    archive_current_iteration(config, iteration=0)
+    prepare_iteration_workspace(config, iteration=1)
+    reused_output = _run_split_step(config, model=Mock(), iteration=1)
+
+    assert reused_output.model_dump(exclude={"files_created"}) == output.model_dump(exclude={"files_created"})
+    assert (split_dir / "mini_train" / "labels.csv").is_file()
 
 
 def test_reused_split_keeps_version_and_latest_successful_strategy(
