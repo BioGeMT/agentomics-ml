@@ -22,7 +22,6 @@ class ArchitectureCategories(BaseModel):
 
 
 class ModelArchitectureOutput(AgenticStepOutput):
-    categories: ArchitectureCategories = Field(description="Categories of the planned predictor.")
     architecture: str = Field(
         description="""
         The machine learning model type and architecture for your task.
@@ -33,6 +32,7 @@ class ModelArchitectureOutput(AgenticStepOutput):
         The hyperparameters you have chosen for your model.
         """
     )
+    categories: ArchitectureCategories = Field(description="Categories of the planned predictor.")
 
 class ModelArchitectureStep(AgentomicsAgenticStep):
     step_id = "model_architecture"

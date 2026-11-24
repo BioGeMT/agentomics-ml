@@ -23,7 +23,6 @@ from agentomics.utils.text_processing_utils import collapse_repeated_lines, conc
 
 
 class ModelTrainingOutput(AgenticStepOutput):
-    trained_categories: ArchitectureCategories = Field(description="Categories of the predictor actually trained, which may differ from the plan.")
     path_to_train_file: str = Field(description="Absolute path to the generated 'train.py'")
     path_to_model_file: str = Field(description="Absolute path to the trained model file")
     path_to_artifacts_dir: str = Field(
@@ -36,6 +35,7 @@ class ModelTrainingOutput(AgenticStepOutput):
     training_summary: str = Field(
         description="Short summary of the training implementation. Don't include any metrics in this summary."
     )
+    trained_categories: ArchitectureCategories = Field(description="Categories of the predictor actually trained, which may differ from the plan.")
     unresolved_issues: str | None = Field(
         description=(
             "Issues that remain unresolved and could impact performance and/or metrics. "
