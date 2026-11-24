@@ -6,7 +6,6 @@ from pathlib import Path
 
 from pydantic_ai import Agent, capture_run_messages
 from pydantic_ai.capabilities import AbstractCapability, LocalWorkspace, PrepareTools
-from pydantic_ai_harness import FileSystem
 from pydantic_ai.usage import UsageLimits
 from pydantic_ai.messages import (
     ModelMessage,
@@ -18,6 +17,7 @@ from pydantic_ai.messages import (
     ToolReturnPart,
     UserPromptPart,
 )
+from pydantic_ai_harness import FileSystem
 import weave
 
 from agentomics.utils.exceptions import AgentRunFailed
@@ -32,6 +32,7 @@ def create_read_only_file_capabilities(root_dir: Path, max_tool_calls: int, max_
     async def hide_tools_after_reading_limits(ctx, tool_defs):
         last_response = next((message for message in reversed(ctx.messages) if isinstance(message, ModelResponse)), None)
         last_request_input_tokens = last_response.usage.input_tokens if last_response is not None else 0
+        # With no tools offered, the next request must give the final output.
         if ctx.usage.tool_calls >= max_tool_calls or last_request_input_tokens >= max_context_tokens:
             return []
         return tool_defs

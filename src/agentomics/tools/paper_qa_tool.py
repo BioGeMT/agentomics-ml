@@ -24,7 +24,7 @@ class PaperAnswer(BaseModel):
 
 def create_paper_qa_tool(config: Config) -> Tool[Any]:
     async def paper_qa(ctx: RunContext, question: str) -> PaperAnswer:
-        """Answer a question using downloaded papers in a separate reader context.
+        """Read downloaded papers.
 
         Args:
             question: Self-contained question to answer using the downloaded papers.

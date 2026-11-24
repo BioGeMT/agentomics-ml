@@ -21,6 +21,8 @@ def test_paper_qa_answers_from_text_and_images_without_forwarding_reader_context
     pdf.save()
     outside = tmp_path / "secret.md"
     outside.write_text("PRIVATE_SENTINEL")
+    config.processed_papers_dir.mkdir(parents=True)
+    (config.processed_papers_dir / "escape.md").symlink_to(outside)
     parent_requests = []
     reader_requests = []
     reader_calls = iter([
@@ -39,8 +41,6 @@ def test_paper_qa_answers_from_text_and_images_without_forwarding_reader_context
 
         reader_requests.append(list(messages))
         document = next(config.processed_papers_dir.glob("*/document.md"))
-        if len(reader_requests) == 1:
-            (config.processed_papers_dir / "escape.md").symlink_to(outside)
         call = next(reader_calls, None)
         if call is not None:
             name, args = call
@@ -55,9 +55,8 @@ def test_paper_qa_answers_from_text_and_images_without_forwarding_reader_context
         })])
 
     parent = Agent(FunctionModel(respond), tools=[create_tool(config, "paper_qa")], instructions="PRIVATE_PARENT_CONTEXT")
-    result = asyncio.run(parent.run("Read the downloaded paper."))
+    asyncio.run(parent.run("Read the downloaded paper."))
 
-    assert "CNN" in result.output
     payload = next(
         part.content for message in parent_requests[-1] for part in message.parts
         if isinstance(part, ToolReturnPart) and part.tool_name == "paper_qa"

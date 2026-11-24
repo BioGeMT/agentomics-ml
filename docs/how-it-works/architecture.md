@@ -141,9 +141,7 @@ The agent has access to these tools:
 | **Run Python** | Execute Python scripts |
 | **Replace** | Modify code sections |
 
-Paper QA uses the step's model and the planner's read-only list, search, and read tools within the processed-paper directory. Page-marked extracted text and rendered page images are cached; this is not structural parsing or OCR. Reader history and images are not forwarded to the step agent. Paper Fetch stays separate, and both tools are enabled by default when the paper API keys are set.
-
-Paper QA requires an image-capable model. Page images are capped at 3 MiB; oversized pages are rendered at a lower resolution or marked unavailable. Each call has its own 40-request limit, with reading tools removed after 20 tool calls or an observed input context of 100,000 tokens.
+Paper QA answers questions about papers downloaded by Paper Fetch in a separate reader context, citing files and lines, and requires an image-capable model. Both tools are enabled when the paper API keys are set.
 
 ## How Decisions Are Made
 
