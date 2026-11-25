@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 from pathlib import Path
 
 import pypdfium2 as pdfium
 from pypdf import PdfReader
+from pypdf.errors import PyPdfError
 
 from agentomics.utils.config import Config
 
-# Leave room for base64 encoding under a 5 MB image limit.
+# Leave room for base64 encoding; providers may also downscale high-resolution images.
 MAX_PAGE_IMAGE_BYTES = 3 * 1024 * 1024
 
 
@@ -20,26 +22,30 @@ def prepare_papers(config: Config) -> Path:
             continue
         with pdf_path.open("rb") as pdf_file:
             digest = hashlib.file_digest(pdf_file, "sha256").hexdigest()[:12]
-        paper_dir = config.processed_papers_dir / f"{pdf_path.stem}-{digest}-v2"
+        paper_dir = config.processed_papers_dir / f"{pdf_path.stem}-{digest}"
         document_path = paper_dir / "document.md"
         if document_path.exists():
             continue
 
         pages = []
-        with pdfium.PdfDocument(pdf_path) as document:
-            for page_number, page in enumerate(PdfReader(pdf_path).pages, start=1):
-                text = (
-                    (page.extract_text(extraction_mode="layout") or "").strip()
-                    if page.get_contents() is not None
-                    else ""
-                )
-                image_path = paper_dir / "pages" / f"page_{page_number:04d}.png"
-                image_line = (
-                    f"[Page image]({image_path.resolve()})"
-                    if _render_page(document, page_number, image_path)
-                    else "Page image unavailable: exceeds the image size limit."
-                )
-                pages.append(f"## Page {page_number}\n\n{image_line}\n\n{text}")
+        try:
+            with pdfium.PdfDocument(pdf_path) as document:
+                for page_number, page in enumerate(PdfReader(pdf_path).pages, start=1):
+                    text = (
+                        (page.extract_text(extraction_mode="layout") or "").strip()
+                        if page.get_contents() is not None
+                        else ""
+                    )
+                    image_path = paper_dir / "pages" / f"page_{page_number:04d}.png"
+                    image_line = (
+                        f"[Page image]({image_path.resolve()})"
+                        if _render_page(document, page_number, image_path)
+                        else "Page image unavailable: exceeds the image size limit."
+                    )
+                    pages.append(f"## Page {page_number}\n\n{image_line}\n\n{text}")
+        except (pdfium.PdfiumError, PyPdfError) as error:
+            logging.getLogger(__name__).warning("Skipping unreadable paper %s: %s", pdf_path, error)
+            continue
 
         document_path.parent.mkdir(parents=True, exist_ok=True)
         document_path.write_text(
@@ -53,6 +59,7 @@ def prepare_papers(config: Config) -> Path:
 
 
 def _render_page(document: pdfium.PdfDocument, page_number: int, image_path: Path) -> bool:
+    """Keep rendered pages below the file-reading capability's 5 MB image limit."""
     page = document[page_number - 1]
     try:
         for scale in (2, 1):

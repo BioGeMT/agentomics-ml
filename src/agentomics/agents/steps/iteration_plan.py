@@ -8,7 +8,7 @@ from pydantic import Field
 from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.settings import ModelSettings
 
-from agentomics.agents.agent_utils import create_read_only_file_capabilities
+from agentomics.agents.capabilities import create_read_only_file_capabilities
 from agentomics.agents.prompt_builder import get_dataset_knowledge
 from agentomics.agents.steps.base import AgentomicsAgenticStep, AgenticStepOutput
 from agentomics.agents.steps.data_split import DataSplitStep
@@ -118,7 +118,9 @@ class IterationPlanStep(AgentomicsAgenticStep):
 
     def _create_supplementary_capabilities(self) -> list[AbstractCapability]:
         return create_read_only_file_capabilities(
-            self.config.supplementary_dir, SUPPLEMENTARY_MAX_TOOL_CALLS, SUPPLEMENTARY_MAX_CONTEXT_TOKENS,
+            config=self.config, root_dir=self.config.supplementary_dir,
+            max_tool_calls=SUPPLEMENTARY_MAX_TOOL_CALLS,
+            max_context_tokens=SUPPLEMENTARY_MAX_CONTEXT_TOKENS,
         )
 
     def _has_supplementary(self) -> bool:

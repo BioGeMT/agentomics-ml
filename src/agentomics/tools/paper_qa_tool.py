@@ -1,15 +1,16 @@
-from typing import Any
+from __future__ import annotations
+
+from typing import Any, TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent, ModelRetry, RunContext, Tool
 
-from agentomics.agents.agent_utils import create_read_only_file_capabilities, run_agent
-from agentomics.runtime.paper_retrieval import prepare_papers
-from agentomics.utils.config import Config
 from agentomics.utils.exceptions import AgentRunFailed
 
-PAPER_QA_MAX_TOOL_CALLS = 20
-PAPER_QA_MAX_CONTEXT_TOKENS = 100_000
+if TYPE_CHECKING:
+    from agentomics.utils.config import Config
+
+PAPER_QA_TOOL_NAME = "paper_qa"
 
 
 class PaperSource(BaseModel):
@@ -19,12 +20,20 @@ class PaperSource(BaseModel):
 
 class PaperAnswer(BaseModel):
     answer: str = Field(description="Concise answer based on the papers, acknowledging any missing evidence.")
-    sources: list[PaperSource] = Field(description="Files and passages inspected that support the answer.")
+    sources: list[PaperSource] = Field(description="Only inspected files and passages supporting claims in the answer.")
 
 
 def create_paper_qa_tool(config: Config) -> Tool[Any]:
+    # Config imports the tool name; defer imports that depend on Config.
+    from agentomics.agents.agent_utils import run_agent
+    from agentomics.agents.capabilities import create_read_only_file_capabilities
+    from agentomics.runtime.paper_retrieval import prepare_papers
+
     async def paper_qa(ctx: RunContext, question: str) -> PaperAnswer:
-        """Read downloaded papers.
+        """Ask about methods, results, figures, or tables in papers downloaded with paper_fetch.
+
+        A separate reader searches the collection and returns a concise answer with supporting sources.
+        Ask a follow-up question when more detail is needed.
 
         Args:
             question: Self-contained question to answer using the downloaded papers.
@@ -41,25 +50,24 @@ def create_paper_qa_tool(config: Config) -> Tool[Any]:
                 "paths relative to this directory and the printed line numbers. Omit line numbers for images. "
                 "State when the papers do not answer the question or an image could not be inspected."
             ),
-            capabilities=create_read_only_file_capabilities(root, PAPER_QA_MAX_TOOL_CALLS, PAPER_QA_MAX_CONTEXT_TOKENS),
+            capabilities=create_read_only_file_capabilities(
+                config=config, root_dir=root,
+                max_tool_calls=config.paper_qa_max_tool_calls,
+                max_context_tokens=config.paper_qa_max_context_tokens,
+            ),
             retries={"output": config.max_validation_retries, "tools": config.max_tool_retries},
         )
         try:
             _, answer = await run_agent(
-                agent=reader, user_prompt=question, max_steps=2 * PAPER_QA_MAX_TOOL_CALLS, message_history=None,
+                agent=reader, user_prompt=question, max_steps=2 * config.paper_qa_max_tool_calls, message_history=None,
             )
         except AgentRunFailed as error:
-            raise ModelRetry("Paper reading failed; ask a narrower question or continue without it.") from error
+            raise ModelRetry("Paper reading failed; ask again, ask a narrower question, or continue without it.") from error
         return answer
 
     return Tool(
         paper_qa,
-        name="paper_qa",
-        description=(
-            "Ask a question about papers downloaded with paper_fetch. A separate reader searches the collection, "
-            f"including figures, and returns an answer with sources relative to {config.processed_papers_dir} "
-            "that you can inspect with Bash."
-        ),
+        name=PAPER_QA_TOOL_NAME,
         takes_ctx=True,
         max_retries=config.max_tool_retries,
         require_parameter_descriptions=True,
