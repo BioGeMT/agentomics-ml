@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import logging
 from pathlib import Path
 
 import pypdfium2 as pdfium
@@ -10,7 +9,7 @@ from pypdf.errors import PyPdfError
 
 from agentomics.utils.config import Config
 
-# Leave room for base64 encoding; providers may also downscale high-resolution images.
+# Keep 3 MiB for encoded payload limits and provider downscaling; revisit if these change.
 MAX_PAGE_IMAGE_BYTES = 3 * 1024 * 1024
 
 
@@ -44,7 +43,7 @@ def prepare_papers(config: Config) -> Path:
                     )
                     pages.append(f"## Page {page_number}\n\n{image_line}\n\n{text}")
         except (pdfium.PdfiumError, PyPdfError) as error:
-            logging.getLogger(__name__).warning("Skipping unreadable paper %s: %s", pdf_path, error)
+            print(f"Skipping unreadable paper {pdf_path}: {error}")
             continue
 
         document_path.parent.mkdir(parents=True, exist_ok=True)

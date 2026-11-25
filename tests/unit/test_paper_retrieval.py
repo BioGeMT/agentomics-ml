@@ -23,7 +23,7 @@ def _write_blank_paper(path: Path) -> None:
         document.write(output)
 
 
-def test_prepare_papers_writes_page_text_and_image_paths(default_agent_config, tmp_path, caplog):
+def test_prepare_papers_writes_page_text_and_image_paths(default_agent_config, tmp_path, capsys):
     paper_path = default_agent_config.fetched_papers_dir / "example.pdf"
     _write_paper(paper_path)
     _write_blank_paper(default_agent_config.fetched_papers_dir / "blank.pdf")
@@ -36,7 +36,7 @@ def test_prepare_papers_writes_page_text_and_image_paths(default_agent_config, t
 
     documents = list(root.glob("*/document.md"))
     assert len(documents) == 2
-    assert "broken.pdf" in caplog.text
+    assert "broken.pdf" in capsys.readouterr().out
     document_path = next(path for path in documents if path.parent.name.startswith("example-"))
     text = document_path.read_text()
     assert "## Page 2" in text

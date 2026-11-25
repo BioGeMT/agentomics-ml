@@ -1,16 +1,13 @@
-from __future__ import annotations
-
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent, ModelRetry, RunContext, Tool
 
+from agentomics.agents.agent_utils import run_agent
+from agentomics.agents.capabilities import create_read_only_file_capabilities
+from agentomics.runtime.paper_retrieval import prepare_papers
+from agentomics.utils.config import Config
 from agentomics.utils.exceptions import AgentRunFailed
-
-if TYPE_CHECKING:
-    from agentomics.utils.config import Config
-
-PAPER_QA_TOOL_NAME = "paper_qa"
 
 
 class PaperSource(BaseModel):
@@ -24,11 +21,6 @@ class PaperAnswer(BaseModel):
 
 
 def create_paper_qa_tool(config: Config) -> Tool[Any]:
-    # Config imports the tool name; defer imports that depend on Config.
-    from agentomics.agents.agent_utils import run_agent
-    from agentomics.agents.capabilities import create_read_only_file_capabilities
-    from agentomics.runtime.paper_retrieval import prepare_papers
-
     async def paper_qa(ctx: RunContext, question: str) -> PaperAnswer:
         """Ask about methods, results, figures, or tables in papers downloaded with paper_fetch.
 
@@ -67,7 +59,7 @@ def create_paper_qa_tool(config: Config) -> Tool[Any]:
 
     return Tool(
         paper_qa,
-        name=PAPER_QA_TOOL_NAME,
+        name=Config.PAPER_QA_TOOL_NAME,
         takes_ctx=True,
         max_retries=config.max_tool_retries,
         require_parameter_descriptions=True,

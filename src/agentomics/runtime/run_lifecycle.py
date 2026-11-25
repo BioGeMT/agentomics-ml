@@ -22,7 +22,6 @@ from agentomics.runtime.read_write_utils import (
 )
 from agentomics.agents.steps.step_registry import get_step_sequence
 from agentomics.tools.tool_registry import create_tools
-from agentomics.tools.paper_qa_tool import PAPER_QA_TOOL_NAME
 from agentomics.utils.config import Config
 from agentomics.utils.exceptions import StepFailed
 from agentomics.utils.providers.provider import Provider
@@ -35,9 +34,9 @@ async def run_agentomics(
     config: Config, default_model: Model, iteration_plan_model: Model, trace_analysis_model: Model, provider: Provider
 ) -> None:
     total_iterations = config.iterations
-    if PAPER_QA_TOOL_NAME in config.tool_ids and not default_model.profile["supports_image_input"]:
+    if Config.PAPER_QA_TOOL_NAME in config.tool_ids and not default_model.profile["supports_image_input"]:
         raise ValueError(
-            f"Model {default_model.model_name} must support image input when {PAPER_QA_TOOL_NAME} is enabled; "
+            f"Model {default_model.model_name} must support image input when {Config.PAPER_QA_TOOL_NAME} is enabled; "
             "use an image-capable model or run without the paper API keys."
         )
     initialize_shared_environment(config)
