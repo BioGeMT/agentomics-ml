@@ -135,10 +135,14 @@ The agent has access to these tools:
 
 | Tool | Purpose |
 |------|---------|
+| **Paper Fetch** | Download papers; enabled only when the paper API keys are set |
+| **Paper QA** | Answer questions about fetched papers in a separate reader context, with supporting sources; enabled only when the paper API keys are set |
 | **Bash** | Execute shell commands |
 | **Write Python** | Create Python files |
 | **Run Python** | Execute Python scripts |
 | **Replace** | Modify code sections |
+
+Paper QA requires an image-capable model.
 
 ## How Decisions Are Made
 

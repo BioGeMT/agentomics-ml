@@ -20,7 +20,6 @@ import weave
 from agentomics.utils.exceptions import AgentRunFailed
 from agentomics.utils.printing_utils import pretty_print_node
 
-
 @weave.op(call_display_name=lambda call: f"Agent Step - {call.inputs['output_type'].__name__ if call.inputs.get('output_type', None) else call.inputs['agent']._output_type.__name__}")
 async def run_agent(agent: Agent, user_prompt: str, max_steps: int, message_history: list | None, output_type = None, verbose: bool = True, deps=None):
     with capture_run_messages() as messages:

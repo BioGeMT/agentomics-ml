@@ -29,6 +29,7 @@ class Config:
     ITERATIONS_LESSONS_FILENAME: ClassVar[str] = "iterations_lessons.md"
     PLANNER_NOTES_FILENAME: ClassVar[str] = "planner_notes.md"
     FETCHED_PAPERS_DIRNAME: ClassVar[str] = "fetched_papers"
+    PROCESSED_PAPERS_DIRNAME: ClassVar[str] = "processed_papers"
 
     DEFAULT_ITERATIONS: ClassVar[int] = 5
     DEFAULT_SPLIT_ALLOWED_ITERATIONS: ClassVar[int] = 1
@@ -46,6 +47,7 @@ class Config:
     ]
     DEFAULT_TOOL_IDS: ClassVar[list[str]] = [
         "paper_fetch",
+        "paper_qa",
         "bash",
         "write_python",
         "run_python",
@@ -56,6 +58,11 @@ class Config:
     DEFAULT_MAX_VALIDATION_RETRIES: ClassVar[int] = 5
     DEFAULT_PAPER_FETCH_MAX_RESULTS: ClassVar[int] = 10
     DEFAULT_PAPER_FETCH_TIMEOUT: ClassVar[int] = 120
+    DEFAULT_READ_ONLY_FILE_MAX_READ_CHARS: ClassVar[int] = 5000
+    DEFAULT_READ_ONLY_FILE_MAX_SEARCH_RESULTS: ClassVar[int] = 100
+    DEFAULT_READ_ONLY_FILE_MAX_LIST_RESULTS: ClassVar[int] = 200
+    DEFAULT_PAPER_QA_MAX_TOOL_CALLS: ClassVar[int] = 40
+    DEFAULT_PAPER_QA_MAX_CONTEXT_TOKENS: ClassVar[int] = 100_000
     DEFAULT_USE_PROXY: ClassVar[bool] = True
     DEFAULT_LLM_RESPONSE_TIMEOUT: ClassVar[int] = 60 * 10
     DEFAULT_BASH_TOOL_TIMEOUT: ClassVar[int] = 60 * 3
@@ -97,7 +104,7 @@ class Config:
     step_sequence: list[str] = field(default_factory=lambda: Config.DEFAULT_STEP_SEQUENCE.copy())
     tool_ids: list[str] = field(default_factory=lambda: [
         tool_id for tool_id in Config.DEFAULT_TOOL_IDS
-        if tool_id != "paper_fetch" or is_paper_fetch_available()
+        if tool_id not in ("paper_fetch", "paper_qa") or is_paper_fetch_available()
     ])
     temperature: float = DEFAULT_TEMPERATURE
     max_validation_retries: int = DEFAULT_MAX_VALIDATION_RETRIES
@@ -106,6 +113,11 @@ class Config:
     bash_tool_timeout: int = DEFAULT_BASH_TOOL_TIMEOUT
     paper_fetch_timeout: int = DEFAULT_PAPER_FETCH_TIMEOUT
     paper_fetch_max_results: int = DEFAULT_PAPER_FETCH_MAX_RESULTS
+    read_only_file_max_read_chars: int = DEFAULT_READ_ONLY_FILE_MAX_READ_CHARS
+    read_only_file_max_search_results: int = DEFAULT_READ_ONLY_FILE_MAX_SEARCH_RESULTS
+    read_only_file_max_list_results: int = DEFAULT_READ_ONLY_FILE_MAX_LIST_RESULTS
+    paper_qa_max_tool_calls: int = DEFAULT_PAPER_QA_MAX_TOOL_CALLS
+    paper_qa_max_context_tokens: int = DEFAULT_PAPER_QA_MAX_CONTEXT_TOKENS
     max_tool_retries: int = DEFAULT_MAX_TOOL_RETRIES
     task_metadata: dict = field(default_factory=dict)
     wandb_run_id: str | None = None
@@ -166,6 +178,10 @@ class Config:
     @property
     def fetched_papers_dir(self) -> Path:
         return self.shared_dir / self.FETCHED_PAPERS_DIRNAME
+
+    @property
+    def processed_papers_dir(self) -> Path:
+        return self.shared_dir / self.PROCESSED_PAPERS_DIRNAME
 
     @property
     def current_iteration_runtime_info_dir(self) -> Path:
