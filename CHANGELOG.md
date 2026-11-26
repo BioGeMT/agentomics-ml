@@ -1,5 +1,24 @@
 # Changelog
 
+## [2.1.0](https://github.com/BioGeMT/agentomics-ml/compare/v2.0.0...v2.1.0) (2026-11-26)
+
+
+### Features
+
+* answer questions from fetched papers with a reader subagent ([#170](https://github.com/BioGeMT/agentomics-ml/issues/170)) ([050a011](https://github.com/BioGeMT/agentomics-ml/commit/050a0113e5c8657657bce2531a6845a4c204d70c))
+* log failed iteration causes to W&B ([#195](https://github.com/BioGeMT/agentomics-ml/issues/195)) ([bfce4b6](https://github.com/BioGeMT/agentomics-ml/commit/bfce4b6b7df2618f187e548e75a77fb56ca20260))
+* Supplementary aware planner ([#193](https://github.com/BioGeMT/agentomics-ml/issues/193)) ([156e82c](https://github.com/BioGeMT/agentomics-ml/commit/156e82c13149f9a3775fa026c4a335861794328c))
+
+
+### Bug Fixes
+
+* recover retained split strategy ([#197](https://github.com/BioGeMT/agentomics-ml/issues/197)) ([3099282](https://github.com/BioGeMT/agentomics-ml/commit/3099282fbfb603af69418520b204ef4412b82a69))
+
+
+### Performance Improvements
+
+* incentivize all resources usage ([#198](https://github.com/BioGeMT/agentomics-ml/issues/198)) ([7d28c91](https://github.com/BioGeMT/agentomics-ml/commit/7d28c91a17268c957890ded0d7ce4a853b9efc27))
+
 ## [2.0.0](https://github.com/BioGeMT/agentomics-ml/compare/v1.3.0...v2.0.0) (2026-11-20)
 
 
