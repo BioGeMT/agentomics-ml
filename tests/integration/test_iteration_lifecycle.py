@@ -1,3 +1,4 @@
+from agentomics.run_logging import logging_helpers
 from agentomics.runtime.read_write_utils import (
     archive_current_iteration,
     get_last_successful_iteration,
@@ -7,6 +8,7 @@ from agentomics.runtime.read_write_utils import (
     update_current_iteration_state,
 )
 from agentomics.runtime.run_lifecycle import prepare_iteration_workspace
+from agentomics.runtime.step_outputs import save_step_output
 from agentomics.utils.config import Config
 
 
@@ -73,3 +75,42 @@ def test_current_iteration_workspace_initialization_is_idempotent(
     initialize_current_iteration_workspace(initialized_run_config)
 
     assert initialized_run_config.current_iteration_dir.is_dir()
+
+
+def test_architecture_table_retains_successful_and_failed_archived_iterations(initialized_run_config, monkeypatch):
+    config = initialized_run_config
+    prepare_iteration_workspace(config, iteration=0)
+    save_step_output(config.current_iteration_dir / "model_architecture", "model_architecture", {
+        "architecture": "Random forest", "hyperparameters": "100 trees",
+        "categories": {"families": ["random_forest"], "is_ensemble": False},
+    })
+    save_step_output(config.current_iteration_dir / "model_training", "model_training", {
+        "path_to_train_file": "train.py", "path_to_model_file": "training_artifacts/model.pkl",
+        "path_to_artifacts_dir": "training_artifacts", "training_summary": "Used a linear fallback",
+        "unresolved_issues": None,
+        "trained_categories": {"families": ["linear"], "is_ensemble": False},
+    })
+    update_current_iteration_state(config, ended_at=110.0, status="success")
+    archive_current_iteration(config, 0)
+
+    prepare_iteration_workspace(config, iteration=1)
+    save_step_output(config.current_iteration_dir / "model_architecture", "model_architecture", {
+        "architecture": "Older CNN plan", "hyperparameters": "3 layers",
+    })
+    update_current_iteration_state(config, ended_at=120.0, status="failed", failed_step="model_training")
+    archive_current_iteration(config, 1)
+
+    logged = []
+    monkeypatch.setattr(logging_helpers, "is_wandb_active", lambda: True)
+    monkeypatch.setattr(logging_helpers.wandb, "log", lambda data, *, step: logged.append((data, step)))
+
+    logging_helpers.log_architecture_table(config, iteration=1)
+
+    payload, step = logged[0]
+    table = payload["architectures"]
+    assert step == 1
+    assert table.columns == ["iteration", "planned", "trained", "ensemble", "architecture", "hyperparameters", "outcome"]
+    assert table.data == [
+        [0, "random_forest", "linear", False, "Random forest", "100 trees", "success"],
+        [1, "", "", None, "Older CNN plan", "3 layers", "failed at model_training"],
+    ]

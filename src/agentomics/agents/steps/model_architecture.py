@@ -1,7 +1,24 @@
 from __future__ import annotations
 
-from pydantic import Field
+from typing import Literal
+
+from pydantic import BaseModel, Field
 from agentomics.agents.steps.base import AgentomicsAgenticStep, AgenticStepOutput
+
+
+ArchitectureFamily = Literal[
+    "linear", "decision_tree", "random_forest", "gradient_boosting", "svm",
+    "nearest_neighbors", "naive_bayes", "gaussian_process",
+    "mlp", "cnn", "rnn", "transformer", "state_space", "gnn", "other",
+]
+
+
+class ArchitectureCategories(BaseModel):
+    families: list[ArchitectureFamily] = Field(
+        min_length=1,
+        description="Families of every model in the predictor, including all ensemble members. Use 'other' for unlisted families.",
+    )
+    is_ensemble: bool = Field(description="Whether predictions combine several separately trained models.")
 
 
 class ModelArchitectureOutput(AgenticStepOutput):
@@ -15,6 +32,7 @@ class ModelArchitectureOutput(AgenticStepOutput):
         The hyperparameters you have chosen for your model.
         """
     )
+    categories: ArchitectureCategories = Field(description="Categories of the planned predictor.")
 
 class ModelArchitectureStep(AgentomicsAgenticStep):
     step_id = "model_architecture"

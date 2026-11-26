@@ -137,6 +137,7 @@ def build_default_step_response(
         return [], {
             "architecture": "First-nucleotide majority-class classifier.",
             "hyperparameters": "No tunable hyperparameters.",
+            "categories": {"families": ["other"], "is_ensemble": False},
         }
     if "training_summary" in output_fields:
         split = _previous_step_output(messages, "mini_train_path")
@@ -163,6 +164,7 @@ def build_default_step_response(
             "path_to_model_file": str(artifacts / "model.json"),
             "path_to_artifacts_dir": str(artifacts),
             "training_summary": "Learned the majority class per first nucleotide from training labels.",
+            "trained_categories": {"families": ["other"], "is_ensemble": False},
             "unresolved_issues": None,
         }
     if "inference_summary" in output_fields:

@@ -4,6 +4,8 @@ from pathlib import Path
 import wandb
 from wandb.errors import AuthenticationError, UsageError
 
+from agentomics.runtime.read_write_utils import get_archived_iterations, load_iteration_state
+from agentomics.runtime.step_outputs import load_step_output
 from agentomics.utils.ml_tasks import get_task_to_metrics_names
 from agentomics.utils.config import Config
 
@@ -63,6 +65,31 @@ def log_iteration_failure(iteration, step_id, exception_trace):
     if not is_wandb_active():
         return
     wandb.log({'failure/step': step_id, 'failure/exception_trace': exception_trace}, step=iteration)
+
+def log_architecture_table(config: Config, iteration: int) -> None:
+    if not is_wandb_active():
+        return
+    rows = []
+    for archived_iteration in get_archived_iterations(config):
+        iteration_dir = config.iteration_dir(archived_iteration)
+        planned = _step_payload(config, "model_architecture", iteration_dir)
+        trained = _step_payload(config, "model_training", iteration_dir).get("trained_categories", {})
+        state = load_iteration_state(iteration_dir)
+        rows.append([
+            archived_iteration,
+            ", ".join(planned.get("categories", {}).get("families", [])),
+            ", ".join(trained.get("families", [])),
+            trained.get("is_ensemble"),
+            planned.get("architecture"),
+            planned.get("hyperparameters"),
+            f"failed at {state['failed_step']}" if "failed_step" in state else state["status"],
+        ])
+    columns = ["iteration", "planned", "trained", "ensemble", "architecture", "hyperparameters", "outcome"]
+    wandb.log({"architectures": wandb.Table(columns=columns, data=rows)}, step=iteration)
+
+def _step_payload(config: Config, step_id: str, iteration_dir: Path) -> dict:
+    output = load_step_output(config, step_id, iteration_dir)
+    return output.model_dump() if hasattr(output, "model_dump") else output or {}
 
 def log_split_is_allowed(iteration, is_allowed):
     if not is_wandb_active():

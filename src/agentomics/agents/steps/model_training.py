@@ -13,6 +13,7 @@ from pydantic_ai import ModelRetry, RunContext
 import agentomics.agents.injectables.training_reporter as _training_reporter_module
 from agentomics.agents.steps.base import AgentomicsAgenticStep, AgenticStepOutput
 from agentomics.agents.steps.data_split import DataSplitStep
+from agentomics.agents.steps.model_architecture import ArchitectureCategories
 from agentomics.datasets.data_contract import SUPPLEMENTARY_DIR_NAME
 from agentomics.runtime.read_write_utils import does_file_contain_iteration_pattern, does_file_contain_string
 from agentomics.runtime.step_outputs import require_step_output
@@ -34,6 +35,7 @@ class ModelTrainingOutput(AgenticStepOutput):
     training_summary: str = Field(
         description="Short summary of the training implementation. Don't include any metrics in this summary."
     )
+    trained_categories: ArchitectureCategories = Field(description="Categories of the predictor actually trained, which may differ from the plan.")
     unresolved_issues: str | None = Field(
         description=(
             "Issues that remain unresolved and could impact performance and/or metrics. "
