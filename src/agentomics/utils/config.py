@@ -45,10 +45,9 @@ class Config:
         "validation_evaluation",
         "prediction_exploration",
     ]
-    PAPER_QA_TOOL_NAME: ClassVar[str] = "paper_qa"
     DEFAULT_TOOL_IDS: ClassVar[list[str]] = [
         "paper_fetch",
-        PAPER_QA_TOOL_NAME,
+        "paper_qa",
         "bash",
         "write_python",
         "run_python",
@@ -105,7 +104,7 @@ class Config:
     step_sequence: list[str] = field(default_factory=lambda: Config.DEFAULT_STEP_SEQUENCE.copy())
     tool_ids: list[str] = field(default_factory=lambda: [
         tool_id for tool_id in Config.DEFAULT_TOOL_IDS
-        if tool_id not in ("paper_fetch", Config.PAPER_QA_TOOL_NAME) or is_paper_fetch_available()
+        if tool_id not in ("paper_fetch", "paper_qa") or is_paper_fetch_available()
     ])
     temperature: float = DEFAULT_TEMPERATURE
     max_validation_retries: int = DEFAULT_MAX_VALIDATION_RETRIES

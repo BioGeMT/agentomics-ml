@@ -59,7 +59,7 @@ def create_paper_qa_tool(config: Config) -> Tool[Any]:
 
     return Tool(
         paper_qa,
-        name=Config.PAPER_QA_TOOL_NAME,
+        name="paper_qa",
         takes_ctx=True,
         max_retries=config.max_tool_retries,
         require_parameter_descriptions=True,

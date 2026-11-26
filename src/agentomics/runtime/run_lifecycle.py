@@ -34,9 +34,9 @@ async def run_agentomics(
     config: Config, default_model: Model, iteration_plan_model: Model, trace_analysis_model: Model, provider: Provider
 ) -> None:
     total_iterations = config.iterations
-    if Config.PAPER_QA_TOOL_NAME in config.tool_ids and not default_model.profile["supports_image_input"]:
+    if "paper_qa" in config.tool_ids and not default_model.profile["supports_image_input"]:
         raise ValueError(
-            f"Model {default_model.model_name} must support image input when {Config.PAPER_QA_TOOL_NAME} is enabled; "
+            f"Model {default_model.model_name} must support image input when paper_qa is enabled; "
             "use an image-capable model or run without the paper API keys."
         )
     initialize_shared_environment(config)

@@ -17,7 +17,7 @@ from agentomics.utils.config import Config
 
 TOOL_FACTORY_REGISTRY: dict[str, Callable[[Config], Tool[Any]]] = {
     "paper_fetch": create_paper_fetch_tool,
-    Config.PAPER_QA_TOOL_NAME: create_paper_qa_tool,
+    "paper_qa": create_paper_qa_tool,
     "bash": create_bash_tool,
     "write_python": create_write_python_tool,
     "run_python": create_run_python_tool,
