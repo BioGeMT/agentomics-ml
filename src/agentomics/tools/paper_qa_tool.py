@@ -22,7 +22,7 @@ class PaperAnswer(BaseModel):
 
 def create_paper_qa_tool(config: Config) -> Tool[Any]:
     async def paper_qa(ctx: RunContext, question: str) -> PaperAnswer:
-        """Ask about methods, results, figures, or tables in papers downloaded with paper_fetch.
+        """Ask about any content in papers downloaded with paper_fetch.
 
         A separate reader searches the collection and returns a concise answer with supporting sources.
         Ask a follow-up question when more detail is needed.
