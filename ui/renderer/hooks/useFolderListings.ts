@@ -32,5 +32,11 @@ export function useFolderListings(root: string, live: boolean) {
     });
   }
 
-  return { listings, expanded, toggle };
+  /** Opens a folder and every folder above it. */
+  const reveal = useCallback((rel: string) => {
+    const parts = rel.split("/").filter(Boolean);
+    setExpanded((current) => new Set([...current, ...parts.map((_, i) => parts.slice(0, i + 1).join("/"))]));
+  }, []);
+
+  return { listings, expanded, toggle, reveal };
 }

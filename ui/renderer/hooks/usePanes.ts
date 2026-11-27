@@ -48,6 +48,12 @@ export function usePanes() {
     });
   }
 
+  /** Makes sure a sidebar is showing: opens its drawer in compact windows, unfolds it otherwise. */
+  function show(side: Side) {
+    if (compactRef.current) setDrawer(side);
+    else if (!panes[side]) toggle(side);
+  }
+
   // An open drawer takes focus; closing it hands focus back to the rail that opened it.
   const lastDrawer = useRef<null | Side>(null);
   useEffect(() => {
@@ -87,5 +93,5 @@ export function usePanes() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { compact, drawer, shown, onScreen, toggle, closeDrawer: () => setDrawer(null), behindDrawer: compact && drawer !== null };
+  return { compact, drawer, shown, onScreen, toggle, show, closeDrawer: () => setDrawer(null), behindDrawer: compact && drawer !== null };
 }

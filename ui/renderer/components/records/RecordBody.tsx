@@ -8,7 +8,7 @@ import { ToolStep } from "./ToolStep";
 export type OpenPath = (path: string) => void;
 
 /** One record in an entry: a note, the step's signed result, or a tool call. */
-export function RecordBody({ record, show, onPath }: { record: EntryRecord; show: boolean; onPath?: OpenPath }) {
+export function RecordBody({ record, show, saved, onPath }: { record: EntryRecord; show: boolean; saved?: Record<string, unknown> | null; onPath?: OpenPath }) {
   if (record.kind === "text") {
     if (!record.text.trim()) return null;
     return (
@@ -24,7 +24,7 @@ export function RecordBody({ record, show, onPath }: { record: EntryRecord; show
     return (
       <div className="record">
         <Margin at={record.startedAt} label="Result" />
-        <SignedResult args={parseArgs(record.args)} at={record.startedAt} onPath={onPath} />
+        <SignedResult args={parseArgs(record.args)} saved={saved} at={record.startedAt} onPath={onPath} />
       </div>
     );
   }

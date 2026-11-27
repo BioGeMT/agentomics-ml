@@ -9,6 +9,7 @@ import { useReadingEntry } from "@/hooks/useReadingEntry";
 import { useRunStream } from "@/hooks/useRunStream";
 import { useSnapshots } from "@/hooks/useSnapshots";
 import { workspacePath } from "@/model/container-paths";
+import { readWorkspace } from "@/model/workspace";
 import { nextStep, withUpcoming, type Entry } from "@/model/run";
 import { parseRunLink, type RunMeta } from "@/model/run-link";
 import { ContentsSidebar } from "../contents/ContentsSidebar";
@@ -32,6 +33,7 @@ export function RunPage() {
   const [live, setLive] = useState(false);
   const [details, setDetails] = useState<Details>("figures");
   const [openFile, setOpenFile] = useState<string | null>(null);
+  const [revealedFolder, setRevealedFolder] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("notebook"); // narrow windows only
   const panes = usePanes();
   const pageRef = useRef<HTMLElement>(null);
@@ -88,9 +90,17 @@ export function RunPage() {
     panes.closeDrawer();
   }
 
-  /** Opens a /workspace/… path an entry mentions in the file viewer. */
+  /** Opens a /workspace/… path an entry mentions: a file in the file viewer, a folder in the Files tab. */
   async function openContainerPath(path: string, entry: Entry) {
-    if (workspace) open(await workspacePath(workspace, path, entry));
+    if (!workspace) return;
+    const rel = await workspacePath(workspace, path, entry);
+    const body = await readWorkspace({ root: workspace, path: rel });
+    if ("kind" in body && body.kind === "dir") {
+      setOpenFile(null);
+      setRevealedFolder(rel);
+      setDetails("files");
+      panes.show("figures");
+    } else open(rel);
   }
 
   const elapsed = run.startedAt ? (run.endedAt ?? now) - run.startedAt : undefined;
@@ -156,6 +166,7 @@ export function RunPage() {
         evaluation={evaluation}
         provider={meta.provider}
         openFile={openFile}
+        revealedFolder={revealedFolder}
         now={now}
         hidden={!(compact ? shown.figures : onScreen.figures)}
         inert={!shown.figures}

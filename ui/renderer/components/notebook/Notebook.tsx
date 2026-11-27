@@ -45,7 +45,7 @@ export function Notebook({ pageRef, run, source, workspace, unreachable, folded,
                 onToggle={(event) => onToggleIteration(entry.iteration, event)}
               />
             )}
-            {!folded.has(entry.iteration) && <NotebookEntry entry={entry} now={now} onPath={onPath ? (path) => onPath(path, entry) : undefined} />}
+            {!folded.has(entry.iteration) && <NotebookEntry entry={entry} workspace={workspace} now={now} onPath={onPath ? (path) => onPath(path, entry) : undefined} />}
           </Fragment>
         ))}
         {starting && run.entries.some((e) => e.position > 0) && (

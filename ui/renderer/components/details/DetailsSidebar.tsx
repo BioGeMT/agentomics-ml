@@ -5,7 +5,7 @@ import { DetailsTabs, type Details } from "./DetailsTabs";
 import { FiguresPanel } from "./FiguresPanel";
 
 /** The right sidebar: the run's figures, or its workspace files when the run's folder is known. */
-export function DetailsSidebar({ run, workspace, details, onDetails, evaluation, provider, openFile, now, hidden, inert, onOpenFile, onGoTo }: {
+export function DetailsSidebar({ run, workspace, details, onDetails, evaluation, provider, openFile, revealedFolder, now, hidden, inert, onOpenFile, onGoTo }: {
   run: Run;
   workspace: string | null;
   details: Details;
@@ -13,6 +13,8 @@ export function DetailsSidebar({ run, workspace, details, onDetails, evaluation,
   evaluation: EvaluationState;
   provider?: string;
   openFile: string | null;
+  /** A folder to show in the Files tab. */
+  revealedFolder?: string | null;
   now: number;
   hidden: boolean;
   inert: boolean;
@@ -25,7 +27,7 @@ export function DetailsSidebar({ run, workspace, details, onDetails, evaluation,
         {workspace ? <DetailsTabs details={details} onDetails={onDetails} /> : <h2>Figures</h2>}
       </div>
       {details === "files" && workspace ? (
-        <FileTree root={workspace} live={run.status === "running"} selected={openFile} onOpen={onOpenFile} />
+        <FileTree root={workspace} live={run.status === "running"} selected={openFile} revealed={revealedFolder} onOpen={onOpenFile} />
       ) : (
         <FiguresPanel run={run} evaluation={evaluation} provider={provider} now={now} onGoTo={onGoTo} />
       )}
