@@ -1,7 +1,7 @@
 import { useChartWidth } from "@/hooks/useChartWidth";
 import { histogram, type Scored } from "@/model/evaluation";
 
-/** Fig. 6: how predicted probabilities fall for each true class, with the 0.5 threshold. */
+/** how predicted probabilities fall for each true class, with the 0.5 threshold. */
 export function ScoreDistribution({ scored, names }: { scored: Scored; names: [string, string] }) {
   const [chartRef, width] = useChartWidth();
   const height = 150;
@@ -14,7 +14,7 @@ export function ScoreDistribution({ scored, names }: { scored: Scored; names: [s
   const base = height - pad.bottom;
   return (
     <figure className="figure">
-      <figcaption><span className="fig-label">Fig. 6</span> Predicted probability by class</figcaption>
+      <figcaption>Predicted probability by class</figcaption>
       <div className="chart" ref={chartRef}>
         <svg viewBox={`0 0 ${width} ${height}`} width="100%" role="img" aria-label={`Histogram of predicted probability for ${names[0]} and ${names[1]}`}>
           <line x1={pad.left} x2={width - pad.right} y1={base} y2={base} className="grid-line" />

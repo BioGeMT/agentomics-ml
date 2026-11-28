@@ -84,9 +84,34 @@ export function splitCommand(command: string): { connector: string; text: string
   return parts;
 }
 
-export type Segment = { kind: "text"; lines: string[] } | { kind: "csv"; lines: string[] } | { kind: "warning"; lines: string[] };
+export type Segment = { kind: "text" | "csv" | "warning" | "json"; lines: string[] };
 
-/** Splits command output into plain text, CSV blocks (2+ lines with the same number of columns) and warnings. */
+/**
+ * Whether a line could be a row of a CSV table. Lines of JSON, code or prose also have commas, so rows that
+ * are indented, are JSON keys, open or close a bracket, end with a comma (a list going on), or read as a
+ * sentence (words, with a space after most commas) are not.
+ */
+function tableRow(line: string): boolean {
+  if (!line.includes(",") || /^\s/.test(line) || /^\s*"[^"]*"\s*:/.test(line) || /^[\]{}[]/.test(line) || /[,{[(]\s*$/.test(line)) return false;
+  const commas = line.split(",").length - 1;
+  const spaced = line.split(", ").length - 1;
+  return !(spaced * 2 > commas && /[a-z]{2,} [a-z]{2,}/i.test(line));
+}
+
+/** A JSON value printed from lines[start] (an opening bracket at the start of a line), and the line after it. */
+function jsonAt(lines: string[], start: number): { pretty: string; end: number } | null {
+  const open = lines[start].trimEnd();
+  if (open !== "{" && open !== "[" && !/^[[{].*[\]}]$/.test(open)) return null;
+  const close = open[0] === "{" ? "}" : "]";
+  for (let end = start; end < Math.min(lines.length, start + 2000); end++) {
+    if (!lines[end].startsWith(close) && end !== start) continue;
+    const pretty = prettyJson(lines.slice(start, end + 1).join("\n"));
+    if (pretty) return { pretty, end: end + 1 };
+  }
+  return null;
+}
+
+/** Splits command output into plain text, CSV blocks (2+ rows with the same number of columns), JSON and warnings. */
 export function segmentOutput(text: string): Segment[] {
   const lines = text.replace(/\n?\[Tool call took [\d.]+ seconds\]\s*$/, "").replace(/\n$/, "").split("\n");
   const segments: Segment[] = [];
@@ -95,9 +120,16 @@ export function segmentOutput(text: string): Segment[] {
     if (last && last.kind === kind) last.lines.push(line);
     else segments.push({ kind, lines: [line] } as Segment);
   };
-  const columns = (line: string) => (line.includes(",") ? splitRow(line, ",").length : 0);
+  const columns = (line: string) => (tableRow(line) ? splitRow(line, ",").length : 0);
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    // A JSON file the command printed (cat metadata.json): one highlighted block, never table rows.
+    const json = /^[[{]/.test(line) ? jsonAt(lines, i) : null;
+    if (json) {
+      segments.push({ kind: "json", lines: json.pretty.split("\n") });
+      i = json.end - 1;
+      continue;
+    }
     // Python warnings: "...: SomethingWarning: message" plus the indented source line that follows.
     if (/\b\w*Warning: /.test(line)) {
       push("warning", line);

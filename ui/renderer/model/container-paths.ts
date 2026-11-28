@@ -3,7 +3,7 @@ import type { Entry } from "./run";
 import { exists } from "./workspace";
 
 // Step folders in a run, in step order, as they are named once an iteration is archived.
-export const STEP_DIRS = ["iteration_plan", "data_exploration", "data_split", "data_representation", "model_architecture", "model_training", "model_inference", "prediction_exploration", "validation_evaluation"];
+export const STEP_DIRS = ["iteration_plan", "data_exploration", "data_split", "data_representation", "model_architecture", "model_training", "model_inference", "validation_evaluation", "prediction_exploration"];
 
 /** A finished step's archived folder in the workspace (run/iteration_N/<step>), or null for an unknown step. */
 export function stepFolder(entry: Entry): string | null {

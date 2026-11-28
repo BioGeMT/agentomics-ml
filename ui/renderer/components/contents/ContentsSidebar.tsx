@@ -4,7 +4,7 @@ import { ContentsEntry } from "./ContentsEntry";
 import { ContentsSkeleton } from "./ContentsSkeleton";
 
 /** The left sidebar: every iteration's steps, each with its state and time; the one being read is highlighted. */
-export function ContentsSidebar({ run, chapters, folded, active, current, now, hidden, inert, onToggleIteration, onGoTo }: {
+export function ContentsSidebar({ run, chapters, folded, active, current, now, hidden, inert, onToggleIteration, forkFrom, onGoTo }: {
   run: Run;
   chapters: [number, Entry[]][];
   folded: Set<number>;
@@ -15,6 +15,8 @@ export function ContentsSidebar({ run, chapters, folded, active, current, now, h
   hidden: boolean;
   inert: boolean;
   onToggleIteration: (iteration: number, event: React.MouseEvent) => void;
+  /** New Run set to fork the run from this iteration, when it can be forked. */
+  forkFrom?: (iteration: number) => string;
   onGoTo: (key: string) => void;
 }) {
   return (
@@ -31,6 +33,7 @@ export function ContentsSidebar({ run, chapters, folded, active, current, now, h
             open={!folded.has(iteration)}
             live={current?.iteration === iteration}
             onToggle={(event) => onToggleIteration(iteration, event)}
+            forkHref={forkFrom && run.snapshots.some((s) => s.iteration + 1 === iteration) ? forkFrom(iteration) : undefined}
           />
           <ol hidden={folded.has(iteration)}>
             {chapter.map((entry) => (

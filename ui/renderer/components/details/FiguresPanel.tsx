@@ -15,7 +15,7 @@ export function FiguresPanel({ run, evaluation, provider, now, onGoTo }: {
   return (
     <>
       {evaluation.test && <TestResultCard test={evaluation.test} best={best} primary={primary} />}
-      <Figures snapshots={run.snapshots} onGoTo={onGoTo} />
+      <Figures snapshots={run.snapshots} live={run.status === "running"} onGoTo={onGoTo} />
       <Diagnostics iterations={evaluation.iterations} test={evaluation.test} best={best} names={evaluation.names} />
       <Timeline entries={run.entries} now={now} onGoTo={onGoTo} />
       <CostTable entries={run.entries} provider={provider} />

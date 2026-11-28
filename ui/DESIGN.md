@@ -39,51 +39,51 @@ colors:
   hover-row: "#f3f5f8"
 typography:
   chapter:
-    fontFamily: "Source Sans 3, Segoe UI, system-ui, sans-serif"
+    fontFamily: "Geist, system-ui, Segoe UI, sans-serif"
     fontSize: "24px"
     fontWeight: 700
     letterSpacing: "-0.02em"
   entry-title:
-    fontFamily: "Source Sans 3, Segoe UI, system-ui, sans-serif"
+    fontFamily: "Geist, system-ui, Segoe UI, sans-serif"
     fontSize: "19px"
     fontWeight: 650
     letterSpacing: "-0.01em"
   card-title:
-    fontFamily: "Source Sans 3, Segoe UI, system-ui, sans-serif"
+    fontFamily: "Geist, system-ui, Segoe UI, sans-serif"
     fontSize: "17px"
     fontWeight: 650
     letterSpacing: "-0.01em"
   wordmark:
-    fontFamily: "Source Sans 3, Segoe UI, system-ui, sans-serif"
+    fontFamily: "Geist, system-ui, Segoe UI, sans-serif"
     fontSize: "17px"
     fontWeight: 700
     lineHeight: 1
     letterSpacing: "-0.015em"
   note:
-    fontFamily: "Source Sans 3, Segoe UI, system-ui, sans-serif"
+    fontFamily: "Geist, system-ui, Segoe UI, sans-serif"
     fontSize: "14.5px"
     fontWeight: 400
     lineHeight: 1.6
   ui:
-    fontFamily: "Source Sans 3, Segoe UI, system-ui, sans-serif"
+    fontFamily: "Geist, system-ui, Segoe UI, sans-serif"
     fontSize: "13.5px"
     fontWeight: 600
   label:
-    fontFamily: "Source Sans 3, Segoe UI, system-ui, sans-serif"
+    fontFamily: "Geist, system-ui, Segoe UI, sans-serif"
     fontSize: "12.5px"
     fontWeight: 500
   code:
-    fontFamily: "Source Code Pro, ui-monospace, Menlo, Consolas, monospace"
+    fontFamily: "Geist Mono, ui-monospace, Menlo, Consolas, monospace"
     fontSize: "12.5px"
     fontWeight: 400
     lineHeight: 1.6
   data:
-    fontFamily: "Source Code Pro, ui-monospace, Menlo, Consolas, monospace"
+    fontFamily: "Geist Mono, ui-monospace, Menlo, Consolas, monospace"
     fontSize: "11.5px"
     fontWeight: 500
     fontFeature: "tnum"
   margin-time:
-    fontFamily: "Source Code Pro, ui-monospace, Menlo, Consolas, monospace"
+    fontFamily: "Geist Mono, ui-monospace, Menlo, Consolas, monospace"
     fontSize: "11px"
     fontWeight: 500
     fontFeature: "tnum"
@@ -211,7 +211,7 @@ Where the direction contract's hex values differ from the build (its ballpoint, 
 A graphite-and-white notebook with ballpoint-blue ink and three state colours, one of which (amber) is reserved.
 
 ### Primary
-- **Ballpoint Blue** (`ballpoint`): the agent's hand. Entry codes, figure and table labels ("Fig. 1", "Table 1"), the signer's name, the `$` prompt, margin labels ("Result"), fold toggles, metric-select links, the "best" tag, every focus ring on the page. Its tint (`ballpoint-tint`) backs entry-code chips, best tags, entry references and the Open button.
+- **Ballpoint Blue** (`ballpoint`): the agent's hand. Entry codes, the signer's name, the `$` prompt, margin labels ("Result"), fold toggles, metric-select links, the "best" tag, every focus ring on the page. Its tint (`ballpoint-tint`) backs entry-code chips, best tags, entry references and the Open button.
 - **Validation Series** (`series-validation`): the same blue as ballpoint, deliberately. Validation is the number the agent is judged by, so it is drawn in the agent's ink: filled markers on a solid line.
 
 ### Secondary
@@ -243,10 +243,10 @@ A graphite-and-white notebook with ballpoint-blue ink and three state colours, o
 ## Typography
 
 **Display Font:** none; headings use the body family at heavier weights.
-**Body Font:** Source Sans 3 (with Segoe UI, system-ui), self-hosted via next/font as `--font-sans`.
-**Label/Mono Font:** Source Code Pro (with ui-monospace, Menlo, Consolas), self-hosted as `--font-mono`.
+**Body Font:** Geist (with system-ui, Segoe UI), bundled from `@fontsource-variable/geist` as `--sans`, the face Groundseed uses.
+**Label/Mono Font:** Geist Mono (with ui-monospace, Menlo, Consolas), bundled from `@fontsource-variable/geist-mono` as `--mono`.
 
-**Character:** A plain, legible humanist sans for everything a person reads, and a quiet mono for everything a machine produced or a person compares column to column. Both are self-hosted so every desktop platform renders the same faces.
+**Character:** A precise, legible grotesque sans for everything a person reads, and its matching mono for everything a machine produced or a person compares column to column. Both ship inside the app, so every platform renders the same faces, offline too.
 
 ### Hierarchy
 - **Chapter** (700, 24px, -0.02em): iteration chapter breaks on the page.
@@ -323,7 +323,7 @@ The agent's `final_result` closes the entry: the margin reads "Result" in ballpo
 Each iteration opens with a chapter break: a 2px ink top rule, "Iteration N" at 24px 700, the validation result in mono, and either a "best so far" tag or a muted "did not beat the best". The margin column shows a timestamp (HH:MM:SS) only when it differs from the record above.
 
 ### Figures
-Captioned "Fig. 1", "Fig. 2", "Table 1" with the label in ballpoint 700, a legend, and an entry-reference chip linking back to the evaluation entry. Fig. 1 plots the run's metric by iteration with the best point ringed and direct-labelled; points sit inset from the axis; hovering a column draws a dashed crosshair and a dark ink tooltip, and clicking opens the entry. Fig. 2 is a dumbbell per bounded metric (train hollow, validation filled, grey connector), primary metric bold. Table 1 lists every metric in tabular mono; bounded metric names are underlined ballpoint buttons that re-plot Fig. 1.
+Captioned by title alone ("Time by stage", "Cost"; numbers read as missing figures while a run fills them in), with a legend, and an entry-reference chip linking back to the evaluation entry. The metric-by-iteration figure plots the run's metric with the best point ringed and direct-labelled; points sit inset from the axis; hovering a column draws a dashed crosshair and a dark ink tooltip, and clicking opens the entry. Train vs validation is a dumbbell per bounded metric (train hollow, validation filled, grey connector), primary metric bold. The metrics table lists every metric in tabular mono; bounded metric names are underlined ballpoint buttons that re-plot the metric-by-iteration figure.
 
 ### Logo
 The helix mark: an upright double helix seen side on, on a rounded graphite tile. The front strands (pale blue above, cover white below) pass over grey and deep slate back strands, with a tile-coloured outline opening the gap where they cross and one slate rung at the waist; beside it the wordmark "Agent" in cover ink and "omics" in `wordmark-accent`. Used at 26 to 28px in the cover bar, and as the favicon and Dock icon.

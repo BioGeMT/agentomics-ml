@@ -54,11 +54,16 @@ async function entries(folder: string): Promise<string[]> {
   return readdir(folder).catch(() => []);
 }
 
+/** When a pydantic-ai message was made. A request may carry its time only on its parts (e.g. the prompt). */
+function messageAt(message: any): number | undefined {
+  return millis(message?.timestamp ?? message?.parts?.find((part: any) => part?.timestamp)?.timestamp);
+}
+
 async function firstMessageAt(file: string): Promise<number | undefined> {
   const text = await readFile(file, "utf8").catch(() => "");
   const line = text.slice(0, text.indexOf("\n") + 1 || undefined).trim();
   try {
-    return millis(JSON.parse(line).timestamp);
+    return messageAt(JSON.parse(line));
   } catch {
     return undefined;
   }
@@ -87,8 +92,16 @@ export async function scanSteps(runFolder: string): Promise<Step[]> {
 
   // Archived steps: run/iteration_<n>/<step_id>/, and the iteration in progress, run/current_iteration/.
   const run = path.join(runFolder, "run");
+  const iterationEnd = new Map<number, number>();
   for (const folder of await entries(run)) {
     let iteration = iterationOf(folder);
+    if (iteration !== null) {
+      const state = await readFile(path.join(run, folder, "runtime_info", "iteration_state.json"), "utf8").catch(() => "");
+      try {
+        const endedAt = JSON.parse(state).ended_at;
+        if (typeof endedAt === "number") iterationEnd.set(iteration, endedAt * 1000);
+      } catch {}
+    }
     if (folder === "current_iteration") {
       const metadata = await readFile(path.join(run, folder, "runtime_info", "iteration_metadata.json"), "utf8").catch(() => "");
       try {
@@ -103,7 +116,15 @@ export async function scanSteps(runFolder: string): Promise<Step[]> {
   }
 
   const order = (s: Step) => s.firstAt ?? s.doneAt ?? Infinity;
-  return [...steps.values()].sort((a, b) => a.iteration - b.iteration || order(a) - order(b));
+  const sorted = [...steps.values()].sort((a, b) => a.iteration - b.iteration || order(a) - order(b));
+  // An output's file time can be later than its step really ended: a fork checks the kept iterations' files out
+  // again, so they all carry the fork's time. A step ends by the time the next one starts and its iteration ends.
+  for (const [index, found] of sorted.entries()) {
+    if (found.doneAt === undefined) continue;
+    const bounds = [sorted[index + 1]?.firstAt, iterationEnd.get(found.iteration)].filter((t): t is number => t !== undefined);
+    found.doneAt = Math.min(found.doneAt, ...bounds);
+  }
+  return sorted;
 }
 
 const asText = (content: unknown) => (typeof content === "string" ? content : JSON.stringify(content));
@@ -111,7 +132,7 @@ const asText = (content: unknown) => (typeof content === "string" ? content : JS
 /** The AG-UI events for one pydantic-ai message from a trace. */
 export function messageEvents(message: any): AguiEvent[] {
   const events: AguiEvent[] = [];
-  const at = millis(message?.timestamp);
+  const at = messageAt(message);
   if (message?.kind === "request") {
     for (const part of message.parts ?? []) {
       // A tool's result, or the feedback on a tool call the model got wrong.

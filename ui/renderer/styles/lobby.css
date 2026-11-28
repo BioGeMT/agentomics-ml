@@ -38,7 +38,7 @@
 .sidebar-empty { margin: 4px 8px; font-size: 12.5px; color: var(--ink-3); }
 
 /* Search and filters above the runs, as in Mail and Notes. */
-.run-filters { display: grid; gap: 6px; margin: 2px 4px 6px; }
+.run-filters { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; margin: 2px 4px 6px; }
 .run-search { display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px; border-radius: 7px; background: rgb(var(--shade) / 0.06); color: var(--ink-3); }
 .run-search input { flex: 1; min-width: 0; border: 0; background: none; font: 13px var(--sans); color: var(--ink); outline: none; }
 .run-search:focus-within { box-shadow: 0 0 0 2px rgb(var(--accent-rgb) / 0.45); }
@@ -55,14 +55,14 @@
 .run-day { margin: 14px 8px 4px; font-size: 11px; font-weight: 600; color: var(--ink-3); }
 .run-day:first-child { margin-top: 2px; }
 .run-item {
-  display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; column-gap: 8px; row-gap: 2px; align-items: center;
+  display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; column-gap: 7px; row-gap: 2px; align-items: center;
   padding: 8px 8px 9px; border-radius: 7px; color: var(--ink); text-decoration: none;
 }
 .run-item:hover { background: var(--hover); }
-.run-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); }
-.run-dot.running { background: var(--live); }
-.run-dot.finished { background: var(--done); }
-.run-dot.failed { background: var(--failed); }
+.run-status-icon { display: grid; place-items: center; width: 14px; height: 14px; color: var(--ink-3); }
+.run-status-icon.finished { color: var(--done); }
+.run-status-icon.failed { color: var(--failed); }
+.run-status-icon i { width: 7px; height: 7px; border-radius: 50%; background: var(--live); box-shadow: 0 0 0 3px rgb(from var(--live) r g b / 0.22); }
 .run-name { font-size: 13.5px; font-weight: 650; letter-spacing: -0.005em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .run-score-block { display: inline-flex; align-items: center; gap: 6px; }
 .run-score { font: 700 13px var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
@@ -73,17 +73,18 @@
 .run-dots i.done { background: var(--accent); box-shadow: none; }
 .run-dots i.running { background: var(--live); box-shadow: none; }
 .run-dots i.failed { background: var(--failed); box-shadow: none; }
+.run-dots i.stopped { background: var(--ink-3); box-shadow: none; }
 .run-dots-count { flex: none; font: 600 11px var(--mono); color: var(--ink-2); }
 .run-when { grid-column: 2 / -1; font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Hover actions take the score's place instead of covering the text. */
 .run-actions { position: absolute; right: 8px; top: 6px; display: none; gap: 2px; }
 .run-list li:hover .run-actions, .run-list li:focus-within .run-actions { display: flex; }
 .run-list li:hover .run-score-block, .run-list li:focus-within .run-score-block { visibility: hidden; }
-.run-actions button {
+.run-actions button, .run-actions a {
   display: grid; place-items: center; width: 24px; height: 22px; border: 0; border-radius: 5px;
   background: transparent; color: var(--ink-2); cursor: pointer;
 }
-.run-actions button:hover { background: rgb(var(--shade) / 0.08); color: var(--ink); }
+.run-actions button:hover, .run-actions a:hover { background: rgb(var(--shade) / 0.08); color: var(--ink); }
 
 /* ---------- main ---------- */
 .lobby-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--page-tint); }
@@ -254,7 +255,12 @@
 .drop-overlay strong { font-size: 15px; }
 .drop-overlay span { font-size: 12.5px; color: var(--ink-3); }
 
+/* In a browser the lobby is only a pointer to the desktop app: one short note, centred in the window. */
 .lobby-browser { display: block; }
+.lobby-browser .lobby-main { min-height: 100vh; }
+.lobby-browser .lobby-content { flex: 1; align-content: center; justify-items: center; max-width: 52ch; margin: 0 auto; text-align: center; }
+.lobby-browser .lobby-content > h1 { margin: 0; }
+.lobby-browser code { white-space: nowrap; }
 
 @media (max-width: 760px) {
   .lobby { grid-template-columns: 1fr; height: auto; min-height: 100vh; }
@@ -322,3 +328,20 @@
 .docker-actions { display: flex; gap: 8px; }
 a.mac-primary { display: inline-flex; align-items: center; text-decoration: none; }
 
+
+/* New Run, forking an ended run: the run in place of the dataset, the iteration to fork from, and what to change. */
+.fork-card .dataset-icon { color: var(--accent); }
+.fork-cancel { text-decoration: none; }
+.fork-facts { margin: 12px 0 8px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.fork-keep { margin: 0 -16px; padding-inline: 16px; box-shadow: inset 0 1px 0 var(--group-line), inset 0 -1px 0 var(--group-line); }
+.fork-note { margin: 10px 0 0; font-size: 12px; line-height: 1.45; color: var(--ink-3); }
+/* New Run's Fork a Run: recent runs with a finished iteration, each a row with its own Fork button. */
+.fork-picker h2 { margin: 0; font-size: 15px; font-weight: 700; }
+.fork-picker ul { list-style: none; margin: 0; padding: 0; border: 1px solid var(--group-line); border-radius: 8px; overflow: hidden; background: var(--page); }
+.fork-picker li { display: flex; align-items: center; gap: 12px; padding: 8px 10px; }
+.fork-picker li + li { border-top: 1px solid var(--group-line); }
+.fork-picker li > div { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.fork-picker strong { font-size: 13px; font-weight: 650; }
+.fork-picker li span { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fork-picker a { display: inline-flex; align-items: center; gap: 5px; flex: none; text-decoration: none; }
+.fork-picker-more { margin: 10px 0 0; font-size: 12px; color: var(--ink-3); }

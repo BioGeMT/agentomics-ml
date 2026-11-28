@@ -7,7 +7,7 @@ import type { GoTo } from "./Figures";
 import { Legend } from "./Legend";
 import { TRAIN, VALIDATION } from "./series";
 
-/** Fig. 2: train against validation for each metric of one iteration, as dumbbells; the gap shows overfitting. */
+/** train against validation for each metric of one iteration, as dumbbells; the gap shows overfitting. */
 export function TrainVsValidation({ snapshot, primary, onGoTo }: { snapshot: Snapshot; primary: string; onGoTo: GoTo }) {
   const [hover, setHover] = useState<string | null>(null);
   const metrics = metricNames([snapshot]).filter((m) => BOUNDED.has(m));
@@ -26,7 +26,7 @@ export function TrainVsValidation({ snapshot, primary, onGoTo }: { snapshot: Sna
   return (
     <figure className="figure">
       <figcaption>
-        <span className="fig-label">Fig. 2</span> Train vs validation, iteration {snapshot.iteration + 1}
+        Train vs validation, iteration {snapshot.iteration + 1}
         <button className="entry-ref" onClick={() => onGoTo(sourceEntry(snapshot))}>{sourceEntry(snapshot)}</button>
       </figcaption>
       <Legend />

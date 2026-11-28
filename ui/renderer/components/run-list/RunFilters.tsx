@@ -1,11 +1,11 @@
 import type { RunEntry, RunStatus } from "@agentomics/contract";
 import { Search } from "lucide-react";
-import { STATUS_LABEL, type RunFilter } from "@/model/run-list";
+import { STATUS_LABEL, statusOf, type RunFilter } from "@/model/run-list";
 
 /** Search and the model and status pop-ups above the runs, as in Mail and Notes. */
 export function RunFilters({ runs, filter, onChange }: { runs: RunEntry[]; filter: RunFilter; onChange: (filter: RunFilter) => void }) {
   const models = [...new Set(runs.map((r) => r.model))].sort();
-  const statuses = (Object.keys(STATUS_LABEL) as RunStatus[]).filter((st) => runs.some((r) => r.status === st));
+  const statuses = (Object.keys(STATUS_LABEL) as RunStatus[]).filter((st) => runs.some((r) => statusOf(r) === st));
   const set = (changes: Partial<RunFilter>) => onChange({ ...filter, ...changes });
   return (
     <div className="run-filters">

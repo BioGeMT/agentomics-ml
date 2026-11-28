@@ -27,8 +27,8 @@ export function Diagnostics({ iterations, test, best, names }: { iterations: Ite
   return (
     <>
       <DiagnosticsPicker iterations={curves.map((c) => c.iteration)} hasTest={Boolean(test?.scored)} selected={selected} onSelect={setChosen} />
-      <CurveChart fig="Fig. 3" title="ROC" xLabel="false positive rate" yLabel="true positive rate" series={rocSeries} diagonal />
-      <CurveChart fig="Fig. 4" title="Precision–recall" xLabel="recall" yLabel="precision" series={prSeries} />
+      <CurveChart title="ROC" xLabel="false positive rate" yLabel="true positive rate" series={rocSeries} diagonal />
+      <CurveChart title="Precision–recall" xLabel="recall" yLabel="precision" series={prSeries} />
       {scored && <ConfusionMatrix scored={scored} names={names} />}
       {scored && <ScoreDistribution scored={scored} names={names} />}
     </>

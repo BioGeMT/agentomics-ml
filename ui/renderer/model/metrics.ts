@@ -1,5 +1,5 @@
 // Reading an iteration's metrics from its snapshot.
-import type { Snapshot } from "./run";
+import { STEP_SEQUENCE, type Snapshot } from "./run";
 
 // Metrics on a bounded scale (MCC can dip below 0); LOG_LOSS is unbounded and stays in the table.
 export const BOUNDED = new Set(["ACC", "AUPRC", "AUROC", "F1", "MCC"]);
@@ -17,9 +17,11 @@ export function value(snapshot: Snapshot, split: "validation" | "train", metric:
   return snapshot.metrics[`${split}/${metric}`];
 }
 
-/** Evaluation entry an iteration's metrics come from, e.g. "2.9". */
+const EVALUATION_POSITION = STEP_SEQUENCE.indexOf("VALIDATION EVALUATION") + 1;
+
+/** Evaluation entry an iteration's metrics come from, e.g. "2.8". */
 export function sourceEntry(snapshot: Snapshot): string {
-  return `${snapshot.iteration + 1}.9`;
+  return `${snapshot.iteration + 1}.${EVALUATION_POSITION}`;
 }
 
 export function bestSnapshot(snapshots: Snapshot[]): Snapshot {

@@ -17,7 +17,7 @@ import * as images from "./images";
 import { handle, send } from "./ipc";
 import { ICON, PACKAGED, REPO_ROOT, RUNS_DIR, USE_PROTOCOL, RENDERER_ROOT } from "./paths";
 import { registerScheme, serveApp } from "./protocol";
-import { deleteRun, isRunning, listRuns, runEnding, runMenu, runnerOutcome, startRun, stopRun } from "./runs";
+import { deleteRun, isRunning, listRuns, runEnding, runMenu, runnerLog, runnerOutcome, startRun, stopRun, stopRunIn } from "./runs";
 import { createWindow, setMenu, setViewState, stopDevServer } from "./window";
 
 app.setName("Agentomics");
@@ -60,7 +60,9 @@ handle("check-dataset", (_event, folder, image) => checkDataset(folder, image));
 handle("start-run", (_event, options) => startRun(options));
 handle("list-runs", () => listRuns());
 handle("stop-run", (_event, id) => stopRun(id));
+handle("stop-run-in", (event, workspace) => stopRunIn(event, String(workspace)));
 handle("runner-outcome", (_event, workspace) => runnerOutcome(String(workspace)));
+handle("runner-log", (_event, workspace) => runnerLog(String(workspace)));
 handle("show-file", (_event, file) => {
   // Only a run's runner log, which the app wrote itself.
   const resolved = path.resolve(String(file));

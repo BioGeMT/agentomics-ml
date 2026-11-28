@@ -2,7 +2,7 @@ import type { DesktopApi, RunEntry } from "@agentomics/contract";
 import { Fragment, useState } from "react";
 import { filterRuns, groupByDay, isFiltering, NO_FILTER, type RunFilter } from "@/model/run-list";
 import { TRASH } from "@/model/platform";
-import { runLink } from "@/model/run-link";
+import { forkLink, runLink } from "@/model/run-link";
 import { RunFilters } from "./RunFilters";
 import { RunListItem } from "./RunListItem";
 
@@ -29,6 +29,7 @@ export function RunList({ api, runs: allRuns, onChange }: { api: DesktopApi; run
     event.preventDefault();
     const action = await api.runMenu(run.id);
     if (action === "open") window.location.href = runLink(run);
+    if (action === "fork") window.location.href = forkLink(run.workspace);
     if (action === "show") api.showFolder(run.workspace);
     if (action === "stop") stop(run);
     if (action === "trash") trash(run);

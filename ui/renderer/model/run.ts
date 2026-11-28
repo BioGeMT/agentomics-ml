@@ -12,8 +12,8 @@ export const STEP_SEQUENCE = [
   "ARCHITECTURE",
   "TRAINING",
   "INFERENCE",
-  "PREDICTION EXPLORATION",
   "VALIDATION EVALUATION",
+  "PREDICTION EXPLORATION",
 ];
 
 export type ToolRecord = {
@@ -65,6 +65,8 @@ export type RunStatus = "idle" | "connecting" | "running" | "finished" | "failed
 export type Run = {
   status: RunStatus;
   error?: string;
+  /** Failed because it was stopped from the app. */
+  stopped?: boolean;
   startedAt?: number;
   endedAt?: number;
   entries: Entry[];
@@ -195,6 +197,7 @@ export function applyEvent(run: Run, event: any): void {
     case "RUN_ERROR":
       run.status = "failed";
       run.error = event.message;
+      run.stopped = event.code === "stopped";
       run.endedAt = at;
       run.entries.forEach((e) => {
         if (e.status === "running") e.status = "failed";
@@ -210,7 +213,9 @@ function skipped(run: Run): Entry[] {
   for (const iteration of iterations) {
     const reached = run.entries.filter((e) => e.iteration === iteration && e.position > 0);
     const furthest = Math.max(0, ...reached.map((e) => e.position));
-    const finished = run.status === "finished" || run.status === "failed" || iterations.some((i) => i > iteration);
+    // Steps after the furthest one were skipped only if the iteration went on to its end; a run that failed or
+    // was stopped just never reached them.
+    const finished = run.status === "finished" || iterations.some((i) => i > iteration);
     STEP_SEQUENCE.forEach((name, index) => {
       const position = index + 1;
       if ((position < furthest || (finished && position > furthest)) && !reached.some((e) => e.position === position)) {

@@ -273,7 +273,8 @@ def _run_inference_on_test_input(
             all_iterations=False,
             cpu_only=cpu_only,
             wandb_prefix=test_input.name,
-        )
+        ),
+        extra_docker_arguments=tuple(_workspace_label_arguments(workspace_directory)),
     )
 
 

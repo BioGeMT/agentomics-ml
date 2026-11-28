@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { formatClock } from "@/model/format";
 import { LinkedText } from "./LinkedText";
 import type { OpenPath } from "./RecordBody";
@@ -17,7 +18,7 @@ export function SignedResult({ args, saved, at, onPath }: { args: Record<string,
         {entries.map(([key, v]) => (
           <div key={key} className="result-row">
             <dt>{key.replaceAll("_", " ")}</dt>
-            <dd>{typeof v === "string" ? <LinkedText text={v} onPath={onPath} /> : <code>{JSON.stringify(v)}</code>}</dd>
+            <dd>{typeof v === "string" ? <Field text={v} onPath={onPath} /> : <code>{JSON.stringify(v)}</code>}</dd>
           </div>
         ))}
       </dl>
@@ -25,5 +26,20 @@ export function SignedResult({ args, saved, at, onPath }: { args: Record<string,
         Signed <span className="signer">Agentomics</span> {formatClock(at)}
       </div>
     </div>
+  );
+}
+
+// Past this many characters a field opens folded to its first lines, so a step's result reads as a summary.
+const LONG_FIELD = 480;
+
+/** A text field of the result; a long one folded, with the reader's choice to read it all. */
+function Field({ text, onPath }: { text: string; onPath?: OpenPath }) {
+  const [open, setOpen] = useState(false);
+  if (text.length <= LONG_FIELD) return <LinkedText text={text} onPath={onPath} />;
+  return (
+    <>
+      <div className={open ? "field-text" : "field-text folded"}><LinkedText text={text} onPath={onPath} /></div>
+      <button className="field-fold" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? "Show less" : "Show more"}</button>
+    </>
   );
 }

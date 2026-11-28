@@ -4,7 +4,7 @@ import type { Point } from "@/model/evaluation";
 export type Series = { key: string; label: string; points: Point[]; note?: string; tone: "selected" | "other" | "test" };
 
 /** A curve on the unit square (ROC, precision–recall), one series per iteration plus the test split. */
-export function CurveChart({ title, fig, xLabel, yLabel, series, diagonal }: { title: string; fig: string; xLabel: string; yLabel: string; series: Series[]; diagonal?: boolean }) {
+export function CurveChart({ title, xLabel, yLabel, series, diagonal }: { title: string; xLabel: string; yLabel: string; series: Series[]; diagonal?: boolean }) {
   const [chartRef, width] = useChartWidth();
   const height = Math.round(Math.min(260, Math.max(190, width * 0.7)));
   const pad = { left: 34, right: 10, top: 10, bottom: 30 };
@@ -14,7 +14,7 @@ export function CurveChart({ title, fig, xLabel, yLabel, series, diagonal }: { t
   const order = { other: 0, selected: 1, test: 2 } as const;
   return (
     <figure className="figure">
-      <figcaption><span className="fig-label">{fig}</span> {title}</figcaption>
+      <figcaption>{title}</figcaption>
       <div className="chart" ref={chartRef}>
         <svg viewBox={`0 0 ${width} ${height}`} width="100%" role="img" aria-label={`${title}: ${series.map((s) => `${s.label} ${s.note ?? ""}`).join(", ")}`}>
           {[0, 0.5, 1].map((t) => (

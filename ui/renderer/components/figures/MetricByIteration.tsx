@@ -7,7 +7,7 @@ import type { GoTo } from "./Figures";
 import { Legend } from "./Legend";
 import { TRAIN, VALIDATION } from "./series";
 
-/** Fig. 1: a metric for each iteration, validation and train, with the best marked. Click an iteration to open its evaluation. */
+/** a metric for each iteration, validation and train, with the best marked. Click an iteration to open its evaluation. */
 export function MetricByIteration({ snapshots, metric, primary, onGoTo }: { snapshots: Snapshot[]; metric: string; primary: string; onGoTo: GoTo }) {
   const [hover, setHover] = useState<number | null>(null);
   const [chartRef, width] = useChartWidth();
@@ -43,7 +43,7 @@ export function MetricByIteration({ snapshots, metric, primary, onGoTo }: { snap
   return (
     <figure className="figure">
       <figcaption>
-        <span className="fig-label">Fig. 1</span> {metric} by iteration
+        {metric} by iteration
         {metric !== primary && <span className="fig-aside">run optimises {primary}</span>}
       </figcaption>
       <Legend />

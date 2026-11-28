@@ -8,17 +8,29 @@ export type Side = "contents" | "figures";
  * (remembered per viewer); medium windows keep both as rails and open one at a time over the page,
  * as a drawer. ⌘[ and ⌘] toggle them (from the View menu in the desktop app); Escape closes a drawer.
  */
+const MEDIUM = "(min-width: 761px) and (max-width: 1180px)";
+
+/** The sidebars this viewer last left open or folded. */
+function savedPanes(): Record<Side, boolean> {
+  try {
+    const saved = JSON.parse(localStorage.getItem("agentomics.panes") ?? "null");
+    if (saved && typeof saved.contents === "boolean" && typeof saved.figures === "boolean") return saved;
+  } catch {}
+  return { contents: true, figures: true };
+}
+
 export function usePanes() {
-  const [panes, setPanes] = useState({ contents: true, figures: true });
-  const [compact, setCompact] = useState(false);
-  const compactRef = useRef(false);
+  const [panes, setPanes] = useState(savedPanes);
+  // Known before the first paint, so a medium window doesn't open laid out as a wide one.
+  const [compact, setCompact] = useState(() => window.matchMedia(MEDIUM).matches);
+  const compactRef = useRef(compact);
   const [drawer, setDrawer] = useState<null | Side>(null);
   const shown = compact ? { contents: drawer === "contents", figures: drawer === "figures" } : panes;
   // Keep a closing sidebar on screen until its slide-out has finished.
   const onScreen = { contents: useLinger(shown.contents) || shown.contents, figures: useLinger(shown.figures) || shown.figures };
 
   useEffect(() => {
-    const query = window.matchMedia("(min-width: 761px) and (max-width: 1180px)");
+    const query = window.matchMedia(MEDIUM);
     const update = () => {
       compactRef.current = query.matches;
       setCompact(query.matches);
@@ -69,13 +81,9 @@ export function usePanes() {
   }, [shown.contents, shown.figures]);
   useEffect(() => () => { window.agentomics?.setViewState(null); }, []);
 
-  // Remember folded sidebars per viewer. In the desktop app the View menu's ⌘[ and ⌘] toggle them;
-  // in a browser there is no menu, so the page listens for the keys itself.
+  // In the desktop app the View menu's ⌘[ and ⌘] toggle the sidebars; in a browser there is no menu,
+  // so the page listens for the keys itself.
   useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem("agentomics.panes") ?? "null");
-      if (saved && typeof saved.contents === "boolean" && typeof saved.figures === "boolean") setPanes(saved);
-    } catch {}
     const desktop = window.agentomics;
     if (desktop) {
       return desktop.onMenu((action) => {

@@ -33,7 +33,7 @@ export function Timeline({ entries, now, onGoTo }: { entries: Entry[]; now: numb
 
   return (
     <figure className="figure timeline">
-      <figcaption><span className="fig-label">Fig. 7</span> Time by stage</figcaption>
+      <figcaption>Time by stage</figcaption>
       <div className="timeline-rows">
         {iterations.map((it, row) => (
           <div key={it} className="timeline-row">

@@ -74,4 +74,4 @@ jobs:
 
       # --noconftest: the shared fixtures need the runtime image's packages, which the host CLI doesn't install.
       - name: Run the host CLI's tests
-        run: python -m pytest --noconftest tests/unit/test_container_paths.py tests/unit/test_run_container_label.py
+        run: python -m pytest --noconftest tests/unit/test_container_paths.py tests/unit/test_run_container_label.py tests/unit/test_docker_console.py

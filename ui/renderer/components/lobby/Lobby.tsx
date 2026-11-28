@@ -1,5 +1,5 @@
 import type { DesktopApi } from "@agentomics/contract";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useDocker } from "@/hooks/useDocker";
 import { useFolderDrop } from "@/hooks/useFolderDrop";
@@ -28,6 +28,15 @@ export function Lobby({ api }: { api: DesktopApi }) {
   }, [setView]);
   const dragging = useFolderDrop(api, onDrop);
   const ready = accounts !== null && connected(accounts);
+  // ?fork=<workspace>[&from=<iteration>]: New Run, set to fork that run (the run page's Fork buttons).
+  const [fork] = useState(() => {
+    const query = new URLSearchParams(window.location.search);
+    return { workspace: query.get("fork"), from: Number(query.get("from")) || undefined };
+  });
+  const source = fork.workspace ? runs.find((r) => r.workspace === fork.workspace) : undefined;
+  useEffect(() => {
+    if (fork.workspace) setView("new");
+  }, [fork.workspace, setView]);
 
   return (
     <div className="lobby">
@@ -44,7 +53,7 @@ export function Lobby({ api }: { api: DesktopApi }) {
             {accounts && ready && view === "new" && docker && !docker.running && <DockerSetup status={docker} api={api} />}
             {accounts && ready && view === "new" && (
               <NewRun
-                api={api} accounts={accounts} dropped={dropped} dockerReady={Boolean(docker?.running)}
+                key={source?.id ?? "new"} api={api} accounts={accounts} dropped={dropped} dockerReady={Boolean(docker?.running)} runs={runs} source={source} forkAt={fork.from}
                 onOpenSettings={() => setView("settings")} onStarted={(entry) => (window.location.href = runLink(entry))}
               />
             )}

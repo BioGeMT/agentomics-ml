@@ -3,6 +3,11 @@ import type { RunEntry, RunStatus } from "@agentomics/contract";
 
 export const STATUS_LABEL: Record<RunStatus, string> = { running: "Running", finished: "Finished", failed: "Failed", interrupted: "Stopped" };
 
+/** The status the lobby shows: a run stopped from the app ends as failed, but reads as Stopped. */
+export function statusOf(run: RunEntry): RunStatus {
+  return run.stopped && run.status === "failed" ? "interrupted" : run.status;
+}
+
 export type RunFilter = { query: string; model: string; status: string };
 export const NO_FILTER: RunFilter = { query: "", model: "", status: "" };
 
@@ -11,7 +16,7 @@ export function filterRuns(runs: RunEntry[], { query, model, status }: RunFilter
   return runs.filter((r) =>
     (!needle || `${r.dataset} ${r.model}`.toLowerCase().includes(needle)) &&
     (!model || r.model === model) &&
-    (!status || r.status === status),
+    (!status || statusOf(r) === status),
   );
 }
 
@@ -24,11 +29,12 @@ export function runDetail(run: RunEntry): string {
   const s = run.summary;
   const total = s?.total ?? run.iterations;
   const current = Math.min((s?.done ?? 0) + 1, total);
-  if (run.status === "running") return s?.best != null && s.metric ? `${s.metric} best so far` : `Running iteration ${current}`;
-  if (run.status === "failed") return `Failed in iteration ${Math.max(s?.done ?? 1, 1)}`;
+  const status = statusOf(run);
+  if (status === "running") return s?.best != null && s.metric ? `${s.metric} best so far` : `Running iteration ${current}`;
+  if (status === "failed") return `Failed in iteration ${Math.max(s?.done ?? 1, 1)}`;
   if (s?.test != null && s.metric) return `${s.metric} on test`;
-  if (s?.best != null && s.metric) return run.status === "interrupted" ? `${s.metric} on validation · stopped` : `${s.metric} on validation`;
-  if (run.status === "interrupted") return `Stopped during iteration ${current}`;
+  if (s?.best != null && s.metric) return status === "interrupted" ? `${s.metric} on validation · stopped` : `${s.metric} on validation`;
+  if (status === "interrupted") return `Stopped during iteration ${current}`;
   return s ? "No score recorded" : `${total} iteration${total === 1 ? "" : "s"} planned`;
 }
 

@@ -34,3 +34,14 @@ def test_reporting_container_is_labelled_with_its_workspace_folder(tmp_path: Pat
     run._run_reporting_in_docker("image", workspace, "agent-1")
 
     assert _label_of(docker_calls[0]) == "agentomics.workspace=toy-20261103-091800"
+
+
+def test_test_evaluation_container_is_labelled_with_its_workspace_folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    workspace = tmp_path / "toy-20261103-091800"
+    workspace.mkdir()
+    calls: list[tuple] = []
+    monkeypatch.setattr(run, "run_inference_in_docker", lambda arguments, extra_docker_arguments=(): calls.append(extra_docker_arguments) or 0)
+
+    run._run_inference_on_test_input("image", True, workspace, tmp_path / "test")
+
+    assert calls == [("--label", "agentomics.workspace=toy-20261103-091800")]

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ctypes
 import os
 import shutil
 import subprocess
@@ -121,6 +122,13 @@ def docker_environment_arguments(*variable_names: str) -> list[str]:
             docker_arguments.extend(["-e", variable_name])
     return docker_arguments
 
+def _without_console_window() -> dict:
+    """On Windows, when agentomics-run has no console (the desktop app starts it in the background), docker would
+    open a console window of its own and print there. This keeps docker windowless and printing to our output."""
+    if sys.platform != "win32" or ctypes.windll.kernel32.GetConsoleWindow():
+        return {}
+    return {"creationflags": subprocess.CREATE_NO_WINDOW, "stdout": sys.stdout, "stderr": sys.stderr}
+
 def validate_docker_gpu_access(image: str) -> None:
     if shutil.which("docker") is None:
         raise RuntimeError("Missing required command: docker")
@@ -138,6 +146,7 @@ def validate_docker_gpu_access(image: str) -> None:
         ],
         capture_output=True,
         text=True,
+        creationflags=_without_console_window().get("creationflags", 0),
     )
     if result.returncode != 0:
         raise RuntimeError(
@@ -175,4 +184,4 @@ def run_python_in_docker(
         command.extend(["--mount", mount])
     command.extend(["--entrypoint", CONTAINER_PYTHON, image])
     command.extend(python_arguments)
-    return subprocess.run(command, check=check).returncode
+    return subprocess.run(command, check=check, **_without_console_window()).returncode

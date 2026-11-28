@@ -1,15 +1,18 @@
+import { GitFork } from "lucide-react";
 import { formatDuration } from "@/model/format";
 import type { Entry, Snapshot } from "@/model/run";
 import { formatCost, iterationUsage, usageTitle } from "@/model/usage";
 import { Disclosure } from "./Disclosure";
 
 /** Notebook: the chapter break opens each iteration; folded, it summarises what is hidden. */
-export function ChapterBreak({ iteration, snapshot, entries, open, onToggle }: {
+export function ChapterBreak({ iteration, snapshot, entries, open, onToggle, forkHref }: {
   iteration: number;
   snapshot?: Snapshot;
   entries: Entry[];
   open: boolean;
   onToggle: (event: React.MouseEvent) => void;
+  /** New Run set to fork the run from this iteration. */
+  forkHref?: string;
 }) {
   const metric = snapshot?.validation_metric ?? "AUROC";
   const v = snapshot?.metrics[`validation/${metric}`];
@@ -31,6 +34,11 @@ export function ChapterBreak({ iteration, snapshot, entries, open, onToggle }: {
         {snapshot?.is_new_best && <span className="best-tag">best so far</span>}
         {snapshot && !snapshot.is_new_best && <span className="chapter-result muted">did not beat the best</span>}
         {usage && <span className="chapter-cost" title={usageTitle(usage)}>{formatCost(usage)}</span>}
+        {forkHref && (
+          <a className="chapter-fork" href={forkHref} title={`Start a new run that keeps iterations 1–${iteration} and tries something different`}>
+            <GitFork size={12} strokeWidth={2.2} aria-hidden /> Fork
+          </a>
+        )}
         {!open && (
           <span className="chapter-folded">
             {steps.length} {steps.length === 1 ? "entry" : "entries"} folded

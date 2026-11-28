@@ -106,8 +106,8 @@
   --series-train: #b0358a;
   --hover-row: #f3f5f8;
 
-  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono Variable", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --sans: "Geist Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -148,6 +148,26 @@
   color: var(--cover-ink);
   border-bottom: 1px solid var(--cover-deep);
 }
+/* The toolbar's groups are transparent to its flex row, except where it lines up with the columns below. */
+.cover-start, .cover-middle, .cover-end { display: contents; }
+/* Wide browser windows with the contents open: the toolbar takes the page's columns. The window controls
+   sit over the contents, the run's name and status start where the entries do (just right of the margin
+   rule), and the counts and figures toggle sit over the figures. A column is never narrower than what it holds. */
+@media (min-width: 1181px) {
+  :root:not([data-shell="mac"]) .nb[data-contents="open"] > .cover {
+    display: grid; gap: 0; padding: 0;
+    grid-template-columns: minmax(max-content, var(--contents-open)) minmax(0, 1fr) minmax(max-content, var(--figures-width, var(--figures-open)));
+  }
+  :root:not([data-shell="mac"]) .nb[data-contents="open"] > .cover > :is(.cover-start, .cover-middle, .cover-end) {
+    display: flex; align-items: center; gap: 18px; min-width: 0;
+  }
+  :root:not([data-shell="mac"]) .nb[data-contents="open"] > .cover > .cover-start { padding-left: 12px; }
+  :root:not([data-shell="mac"]) .nb[data-contents="open"] > .cover > .cover-middle { padding: 0 18px 0 calc(var(--margin-width) + 20px); }
+  :root:not([data-shell="mac"]) .nb[data-contents="open"] > .cover > .cover-end { justify-content: flex-end; padding-right: 18px; }
+  :root:not([data-shell="mac"]) .nb[data-contents="open"] > .cover .cover-stats { margin-left: 0; }
+  /* The column edge divides the name from the window controls, so the name needs no rule of its own. */
+  :root:not([data-shell="mac"]) .nb[data-contents="open"] > .cover .cover-run { padding-left: 0; border-left: 0; }
+}
 .cover-back {
   display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px;
   color: var(--cover-muted); transition: background 0.15s var(--ease-out), color 0.15s;
@@ -170,6 +190,15 @@
 .run-status.finished { color: var(--done-on-cover); }
 .run-status.failed { color: var(--failed-on-cover); }
 .run-elapsed { font: 500 12.5px var(--sans); color: var(--cover-ink); font-variant-numeric: tabular-nums; }
+.run-limit { color: var(--cover-muted); }
+.run-stop {
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border: 0; border-radius: 999px;
+  font: 600 12.5px var(--sans); background: var(--cover-deep); color: var(--cover-ink); cursor: pointer;
+}
+.run-stop:hover { color: var(--failed-on-cover); }
+.run-fork { text-decoration: none; }
+.run-fork:hover { color: var(--wordmark-accent); }
+.run-stop:focus-visible { outline: 2px solid var(--wordmark-accent); outline-offset: 2px; }
 
 /* ---------- contents rail ---------- */
 .contents {
@@ -320,6 +349,12 @@
 .step-time { margin-left: auto; flex: none; font: 500 11.5px var(--mono); color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .step.pending .step-time { color: var(--live-text); }
 .step-row .disclosure { color: var(--ink-4); }
+/* Repeated calls share a row: the count beside what they did, the calls themselves indented below. */
+.run-count {
+  flex: none; padding: 0 6px; border-radius: 9px; background: var(--ballpoint-tint);
+  font: 600 11px var(--mono); color: var(--ballpoint); font-variant-numeric: tabular-nums;
+}
+.tool-run-calls { margin: 2px 0 6px 7px; padding-left: 12px; border-left: 1px solid var(--rule-strong); }
 .step-body { margin: 4px 0 10px; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; background: var(--page); }
 .step-body pre {
   margin: 0; padding: 10px 14px; font: 12px/1.6 var(--mono); color: var(--ink);
@@ -347,6 +382,22 @@
 .note { overflow-wrap: anywhere; }
 .result, .result dl, .result-row { min-width: 0; }
 .result-row dd code { font: 12px var(--mono); word-break: break-word; }
+/* A long field opens at its first four lines, fading out above the button that unfolds it. */
+.field-text.folded {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden;
+  mask-image: linear-gradient(to bottom, #000 55%, transparent);
+}
+.field-fold {
+  margin-top: 4px; padding: 2px 0; border: 0; background: none; cursor: pointer;
+  font: 600 12px var(--sans); color: var(--ballpoint);
+}
+.field-fold:hover { text-decoration: underline; }
+.field-fold:focus-visible { outline: 2px solid var(--ballpoint); outline-offset: 2px; border-radius: 3px; }
+/* The agent's inline `code` in its notes and results. */
+.inline-code {
+  padding: 1px 5px; border-radius: 4px; background: var(--ballpoint-tint); color: var(--ink);
+  font: 0.86em var(--mono); overflow-wrap: anywhere;
+}
 .signature {
   margin-top: 12px; padding-top: 9px; border-top: 1px dashed var(--result-line);
   font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums;
@@ -499,7 +550,9 @@
     background: rgb(var(--scrim) / 0.18); cursor: default;
   }
   .cover-stats { display: none; }
-  .toolbar-toggle.toggle-figures { margin-left: auto; }
+  /* With the counts hidden, the figures toggle goes to the toolbar's end (outranking the counts' spacing).
+     The Mac shell pushes the status there instead, which takes the figures toggle with it. */
+  :root:not([data-shell="mac"]) :is(.toolbar-toggle.toggle-figures, .cover-stats + .toolbar-toggle.toggle-figures) { margin-left: auto; }
 }
 .narrow-summary, .narrow-tabs { display: none; }
 
@@ -538,3 +591,15 @@
   .entry-title, .chapter-break-body { margin-left: 0; padding-left: 12px; }
   .page-message, .closing { margin-left: 16px; }
 }
+
+/* Contents: Fork on a finished iteration's header, in place of its score while pointed at (or focused). */
+.chapter h3 { position: relative; }
+.contents-fork {
+  position: absolute; right: 6px; top: 50%; translate: 0 -50%; display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 999px; font: 600 11.5px var(--sans); color: var(--ink-2); text-decoration: none;
+  box-shadow: inset 0 0 0 1px var(--rule); opacity: 0;
+}
+.chapter h3:hover .contents-fork, .contents-fork:focus-visible { opacity: 1; }
+.chapter h3:has(.contents-fork):hover .chapter-meta, .chapter h3:has(.contents-fork:focus-visible) .chapter-meta { visibility: hidden; }
+.contents-fork:hover { color: var(--accent); box-shadow: inset 0 0 0 1px currentColor; }
+.contents-fork:focus-visible { outline: 2px solid var(--ballpoint); outline-offset: 2px; }

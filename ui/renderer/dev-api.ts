@@ -14,7 +14,7 @@ const OUTPUTS = path.resolve(import.meta.dirname, "..", "..", "outputs");
 // The development app's run history (ui/desktop/src/history.ts), which records each run's dataset folder and process.
 const HISTORY = path.join(os.homedir(), "Library", "Application Support", "agentomics-desktop", "runs.json");
 
-type HistoryEntry = { workspace: string; folder: string; status: string; pid?: number; exitCode?: number | null };
+type HistoryEntry = { workspace: string; folder: string; status: string; pid?: number; exitCode?: number | null; endedAt?: number; stopped?: boolean };
 
 function historyEntry(runFolder: string): HistoryEntry | undefined {
   try {
@@ -30,10 +30,14 @@ async function datasetFor(runFolder: string): Promise<string | null> {
   return historyEntry(runFolder)?.folder ?? null;
 }
 
-/** How the development app's run in runFolder ended: its exit code, when the app recorded one. */
-async function runEnding(runFolder: string): Promise<{ exitCode: number | null } | null> {
+/** How the development app's run in runFolder ended, as the app says it (ui/desktop/src/runs.ts runEnding). */
+async function runEnding(runFolder: string): Promise<{ exitCode: number | null; error?: string; endedAt?: number; stopped?: boolean } | null> {
   const entry = historyEntry(runFolder);
-  return typeof entry?.exitCode === "number" ? { exitCode: entry.exitCode } : null;
+  if (!entry || entry.status === "running") return null;
+  const { endedAt } = entry;
+  if (entry.stopped) return { exitCode: null, error: "The run was stopped from the app.", endedAt, stopped: true };
+  if (typeof entry.exitCode === "number") return { exitCode: entry.exitCode, endedAt };
+  return entry.status === "failed" ? { exitCode: null, error: "The run failed.", endedAt } : null;
 }
 
 /** Whether the development app's run in runFolder is still going, so its traces are followed. */

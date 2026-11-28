@@ -3,8 +3,9 @@ import type { Run } from "@/model/run";
 import { FileTree } from "../files/FileTree";
 import { DetailsTabs, type Details } from "./DetailsTabs";
 import { FiguresPanel } from "./FiguresPanel";
+import { RunnerOutput } from "./RunnerOutput";
 
-/** The right sidebar: the run's figures, or its workspace files when the run's folder is known. */
+/** The right sidebar: the run's figures, or (when the run's folder is known) its workspace files or runner output. */
 export function DetailsSidebar({ run, workspace, details, onDetails, evaluation, provider, openFile, revealedFolder, now, hidden, inert, onOpenFile, onGoTo }: {
   run: Run;
   workspace: string | null;
@@ -28,6 +29,8 @@ export function DetailsSidebar({ run, workspace, details, onDetails, evaluation,
       </div>
       {details === "files" && workspace ? (
         <FileTree root={workspace} live={run.status === "running"} selected={openFile} revealed={revealedFolder} onOpen={onOpenFile} />
+      ) : details === "output" && workspace && window.agentomics ? (
+        <RunnerOutput workspace={workspace} live={run.status === "running"} />
       ) : (
         <FiguresPanel run={run} evaluation={evaluation} provider={provider} now={now} onGoTo={onGoTo} />
       )}

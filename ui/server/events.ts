@@ -14,7 +14,7 @@ const POLL_MS = 500;
 /** Whether a run is still going, from the app's run history; its traces may still grow while it is. */
 export type IsRunning = (runFolder: string) => Promise<boolean>;
 /** How a finished run ended, from the app's run history: its exit code, or why it never got one. Null if unknown. */
-export type RunEnding = (runFolder: string) => Promise<{ exitCode: number | null; error?: string } | null>;
+export type RunEnding = (runFolder: string) => Promise<{ exitCode: number | null; error?: string; endedAt?: number; stopped?: boolean } | null>;
 
 const sleep = () => new Promise((resolve) => setTimeout(resolve, POLL_MS));
 
@@ -114,8 +114,10 @@ export function createEvents(roots: Roots, isRunning: IsRunning = async () => fa
       }
       if (signal?.aborted) return;
       const ending = await runEnding(runFolder);
-      if (ending?.error) send({ type: "RUN_ERROR", message: ending.error });
-      else send({ type: "RUN_FINISHED", threadId: runId, runId, result: ending?.exitCode != null ? { exit_code: ending.exitCode } : {} });
+      // When the runner exited, so the run's time includes what came after its last trace (e.g. final reports).
+      const timestamp = ending?.endedAt;
+      if (ending?.error) send({ type: "RUN_ERROR", message: ending.error, timestamp, ...(ending.stopped ? { code: "stopped" } : {}) });
+      else send({ type: "RUN_FINISHED", threadId: runId, runId, result: ending?.exitCode != null ? { exit_code: ending.exitCode } : {}, timestamp });
     }, signal);
   }
 

@@ -4,6 +4,7 @@ import { runLink } from "@/model/run-link";
 import { IterationDots } from "./IterationDots";
 import { RunActions } from "./RunActions";
 import { RunScore } from "./RunScore";
+import { RunStatusIcon } from "./RunStatusIcon";
 
 export function RunListItem({ run, onMenu, onStop, onTrash, onShow }: {
   run: RunEntry;
@@ -15,7 +16,7 @@ export function RunListItem({ run, onMenu, onStop, onTrash, onShow }: {
   return (
     <li onContextMenu={onMenu}>
       <a className="run-item" href={runLink(run)} title={`${run.model} · ${run.folder}`}>
-        <span className={`run-dot ${run.status}`} aria-label={run.status === "running" ? "live" : run.status} />
+        <RunStatusIcon run={run} />
         <span className="run-name">{run.dataset}</span>
         <RunScore run={run} />
         <span className="run-sub"><IterationDots run={run} />{runDetail(run)}</span>

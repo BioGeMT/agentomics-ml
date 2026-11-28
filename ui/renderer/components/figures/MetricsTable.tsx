@@ -2,7 +2,7 @@ import { BOUNDED, bestSnapshot, metricNames, sourceEntry, value } from "@/model/
 import type { Snapshot } from "@/model/run";
 import type { GoTo } from "./Figures";
 
-/** Table 1: every metric of the best iteration; choosing one plots it in Fig. 1. */
+/** every metric of the best iteration; choosing one plots it by iteration. */
 export function MetricsTable({
   snapshots,
   primary,
@@ -21,7 +21,7 @@ export function MetricsTable({
   return (
     <figure className="figure">
       <figcaption>
-        <span className="fig-label">Table 1</span> Metrics, iteration {best.iteration + 1}
+        Metrics, iteration {best.iteration + 1}
         {best.is_new_best && <span className="best-tag">best</span>}
         <button className="entry-ref" onClick={() => onGoTo(sourceEntry(best))}>{sourceEntry(best)}</button>
       </figcaption>
@@ -40,7 +40,7 @@ export function MetricsTable({
               <tr key={m} className={[m === primary ? "primary" : "", m === selected ? "selected" : ""].join(" ")}>
                 <th scope="row">
                   {plottable ? (
-                    <button onClick={() => onSelect(m)} aria-pressed={m === selected} title={`Plot ${m} in Fig. 1`}>{m}</button>
+                    <button onClick={() => onSelect(m)} aria-pressed={m === selected} title={`Plot ${m} by iteration`}>{m}</button>
                   ) : (
                     m
                   )}
@@ -53,7 +53,7 @@ export function MetricsTable({
         </tbody>
       </table>
       <p className="figure-note">
-        Select a metric to plot it in Fig. 1.
+        Select a metric to plot it by iteration.
         {latest !== best && ` Latest iteration ${latest.iteration + 1} did not beat iteration ${best.iteration + 1}.`}
       </p>
     </figure>

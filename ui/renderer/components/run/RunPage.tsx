@@ -11,7 +11,7 @@ import { useSnapshots } from "@/hooks/useSnapshots";
 import { workspacePath } from "@/model/container-paths";
 import { readWorkspace } from "@/model/workspace";
 import { nextStep, withUpcoming, type Entry } from "@/model/run";
-import { parseRunLink, type RunMeta } from "@/model/run-link";
+import { forkLink, parseRunLink, type RunMeta } from "@/model/run-link";
 import { ContentsSidebar } from "../contents/ContentsSidebar";
 import { DetailsSidebar } from "../details/DetailsSidebar";
 import type { Details } from "../details/DetailsTabs";
@@ -103,9 +103,14 @@ export function RunPage() {
     } else open(rel);
   }
 
-  const elapsed = run.startedAt ? (run.endedAt ?? now) - run.startedAt : undefined;
+  const startedAt = meta.startedAt ?? run.startedAt;
+  const elapsed = startedAt ? (run.endedAt ?? now) - startedAt : undefined;
   const title = meta.dataset ?? source?.run.split(/[\\/]/).filter(Boolean).pop() ?? "Run";
   const { compact, drawer, shown, onScreen } = panes;
+  // Fork (desktop app, once an iteration has finished, live or not): New Run set to fork this run from an iteration.
+  const forkable = Boolean(window.agentomics && workspace && run.snapshots.length > 0);
+  const forkHref = forkable ? forkLink(workspace!) : undefined;
+  const forkFrom = forkable ? (iteration: number) => forkLink(workspace!, iteration) : undefined;
 
   return (
     <div className="nb" data-tab={tab} data-contents={shown.contents ? "open" : "folded"} data-figures={shown.figures ? "open" : "folded"} data-drawer={compact && drawer ? drawer : undefined}>
@@ -114,10 +119,13 @@ export function RunPage() {
         model={meta.model}
         run={run}
         elapsed={elapsed}
+        limit={meta.limitMinutes ? meta.limitMinutes * 60_000 : undefined}
         offline={Boolean(unreachable) && run.entries.length === 0}
         counts={counts}
         shown={shown}
         onToggle={panes.toggle}
+        onStop={window.agentomics && workspace && run.status === "running" ? () => window.agentomics?.stopRunIn(workspace) : undefined}
+        forkHref={forkHref}
       />
 
       <NarrowSummary run={run} live={liveEntry} now={now} />
@@ -134,6 +142,7 @@ export function RunPage() {
         hidden={!(compact ? shown.contents : onScreen.contents)}
         inert={!shown.contents}
         onToggleIteration={toggleIteration}
+        forkFrom={forkFrom}
         onGoTo={goTo}
       />
 
@@ -155,6 +164,7 @@ export function RunPage() {
         onJump={() => { setOpenFile(null); follow.jumpToLive(); }}
         onConnect={connect}
         onToggleIteration={toggleIteration}
+        forkFrom={forkFrom}
         onPath={workspace ? openContainerPath : undefined}
       />
 

@@ -33,7 +33,7 @@ The macOS app is signed and notarized when a Developer ID certificate is availab
 
 ## What you need (every OS)
 
-- [Node.js](https://nodejs.org/) 22 with npm
+- [Node.js](https://nodejs.org/) 22.12 or newer, with npm
 - [uv](https://docs.astral.sh/uv/getting-started/installation/), which builds the bundled `agentomics-run`
   (it fetches its own Python 3.12)
 - [Task](https://taskfile.dev/installation/) (optional; the plain npm commands are given too)
@@ -59,7 +59,7 @@ cd ui/desktop
 npm run dist
 ```
 
-Result: `ui/desktop/release/Agentomics-<version>-arm64.dmg`.
+Result: `ui/desktop/release/Agentomics-<version>-arm64.dmg`. To try it, see [Testing a build](#testing-a-build).
 
 ## Linux
 
@@ -80,9 +80,12 @@ npm run dist
 ```
 
 Result: `ui/desktop/release/Agentomics-<version>-x86_64.AppImage` and
-`ui/desktop/release/agentomics_<version>_amd64.deb`.
+`ui/desktop/release/agentomics_<version>_amd64.deb`. To try them, see [Testing a build](#testing-a-build).
 
 ## Windows
+
+Build in PowerShell. Runs need [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/)
+with the WSL 2 backend, set to Linux containers (its default).
 
 In PowerShell, from the repository root:
 
@@ -100,7 +103,8 @@ cd ui/desktop
 npm run dist
 ```
 
-Result: `ui\desktop\release\Agentomics-<version>-x64-setup.exe`.
+Result: `ui\desktop\release\Agentomics-<version>-x64-setup.exe`, the installer. It is unsigned, so Windows
+SmartScreen warns before it runs (see [Signing](#signing)). To try it, see [Testing a build](#testing-a-build).
 
 ## All three with GitHub Actions
 
@@ -131,20 +135,29 @@ to the run as separate artifacts, so download only the one you want:
 
 ## Testing a build
 
-`ui/examples/breast_cancer/` is a small example dataset (152 KB) to try a build with: in the app, start a
-run on that folder with 1 iteration. It is what `agentomics-download-dataset --dataset breast_cancer`
-creates, from scikit-learn's copy of the
+The same on every OS, once the app is installed:
+
+1. Build the Docker image runs use, with this checkout's code: from `ui`, run `task image`. It builds
+   `agentomics:dev` (slow the first time).
+2. Open the app. In **Settings**, select the image `agentomics:dev`, and connect **Codex** (ChatGPT) or
+   **OpenRouter**.
+3. **New Run → Try an Example**, set **Iterations** to 1, and **Start Run**.
+4. Check:
+    - the steps appear live, with their tool calls;
+    - the run ends as **Finished**;
+    - **Figures** shows the metrics, and the held-out test result once the run ends;
+    - **Files** opens the run's files.
+
+The example is `ui/examples/breast_cancer/` (152 KB), what `agentomics-download-dataset --dataset breast_cancer`
+creates from scikit-learn's copy of the
 [Breast Cancer Wisconsin (Diagnostic)](https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic)
 dataset (W. Wolberg, O. Mangasarian, N. Street, W. Street; UCI Machine Learning Repository, CC BY 4.0).
-
-Runs need a Docker image with this checkout's code: `task image` builds it as `agentomics:dev`; choose it
-in the app's Settings.
 
 ## Signing
 
 Unsigned, the app still runs, but each OS warns first: macOS asks to allow it in **System Settings ›
-Privacy & Security**, and Windows shows "Windows protected your PC" (**More info › Run anyway**). Linux
-doesn't check signatures.
+Privacy & Security**, and Windows SmartScreen shows "Windows protected your PC" (**More info › Run
+anyway**). Linux doesn't check signatures.
 
 ### macOS: Developer ID and notarization
 

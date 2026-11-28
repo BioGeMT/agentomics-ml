@@ -3,8 +3,6 @@
    The window is vibrant (NSVisualEffectView "sidebar"), so anything left transparent shows frosted glass. */
 
 :root[data-shell="mac"] {
-  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
-  --mono: ui-monospace, "SF Mono", Menlo, monospace;
   --toolbar: rgba(255, 255, 255, 0.92);
   --hairline: rgba(0, 0, 0, 0.1);
   --sidebar-hover: rgba(0, 0, 0, 0.045);
@@ -105,6 +103,7 @@
 :root[data-shell="mac"] .cover-sub { font: 500 11px var(--sans); }
 :root[data-shell="mac"] .run-status { height: 22px; padding: 0 9px; gap: 6px; font-size: 11.5px; margin-left: auto; }
 :root[data-shell="mac"] .run-elapsed { font-size: 11px; }
+:root[data-shell="mac"] .run-stop { height: 22px; padding: 0 9px; gap: 5px; font-size: 11.5px; }
 :root[data-shell="mac"] .run-status .dot { width: 7px; height: 7px; }
 
 /* Sidebar and inspector toggles are plain icons, as in Finder and Xcode. */

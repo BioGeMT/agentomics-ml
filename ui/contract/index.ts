@@ -30,6 +30,11 @@ export type StartRunOptions = {
   timeoutMinutes: number;
   valMetric?: string;
   userPrompt?: string;
+  /**
+   * Fork an ended run: keep its first `iterations` iterations and run more on top (agentomics-run --fork-from-run).
+   * change: what the new iterations should do differently, added to the run's goal.
+   */
+  forkFrom?: { workspace: string; iterations: number; change?: string };
 };
 
 export type RunStatus = "running" | "finished" | "failed" | "interrupted";
@@ -45,6 +50,8 @@ export type RunEntry = {
   provider?: Provider;
   model: string;
   iterations: number;
+  /** The run's time limit (agentomics-run --timeout). */
+  timeoutMinutes?: number;
   /** The agentomics-run process, which leads its own process group. */
   pid?: number;
   workspace: string;
@@ -52,15 +59,24 @@ export type RunEntry = {
   startedAt: number;
   endedAt?: number;
   exitCode?: number | null;
+  /** Set when the run was stopped from the app. */
+  stopped?: boolean;
   /** Why agentomics-run couldn't be started (e.g. EACCES), when it never ran. */
   startError?: string;
+  /** The run this one was forked from, and how many of its iterations it kept. */
+  forkedFrom?: { id: string; iterations: number };
   /** Set by listRuns. */
   summary?: RunSummary;
 };
 
+/** The end of agentomics-run's output so far (its warnings and errors included), and the file it goes to. */
+export type RunnerLog = { log: string; logFile: string };
+
 /** How a run's agentomics-run ended, for when its event log can't say: before the run recorded anything. */
 export type RunnerOutcome = {
   exitCode: number | null;
+  /** Stopped from the app. */
+  stopped?: boolean;
   startError?: string;
   /** The end of the runner's output. */
   log: string;
@@ -79,7 +95,7 @@ export type Appearance = "system" | "light" | "dark";
 export type MenuAction = "new-run" | "settings" | "toggle-contents" | "toggle-figures";
 /** Which of the run page's sidebars are showing, for the View menu's Show/Hide items; null where there are none. */
 export type ViewState = { contents: boolean; figures: boolean } | null;
-export type RunMenuAction = "open" | "show" | "stop" | "trash";
+export type RunMenuAction = "open" | "fork" | "show" | "stop" | "trash";
 
 /** ipcRenderer.invoke channels: the arguments each takes and what it resolves with. */
 export type InvokeChannels = {
@@ -98,7 +114,9 @@ export type InvokeChannels = {
   "start-run": { args: [options: StartRunOptions]; result: RunEntry };
   "list-runs": { args: []; result: RunEntry[] };
   "stop-run": { args: [id: string]; result: boolean };
+  "stop-run-in": { args: [workspace: string]; result: boolean };
   "runner-outcome": { args: [workspace: string]; result: RunnerOutcome | null };
+  "runner-log": { args: [workspace: string]; result: RunnerLog | null };
   "show-file": { args: [file: string]; result: void };
   "delete-run": { args: [id: string]; result: DeleteRunResult };
   "run-menu": { args: [id: string]; result: RunMenuAction | null };
@@ -138,8 +156,12 @@ export type DesktopApi = {
   startRun(options: StartRunOptions): Promise<RunEntry>;
   listRuns(): Promise<RunEntry[]>;
   stopRun(id: string): Promise<boolean>;
+  /** Asks, then stops the run in this workspace. False when cancelled, or when the app isn't running it. */
+  stopRunIn(workspace: string): Promise<boolean>;
   /** How the run in this workspace ended, from the app's history and the runner's output; null if unknown. */
   runnerOutcome(workspace: string): Promise<RunnerOutcome | null>;
+  /** agentomics-run's output so far, for a run this app started (running or not); null for any other run. */
+  runnerLog(workspace: string): Promise<RunnerLog | null>;
   /** Shows a run's file in Finder or Explorer. */
   showFile(file: string): Promise<void>;
   /** Menu commands (New Run, Settings…, the View menu's sidebars). Returns a function that stops listening. */

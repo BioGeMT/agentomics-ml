@@ -1,12 +1,12 @@
 import { confusion, type Scored } from "@/model/evaluation";
 
-/** Fig. 5: true against predicted class at the 0.5 threshold, shaded by share of each true class. */
+/** true against predicted class at the 0.5 threshold, shaded by share of each true class. */
 export function ConfusionMatrix({ scored, names }: { scored: Scored; names: [string, string] }) {
   const m = confusion(scored);
   const rows: [string, number, number][] = [[names[0], m.tn, m.fp], [names[1], m.fn, m.tp]];
   return (
     <figure className="figure">
-      <figcaption><span className="fig-label">Fig. 5</span> Confusion at 0.5</figcaption>
+      <figcaption>Confusion at 0.5</figcaption>
       <table className="confusion" aria-label="Confusion matrix: rows are true classes, columns predicted classes">
         <thead><tr><th /><th colSpan={2}>Predicted</th></tr><tr><th>True</th><th>{names[0]}</th><th>{names[1]}</th></tr></thead>
         <tbody>

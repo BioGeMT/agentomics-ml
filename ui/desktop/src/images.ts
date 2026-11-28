@@ -117,7 +117,7 @@ export function pullImage(name: string, onProgress: (progress: PullProgress) => 
       return;
     }
     const layers = new Map<string, string>();
-    const child = spawn("docker", ["pull", "--platform", HOST_PLATFORM, name]);
+    const child = spawn("docker", ["pull", "--platform", HOST_PLATFORM, name], { windowsHide: true }); // no console window on Windows
     let tail = "";
     const read = (chunk: Buffer) => {
       for (const line of chunk.toString().split(/\r?\n/)) {

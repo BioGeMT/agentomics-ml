@@ -9,7 +9,7 @@ import { NotebookStatus } from "./NotebookStatus";
 import { RunClosing } from "./RunClosing";
 
 /** The page: the run's entries in order, each iteration opening with a chapter break that can fold it. */
-export function Notebook({ pageRef, run, source, workspace, unreachable, folded, now, elapsed, done, inert, showJump, liveEntry, starting, onScroll, onJump, onConnect, onToggleIteration, onPath }: {
+export function Notebook({ pageRef, run, source, workspace, unreachable, folded, now, elapsed, done, inert, showJump, liveEntry, starting, onScroll, onJump, onConnect, onToggleIteration, forkFrom, onPath }: {
   pageRef: RefObject<HTMLElement | null>;
   run: Run;
   source: EventsSource | null;
@@ -27,6 +27,8 @@ export function Notebook({ pageRef, run, source, workspace, unreachable, folded,
   onJump: () => void;
   onConnect: (source: EventsSource) => void;
   onToggleIteration: (iteration: number, event: React.MouseEvent) => void;
+  /** New Run set to fork the run from this iteration, when it can be forked. */
+  forkFrom?: (iteration: number) => string;
   workspace: string | null;
   onPath?: (path: string, entry: Entry) => void;
 }) {
@@ -34,7 +36,8 @@ export function Notebook({ pageRef, run, source, workspace, unreachable, folded,
     <main className="page" id="panel-notebook" ref={pageRef} onScroll={onScroll} inert={inert}>
       <div className="sheet">
         <NotebookStatus run={run} source={source} workspace={workspace} unreachable={unreachable} now={now} onRetry={onConnect} />
-        {run.entries.filter((e) => e.position > 0 || e.records.length).map((entry, index, shown) => (
+        {/* In step order, as the contents list them, whatever order a run's image ran them in. */}
+        {run.entries.filter((e) => e.position > 0 || e.records.length).sort((a, b) => a.iteration - b.iteration || a.position - b.position).map((entry, index, shown) => (
           <Fragment key={entry.key + entry.startedAt}>
             {entry.iteration !== shown[index - 1]?.iteration && (
               <ChapterBreak
@@ -43,6 +46,7 @@ export function Notebook({ pageRef, run, source, workspace, unreachable, folded,
                 entries={run.entries.filter((e) => e.iteration === entry.iteration)}
                 open={!folded.has(entry.iteration)}
                 onToggle={(event) => onToggleIteration(entry.iteration, event)}
+                forkHref={forkFrom && run.snapshots.some((s) => s.iteration + 1 === entry.iteration) ? forkFrom(entry.iteration) : undefined}
               />
             )}
             {!folded.has(entry.iteration) && <NotebookEntry entry={entry} workspace={workspace} now={now} onPath={onPath ? (path) => onPath(path, entry) : undefined} />}
