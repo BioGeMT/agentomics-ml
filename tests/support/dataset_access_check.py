@@ -32,12 +32,20 @@ def read_public_files(dataset_source):
     }
 
 
+# The agent's own step traces: they record what the agent itself said and saw, so they can't hold
+# held-out data, but they do repeat this check's own command, which names the held-out prefix.
+AGENT_TRACES = Path("/workspace/logs/traces")
+
+
 def find_held_out_data(prefix):
     """Find held-out paths or identifiable sequences visible during development."""
     test_paths = set()
     sequence_matches = set()
     for root in (Path("/datasets"), Path("/workspace")):
         for directory, directory_names, filenames in walk_tree(root):
+            if directory == AGENT_TRACES or AGENT_TRACES in directory.parents:
+                directory_names[:] = []
+                continue
             test_paths.update(
                 str(directory / name)
                 for name in directory_names

@@ -1,0 +1,5 @@
+{
+    "task_type": "classification",
+    "positive_class": "malignant",
+    "negative_class": "benign"
+}

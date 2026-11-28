@@ -62,6 +62,7 @@ nav:
     - Release Administration: developer/release-administration.md
     - Proxy Settings: developer/proxy-settings.md
     - GPU Settings: developer/gpu-settings.md
+    - Desktop App: developer/desktop-app.md
 
 markdown_extensions:
   - admonition

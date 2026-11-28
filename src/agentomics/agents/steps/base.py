@@ -106,6 +106,8 @@ class AgenticStepMixin(ABC):
     step_id: str
     output_type: type[AgenticStepOutput]
     output_filename: str
+    # Where run_agent_step records the agent's messages; None records nothing.
+    trace_path: Path | None = None
 
     @property
     @abstractmethod
@@ -240,6 +242,7 @@ class AgenticStepMixin(ABC):
                 max_steps=max_steps,
                 message_history=message_history,
                 deps=deps,
+                trace_path=self.trace_path,
             )
         except AgentRunFailed as error:
             self._step_messages = error.context_messages
@@ -279,6 +282,12 @@ class AgentomicsStep(RuntimeStep):
     @property
     def archive_dir(self) -> Path:
         return self.config.archived_step_dir(self.step_id)
+
+    @property
+    def trace_path(self) -> Path:
+        """The agent's messages in this step, one JSON line each: logs/traces/iteration_<n>/<step_id>.jsonl."""
+        iteration = load_current_iteration_index(self.config)
+        return self.config.logs_dir / "traces" / f"iteration_{iteration}" / f"{self.step_id}.jsonl"
 
     def should_run(self) -> bool:
         return not (self.archive_dir / self.output_filename).exists()

@@ -52,12 +52,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--wandb-prefix", help="Enable W&B logging with this prefix; valid WANDB_API_KEY, WANDB_PROJECT_NAME, and WANDB_ENTITY are also required")
     return parser
 
-def run_inference_in_docker(arguments: argparse.Namespace) -> int:
+def run_inference_in_docker(arguments: argparse.Namespace, extra_docker_arguments: tuple[str, ...] = ()) -> int:
     resolve_inference_paths(arguments)
-    return _run_inference_with_resolved_paths(arguments)
+    return _run_inference_with_resolved_paths(arguments, extra_docker_arguments)
 
 
-def _run_inference_with_resolved_paths(arguments: argparse.Namespace) -> int:
+def _run_inference_with_resolved_paths(arguments: argparse.Namespace, extra_docker_arguments: tuple[str, ...] = ()) -> int:
     container_input = "/inference-input"
     python_arguments = [
         "-m",
@@ -69,7 +69,7 @@ def _run_inference_with_resolved_paths(arguments: argparse.Namespace) -> int:
         "--output",
         f"/inference-output/{arguments.output.name}",
         "--iteration-dir",
-        str(arguments.iteration_dir),
+        arguments.iteration_dir.as_posix(),  # a path inside the container
     ]
     mounts = [
         f"type=bind,src={arguments.agent_dir},dst=/agent,readonly",
@@ -107,7 +107,7 @@ def _run_inference_with_resolved_paths(arguments: argparse.Namespace) -> int:
             "https_proxy",
             "all_proxy",
             "no_proxy",
-        ),
+        ) + list(extra_docker_arguments),
         check=False,
     )
 

@@ -1,0 +1,156 @@
+/* Appearance: the dark palette, Increase Contrast and Reduce Transparency. The app follows the system
+   appearance (dark-mode.md: no app-specific switch); every colour is a token, so each mode only redefines
+   tokens. Bundling doesn't guarantee this file loads last, so each selector carries one more :root than
+   the light one it overrides in notebook.css, lobby.css and mac-shell.css, and wins on specificity.
+   The graphite neutrals keep the light palette's warm paper bias. */
+
+@media (prefers-color-scheme: dark) {
+  :root:root {
+    color-scheme: dark;
+    --bg: #1a1917;
+    --text: #eeece7;
+
+    /* channels: ink tints turn white, shadows and scrims stay black */
+    --shade: 255 255 255;
+    --shadow: 0 0 0;
+    --accent-rgb: 233 230 223;
+    --scrim: 0 0 0;
+    --glass: 44 42 39;
+    --live-rgb: 240 163 58;
+
+    /* paper and ink */
+    --page: #1d1c1a;
+    --page-tint: #22211e;
+    --rail: #1a1917;
+    --grid: rgb(255 255 255 / 0.035);
+    --rule: #363430;
+    --rule-strong: #4a4743;
+    --margin-rule: #e0645a;
+    --ink: #eeece7;
+    --ink-2: #c0bcb4;
+    --ink-3: #9b968e;
+    --ink-4: #7a766f;
+    --ink-dim: #847f78;
+    --ink-faint: #64605a;
+    --ink-disabled: #55524c;
+    --ballpoint: #e9e6df;
+    --ballpoint-tint: #2e2c29;
+    --hover-row: #282623;
+
+    /* states */
+    --live: #f0a33a;
+    --live-text: #f4b764;
+    --live-tint: #382b18;
+    --done: #5cc48a;
+    --done-tint: #19301f;
+    --done-line: #2d553d;
+    --failed: #ff8077;
+    --failed-tint: #3a1f1d;
+    --failed-line: #66322e;
+
+    /* charts (validated together on the dark panel: #668af0 / #cf68b4) */
+    --series-validation: #668af0;
+    --series-train: #cf68b4;
+    --chart-grid: #2f2d2a;
+    --chart-chance: #4d4a45;
+    --chart-crosshair: #615d57;
+    --chart-dumbbell: #53504a;
+    --chart-other: #5b5852;
+    --chart-negative: #706b64;
+    --split-validation: #5f86d9;
+    --split-neutral: #5d5a54;
+    --dot-ring: #5d5a54;
+
+    /* code */
+    --code-keyword: #c89cf3;
+    --code-string: #80d39e;
+    --code-number: #6cc3e6;
+    --code-comment: #8d949e;
+    --code-attr: #b9bec6;
+    --code-meta: #ff9c91;
+    --diff-add-bg: #1b3225;
+    --diff-add-ink: #8edba9;
+    --diff-del-bg: #3b2120;
+    --diff-del-ink: #ffa59c;
+
+    /* surfaces, lines and marks */
+    --accent-disabled: #4a4743;
+    --checker-a: #2d2b28;
+    --checker-b: #252320;
+    --disclosure: #918c84;
+    --fold-hover: #2d2b28;
+    --folder: #a39e95;
+    --link-underline: #5a5650;
+    --mark-muted: #64605a;
+    --on-accent: #1d1c1a;
+    --output-bg: #22211e;
+    --pdf-backdrop: #2d2b28;
+    --ref-hover: #33312d;
+    --result-bg: #23221f;
+    --result-line: #44413c;
+    --row-alt: #22211e;
+    --scrollbar: #4d4a45;
+    --scrollbar-hover: #615d57;
+    --selected-row: #2e2c29;
+    --selection: #45423d;
+    --skeleton-a: #2d2b28;
+    --skeleton-b: #363430;
+    --strike: #64605a;
+    --toc-hover: #2d2b28;
+    --tooltip-bg: #3d3b37;
+    --tooltip-ink: #f4f2ed;
+    --tooltip-ink-2: #ccc8c0;
+    --tooltip-muted: #9b968e;
+  }
+
+  /* The Mac window chrome: dark glass toolbar and sidebars, hairlines in white. */
+  :root:root[data-shell="mac"] {
+    --toolbar: rgb(32 31 28 / 0.92);
+    --hairline: rgb(255 255 255 / 0.1);
+    --sidebar-hover: rgb(255 255 255 / 0.06);
+    --sidebar-selected: rgb(255 255 255 / 0.1);
+    --sidebar-surface: rgb(0 0 0 / 0.12);
+    --inspector: #21201d;
+    --cover-deep: rgb(255 255 255 / 0.06);
+  }
+
+  :root .lobby {
+    --accent: #e9e6df;
+    --accent-press: #ffffff;
+    --hover: rgb(255 255 255 / 0.06);
+    --group: #252421;
+    --group-line: rgb(255 255 255 / 0.1);
+  }
+
+  /* The pop-up chevrons are SVG images, drawn here in the dark secondary ink. */
+  :root .run-popups select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' fill='none' stroke='%239b968e' stroke-width='1.4' stroke-linecap='round'%3E%3Cpath d='M1.5 3l2.5 2.5L6.5 3'/%3E%3C/svg%3E");
+  }
+  :root .form-row select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='none' stroke='%239b968e' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M2 4l3 3 3-3'/%3E%3C/svg%3E");
+  }
+}
+
+/* Increase Contrast: secondary text and lines step up a level. */
+@media (prefers-contrast: more) {
+  :root:root {
+    --ink-3: #9b968e;
+    --ink-4: #7a766f;
+    --rule: #363430;
+  }
+  :root:root[data-shell="mac"] { --hairline: rgb(var(--shade) / 0.3); }
+  :root .lobby { --group-line: rgb(var(--shade) / 0.3); }
+}
+
+/* Reduce Transparency: the glass becomes solid. */
+@media (prefers-reduced-transparency: reduce) {
+  :root:root[data-shell="mac"] {
+    --toolbar: rgb(32 31 28 / 0.92);
+    --sidebar-surface: var(--rail);
+  }
+  :root .jump-live, :root .jump-live:hover {
+    background: var(--page);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
