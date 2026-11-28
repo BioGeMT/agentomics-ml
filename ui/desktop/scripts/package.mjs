@@ -27,6 +27,14 @@ if (process.platform === "darwin") {
     console.log(env.AGENTOMICS_UNSIGNED === "1" ? "Unsigned build: the app is signed ad hoc, not notarized." : "No Developer ID Application certificate: the app is signed ad hoc, not notarized.");
     env.CSC_IDENTITY_AUTO_DISCOVERY = "false";
   }
+  // The Liquid Glass icon (Agentomics.icon, from Icon Composer) needs Xcode 26's actool; with an older
+  // Xcode, or none, the app gets the flat icon.png instead of failing the build.
+  const actool = spawnSync("xcrun", ["actool", "--version"], { encoding: "utf8" }).stdout ?? "";
+  const actoolMajor = Number(/<key>short-bundle-version<\/key>\s*<string>(\d+)/.exec(actool)?.[1] ?? 0);
+  if (actoolMajor < 26) {
+    console.log("Xcode 26 or newer not found: the app gets the flat icon.png, without Liquid Glass.");
+    args.push("-c.mac.icon=icon.png");
+  }
 }
 
 run(process.execPath, [path.join(here, "node_modules", "electron-builder", "cli.js"), ...args]);

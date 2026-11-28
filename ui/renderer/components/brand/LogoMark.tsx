@@ -1,23 +1,22 @@
 import { useId } from "react";
 
-// The Agentomics mark, as in the app icon (ui/desktop/icon.svg): a helix of two strands on brand blue,
-// the back strand translucent so the overlap reads as depth. At toolbar sizes a rounded square with
-// Apple's corner ratio stands in for the icon's continuous-corner shape.
+// The Agentomics mark, as in the app icon (ui/desktop/icon.svg): a double helix of two paper bands on a
+// paper tile, the bands' outer faces charcoal and their inner faces light, so the overlap reads as the twist.
+// At toolbar sizes a rounded square with Apple's corner ratio stands in for the icon's continuous-corner shape.
 export function LogoMark({ size = 28 }: { size?: number }) {
   const gradient = useId();
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" role="img" aria-label="Agentomics" className="logo-mark">
       <defs>
         <linearGradient id={gradient} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#5a86f5" />
-          <stop offset="1" stopColor="#2442b0" />
+          <stop offset="0" stopColor="#fbfaf6" />
+          <stop offset="1" stopColor="#e9e7e1" />
         </linearGradient>
       </defs>
-      <rect width="64" height="64" rx="14.4" fill={`url(#${gradient})`} />
-      <g fill="none" stroke="#ffffff" strokeLinecap="round" transform="translate(32 32) scale(0.75) translate(-32 -32)">
-        <path d="M42 10C42 23 22 19 22 32C22 45 42 41 42 54" strokeWidth="7" strokeOpacity="0.42" />
-        <path d="M28 32H36" strokeWidth="3.85" strokeOpacity="0.42" />
-        <path d="M22 10C22 23 42 19 42 32C42 45 22 41 22 54" strokeWidth="7" />
+      <rect x="0.5" y="0.5" width="63" height="63" rx="14" fill={`url(#${gradient})`} stroke="#d9d6ce" />
+      <g transform="translate(32 32) scale(0.075) translate(-512 -512)">
+        <path d="M360.6 350.3 L312.1 385.6 L308.9 388.9 L308.1 391.2 L359.1 531.2 L362.2 532.4 L369.2 532.5 L428.1 528.3 L470.3 527.2 L437.3 553.5 L389.8 587.7 L384.6 592.2 L382.6 595.2 L433.5 735.8 L436.7 737.1 L444.3 737.3 L498.6 733.2 L534.7 732.0 L563.8 732.3 L592.5 733.9 L630.8 839.4 L631.3 839.5 L654.1 815.3 L672.9 792.3 L688.7 769.7 L701.9 746.6 L707.4 735.0 L712.2 723.4 L716.0 711.8 L718.7 701.7 L720.9 690.3 L722.0 680.4 L722.4 669.3 L721.9 659.8 L719.6 645.3 L715.9 632.7 L663.7 489.6 L656.6 475.4 L647.8 462.6 L646.1 445.8 L641.8 429.2 L590.1 287.3 L585.9 277.6 L580.0 267.2 L574.6 259.5 L567.5 251.0 L559.5 243.1 L550.8 235.6 L542.4 229.5 L532.2 223.0 L521.2 217.0 L509.7 211.5 L484.9 202.0 L456.8 194.2 L425.9 188.3 L392.8 184.5 L431.0 290.3 L408.8 311.1 L385.6 330.8ZM500.4 393.1 L467.6 389.2 L444.1 324.5 L466.1 326.8 L488.6 330.3 L509.1 334.6 L527.4 339.5 L545.0 345.3 L561.6 352.1 L577.2 359.8 L590.1 367.6 L582.3 389.1 L571.4 411.0 L554.6 405.3 L538.1 400.6 L519.4 396.4ZM593.5 685.9 L580.5 699.3 L556.9 634.6 L577.2 613.2 L594.2 593.0 L609.5 572.1 L622.4 551.2 L644.8 560.9 L664.7 572.4 L660.3 585.2 L654.2 599.7 L646.8 614.2 L638.3 628.6 L628.9 642.7 L618.5 656.6 L606.4 671.5Z" fill="#c9c5bc" />
+        <path d="M455.1 193.8 L422.4 187.8 L403.3 185.4 L392.6 184.7 L443.4 324.3 L481.7 329.1 L498.9 332.3 L515.8 336.3 L532.3 341.0 L546.5 345.9 L561.6 352.1 L574.5 358.4 L586.5 365.3 L597.6 372.8 L607.8 381.0 L615.9 388.8 L624.0 398.2 L630.2 406.9 L635.5 416.1 L640.8 428.2 L641.2 428.3 L589.2 284.8 L582.1 270.6 L572.9 257.3 L563.6 247.0 L551.9 236.5 L539.9 227.8 L525.4 219.2 L509.7 211.5 L492.9 204.8 L475.2 199.0ZM373.5 532.3 L415.1 529.1 L443.6 527.6 L471.3 527.2 L499.3 527.9 L526.8 530.0 L552.8 533.3 L576.9 537.8 L600.3 543.8 L622.6 551.2 L641.9 559.5 L659.7 569.2 L674.5 579.4 L688.5 591.6 L699.4 604.0 L707.5 616.2 L711.8 624.4 L715.3 632.9 L715.9 632.8 L664.2 490.8 L658.6 478.8 L650.7 466.4 L643.0 456.8 L633.0 446.9 L622.9 438.6 L610.6 430.1 L597.1 422.4 L582.7 415.6 L567.4 409.5 L549.7 403.8 L526.3 397.8 L502.2 393.3 L476.1 390.0 L450.3 388.0 L422.1 387.2 L392.9 387.6 L366.8 388.9 L316.8 392.6 L310.9 392.3 L308.2 391.0 L308.1 391.3 L320.8 426.2 L333.5 461.0 L346.2 495.9 L358.9 530.7 L358.9 530.9 L360.3 531.9 L362.8 532.4ZM321.2 425.8 L320.8 426.0 L320.7 425.8 L320.8 425.4ZM333.9 460.7 L333.5 460.9 L333.4 460.7 L333.4 460.3ZM346.6 495.5 L346.1 495.7 L346.1 495.5 L346.1 495.1ZM389.0 597.3 L385.2 597.0 L382.6 595.9 L382.7 596.1 L433.4 735.5 L434.1 736.3 L437.7 737.2 L444.9 737.2 L497.3 733.3 L531.7 732.0 L562.1 732.2 L592.9 733.8 L542.1 594.0 L509.7 592.2 L476.3 592.1 L446.5 593.3ZM395.8 630.6 L395.3 630.8 L395.3 630.6 L395.3 630.2ZM408.5 665.4 L408.0 665.6 L407.9 665.4 L408.0 665.0ZM421.1 700.3 L420.7 700.5 L420.6 700.3 L420.6 699.9Z" fill="#262422" />
       </g>
     </svg>
   );

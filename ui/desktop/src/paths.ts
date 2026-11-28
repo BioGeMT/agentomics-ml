@@ -26,7 +26,8 @@ export const RUNS_DIR =
 /** Where agentomics-run starts: it reads an optional .env there. The repo in development; the runs folder once packaged. */
 export const RUN_CWD = PACKAGED ? RUNS_DIR : REPO_ROOT;
 export const CONTAINER_PYTHON = "/opt/conda/envs/agentomics-env/bin/python";
-export const ICON = path.join(APP_DIR, "icon.png"); // rendered from icon.svg by npm run icon
+/** The window and Dock icon: the Mac grid one on macOS, the full-square one (icon-square.svg) on Windows and Linux. Both rendered by npm run icon. */
+export const ICON = path.join(APP_DIR, process.platform === "darwin" ? "icon.png" : "icon-square.png");
 /** The built UI: bundled into the app's resources, or ui/renderer/out when trying the build in development. */
 /** The example datasets the app carries: bundled into its resources, or ui/examples in development. */
 export const EXAMPLES_DIR = PACKAGED ? path.join(process.resourcesPath, "examples") : path.join(REPO_ROOT, "ui", "examples");

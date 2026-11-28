@@ -12,13 +12,13 @@
     "start": "npm run build && electron .",
     "postinstall": "node scripts/dev-app-name.js",
     "start:export": "npm --prefix ../renderer run build:desktop && npm run build && AGENTOMICS_UI=export electron .",
-    "icon": "rsvg-convert -w 1024 -h 1024 icon.svg -o icon.png && node scripts/dev-app-name.js",
+    "icon": "rsvg-convert -w 1024 -h 1024 icon.svg -o icon.png && rsvg-convert -w 1024 -h 1024 icon-square.svg -o icon-square.png && node scripts/dev-app-name.js",
     "build:cli": "node scripts/build-cli.mjs",
     "dist": "npm run build && npm --prefix ../renderer run build:desktop && npm run build:cli && node scripts/package.mjs"
   },
   "devDependencies": {
     "@types/node": "26.6.5",
-    "electron": "44.4.5",
+    "electron": "44.11.6",
     "electron-builder": "26.17.0",
     "esbuild": "0.28.2",
     "typescript": "7.0.2"
@@ -32,6 +32,7 @@
     "files": [
       "dist/**",
       "icon.png",
+      "icon-square.png",
       "package.json"
     ],
     "extraResources": [
@@ -51,7 +52,7 @@
     "afterPack": "scripts/after-pack.js",
     "mac": {
       "category": "public.app-category.developer-tools",
-      "icon": "icon.png",
+      "icon": "Agentomics.icon",
       "target": [
         {
           "target": "dmg",
@@ -72,7 +73,7 @@
     },
     "linux": {
       "category": "Science",
-      "icon": "icon.png",
+      "icon": "icon-square.png",
       "maintainer": "BioGeMT <https://github.com/BioGeMT>",
       "target": [
         {
@@ -96,7 +97,7 @@
       "artifactName": "agentomics_${version}_amd64.deb"
     },
     "win": {
-      "icon": "icon.png",
+      "icon": "icon-square.png",
       "target": [
         {
           "target": "nsis",

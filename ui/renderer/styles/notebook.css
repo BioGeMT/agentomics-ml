@@ -2,23 +2,23 @@
 
 :root {
   /* colour channels, for translucent tints: rgb(var(--shade) / 0.06) */
-  --shade: 22 24 29;
-  --shadow: 22 24 29;
-  --accent-rgb: 47 91 211;
-  --scrim: 28 31 36;
+  --shade: 29 27 24;
+  --shadow: 29 27 24;
+  --accent-rgb: 38 36 34;
+  --scrim: 29 27 24;
   --glass: 255 255 255;
   --live-rgb: 217 134 26;
 
   /* surfaces, lines and marks, light appearance */
-  --accent-disabled: #b9c6ea;
-  --chart-chance: #d5d9df;
-  --chart-crosshair: #bcc2ca;
-  --chart-dumbbell: #c8cdd4;
-  --chart-grid: #e9ecef;
-  --chart-negative: #b9c0ca;
-  --chart-other: #c4cad2;
-  --checker-a: #f3f4f6;
-  --checker-b: #fff;
+  --accent-disabled: #cfcbc2;
+  --chart-chance: #dcd8d0;
+  --chart-crosshair: #c4bfb5;
+  --chart-dumbbell: #cfcac1;
+  --chart-grid: #ece9e3;
+  --chart-negative: #c2bdb3;
+  --chart-other: #cbc6bd;
+  --checker-a: #f3f1ec;
+  --checker-b: #fbfaf7;
   --code-attr: #474d56;
   --code-comment: #6a737d;
   --code-keyword: #7a3fb8;
@@ -29,68 +29,68 @@
   --diff-add-ink: #1f6a3f;
   --diff-del-bg: #fdf1f0;
   --diff-del-ink: #8c2a23;
-  --disclosure: #8a909a;
+  --disclosure: #8e8a82;
   --done-line: #bcdcc8;
-  --dot-ring: #c3c9d1;
+  --dot-ring: #c9c5bc;
   --failed-line: #efc3be;
   --failed-on-cover: #f39a92;
-  --fold-hover: #eef0f3;
-  --folder: #6b8fd6;
-  --ink-4: #a9afb8;
-  --ink-dim: #9aa1ab;
-  --ink-disabled: #c3c9d1;
-  --ink-faint: #b5bbc3;
-  --link-underline: #bccaee;
-  --mark-muted: #bac0c8;
+  --fold-hover: #efede8;
+  --folder: #8e897f;
+  --ink-4: #aca79e;
+  --ink-dim: #9d988f;
+  --ink-disabled: #c9c5bc;
+  --ink-faint: #b8b3aa;
+  --link-underline: #c9c5bc;
+  --mark-muted: #c0bbb2;
   --on-accent: #fff;
-  --output-bg: #fbfbfc;
-  --pdf-backdrop: #e8e9ec;
-  --ref-hover: #e2e9fb;
-  --result-bg: #fafbff;
-  --result-line: #cdd8f3;
-  --row-alt: #f7f8fa;
-  --scrollbar: #d0d5db;
-  --scrollbar-hover: #b6bdc6;
-  --selected-row: #f4f7ff;
-  --selection: #d2ddf8;
-  --skeleton-a: #e5e8ec;
-  --skeleton-b: #eff1f4;
-  --split-neutral: #c3c9d1;
+  --output-bg: #fbfaf7;
+  --pdf-backdrop: #e9e7e1;
+  --ref-hover: #ebe8e1;
+  --result-bg: #f8f7f3;
+  --result-line: #dcd8cf;
+  --row-alt: #f6f5f1;
+  --scrollbar: #d4d0c8;
+  --scrollbar-hover: #bbb6ad;
+  --selected-row: #f1efea;
+  --selection: #e2ded5;
+  --skeleton-a: #e8e5df;
+  --skeleton-b: #f1efea;
+  --split-neutral: #c9c5bc;
   --split-validation: #8fb0ee;
-  --status-live-bg: #2e333a;
-  --strike: #c5cbd2;
-  --toc-hover: #e9ecf0;
+  --status-live-bg: #2f2d2a;
+  --strike: #c9c5bc;
+  --toc-hover: #ece9e3;
   --tooltip-bg: var(--ink);
-  --tooltip-ink: #f5f6f8;
-  --tooltip-ink-2: #d8dde3;
-  --tooltip-muted: #aab1bb;
+  --tooltip-ink: #f7f6f2;
+  --tooltip-ink-2: #dcd8d0;
+  --tooltip-muted: #aea99f;
 
   /* cover (bookcloth) */
-  --cover: #1c1f24;
-  --cover-deep: #15171b;
-  --cover-edge: #2e333a;
-  --cover-ink: #f4f5f7;
-  --cover-muted: #a3a9b3;
-  /* The mark: graphite tile, a white and a blue front strand over grey back strands. */
-  --wordmark-accent: #9db8ff;
+  --cover: #1f1d1b;
+  --cover-deep: #181715;
+  --cover-edge: #33302c;
+  --cover-ink: #f7f6f2;
+  --cover-muted: #aaa59c;
+  /* The wordmark's "omics" on the dark cover: the paper grey of the mark's inner bands. */
+  --wordmark-accent: #c9c5bc;
   --done-on-cover: #8fd3a8; /* finished state on the dark cover, about 8:1 */
 
   /* page */
-  --page: #ffffff;
-  --page-tint: #f7f8f9;
-  --rail: #f4f5f7;
-  --grid: rgba(28, 31, 36, 0.04);
-  --rule: #e3e6ea;
-  --rule-strong: #cfd4da;
+  --page: #fbfaf7;
+  --page-tint: #f6f5f1;
+  --rail: #f2f1ec;
+  --grid: rgba(29, 27, 24, 0.04);
+  --rule: #e6e3dc;
+  --rule-strong: #d3cfc6;
   --margin-rule: #d64a40;
   --margin-width: 92px;
 
   /* ink */
-  --ink: #16181d;
-  --ink-2: #474d56;
-  --ink-3: #636a74;
-  --ballpoint: #2f5bd3;
-  --ballpoint-tint: #eef2fd;
+  --ink: #1d1c1a;
+  --ink-2: #4a4741;
+  --ink-3: #67635c;
+  --ballpoint: #262422;
+  --ballpoint-tint: #efede8;
 
   /* state: one colour each, live is reserved */
   --live: #d9861a; /* the one reserved live colour: dots, spinners, rings */
@@ -104,7 +104,7 @@
   /* figures */
   --series-validation: #2f5bd3;
   --series-train: #b0358a;
-  --hover-row: #f3f5f8;
+  --hover-row: #f3f1ec;
 
   --mono: "Geist Mono Variable", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --sans: "Geist Variable", system-ui, -apple-system, "Segoe UI", sans-serif;

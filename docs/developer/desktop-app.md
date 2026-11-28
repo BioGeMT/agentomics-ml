@@ -61,6 +61,9 @@ npm run dist
 
 Result: `ui/desktop/release/Agentomics-<version>-arm64.dmg`. To try it, see [Testing a build](#testing-a-build).
 
+With Xcode 26 or newer, the app's icon is `ui/desktop/Agentomics.icon` (made in Icon Composer), which macOS
+draws in Liquid Glass. Without it, the build uses the flat `ui/desktop/icon.png`.
+
 ## Linux
 
 In a terminal, from the repository root:

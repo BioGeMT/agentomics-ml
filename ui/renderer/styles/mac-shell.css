@@ -3,14 +3,14 @@
    The window is vibrant (NSVisualEffectView "sidebar"), so anything left transparent shows frosted glass. */
 
 :root[data-shell="mac"] {
-  --toolbar: rgba(255, 255, 255, 0.92);
+  --toolbar: rgba(251, 250, 247, 0.92);
   --hairline: rgba(0, 0, 0, 0.1);
   --sidebar-hover: rgba(0, 0, 0, 0.045);
   --sidebar-selected: rgba(0, 0, 0, 0.075);
   --traffic-lights: 92px; /* room for the window buttons when nothing sits under them */
   /* Sidebars: a light surface with only a hint of the window glass, so a dark wallpaper never turns them grey. */
-  --sidebar-surface: rgba(255, 255, 255, 0.38); /* a white veil over the glass: translucent, never grey */
-  --inspector: #f8f8f9;
+  --sidebar-surface: rgba(251, 250, 247, 0.4); /* a white veil over the glass: translucent, never grey */
+  --inspector: #f7f6f2;
 
   /* The cover becomes a light unified toolbar. */
   --cover: var(--toolbar);
@@ -18,7 +18,7 @@
   --cover-edge: var(--hairline);
   --cover-ink: var(--ink);
   --cover-muted: var(--ink-3);
-  --wordmark-accent: var(--ballpoint);
+  --wordmark-accent: var(--ink-3);
   --done-on-cover: var(--done);
 }
 

@@ -2,12 +2,12 @@
    Colours and type come from the notebook tokens (run/notebook.css); mac-shell.css adds the window chrome. */
 
 .lobby {
-  --accent: #2f5bd3;
-  --accent-press: #2449b0;
+  --accent: #262422;
+  --accent-press: #000000;
   --sidebar-bg: var(--rail);
-  --hover: rgba(22, 24, 29, 0.045);
-  --group: #ffffff;
-  --group-line: rgba(22, 24, 29, 0.09);
+  --hover: rgba(29, 27, 24, 0.045);
+  --group: #fdfcf9;
+  --group-line: rgba(29, 27, 24, 0.1);
   display: grid; grid-template-columns: 248px minmax(0, 1fr);
   height: 100vh; font-family: var(--sans); color: var(--ink); background: var(--page-tint);
 }
@@ -45,7 +45,7 @@
 .run-popups { display: flex; gap: 6px; }
 .run-popups select {
   flex: 1; min-width: 0; height: 22px; padding: 0 18px 0 8px; border: 0; border-radius: 6px; appearance: none;
-  background: rgb(var(--shade) / 0.05) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' fill='none' stroke='%23636a74' stroke-width='1.4' stroke-linecap='round'%3E%3Cpath d='M1.5 3l2.5 2.5L6.5 3'/%3E%3C/svg%3E") no-repeat right 6px center;
+  background: rgb(var(--shade) / 0.05) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' fill='none' stroke='%2367635c' stroke-width='1.4' stroke-linecap='round'%3E%3Cpath d='M1.5 3l2.5 2.5L6.5 3'/%3E%3C/svg%3E") no-repeat right 6px center;
   font: 500 11.5px var(--sans); color: var(--ink-2); text-overflow: ellipsis; cursor: pointer;
 }
 .run-popups select.active { background-color: rgb(var(--accent-rgb) / 0.12); color: var(--accent); }
@@ -178,7 +178,7 @@
 .form-row > span { color: var(--ink); }
 .form-row select {
   max-width: 62%; height: 28px; padding: 0 28px 0 10px; border: 1px solid var(--group-line); border-radius: 6px;
-  background: var(--page) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='none' stroke='%23636a74' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M2 4l3 3 3-3'/%3E%3C/svg%3E") no-repeat right 9px center;
+  background: var(--page) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='none' stroke='%2367635c' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M2 4l3 3 3-3'/%3E%3C/svg%3E") no-repeat right 9px center;
   appearance: none; font: 13px var(--sans); color: var(--ink); text-overflow: ellipsis;
 }
 .form-row select:focus-visible, .stepper input:focus-visible, .goal textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

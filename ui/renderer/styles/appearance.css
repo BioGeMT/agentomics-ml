@@ -2,40 +2,40 @@
    appearance (dark-mode.md: no app-specific switch); every colour is a token, so each mode only redefines
    tokens. Bundling doesn't guarantee this file loads last, so each selector carries one more :root than
    the light one it overrides in notebook.css, lobby.css and mac-shell.css, and wins on specificity.
-   The graphite neutrals keep the light palette's cool blue bias. */
+   The graphite neutrals keep the light palette's warm paper bias. */
 
 @media (prefers-color-scheme: dark) {
   :root:root {
     color-scheme: dark;
-    --bg: #18191c;
-    --text: #eceef1;
+    --bg: #1a1917;
+    --text: #eeece7;
 
     /* channels: ink tints turn white, shadows and scrims stay black */
     --shade: 255 255 255;
     --shadow: 0 0 0;
-    --accent-rgb: 123 156 255;
+    --accent-rgb: 233 230 223;
     --scrim: 0 0 0;
-    --glass: 42 44 50;
+    --glass: 44 42 39;
     --live-rgb: 240 163 58;
 
     /* paper and ink */
-    --page: #1c1e22;
-    --page-tint: #212328;
-    --rail: #18191c;
+    --page: #1d1c1a;
+    --page-tint: #22211e;
+    --rail: #1a1917;
     --grid: rgb(255 255 255 / 0.035);
-    --rule: #33363c;
-    --rule-strong: #464a51;
+    --rule: #363430;
+    --rule-strong: #4a4743;
     --margin-rule: #e0645a;
-    --ink: #eceef1;
-    --ink-2: #b9bec6;
-    --ink-3: #9399a3;
-    --ink-4: #737983;
-    --ink-dim: #7d838d;
-    --ink-faint: #5f646d;
-    --ink-disabled: #50555d;
-    --ballpoint: #7b9cff;
-    --ballpoint-tint: #222c47;
-    --hover-row: #25282e;
+    --ink: #eeece7;
+    --ink-2: #c0bcb4;
+    --ink-3: #9b968e;
+    --ink-4: #7a766f;
+    --ink-dim: #847f78;
+    --ink-faint: #64605a;
+    --ink-disabled: #55524c;
+    --ballpoint: #e9e6df;
+    --ballpoint-tint: #2e2c29;
+    --hover-row: #282623;
 
     /* states */
     --live: #f0a33a;
@@ -51,15 +51,15 @@
     /* charts (validated together on the dark panel: #668af0 / #cf68b4) */
     --series-validation: #668af0;
     --series-train: #cf68b4;
-    --chart-grid: #2c2f35;
-    --chart-chance: #4a4e56;
-    --chart-crosshair: #5d626b;
-    --chart-dumbbell: #4f545c;
-    --chart-other: #575c65;
-    --chart-negative: #6c727c;
+    --chart-grid: #2f2d2a;
+    --chart-chance: #4d4a45;
+    --chart-crosshair: #615d57;
+    --chart-dumbbell: #53504a;
+    --chart-other: #5b5852;
+    --chart-negative: #706b64;
     --split-validation: #5f86d9;
-    --split-neutral: #5a5f68;
-    --dot-ring: #5a5f68;
+    --split-neutral: #5d5a54;
+    --dot-ring: #5d5a54;
 
     /* code */
     --code-keyword: #c89cf3;
@@ -74,69 +74,69 @@
     --diff-del-ink: #ffa59c;
 
     /* surfaces, lines and marks */
-    --accent-disabled: #39456a;
-    --checker-a: #2a2c31;
-    --checker-b: #222428;
-    --disclosure: #8d939c;
-    --fold-hover: #2a2d33;
-    --folder: #7f9fe3;
-    --link-underline: #4a5f9c;
-    --mark-muted: #5f646d;
-    --on-accent: #ffffff;
-    --output-bg: #202227;
-    --pdf-backdrop: #2a2c31;
-    --ref-hover: #2a3656;
-    --result-bg: #1f2433;
-    --result-line: #34436c;
-    --row-alt: #212328;
-    --scrollbar: #4a4e56;
-    --scrollbar-hover: #5e636c;
-    --selected-row: #222f52;
-    --selection: #34497f;
-    --skeleton-a: #2a2d33;
-    --skeleton-b: #33363d;
-    --strike: #5f646d;
-    --toc-hover: #2a2d33;
-    --tooltip-bg: #3a3d44;
-    --tooltip-ink: #f2f3f5;
-    --tooltip-ink-2: #c9cdd4;
-    --tooltip-muted: #9399a3;
+    --accent-disabled: #4a4743;
+    --checker-a: #2d2b28;
+    --checker-b: #252320;
+    --disclosure: #918c84;
+    --fold-hover: #2d2b28;
+    --folder: #a39e95;
+    --link-underline: #5a5650;
+    --mark-muted: #64605a;
+    --on-accent: #1d1c1a;
+    --output-bg: #22211e;
+    --pdf-backdrop: #2d2b28;
+    --ref-hover: #33312d;
+    --result-bg: #23221f;
+    --result-line: #44413c;
+    --row-alt: #22211e;
+    --scrollbar: #4d4a45;
+    --scrollbar-hover: #615d57;
+    --selected-row: #2e2c29;
+    --selection: #45423d;
+    --skeleton-a: #2d2b28;
+    --skeleton-b: #363430;
+    --strike: #64605a;
+    --toc-hover: #2d2b28;
+    --tooltip-bg: #3d3b37;
+    --tooltip-ink: #f4f2ed;
+    --tooltip-ink-2: #ccc8c0;
+    --tooltip-muted: #9b968e;
   }
 
   /* The Mac window chrome: dark glass toolbar and sidebars, hairlines in white. */
   :root:root[data-shell="mac"] {
-    --toolbar: rgb(30 32 36 / 0.92);
+    --toolbar: rgb(32 31 28 / 0.92);
     --hairline: rgb(255 255 255 / 0.1);
     --sidebar-hover: rgb(255 255 255 / 0.06);
     --sidebar-selected: rgb(255 255 255 / 0.1);
     --sidebar-surface: rgb(0 0 0 / 0.12);
-    --inspector: #1f2125;
+    --inspector: #21201d;
     --cover-deep: rgb(255 255 255 / 0.06);
   }
 
   :root .lobby {
-    --accent: #5b84ff;
-    --accent-press: #4a70e6;
+    --accent: #e9e6df;
+    --accent-press: #ffffff;
     --hover: rgb(255 255 255 / 0.06);
-    --group: #24262b;
+    --group: #252421;
     --group-line: rgb(255 255 255 / 0.1);
   }
 
   /* The pop-up chevrons are SVG images, drawn here in the dark secondary ink. */
   :root .run-popups select {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' fill='none' stroke='%239399a3' stroke-width='1.4' stroke-linecap='round'%3E%3Cpath d='M1.5 3l2.5 2.5L6.5 3'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' fill='none' stroke='%239b968e' stroke-width='1.4' stroke-linecap='round'%3E%3Cpath d='M1.5 3l2.5 2.5L6.5 3'/%3E%3C/svg%3E");
   }
   :root .form-row select {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='none' stroke='%239399a3' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M2 4l3 3 3-3'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='none' stroke='%239b968e' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M2 4l3 3 3-3'/%3E%3C/svg%3E");
   }
 }
 
 /* Increase Contrast: secondary text and lines step up a level. */
 @media (prefers-contrast: more) {
   :root:root {
-    --ink-3: var(--ink-2);
-    --ink-4: var(--ink-2);
-    --rule: var(--rule-strong);
+    --ink-3: #9b968e;
+    --ink-4: #7a766f;
+    --rule: #363430;
   }
   :root:root[data-shell="mac"] { --hairline: rgb(var(--shade) / 0.3); }
   :root .lobby { --group-line: rgb(var(--shade) / 0.3); }
@@ -145,7 +145,7 @@
 /* Reduce Transparency: the glass becomes solid. */
 @media (prefers-reduced-transparency: reduce) {
   :root:root[data-shell="mac"] {
-    --toolbar: var(--page);
+    --toolbar: rgb(32 31 28 / 0.92);
     --sidebar-surface: var(--rail);
   }
   :root .jump-live, :root .jump-live:hover {

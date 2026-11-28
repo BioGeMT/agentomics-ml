@@ -5,7 +5,7 @@ import { addUsage, STEP_SEQUENCE, type Entry, type Usage } from "@/model/run";
 import { formatCost, usageTitle } from "@/model/usage";
 
 // Stages run in a fixed order, so they share one hue stepped light to dark; a running stage is amber.
-const RAMP = ["#c6d5f6", "#aec4f2", "#94b1ec", "#7a9de6", "#628ade", "#4b77d5", "#3a63c2", "#2f52a8", "#26438b"];
+const RAMP = ["#dcd8cf", "#c9c4ba", "#b5afa4", "#a09a8f", "#8a847a", "#736e65", "#5c5851", "#46433e", "#302e2b"];
 
 function title(stage: string) {
   return stage.charAt(0) + stage.slice(1).toLowerCase();

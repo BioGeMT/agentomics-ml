@@ -3,8 +3,8 @@
 @import "@fontsource-variable/geist-mono";
 
 :root {
-  --bg: #f7f7f8;
-  --text: #1f2328;
+  --bg: #f6f5f1;
+  --text: #1d1c1a;
 }
 
 * { box-sizing: border-box; }
